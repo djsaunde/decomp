@@ -14398,6 +14398,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [4x4 matrix family = the natural triple loop: an alias pointer on a LOCAL source keeps per-iteration row loads, a PARAM source gets the beql/bnel pipelined column loop; per-loop index letters move the IV-eliminated LR; every declared scalar takes a frame home in decl order; `x / 2` keeps div.s; `a = arg0` copy recolours the param (5E288 65.2 / 5E718 72.5 / 5E944 / 5EB4C / 5ED54 -> EXACT, agent-g 2026-10-17)](#matrix-triple-loop-family-5e288) -- _Plus: as1 bound-check delay fill is liveness through the jumptable UNION of arms (a0 read in any arm blocks the default steal); partial zdbug:6 coloring and the zdbug:1 itab LR -> frame-home map print even when uopt dies on the ecvt assertion._
 - [post0b quaternion/matrix textbook kit II (agent-g 2026-10-17): rewrite m2c soups as the TEXTBOOK formula (GG III slerp, Shoemake Qt_ToMatrix, q*v*conj(q), axis-align matrix); `(f32)var` no-op cast makes cfe evaluate a plain float variable leaf FIRST in a commutative op; ONE SOURCE LINE PER MATRIX ROW fixes a load-order + colour pair no per-line order can; a copy temp declared LAST re-colours one web (5C284/5CE68/5CCF4/5DDE4/5EF00 EXACT)](#post0b-quat-matrix-textbook-kit-2) -- _Also: a constant spelled `*(f32 *)(&D_00000000 + K)` outranks a `(f32)int` conversion; a pinned extern f32 symbol does not._
 - [post0b dispatcher kit II (agent-c 2026-10-17): memory-resident list iterator = ADDRESS-TAKEN scalars (dead `while (0) { pp = &cur; pp = &next; }`), not volatile; global `G |= 4` emits a lui/addiu address register, the target's separate `lui/lw` + `lui/sw` = two symbol names (or a call between); `*(float *)&msg.f` makes `&msg` a whole-function candidate, use an int/float union member; a switch with default-mapped HOLES keeps `sll` in the bound-check delay; jumptable entry 0 under an outer `if (x)` = `case 0: break;`; the default printf argument puts the selector in a1; IDO pulls small call-free goto targets inline after a compare chain (open) (40304 99.82, 40640 99.88, 3FC58 85.1, 415A4 76.4)](#post0b-dispatcher-kit-2-40304)
+- [post0b cfront-inline kit III (agent-c 2026-10-17, run 104): ternary iterator step `(it.cur = it.next) != 0 ? (it.next = it.cur->next, it.cur->data) : 0` keeps the result in v0; write the "next" expression TWICE (init + loop step) when the target uses different temps for the two instances; Vec3 `operator-` = three differences into locals, then stores; whole-struct temp copies stay struct assignments but the LAST copy is field-by-field (lwc1/swc1); address-take stack params for per-iteration reloads; arg cursor `p = c->args, c->args = p + 1, *p` for store-before-load; `(u32)(f * 255.0f)` RGB packers (41A9C 99.25, 4E96C 99.5, 3B01C 96.3, 49B3C 95.7, 36A48 87.9; 46DC0 / 4771C / 3C7A4 EXACT)](#post0b-cfront-inline-kit-3)
 
 ## IDO-O0-STALE-NM-PERCENT-TABLE-REFLECTS-C-SHAPE
 
@@ -31600,3 +31601,65 @@ the textbook formula and then apply one or two of the levers below.
 Tooling note: `scripts/disasm-func.py` printed a different function's code for gl_func_0005CCF4 and 0005DDE4 (frame
 0x90/0x98 where the real functions have 0x38/0x58). Read targets from `expected/src/game_libs/game_libs_post0b.c.o`
 (`objdump -d --disassemble=FN`) or the `.s` file, not from disasm-func, for post0b.
+
+---
+
+## post0b cfront-inline kit III: iterator step form, Vec3 temporaries, param reloads, arg cursor (agent-c 2026-10-17, run 104) <a name="post0b-cfront-inline-kit-3"></a>
+
+Several post0b functions are C++ (cfront) with inline member functions expanded in place. The shapes below
+took 0%/stub wraps to 87-99% in one pass each.
+
+**Inlined {cur,next} list iterator** (gl_func_00041A9C 0 -> 99.25, game_libs_func_0003DA14 0 -> 94.0,
+gl_func_00049B3C). Target tell: `lw tA,K(list); sw tA,4(sp); beqz tA; sw tA,0(sp); lw tB,4(tA); sw tB,4(sp);
+b join; lw v0,0(tA)` then a loop whose step repeats the same shape. Spelling:
+
+```c
+typedef struct L { char *data; struct L *next; } L;
+typedef struct { L *cur; L *next; } I;
+I it;
+if (1) { I *q = &it; }            /* block-scoped, at function start: memory-resident, no extra code */
+it.next = list;
+while (((it.cur = it.next) != 0 ? (it.next = it.cur->next, it.cur->data) : 0) != 0) {
+    use(it.cur->data);            /* body re-reads through it.cur, like the target */
+}
+```
+
+- The address-taken iterator also pulled every OTHER candidate in 41A9C out of the s-regs. The target had
+  an all-spill frame (no s-saves), and the build went from 3 s-regs to 0 (78 -> 98).
+- An `if`/`v = 0` statement form of the step puts the result in an s-reg. The ternary keeps it in v0.
+- When the target's init instance and loop-step instance use DIFFERENT temps (49B3C: init result in v0,
+  step result in a0; list init in a1, step in v0), write the next-expression twice:
+  `v = NEXT; while (v) { ...; v = NEXT; }`. One `while (NEXT)` gives one shared temp. In 49B3C that
+  change and direct vtable fields together were worth 92.9 -> 95.3.
+- The declaration placement of the iterator decides the frame slot. Function scope with the `if (1)`
+  trick at the top matched 41A9C's layout. Declaring it in an inner block put it at the frame bottom.
+
+**cfront `new` of a local object** (49B3C): `p = &local; if (p == 0) p = alloc(12); if (p) {...}` folds the
+dead alloc away. Use `if ((unsigned)p == 0) { p = alloc(12); if (p == 0) goto skip; }` (see
+#unsigned-cast-defeats-addr-nonnull-fold-5165c). Write the member stores through one named
+`arr = (A *)(self + 132)` so `self + 132` is computed once, as in the target.
+
+**Vec3 operator temporaries** (gl_func_0003B01C 18.2 -> 96.3). Target: six lwc1 (b.xyz, then a.zyx), three
+sub.s, three swc1 to a temp, two whole-struct `lw/sw` copies to further temps, then a final copy done as
+`lwc1/swc1`. Spelling: `dx = pb->x - pa->x; dy = ...; dz = ...; t.x = dx; t.y = dy; t.z = dz;`
+(a ctor), then `t2 = t; t3 = t2;` as struct assignments, then `n.x = t3.x; n.y = t3.y; n.z = t3.z;`. The
+final field-wise copy is what gives float loads/stores; a struct assignment there gives `lw/sw`
+(53 -> 82). The ctor form for the subtraction is worth a further 82 -> 96.
+
+**Stack params reloaded every iteration** (gl_func_00036A48 79.5 -> 87.8). Target: `lw t9,192(sp)` (the
+arr param) and `lw t5,196(sp)` (n) inside the loop, with a byte offset in s0 instead of a walking pointer.
+`if (1) { Vec3 **q = &arr; int *qq = &n; }` makes both params memory-resident. Same trick on a struct
+local (`&v`) keeps otherwise-dead field stores (`swc1` of a result copy).
+
+**Argument cursor, store before load** (gl_func_0004E96C 73.9 -> 99.5). Target per switch arm:
+`lw v0,4(a1); addiu t,v0,4; sw t,4(a1); lw x,0(v0)`. `*c->args++` loads first and stores after.
+`(p = c->args, c->args = p + 1, *p)` stores first, as in the target.
+
+**float [0,1] -> 8-bit channel** (game_libs_func_00046DC0, game_libs_func_0004771C EXACT): the
+`cfc1/ctc1` rounding-mode block with `lui at,0x4f00` around each `mul.s` by 255.0 is `(unsigned int)(c * 255.0f)`,
+stored to u8 or u16 fields.
+
+Open in this kit: 36A48's target copies the sret result from v0 into a separate temp before use (3 words
+the build lacks). 3DA14's target re-reads `it.next` after storing `it.cur` in the step (the build forwards
+it). 41A9C's loop uses t8/t9 where the build has v1/t7 (one extra temp in the target's first instance).
+

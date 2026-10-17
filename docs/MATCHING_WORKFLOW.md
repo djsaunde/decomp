@@ -283,6 +283,7 @@ explicit shared blocks (goto a common label), not regeneration.
 - [game_libs base-unit `lui at,0; lwc1 fN,0xE2C(at)` next to a jumptable offset = a FLOAT LITERAL in the USO .rodata, not `&D+0xE2C` global; read the switch tables AND literals from section 7 before trusting an old decode (76F0 88.80->92.47; 7344 77.5->EXACT, 2B94 EXACT via `<fn>_rodata` donor pin, agent-g 2026-10-15)](#game-libs-rodata-literals-and-tables-76f0) — _RoData file offset = lw/lwc1 imm + 4; three &D+0 float sites that each re-materialize `lui/addiu v0` = three distinct globals; case->arm mapping from the table fixed a mis-assigned switch1/switch2 arm._
 - [Run 97 (agent-c 2026-10-16): baked in-unit jal alias in post0b 55C34, 551E0 zero-suffix pad, timproc b1 block-equal via pinned-jal bake, NM levers for 4C300 / 1E08 / CFA0](#run-97-agent-c) -- _per-site blank args (lui/addiu 0) need distinct names; a for loop (not do-while) changes IDO loop-invariant hoisting; a volatile scalar reproduces sw/lw-around-every-test; unused scalars still consume frame slots, so declaration order sets the whole layout._
 - [Low-scoring big NM wraps: diff MNEMONIC-CLASS COUNTS target vs build before grinding regalloc. Extra cvt.d.s/sdc1 = K&R float args (use a prototyped blank alias), extra cvt.s.w/trunc = s32 read of an f32 field, jr mismatch = switch vs if-chain or a misread jump table. Five wraps +6..+75 points in one run; objdiff fuzzy ignores sp offsets but scores jal symbol names (2026-10-16 agent-c)](#decode-error-mnemonic-scan-c100)
+- [post0b NM clip: a function that GROWS (stub -> real decode) does not fail the clip, it silently cuts game_libs_func_00062F08 off the end (objdiff then reports "Symbol data out of bounds" or a sentinel drop). Check `nm` for 62F08's offset after every post0b NM build, re-probe, and score with a clip-free rebuild (run 104, agent-c)](#post0b-clip-grow-silent-c104)
 
 
 ---
@@ -12858,3 +12859,34 @@ cluster. m2c's `idx = op - base` double switch was wrong. Read the case map with
 The tool started the table one entry late because entry 0 is a zero-addend reloc; the one code block no
 entry pointed at was that case (0xF0), which 0xF3 falls into. A `sltiu at,t6,12` vs 11 range diff means a
 trailing `case 0xFB: break;` label. `lw` + `srl 31` tests and `lbu/ori/sb` sets on one word = bitfields.
+
+---
+
+<a id="post0b-clip-grow-silent-c104"></a>
+## post0b NM clip: growing a function is silent (2026-10-17 agent-c, run 104)
+
+`NON_MATCHING_TEXT_CLIP_KEEP_ALIGN` for game_libs_post0b errors only when the NM .text is SMALLER than the
+requested size ("smaller than requested"). When an NM body grows, for example a 20-insn stub replaced by a
+95-insn decode, the clip succeeds and truncates the tail. game_libs_func_00062F08 ends up resized to 0 or
+cut off. `make` exits 0, but objdiff fails with `Symbol data out of bounds`, or the sentinel drops.
+
+Workflow that worked:
+
+- After each post0b NM build, compare `mips-linux-gnu-nm build/non_matching/src/game_libs/game_libs_post0b.c.o | grep 'T game_libs_func_00062F08'`
+  plus 0x50 against the Makefile value.
+- If they differ, rebuild with the clip disabled on the command line, which overrides the target-specific
+  variable: `make build/non_matching/src/game_libs/game_libs_post0b.c.o NON_MATCHING_TEXT_CLIP_KEEP_ALIGN=`.
+  Then read 62F08's offset, run `scripts/clip-elf-text-keep-align.py <obj> <off+0x50> gl_func_000551E0=0x7c gl_func_00055B10=0x2c`
+  by hand, and score. Commit the new value in the Makefile.
+- A size change that is not a multiple of 8 moves alignment padding into later NM functions. In run 104,
+  gl_func_00036A48's -12 bytes cost gl_func_0004D688 68.7 -> 66.2. Accept it when the gain is larger, and
+  say so in the commit message.
+
+Two related traps from the same run:
+
+- `scripts/disasm-func.py` printed a different function for gl_func_0004E424 (and earlier 5CCF4/5DDE4).
+  Read post0b targets with `objdump -d --disassemble=FN expected/src/game_libs/game_libs_post0b.c.o`.
+- Before replacing an `INCLUDE_ASM(...)` line with a new body, check that it is not the `#else` arm of an
+  existing `#ifdef NON_MATCHING` wrap. Otherwise the new C lands in the matching build next to the old NM
+  body.
+
