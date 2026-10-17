@@ -14387,7 +14387,9 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [Comma constant must be the RIGHT operand (`K * (0, 256.0f)`; `(0, 256.0f) * K` stays load-first), and two literal spellings of one FP constant (`(f32)60` vs `60.0f`) are two constant candidates — splits a constant shared across loops so the later loop re-materialises it (game_libs_func_0001F6A8 95.56 -> EXACT, 2026-10-16 agent-c)](#comma-right-operand-literal-spelling-split-1f6a8) -- _Fixes f2/f12 swaps where the target reloads a constant an earlier loop already holds._
 - [4-byte struct passed BY VALUE = `sw aN,4(sp)` arg-area store in the jal delay; `s.w = p->w` stores the local direct while `s = *p` goes through an `addiu` base; dot products `z + (y + x)` compute the x,y sum first; reading a payload pointer inline instead of through a named local fixes a whole-function t-register ring offset (bootup func_0000D900 87.02 -> 99.08, 2026-10-16 agent-c)](#struct-by-value-arg-dot-order-ring-d900)
 - [`or v0,a1,zero; addiu a1,a1,2; sh tN,0(v0)` per store = `t = dst; dst++; *t = v;` (plain `*dst++` gets one +8 bump and negative offsets); goto loops stop IDO re-unrolling a hand-written 4-store body; a stride VARIABLE keeps `multu c,320` + `sll 1` (a literal folds to *640); `g = tbl; g += off;` gives `addu v1,tbl,off` (bootup func_000077D0 0 -> 99.75, 2026-10-16 agent-c)](#copy-then-bump-store-goto-loop-stride-var-77d0)
+- [Pointer loses a t-reg to a CONSTANT candidate (stride 320): dead `if (ptr) {}` as the first statement of a loop the pointer is live through lifts its adjsave so it colours first (func_000077D0 EXACT); unwrap gotcha: a callee prototype that lives inside another fn's NM block is missing from the default build (implicit int callee, ROM shifts) (2026-10-17 agent-c)](#copy-then-bump-store-goto-loop-stride-var-77d0)
 - [A pointer the target re-forms on both edges into a join (`addiu v0,a1,0x3C8` in a beqzl delay slot AND at the join) = a named pointer assigned BEFORE the if, not at its use; a field re-read with no store between = `volatile` read (plain C CSEs the `lw`); func_0000B520 36.9 -> 99.34 with the D900 Vec3-copy kit (2026-10-16 agent-c)](#d900-kit-b520)
+- [f0/f2 swap between a float local and a 0.0 constant = the target uses ONE variable for two disjoint values (step magnitude + later target value); merge them before any priority lever. Pool pins in linked bootup_uso must be real-address linker expressions (`sym = func_X + K`), and editing undefined_syms_auto.txt needs `rm build/tenshoe.elf` to relink (func_0000B520 EXACT, 2026-10-17 agent-c)](#d900-kit-b520)
 - [Two Vec3 locals whose components the target stores AND reloads (swc1 then lwc1 per component) = one `Vec3 v[2]` array with `&v[0]` passed to a call; separate locals get register-promoted (bootup func_0000E2D0 34.2 -> 96.7, 2026-10-16 agent-c)](#vec3-array-memory-resident-e2d0)
 - [game_uso under NCC: C48C (99.74 cfe) is a cfront-style OUT-OF-LINE CONSTRUCTOR: the 32 `if (s1 == -K) alloc(0x18)` stages are inlined member ctors' `this == 0 -> operator new` checks; a class-scope `operator new` calling 055750 reproduces them; D9CC 98.86 -> 520/524 under NCC (open, 2026-10-15 agent-g)](#game-uso-c48c-cfront-ctor-d9cc-ncc) -- _Tell for any alloc-fallback constructor in game_uso: `addiu at,zero,-K; bne base,at` before an alloc of the member's size = edg's cfront `if (this == 0) this = T::operator new(sizeof(T))` in an inlined member/base ctor._
 - [Extern-spelled rodata floats (`*(f32 *)((char *)&D_00000000 + 0x15C)` into a named `v`) perturb FP colouring: timproc_uso_b5_func_00004118's 0.5/1.0 f0/f2 swap over ~100 words vanished when the 0.45/0.036/0.1 loads became plain literals (170 -> 62 diff words, NM 98.34 -> 99.02; draft only); plus func_80000D2C's +8 frame = an IV temploc from the strcpy loop, 30 shapes tried (agent-g 2026-10-16)](#extern-float-spelling-perturbs-colouring-4118) -- _ROM RoData words show which loads are literals: 5 consecutive 0.1f entries = 5 materialization sites of one literal. Literals also put the jumptable at its own rodata offset._
@@ -30679,6 +30681,11 @@ Other levers in the same function:
   + (s32)_g * 8; ... }`. Reusing `_g` for the index orders the `n` store before the base reload (target
   `lw 12(v1)` twice) without adding a home. Each such block-local gets its own spill home (60..40).
 - Still open: the two member pointers colour v1, and the target colours them a2.
+- Follow-up 2026-10-17 (agent-c, NEGATIVE, 7 words left): uoptlist has p and q as separate constrained LRs coloured v1
+  after o (a1); nothing coloured earlier holds v1 across the arm, so v1 is free. No change from: one variable for p and q,
+  reusing g or x for them (19 / 43 words), `register`, function-scope decls (frame shifts, 18), dead `if (arg1) {}` in
+  the arm. Extending `ok` past the arm with a dead `if (ok) {}` costs a word. The target's v1 blocker is unidentified;
+  the member tests may be a C++ member-constructor protocol (see #ncc-derived-ctor-protocol-6a30).
 
 <a id="named-locals-reserve-ring-regs-6394"></a>
 ### Temp ring offset across the whole function = two named locals coloured into t0/t1 (timproc_uso_b5_func_00006394 -> EXACT)
@@ -31316,6 +31323,16 @@ as a host: the suffix lands after its asm block in the real build and after its 
 Residual (34 words): a `s = clamp(s, 0, 50)` ternary colours s in f0 and 0.0 in f2 with the copy at the join; the target copies at
 the entry (t in f0) and keeps 0.0 in f12. Ternary, if/else, copy-first, `register`, `if (1) {}` and comma spellings all colour the same.
 
+Follow-up 2026-10-17 (agent-c, NEGATIVE): the draft at /home/danjs/decomp-drafts/func_0000D900_g5_diffs28.c is really 14
+words off in the current tree (13 of them one f0/f2 swap, plus the f64 pool addend). Its shape is right: one variable
+holds the load, the clamp result and the y product (f2 in the target), a second holds the entry copy and the x product
+(f0). uoptlist: both are constrained; the 3-role variable has the higher adjsave and takes f0. None of these flip it:
+the B520 merge (folding the copy variable into the later dot-product temp, or the 3-role variable into it), every
+assignment of the copy / x / px / z roles to the four float locals (all 14+), dead `if (v) {}` on either variable at 3
+placements (demotes the copy variable to f12), `while (0)` ref bodies, up to six `if (1) {}` blocks in the 3-role
+variable's span, goto/brace clamp spellings, moving the copy before the D_988 test, decl order, and a 12-minute
+permuter run (base score 180, no improvement). Still open.
+
 
 ## Copy-then-bump stores, goto loops against re-unrolling, stride variable (bootup func_000077D0 0 -> 99.75, 2026-10-16 agent-c) <a name="copy-then-bump-store-goto-loop-stride-var-77d0"></a>
 
@@ -31342,6 +31359,17 @@ Glyph blitter: three modes, each a 32 x 16 loop of four u16 copies. The m2c body
 Residual (8 words): tbl and the stride swap t0/t1. Statement order, `while (0)`, `register`, a loaded (non-constant)
 stride, stride set per branch: no change.
 
+**EXACT 2026-10-17 (agent-c).** uoptlist: the 320 constant candidate and tbl are both constrained; the constant had the
+higher adjsave and took t0. A dead `if (tbl) {}` as the FIRST statement of the mode-0 outer `do` loop (zero emission)
+adds loop-frequency-weighted refs to tbl, so tbl colours first and takes t0. The same `if` before the mode dispatch
+(outside any loop) changed nothing; inside the mode-0 copy loop tail or before `g += 0x280` in mode 2 it also worked.
+Lesson: when a pointer loses a t-reg to a CONSTANT candidate, boost the pointer inside a loop it is live through.
+Unwrap gotcha: the default (non-NM) build failed the ROM cmp after the C was exact in the NM build, because the
+float-returning callee prototype `extern float func_411c_rf(void);` sat inside ANOTHER function's `#ifdef NON_MATCHING`
+block. Without it the default build sees an implicit `int` callee (`mtc1 v0` + `cvt.s.w`, function grows 8 bytes and
+everything after shifts). Before unwrapping, grep every extern the body uses and make sure its declaration is outside
+any NM block.
+
 
 ## The D900 Vec3-copy kit on a sibling + pointer assigned before the if (bootup func_0000B520 36.9 -> 99.34, 2026-10-16 agent-c) <a name="d900-kit-b520"></a>
 
@@ -31357,6 +31385,20 @@ without the stale f12/f14 "args" m2c read.
 - A limit read once into a named f32 and used in `lim < d` / `d < -lim` coloured lim/d f0/f12 swapped; reading the extern
   at both uses (IDO CSEs it into one `lwc1`) gave the target colours.
 Residual: `s = 0.0f; s += 10.0f;` colours the 0.0 constant f2 and s f0 (target the reverse), as in D900's clamp.
+
+**EXACT 2026-10-17 (agent-c).** The target uses ONE variable for the step magnitude `s` and the later target value
+`t = self->0x768` (both f2 in the target). With `s` folded into `t` (`t = 0.0f; t += 10.0f; ... px = q[0] * t;`), the
+merged variable's priority/interference changes so the 0.0 constant takes f0 and the variable f2: the f0/f2 swap was
+gone in one edit (the now-unused `s` declaration stays to keep the frame). A second residual, the v5C copy base in v1
+(target v0, the register q just used), went away with `if (1) {}` right before the `v50.x = px; ...` stores: the
+block split ends q's live unit before the copy base starts, so they share v0.
+Tell for the merge: two values of the same type in the target hold the SAME register in disjoint stretches of the
+function and nothing forces it. Try one variable for both before any priority lever.
+Pool reads: `lui at,%hi(func_00008124+0x48); lwc1 %lo(...)(at)` in the target. bootup_uso is LINKED, so ROM bytes
+carry the resolved address (lui 1 / lo 0x816C), not the bare addend. Pin each scalar extern to the real address with a
+linker expression in undefined_syms_auto.txt (`bu_b520_k48 = func_00008124 + 0x48;`); a pin to the bare addend
+(`= 0x48`) fails cmp. objdiff scores the pinned function 100. undefined_syms_auto.txt is NOT a make dependency of the
+ELF: after editing it, `rm build/tenshoe.elf` (or the link keeps the old values and cmp keeps failing).
 
 
 ## Two Vec3s kept in memory = one `Vec3 v[2]`; param saved around a call = passed on (bootup func_0000E2D0 34.2 -> 96.7, 2026-10-16 agent-c) <a name="vec3-array-memory-resident-e2d0"></a>
