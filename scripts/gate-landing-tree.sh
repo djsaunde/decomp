@@ -19,6 +19,10 @@ echo "== gate: make"; make RUN_CC_CHECK=0 -j8 >"$LOG-make.log" 2>&1; rc=$?; echo
 # a failed link leaves the previous tenshoe.z64 in place, so cmp would pass on a stale ROM
 if [ $rc -ne 0 ]; then echo "   !! make failed -- ROM is stale; see $LOG-make.log"; tail -5 "$LOG-make.log"; exit 2; fi
 if cmp tenshoe.z64 baserom.z64; then echo "   ROM: BYTE-IDENTICAL"; else echo "   ROM: !! MISMATCH"; exit 3; fi
+# cmp cannot see the Yay0-compressed USO units; their decompressed ranges must equal the ROM
+make verify-blocks RUN_CC_CHECK=0 >"$LOG-blocks.log" 2>&1; okb=$(grep -c '^OK ' "$LOG-blocks.log")
+if [ "$okb" -ne 6 ]; then echo "   !! verify-blocks: $okb/6 OK; see $LOG-blocks.log"; grep -vE '^OK |ld:' "$LOG-blocks.log" | tail -5; exit 7; fi
+echo "   verify-blocks: 6/6 OK"
 echo "== gate: non_matching_objects"
 make non_matching_objects RUN_CC_CHECK=0 -j8 >"$LOG-nm.log" 2>&1 || make non_matching_objects RUN_CC_CHECK=0 -j8 >"$LOG-nm.log" 2>&1; echo "   nm exit=$?"
 # post0b NM clip must equal game_libs_func_00062F08's NM offset + 0x50 (two agents often move it from different bases)
