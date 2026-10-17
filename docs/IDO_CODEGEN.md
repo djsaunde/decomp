@@ -14395,6 +14395,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [Extern-spelled rodata floats (`*(f32 *)((char *)&D_00000000 + 0x15C)` into a named `v`) perturb FP colouring: timproc_uso_b5_func_00004118's 0.5/1.0 f0/f2 swap over ~100 words vanished when the 0.45/0.036/0.1 loads became plain literals (170 -> 62 diff words, NM 98.34 -> 99.02; draft only); plus func_80000D2C's +8 frame = an IV temploc from the strcpy loop, 30 shapes tried (agent-g 2026-10-16)](#extern-float-spelling-perturbs-colouring-4118) -- _ROM RoData words show which loads are literals: 5 consecutive 0.1f entries = 5 materialization sites of one literal. Literals also put the jumptable at its own rodata offset._
 - [gl_func_000578B4 GBI loader (post0b): the target's dispatch `beq 0x120; 0x110; 0x408; 0x308; 0x304; 0x508` is SOURCE order (four `if (v == K) goto` + a 2-case goto switch fixes both ladders); `if (x < 0x7FF) t = x;` must be an if/else (`b` over the empty hoisted else); the `+` m2c wrote for the SetTile shiftt/shifts fields is `|` in the target but `|` lets uopt reassociate the chain (96.37 -> 96.39 only, NM drafts saved). timproc_uso_b5_func_00004118 negatives: case-0 arg0-in-v0 and block-1 0.5-before-1.0 resist 30 more shapes (agent-g 2026-10-16)](#gbi-loader-dispatch-order-578b4) -- _A block-scoped copy of a spilled param is copy-propagated away but still costs +8 frame._
 - [post0b jumptable decoder / fog / triangle / lookup kit (agent-g 2026-10-16): selector arg assigned INSIDE the default call (`f(msg, op = s->op)`) stops the selector spill; one var as cursor AND read value inherits a call-arg a1 precolor; 1-word / Pair struct copies re-phase the temp ring; `volatile` param = reload from its home slot; IDO evaluates the LAST operand of `a|b|c|d` first (51AD8 99.15, 5721C 95.9, 510F0 + 561A8 EXACT)](#post0b-decoder-kit-51ad8)
+- [4x4 matrix family = the natural triple loop: an alias pointer on a LOCAL source keeps per-iteration row loads, a PARAM source gets the beql/bnel pipelined column loop; per-loop index letters move the IV-eliminated LR; every declared scalar takes a frame home in decl order; `x / 2` keeps div.s; `a = arg0` copy recolours the param (5E288 65.2 / 5E718 72.5 / 5E944 / 5EB4C / 5ED54 -> EXACT, agent-g 2026-10-17)](#matrix-triple-loop-family-5e288) -- _Plus: as1 bound-check delay fill is liveness through the jumptable UNION of arms (a0 read in any arm blocks the default steal); partial zdbug:6 coloring and the zdbug:1 itab LR -> frame-home map print even when uopt dies on the ecvt assertion._
 
 ## IDO-O0-STALE-NM-PERCENT-TABLE-REFLECTS-C-SHAPE
 
@@ -31452,3 +31453,67 @@ game_libs_func_0005721C (fog emitter, 0 -> 95.9), gl_func_000510F0 (30.3 -> EXAC
   mapped to default) does keep `sll`, but this table has no hole. 5721C: the target materializes 255.0f at
   function entry; a named/register k, block boundaries and literal spellings don't move it.
 
+## 4x4 matrix family = the natural triple loop (gl_func_0005E288 + four siblings EXACT, agent-g 2026-10-17) <a name="matrix-triple-loop-family-5e288"></a>
+
+The post0b matrix region (0x5E288..0x5EF00) is written as plain `f32 m[4][4]` triple loops. Earlier NM bodies
+re-created IDO's output with pointer walkers and manual unrolling (65-72%); the natural form is exact once these
+are set:
+
+- `for (i..4) for (j..4) { r[i][j] = 0.0f; for (k..4) r[i][j] += A[i][k] * B[k][j]; }`. IDO unrolls the inner sum
+  (by 4, or pipelines a 3-trip loop) and turns the indexes into pointer compares.
+- Which shape the column loop takes depends on what the sources are. If a source is a pointer PARAMETER, the
+  column loop comes out software-pipelined: a `beql`/`bnel` rotation, with the row element loads repeated every
+  iteration. If both sources are LOCAL arrays, uopt hoists the row loads (`lwc1 f0,0(a0)`, `f2,4(a0)`, ...) out
+  of the column loop and rotates it. A target with per-iteration row loads and NO rotation is a local product read
+  through a pointer alias: `d = Y; ... T[i][j] += d[i][k] * Z[k][j];`. One alias on either source is enough.
+- Frame: every declared scalar gets its own 4-byte home in declaration order, even when it lives in a register or
+  is never used (block-scoped declarations get separate homes, so they make it worse). Gaps between the matrices
+  are therefore index or pad declarations. In 5E288 the 16 bytes between r1 and T are `s32 i, j, k, m;`, and the
+  words below the last matrix are `d, a, e` (`e` unused, but it puts the spill temp at sp+76). Three of the
+  siblings need 2-3 unused `s32 padN;` below R. A 3x3 product (5E718) still declares its result as `f32 r[4][4]`.
+- Making the param live in a callee-saved register: with `void f(f32 (*a)[4])` it was homed and reloaded. A
+  local copy `a = arg0;` colours s1 in 5E288 and s0 in 5EB4C. In 5E944 the copy `b = a` is what gives the target's
+  caller-saved `or a3,a0` plus `sw a3,HOME(sp)` across the call. 5ED54 reads `a[axis]` before its first call and
+  gets s0 without a copy.
+- The index letters chosen for each loop move the colouring. The IV-eliminated `j` of the 5E288 product kept a
+  live range in a2 that emits nothing, which pushed the row pointers to a3/t0. Loop 1 written rows i / cols k /
+  sum j, and loop 3 written rows i / cols m / sum k, gave a2/a3. A search over the 3-letter permutations per loop
+  found it in one pass.
+- `angle / 2` (an int literal) keeps `div.s` by a materialised 2.0. `angle / 2.0f` folds to `* 0.5f`.
+- An int table read in a counted loop (`tbl[m]`, m = 1..n-1) is strength-reduced to `&tbl[1]` plus a spilled end
+  pointer only when `tbl` is a separate extern array (pinned in undefined_syms_auto.txt). Spelled as
+  `((s32 *)((char *)&D_00000000 + K))[m]`, the offset folds into the `lw` immediate instead.
+- Rotation-family callees take `(f32 (*)[4], s32 or Vec3 *, f32)`. They go through typed blank aliases pinned at 0
+  (`gl_func_00000000_5e944` etc.), which give `mfc1 a2,$f6`. The K&R blank would promote the float to double.
+
+Diagnostics that worked. `-Wo,-zdbug:6` still prints the coloring trace before uopt dies on the `wrapper_ecvt`
+assertion, which this toolchain hits because the ecvt patch is not applied: "LR assigned (constrained) N", with
+1=v0 2=v1 3=a0 4=a1 5=a2 6=a3 7=t0 and 14..21=s0..s7. `-Wo,-zdbug:1` or `:5` prints the itab, where
+`{..} N isvar M 3 -OFF` maps LR N to the local whose home is at frame top minus OFF, and `P` marks a parameter.
+Together they showed that a2 held the dead `j`.
+
+Same pass, straight-line FP neighbours (all EXACT from the textbook formula, replacing m2c temp soups):
+- gl_func_0005D9EC (axis-angle matrix, 63.1 -> 100): write `t = 1 - c; m[0][1] = t * x * y + s * z; ...` with x/y/z
+  loaded into locals and let uopt find the CSEs (it homes t, t*x*z and s*y in frame temps on its own). The only lever
+  was declaration order (`f32 t, x, y, z;`, so x is homed at sp+24).
+- gl_func_0005D908 (70.2 -> 100): IDO loads the textually SECOND operand of `a * b` first. The target's src-first
+  `lwc1` and `mul.s src, out` came from `out[i] = out[i] * src[j]`. A `src[j] * out[i]` spelling swaps every FP
+  register. Its frame needed two unused `s32` declared above the `child` pointer.
+- gl_func_0005D628 (77.0 -> 100): when the target loads both inputs ahead of two `div.s` and stores the quotients
+  late, compute them into named locals first (`nx = -q->y / len; ny = q->x / len; a->x = nx; a->y = ny;`). Writing
+  the stores directly re-loads after each store, because IDO assumes the store can alias. The later in-place `neg.s
+  f12,f12` reuses the same locals (`nx = -a->x; ... a->x = nx;`). Writing `a->x = -a->x` picks fresh temps instead.
+
+### as1: the bound-check delay fill is liveness through the jumptable (51AD8 open residual, measured)
+
+`sltiu at,t,N; beqz at,DEFAULT` gets the default block's first insn stolen into its delay (rule 2) only if that
+insn's destination is dead on the fall-through. For the fall-through, as1 follows the `.rdata` table: if ANY arm
+reads the register before writing it, the steal is blocked and as1 fills the slot from the fall-through instead
+(`sll t,t,2`, the target shape). Test: a 5-case switch whose arms store through `G[]`, with only the LAST arm
+using the `o` param in a0. That one arm keeps `sll` in the delay; with no arm reading a0, `lui a0` is stolen. A
+`goto` into the default from an arm also keeps `sll`, because the default is then shared. The 51AD8 target's arms
+never read a0 or a1 before writing them in the final code, so whatever made a0 look live there is not visible in
+the shipped bytes. Ruled out (each measured): return type, K&R definition, a block-local copy of `out` in arms
+210/208, varargs or undefined-argument `.livereg` (every jal in the target sets a0 first), -O3, -g1/-g2, -mips1,
+`-Wb,-O1`. Note that `cc -S` output re-assembled through as0/as1 is NOT faithful: the text form drops the binasm
+reorg information. So probe as1 only through C.

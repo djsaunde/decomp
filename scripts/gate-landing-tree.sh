@@ -24,7 +24,7 @@ if cmp tenshoe.z64 baserom.z64; then echo "   ROM: BYTE-IDENTICAL"; else echo " 
 make verify-blocks RUN_CC_CHECK=0 >"$LOG-blocks.log" 2>&1; okb=$(grep -c '^OK ' "$LOG-blocks.log")
 if [ "$okb" -ne 6 ]; then echo "   !! verify-blocks: $okb/6 OK; see $LOG-blocks.log"; grep -vE '^OK |ld:' "$LOG-blocks.log" | tail -5; exit 7; fi
 echo "   verify-blocks: 6/6 OK"
-echo "== gate: non_matching_objects"
+echo "== gate: non_matching_objects"; rm -f build/non_matching/src/game_libs/game_libs_post0b.c.o  # a failed clip leaves a stale .o make treats as current
 make non_matching_objects RUN_CC_CHECK=0 -j8 >"$LOG-nm.log" 2>&1 || make non_matching_objects RUN_CC_CHECK=0 -j8 >"$LOG-nm.log" 2>&1; echo "   nm exit=$?"
 # post0b NM clip must equal game_libs_func_00062F08's NM offset + 0x50 (two agents often move it from different bases)
 want=$(mips-linux-gnu-nm build/non_matching/src/game_libs/game_libs_post0b.c.o 2>/dev/null | awk '$3=="game_libs_func_00062F08"{printf "0x%x", strtonum("0x"$1)+0x50}')
