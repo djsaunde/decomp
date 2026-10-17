@@ -14392,6 +14392,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [game_uso under NCC: C48C (99.74 cfe) is a cfront-style OUT-OF-LINE CONSTRUCTOR: the 32 `if (s1 == -K) alloc(0x18)` stages are inlined member ctors' `this == 0 -> operator new` checks; a class-scope `operator new` calling 055750 reproduces them; D9CC 98.86 -> 520/524 under NCC (open, 2026-10-15 agent-g)](#game-uso-c48c-cfront-ctor-d9cc-ncc) -- _Tell for any alloc-fallback constructor in game_uso: `addiu at,zero,-K; bne base,at` before an alloc of the member's size = edg's cfront `if (this == 0) this = T::operator new(sizeof(T))` in an inlined member/base ctor._
 - [Extern-spelled rodata floats (`*(f32 *)((char *)&D_00000000 + 0x15C)` into a named `v`) perturb FP colouring: timproc_uso_b5_func_00004118's 0.5/1.0 f0/f2 swap over ~100 words vanished when the 0.45/0.036/0.1 loads became plain literals (170 -> 62 diff words, NM 98.34 -> 99.02; draft only); plus func_80000D2C's +8 frame = an IV temploc from the strcpy loop, 30 shapes tried (agent-g 2026-10-16)](#extern-float-spelling-perturbs-colouring-4118) -- _ROM RoData words show which loads are literals: 5 consecutive 0.1f entries = 5 materialization sites of one literal. Literals also put the jumptable at its own rodata offset._
 - [gl_func_000578B4 GBI loader (post0b): the target's dispatch `beq 0x120; 0x110; 0x408; 0x308; 0x304; 0x508` is SOURCE order (four `if (v == K) goto` + a 2-case goto switch fixes both ladders); `if (x < 0x7FF) t = x;` must be an if/else (`b` over the empty hoisted else); the `+` m2c wrote for the SetTile shiftt/shifts fields is `|` in the target but `|` lets uopt reassociate the chain (96.37 -> 96.39 only, NM drafts saved). timproc_uso_b5_func_00004118 negatives: case-0 arg0-in-v0 and block-1 0.5-before-1.0 resist 30 more shapes (agent-g 2026-10-16)](#gbi-loader-dispatch-order-578b4) -- _A block-scoped copy of a spilled param is copy-propagated away but still costs +8 frame._
+- [post0b jumptable decoder / fog / triangle / lookup kit (agent-g 2026-10-16): selector arg assigned INSIDE the default call (`f(msg, op = s->op)`) stops the selector spill; one var as cursor AND read value inherits a call-arg a1 precolor; 1-word / Pair struct copies re-phase the temp ring; `volatile` param = reload from its home slot; IDO evaluates the LAST operand of `a|b|c|d` first (51AD8 99.15, 5721C 95.9, 510F0 + 561A8 EXACT)](#post0b-decoder-kit-51ad8)
 
 ## IDO-O0-STALE-NM-PERCENT-TABLE-REFLECTS-C-SHAPE
 
@@ -31371,3 +31372,41 @@ the target stores and reloads (66 -> 78). The 3-term dot products and the length
   and +4.6 points.
 - m2c's `((f32(*)())func_00000000)(x)` and `((GP)func_00000000)(f12, ...)` casts are the jalr surplus of the mnemonic
   scan; a prototyped float alias (`func_00000000_4948_ff(float)`) and plain K&R calls give `jal`.
+
+## post0b decoder / emitter kit: default-arg selector, shared cursor/value var, struct-copy ring burns, volatile param, OR-chain order (agent-g 2026-10-16) <a name="post0b-decoder-kit-51ad8"></a>
+
+From gl_func_00051AD8 (12-case jumptable decoder, NM 0 -> 99.15, standalone 240/240 words but one delay slot),
+game_libs_func_0005721C (fog emitter, 0 -> 95.9), gl_func_000510F0 (30.3 -> EXACT) and gl_func_000561A8 (36.9 -> EXACT):
+
+- **Switch selector in the default call.** `switch (s->op) { ... default: f(msg, op); }` with `op = s->op` as a plain
+  statement (or `switch (op)`) makes uopt spill the selector (`sw t6,28(sp)` in the bound-check `beqz` delay, reload in the
+  default). The direct arg wants the a1 colour, which the incoming s param still holds at the def. Writing the
+  assignment INSIDE the call, `f(msg, op = s->op)`, keeps the selector in v0 and puts `or a1,v0` in the jal delay
+  (a separate `op = s->op;` statement before the call also avoids the spill, but as1 then steals `or a1,v0` into the
+  `beqz` delay).
+- **One variable for cursor and value.** The target kept the stream cursor in a1 in most arms and in v0 only where the
+  read value took a1. That happens when ONE pointer variable is both the cursor (`q = s->cur; s->cur = q + 1; x = *q;`)
+  and, in the arms that keep the value, the value itself (`p = s->cur; s->cur = p + 1; q = (s32 *)*p;`). The value web
+  passed as a call's 2nd arg in one arm gives the whole variable an a1 preference. A greedy per-arm search over
+  (cursor, value) names got 80 -> 90.
+- **Struct copies re-phase the temp ring.** `out->m = *(Pair *)(r + 1)` instead of two field stores fixed a t1/t9 order;
+  a 1-word struct field copied by struct assignment burns the t5 ring slot (next load lands in t6, as in the target).
+  A byte spilled across a call to a WORD-ALIGNED slot (`sb v0,40(sp)`) is a `u8 hi[1]` array; a `u8` scalar sits at
+  slot+3.
+- **Unused locals take frame slots at -O2** (pointer and scalar locals too), so the decl list sets the frame and
+  every spill slot. Adding or deleting an unused declaration shifts everything by 4/8.
+- **`volatile` parameter = reload from the home slot.** 510F0 passes its 2nd param to the call with `lw a0,220(sp)`
+  instead of `or a0,a1`. Plain, `char *`, K&R and `(&arg0)[1]` spellings all give the move; `volatile s32 arg1` gives
+  the home reload and the function goes EXACT.
+- **Pointer-add deref for base-first addu.** `(o->tri + idx)->a` numbers the uv/pos base t6 and emits `addu v0,base,idx`;
+  `o->tri[idx].a` and char arithmetic give index-first. One `char *q` for all six corner pointers keeps idx*8 in v1.
+- **OR-chain evaluation order.** IDO evaluates the LAST operand of `a | b | c | d` first, then a, b, c. To load
+  c[0..3] in order (fog colour), write `c1 | c2 | c3 | c0`.
+- **Unsorted lookup chain with a trailing default call** (561A8): an if-goto chain with shared labels for paired keys;
+  for the default block to sit AFTER every return label, write the last test as `if (m != 9) goto dflt; goto c9;`.
+- **Open residuals.** 51AD8: as1 steals the default arm's first `lui a0` into the bound-check `beqz` delay (rule 2,
+  exclusive target); the target keeps `sll t6` there, as if the default block had a second predecessor. Default
+  position, gotos, wrappers, callee prototypes, -g3 and IDO 5.3 don't change it. A switch with a HOLE (one value
+  mapped to default) does keep `sll`, but this table has no hole. 5721C: the target materializes 255.0f at
+  function entry; a named/register k, block boundaries and literal spellings don't move it.
+
