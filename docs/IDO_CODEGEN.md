@@ -14384,6 +14384,11 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [Sibling port + split 0x17D7 symbol + same-line registration: timproc_uso_b3_func_000023E4 96.32 -> EXACT from the exact arcproc_uso_func_0000251C body; the last diff (gate base `addiu v0` scheduled after the `arg0+16` spill reload) needed the CALL, the `->0x14` test and the store on one line (2026-10-16 agent-g)](#same-line-registration-schedule-23e4) -- _Joining only the test + store, or the store + gate, did nothing. The permuter found the join (FORCE_SAMELINE) inside 7 minutes._
 - [`lui rX; addiu rX,rX,K; lw 0(rX)` with K in the ADDIU (and no LO16 in expected/) = a separate global at base+K, not `&base + K`: declare `extern int *sym_K;` and pin it to K in undefined_syms_auto.txt (Yay0 blocks bake it). mgrproc_uso_func_00000C14 90.6 and 00000B5C 86.96 -> EXACT, 2026-10-16 agent-g](#offset-in-addiu-separate-global-0c14) -- _`&base + K` folds K into every lw (form-b); the old `if (1) { pp += K; }` workaround got the offset right but split basic blocks and left as1 schedule swaps (`sw ra` between lui/addiu, a late reload)._
 - [The comma-constant lever also fixes old "mtc1/lwc1 scheduler cap" notes: timproc_uso_b3_func_00001240 97.82 -> EXACT with `x * (0, 255.0f)` (target `mtc1 K,$f18; lwc1 x,$f4; mul.s d,$f18,$f4`); the form moved a spill home 4 bytes down, and shrinking an unused `char pad[32]` to `[28]` moved it back with the frame unchanged (2026-10-16 agent-g)](#comma-constant-const-first-mul-5d754) -- _If the const/load registers are swapped AND the mul operands are swapped, it is operand rank, not scheduling._
+- [Comma constant must be the RIGHT operand (`K * (0, 256.0f)`; `(0, 256.0f) * K` stays load-first), and two literal spellings of one FP constant (`(f32)60` vs `60.0f`) are two constant candidates — splits a constant shared across loops so the later loop re-materialises it (game_libs_func_0001F6A8 95.56 -> EXACT, 2026-10-16 agent-c)](#comma-right-operand-literal-spelling-split-1f6a8) -- _Fixes f2/f12 swaps where the target reloads a constant an earlier loop already holds._
+- [4-byte struct passed BY VALUE = `sw aN,4(sp)` arg-area store in the jal delay; `s.w = p->w` stores the local direct while `s = *p` goes through an `addiu` base; dot products `z + (y + x)` compute the x,y sum first; reading a payload pointer inline instead of through a named local fixes a whole-function t-register ring offset (bootup func_0000D900 87.02 -> 99.08, 2026-10-16 agent-c)](#struct-by-value-arg-dot-order-ring-d900)
+- [`or v0,a1,zero; addiu a1,a1,2; sh tN,0(v0)` per store = `t = dst; dst++; *t = v;` (plain `*dst++` gets one +8 bump and negative offsets); goto loops stop IDO re-unrolling a hand-written 4-store body; a stride VARIABLE keeps `multu c,320` + `sll 1` (a literal folds to *640); `g = tbl; g += off;` gives `addu v1,tbl,off` (bootup func_000077D0 0 -> 99.75, 2026-10-16 agent-c)](#copy-then-bump-store-goto-loop-stride-var-77d0)
+- [A pointer the target re-forms on both edges into a join (`addiu v0,a1,0x3C8` in a beqzl delay slot AND at the join) = a named pointer assigned BEFORE the if, not at its use; a field re-read with no store between = `volatile` read (plain C CSEs the `lw`); func_0000B520 36.9 -> 99.34 with the D900 Vec3-copy kit (2026-10-16 agent-c)](#d900-kit-b520)
+- [Two Vec3 locals whose components the target stores AND reloads (swc1 then lwc1 per component) = one `Vec3 v[2]` array with `&v[0]` passed to a call; separate locals get register-promoted (bootup func_0000E2D0 34.2 -> 96.7, 2026-10-16 agent-c)](#vec3-array-memory-resident-e2d0)
 - [game_uso under NCC: C48C (99.74 cfe) is a cfront-style OUT-OF-LINE CONSTRUCTOR: the 32 `if (s1 == -K) alloc(0x18)` stages are inlined member ctors' `this == 0 -> operator new` checks; a class-scope `operator new` calling 055750 reproduces them; D9CC 98.86 -> 520/524 under NCC (open, 2026-10-15 agent-g)](#game-uso-c48c-cfront-ctor-d9cc-ncc) -- _Tell for any alloc-fallback constructor in game_uso: `addiu at,zero,-K; bne base,at` before an alloc of the member's size = edg's cfront `if (this == 0) this = T::operator new(sizeof(T))` in an inlined member/base ctor._
 - [Extern-spelled rodata floats (`*(f32 *)((char *)&D_00000000 + 0x15C)` into a named `v`) perturb FP colouring: timproc_uso_b5_func_00004118's 0.5/1.0 f0/f2 swap over ~100 words vanished when the 0.45/0.036/0.1 loads became plain literals (170 -> 62 diff words, NM 98.34 -> 99.02; draft only); plus func_80000D2C's +8 frame = an IV temploc from the strcpy loop, 30 shapes tried (agent-g 2026-10-16)](#extern-float-spelling-perturbs-colouring-4118) -- _ROM RoData words show which loads are literals: 5 consecutive 0.1f entries = 5 materialization sites of one literal. Literals also put the jumptable at its own rodata offset._
 - [gl_func_000578B4 GBI loader (post0b): the target's dispatch `beq 0x120; 0x110; 0x408; 0x308; 0x304; 0x508` is SOURCE order (four `if (v == K) goto` + a 2-case goto switch fixes both ladders); `if (x < 0x7FF) t = x;` must be an if/else (`b` over the empty hoisted else); the `+` m2c wrote for the SetTile shiftt/shifts fields is `|` in the target but `|` lets uopt reassociate the chain (96.37 -> 96.39 only, NM drafts saved). timproc_uso_b5_func_00004118 negatives: case-0 arg0-in-v0 and block-1 0.5-before-1.0 resist 30 more shapes (agent-g 2026-10-16)](#gbi-loader-dispatch-order-578b4) -- _A block-scoped copy of a spilled param is copy-propagated away but still costs +8 frame._
@@ -31270,3 +31275,99 @@ local frees s0. The constant 2 then colours s0 exactly as in the target. arg1 st
 register in that probe, so the split is not in the committed wrap, but the mechanism is general:
 when the target holds a small constant in an s-register, look for a local whose web is joined
 across calls by an unrelated later reuse.
+
+
+## Comma constant on the RIGHT; literal spelling splits a shared FP constant (game_libs_func_0001F6A8 95.56 -> EXACT, 2026-10-16 agent-c) <a name="comma-right-operand-literal-spelling-split-1f6a8"></a>
+
+Target: a 256-entry f32 table fill, every entry `(D->0x2054 * 256) / divisor`, with `mul.s d,$f0,$fK` (the 256.0 in f0 first) twelve times,
+then loop 2 `60 + x * 4` with 4.0 in f12 and 60.0 in f2, and loop 3 `480 + x * 60` re-materialising 60.0 into f12 and putting 480.0 in f2.
+
+- Operand rank (#comma-constant-const-first-mul-5d754): `256.0f * K`, `K * 256.0f`, `(f32)256 * K`, a `f32 c = 256.0f` local, even a float
+  PARAM `c * K` all emit load-first. `(0, 256.0f) * K` ALSO stays load-first; only `K * (0, 256.0f)` (comma expression as the right operand)
+  gives const-first. Try both sides.
+- One literal text = one constant candidate for the whole function. With `60.0f` in both loops, uopt keeps 60.0 in f2 from loop 2 into loop 3
+  and gives 480.0 f12 (8 f2/f12 diffs per unrolled body). Writing loop 2 as `(f32)60 + ...` (or loop 3 as `* (f32)60`) makes two
+  candidates: loop 3 re-materialises 60.0 and every register matched. Note the doc rule that `1.0f` spellings "all unify" was about one
+  straight-line block; across loops the split works.
+
+Boundary: the `.s` started with three all-zero pad words (entry 0x1F6B4); same recipe as 295BC (all-zero SUFFIX_BYTES_FORCE on the
+NM-wrapped INCLUDE_ASM predecessor gl_func_0001F3C8 in both builds + `elf-symtab-edit.py` on expected/). The INCLUDE_ASM predecessor works
+as a host: the suffix lands after its asm block in the real build and after its C in the NM build (its NM % dips 0.2 for the longer symbol).
+
+
+## Struct-by-value arg, `z + (y + x)` dot order, inline payload pointer shifts the t-ring (bootup func_0000D900 87.02 -> 99.08, 2026-10-16 agent-c) <a name="struct-by-value-arg-dot-order-ring-d900"></a>
+
+- Tell for a by-value struct argument: `lw a1,0(tN); sw a1,0x8C(sp); jal; sw a1,4(sp)` -- the callee arg is also stored into the
+  OUTGOING arg area at 4(sp). m2c writes it as an int temp. Declare `typedef struct { s32 w; } S4;` and pass the struct to the K&R
+  callee. `sp8C = *sp84` (whole-struct copy) emits `addiu v0,sp,0x8C; sw a1,0(v0)`; `sp8C.w = sp84->w` emits the target's direct
+  `sw a1,0x8C(sp)`.
+- A 3-term dot product written `x*a + y*b + z*c` evaluates z first (R-first rule, #2-term FP sums). The target `(x+y)+z` with x's loads
+  first came from `z + (y + x)`; assigning it to a named f32 temp first gives the f0 result the target uses. Both dot products in
+  the function needed the same spelling.
+- Frame map: with Vec3 locals in the frame, EVERY declared local (scalars included, even register-allocated ones) gets a slot, top-down
+  in declaration order. Gaps in the target frame are unused locals: two 12-byte gaps were unused Vec3s, and a 4-byte gap between
+  two struct locals was a scalar declared between them. Merging m2c's duplicate pointer temp (temp_t1 == temp_v0_2) removed one slot.
+- One case block read its payload pointer into a named local (target used a t-register for it). Reading it inline
+  (`*(Vec3 *)(*(s32 *)(arg1 + 4) + 0xE0)`) moved every t-register in the function (dispatch constants included) up by one to the
+  target ring. 160 -> 48 diffs from that one change.
+- `v.x *= 4.0f` (in place on the struct copy) vs a named product: the named product took f2/f12 and pushed the 4.0/0.0 constants
+  out of f0/f2.
+Residual (34 words): a `s = clamp(s, 0, 50)` ternary colours s in f0 and 0.0 in f2 with the copy at the join; the target copies at
+the entry (t in f0) and keeps 0.0 in f12. Ternary, if/else, copy-first, `register`, `if (1) {}` and comma spellings all colour the same.
+
+
+## Copy-then-bump stores, goto loops against re-unrolling, stride variable (bootup func_000077D0 0 -> 99.75, 2026-10-16 agent-c) <a name="copy-then-bump-store-goto-loop-stride-var-77d0"></a>
+
+Glyph blitter: three modes, each a 32 x 16 loop of four u16 copies. The m2c body (s32 types, hand-copied unroll) scored 0.
+
+- Store shape `or v0,a1,zero; addiu a1,a1,2; sh tN,0(v0)` (and `or v1,a0,zero; lhu tN,0(v1); addiu a0,a0,2` for a
+  source pointer) comes from an explicit copy: `t = dst; dst++; *t = v;`. Every `*dst++ = v` spelling (cast lvalue,
+  `dst[k]`) is strength-reduced to one `addiu a1,a1,8` and `sh -8/-6/-4/-2(a1)`.
+- `for` / `do` loops with that body are unrolled x4 by IDO (16 stores per trip). Write the loops with labels:
+  `j = 0; l0: ...; j += 4; if (j != 0x40) goto l0;`. When such a loop is the then-arm of an if/else, IDO inverts
+  it (`beq exit; b top` with the first insn duplicated in the delay slot); `if (j == 0x40) goto next; goto l0;`
+  with `next:` after the else restores the bottom `bne`.
+- `tbl + c * 0x140` folds to `multu c,640`. The target `multu c,t1(320); sll 1` needs `stride = 0x140;` as a
+  variable. `g = tbl; g += c * stride;` emits `addu v1,tbl,off` (target order); `tbl + c * stride` emits off first.
+- Mode test order 0, 2, 1 with every body out of line: `if (mode == 0) goto m0; if (mode == 2) goto m2;
+  if (mode != 1) return; goto m1;` (a switch tests 0, 1, 2).
+- The call in the mode-1 loop: target keeps the loop bounds 64/32 in s0/s1 and spills dst (own home, `sw a1,76(sp)`
+  in the bnel delay) and the counter (`sw a3,32(sp)`) around the call. `if (1) {}` before the loop and after the
+  call gave that split; without them dst/counter/64.0f took s-regs and f20.
+- Separate counters per loop (a fresh var for the else-arm zero loop, for the mode-2 outer loop and for the mode-1
+  inner loop) each moved the score; the target reuses registers across modes, not variables.
+- No address-taken locals, yet the frame tracked the declaration list (an unused local moved the call spill slot
+  by 4); `s32 pad[5]` first gives frame 0x48 with the spill at 32(sp).
+Residual (8 words): tbl and the stride swap t0/t1. Statement order, `while (0)`, `register`, a loaded (non-constant)
+stride, stride set per branch: no change.
+
+
+## The D900 Vec3-copy kit on a sibling + pointer assigned before the if (bootup func_0000B520 36.9 -> 99.34, 2026-10-16 agent-c) <a name="d900-kit-b520"></a>
+
+Sibling of func_0000D900 (scaled direction vector -> v50 -> v5C -> v74 struct copies -> added to the velocity). The
+#struct-by-value-arg-dot-order-ring-d900 recipe applied directly: named products (f0/f12/f14), Vec3 copies instead of m2c's
+int structs with casts, decl-order frame (an unused Vec3 between v74 and v5C, `s32 pad[3]` below v50), and the K&R call
+without the stale f12/f14 "args" m2c read.
+- The target forms `q = arg0 + 0x3C8` in the delay slot of the last branch before the join AND on the fall-through path, then
+  reads `0/4/8(v0)`. Writing `q = arg0 + 0x3C8;` at its use folds into `lwc1 968(a1)`; assigning it at the top of the
+  function (before the ifs) gives the target placement.
+- `if (p->flags & 4) ...; if (p->flags & 8) ...` with only an `add.s` between: the target loads the word twice (`beqzl ...;
+  lw t0,16(v0)` in the delay slot and again on the other path). A `*(volatile int *)` read for the second test does that.
+- A limit read once into a named f32 and used in `lim < d` / `d < -lim` coloured lim/d f0/f12 swapped; reading the extern
+  at both uses (IDO CSEs it into one `lwc1`) gave the target colours.
+Residual: `s = 0.0f; s += 10.0f;` colours the 0.0 constant f2 and s f0 (target the reverse), as in D900's clamp.
+
+
+## Two Vec3s kept in memory = one `Vec3 v[2]`; param saved around a call = passed on (bootup func_0000E2D0 34.2 -> 96.7, 2026-10-16 agent-c) <a name="vec3-array-memory-resident-e2d0"></a>
+
+Two reflections (`r = (v . n) n - v`) of arg2 and of arg0->0x3BC, a sqrt length test, a normalize, a clamped scale and a
+final call. Target frame: the reflected vectors sit at sp+0x58 and sp+0x64 and every component store is followed by a
+reload. Two `Vec3` locals (only the second one's address passed to calls) were promoted to FP registers; one
+`Vec3 v[2]` (v[0] = the arg0 vector at 0x58, v[1] = the arg2 vector at 0x64) keeps the whole array in memory and gave
+the target stores and reloads (66 -> 78). The 3-term dot products and the length sum as `z + (y + x)` -> 91.6
+(#struct-by-value-arg-dot-order-ring-d900).
+- Tell for a hidden pass-through argument: the target saves a3 (arg3) to its own home before a call and reloads it after,
+  with no visible later use. Passing arg3 as the 2nd argument of that call (`normalize(&v[0], arg3)`) produced the save
+  and +4.6 points.
+- m2c's `((f32(*)())func_00000000)(x)` and `((GP)func_00000000)(f12, ...)` casts are the jalr surplus of the mnemonic
+  scan; a prototyped float alias (`func_00000000_4948_ff(float)`) and plain K&R calls give `jal`.

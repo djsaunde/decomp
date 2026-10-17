@@ -12837,3 +12837,13 @@ Scoring notes from the same run:
   is not a multiple of the next aligned block's alignment also moves padding into the preceding
   NM function's symbol. gl_func_0004D688 picked up 3 nops and scored 68.1 -> 66.2 with its code
   unchanged.
+
+Second run (agent-c, 2026-10-16), same scan: func_000077D0 0 -> 99.75 (s32 reads of u16 cells and a
+hand-copied unroll; IDO_CODEGEN #copy-then-bump-store-goto-loop-stride-var-77d0) and gl_func_00026790
+22.3 -> 96.4. For 26790 the tell was two `jr` with a `slti at,v0,145` split in front: that is ONE
+`switch (cmd[0])` whose cases sit in two dense clusters (0x81..0x90, 0xF0..0xFB); IDO emits one table per
+cluster. m2c's `idx = op - base` double switch was wrong. Read the case map with
+`extract-uso-jumptable.py <fn> --module 0xD9FE28 --shim 0x1466C --vaddr V --size S` (target = value - shim).
+The tool started the table one entry late because entry 0 is a zero-addend reloc; the one code block no
+entry pointed at was that case (0xF0), which 0xF3 falls into. A `sltiu at,t6,12` vs 11 range diff means a
+trailing `case 0xFB: break;` label. `lw` + `srl 31` tests and `lbu/ori/sb` sets on one word = bitfields.
