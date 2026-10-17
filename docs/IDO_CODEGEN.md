@@ -14396,6 +14396,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [gl_func_000578B4 GBI loader (post0b): the target's dispatch `beq 0x120; 0x110; 0x408; 0x308; 0x304; 0x508` is SOURCE order (four `if (v == K) goto` + a 2-case goto switch fixes both ladders); `if (x < 0x7FF) t = x;` must be an if/else (`b` over the empty hoisted else); the `+` m2c wrote for the SetTile shiftt/shifts fields is `|` in the target but `|` lets uopt reassociate the chain (96.37 -> 96.39 only, NM drafts saved). timproc_uso_b5_func_00004118 negatives: case-0 arg0-in-v0 and block-1 0.5-before-1.0 resist 30 more shapes (agent-g 2026-10-16)](#gbi-loader-dispatch-order-578b4) -- _A block-scoped copy of a spilled param is copy-propagated away but still costs +8 frame._
 - [post0b jumptable decoder / fog / triangle / lookup kit (agent-g 2026-10-16): selector arg assigned INSIDE the default call (`f(msg, op = s->op)`) stops the selector spill; one var as cursor AND read value inherits a call-arg a1 precolor; 1-word / Pair struct copies re-phase the temp ring; `volatile` param = reload from its home slot; IDO evaluates the LAST operand of `a|b|c|d` first (51AD8 99.15, 5721C 95.9, 510F0 + 561A8 EXACT)](#post0b-decoder-kit-51ad8)
 - [4x4 matrix family = the natural triple loop: an alias pointer on a LOCAL source keeps per-iteration row loads, a PARAM source gets the beql/bnel pipelined column loop; per-loop index letters move the IV-eliminated LR; every declared scalar takes a frame home in decl order; `x / 2` keeps div.s; `a = arg0` copy recolours the param (5E288 65.2 / 5E718 72.5 / 5E944 / 5EB4C / 5ED54 -> EXACT, agent-g 2026-10-17)](#matrix-triple-loop-family-5e288) -- _Plus: as1 bound-check delay fill is liveness through the jumptable UNION of arms (a0 read in any arm blocks the default steal); partial zdbug:6 coloring and the zdbug:1 itab LR -> frame-home map print even when uopt dies on the ecvt assertion._
+- [post0b dispatcher kit II (agent-c 2026-10-17): memory-resident list iterator = ADDRESS-TAKEN scalars (dead `while (0) { pp = &cur; pp = &next; }`), not volatile; global `G |= 4` emits a lui/addiu address register, the target's separate `lui/lw` + `lui/sw` = two symbol names (or a call between); `*(float *)&msg.f` makes `&msg` a whole-function candidate, use an int/float union member; a switch with default-mapped HOLES keeps `sll` in the bound-check delay; jumptable entry 0 under an outer `if (x)` = `case 0: break;`; the default printf argument puts the selector in a1; IDO pulls small call-free goto targets inline after a compare chain (open) (40304 99.82, 40640 99.88, 3FC58 85.1, 415A4 76.4)](#post0b-dispatcher-kit-2-40304)
 
 ## IDO-O0-STALE-NM-PERCENT-TABLE-REFLECTS-C-SHAPE
 
@@ -31517,3 +31518,43 @@ the shipped bytes. Ruled out (each measured): return type, K&R definition, a blo
 210/208, varargs or undefined-argument `.livereg` (every jal in the target sets a0 first), -O3, -g1/-g2, -mips1,
 `-Wb,-O1`. Note that `cc -S` output re-assembled through as0/as1 is NOT faithful: the text form drops the binasm
 reorg information. So probe as1 only through C.
+
+
+## post0b dispatcher kit II: address-taken iterator, two-symbol global RMW, union field, jumptable holes (agent-c 2026-10-17) <a name="post0b-dispatcher-kit-2-40304"></a>
+
+From four 0% post0b functions decoded to NM in one run (gl_func_00040304 99.82, gl_func_00040640 99.88,
+gl_func_0003FC58 85.1, gl_func_000415A4 76.4; the first two are 8 and 5 words from exact, register colouring only).
+
+- **Iterator kept in memory.** 40640 walks a list with a {cur, next} pair at 224/228(sp): the iterator body uses the
+  just-loaded value from a temp (`sw t6,224; lw t7,4(t6); lw v0,0(t6)`) but every loop BB reloads `cur` from the
+  stack. `volatile` on the pair gives the reloads but also reloads inside the iterator, and a `volatile` ARRAY promotes
+  its base address to an s-register. Plain locals become register candidates. Address-taken scalars give exactly the
+  target: forwarding inside one BB, reload across BBs. Use a dead `while (0) { LNode **pp; pp = &itc; pp = &itn; }`
+  (zero emission) and write the step as `((itc = itn) != 0 ? (itn = itc->next, itc->data) : 0)`.
+- **Global read-modify-write.** `G |= 4` (or `G = G | 4`) in one BB emits `lui v0; addiu v0; lw 0(v0); ...; sw 0(v0)`.
+  The target's `lui t6; lw t6,0(t6); ...; lui at; sw t7,0(at)` comes back when the load and the store name DIFFERENT
+  symbols (`W = R | 4`, both pinned to the same address; reloc-blind in game_libs) or when a call sits between them.
+- **Float view of an int field.** `*(float *)&msg.p12` takes the address of the stack struct, and `&msg` then becomes a
+  register candidate for the whole function (`addiu v1,sp,224` at entry, every `msg.x` read becomes `x(v1)`, the
+  struct copy loop starts from v1). An `union { int i; float f; } p12;` member reads `lwc1 f6,236(sp)` directly.
+- **Jumptable switches in post0b.** Default-mapped holes inside the table range (40304: 0x70/0x71) need explicit
+  `case 0x70: case 0x71: default:` labels so the table is formed (4 real cases is below the 5-label threshold), and the
+  hole keeps `sll` in the bound-check `beqz` delay (see #post0b-decoder-kit-51ad8). 40640's table starts at index 0
+  with entry 0 = the tail and an extra `beqz` before the `sltiu`: `if (state != 0) { switch (state) { case 0: break;
+  ... } }`. Rodata layout for the donor route: a memory-loaded float constant (never hoisted above stores, unlike a
+  literal) is an extern pinned to its own RoData address; 40304's 0.01f sits BEFORE its table and 1/32767 after it.
+- **Selector in a1.** 3FC58's compare chain tests `a1`; the default arm is `printf(fmt, msg.type)`, so the selector
+  inherits the call-argument colour. Pass it in the default call.
+- **Dead-$v0 poison again** (#dead-v0-poison-is-per-bb-split-the-defs-683d4): 40640's switch selector (v0, read after
+  the head call) and its `o = global; o->vt->fn(...)` arms (o v1 / vtable v0) needed `if (1) {}` after the call and
+  after `o = global`. 415A4: one `if (1) {}` after the first call made `self` reject to its 56(sp) home (the target
+  reloads it per use); a second right before the first use gave the reload v0.
+- **Dead `while (0)` FP anchors** order unconstrained FP candidates (40304: `while (0) { a = 0; b = 0; kt = 0;
+  d = kt * K; }` moved a/b/kt to f0/f2/f12 like the target). The literal constant candidate always coloured LAST
+  (f18) whatever the anchors; the target has it in f14.
+- **Open:** (1) 3FC58: IDO places the call-free `case 7` / `case 8` blocks (AND / OR through a pointer) right after
+  the compare chain with an inverted `bne`, whatever their source position or chain/switch grouping; the target keeps
+  them in source order. (2) 40640: target colours the loop's first and third node loads a1 and the middle one v1;
+  every variable split / bitpos anchor / dead-if boost probed gives v1/a1 swapped or all v1. (3) 415A4: the record
+  block stores +0x28 twice (1030, then the separately ori'd value) through `lui at` while the other fields go through
+  a v1 base; one symbol through a pointer + direct access merges into v1, two symbols reorder the stores.
