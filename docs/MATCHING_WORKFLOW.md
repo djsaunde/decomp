@@ -282,7 +282,7 @@ explicit shared blocks (goto a common label), not regeneration.
 - [Pinned-jal decode audit: jal-vs-call-count scanner, 4 FP classes (alias-externs, macros, loop rotation, jalr), one genuine find 71E0 63.1->84.5 via (u32)dst>0U alloc-fallback restore; sweep CLOSED (agent-h 2026-08-22)](#pinned-jal-decode-audit)
 - [game_libs base-unit `lui at,0; lwc1 fN,0xE2C(at)` next to a jumptable offset = a FLOAT LITERAL in the USO .rodata, not `&D+0xE2C` global; read the switch tables AND literals from section 7 before trusting an old decode (76F0 88.80->92.47; 7344 77.5->EXACT, 2B94 EXACT via `<fn>_rodata` donor pin, agent-g 2026-10-15)](#game-libs-rodata-literals-and-tables-76f0) — _RoData file offset = lw/lwc1 imm + 4; three &D+0 float sites that each re-materialize `lui/addiu v0` = three distinct globals; case->arm mapping from the table fixed a mis-assigned switch1/switch2 arm._
 - [Run 97 (agent-c 2026-10-16): baked in-unit jal alias in post0b 55C34, 551E0 zero-suffix pad, timproc b1 block-equal via pinned-jal bake, NM levers for 4C300 / 1E08 / CFA0](#run-97-agent-c) -- _per-site blank args (lui/addiu 0) need distinct names; a for loop (not do-while) changes IDO loop-invariant hoisting; a volatile scalar reproduces sw/lw-around-every-test; unused scalars still consume frame slots, so declaration order sets the whole layout._
-- [Low-scoring big NM wraps: diff MNEMONIC-CLASS COUNTS target vs build before grinding regalloc. Extra cvt.d.s/sdc1 = K&R float args (use a prototyped blank alias), extra cvt.s.w/trunc = s32 read of an f32 field, jr mismatch = switch vs if-chain or a misread jump table. Five wraps +6..+75 points in one run; objdiff fuzzy ignores sp offsets but scores jal symbol names (2026-10-16 agent-c)](#decode-error-mnemonic-scan-c100)
+- [Low-scoring big NM wraps: diff MNEMONIC-CLASS COUNTS target vs build before grinding regalloc. Extra cvt.d.s/sdc1 = K&R float args (use a prototyped blank alias), extra cvt.s.w/trunc = s32 read of an f32 field, jr mismatch = switch vs if-chain or a misread jump table. Five wraps +6..+75 points in one run; objdiff fuzzy ignores sp offsets but scores jal symbol names (2026-10-16 agent-c). lw/sw surplus vs lwc1/swc1 deficit = float struct/member copies written as word copies (7C1C +8.2, 8FC8 +3.9, agent-g 2026-10-17)](#decode-error-mnemonic-scan-c100)
 - [post0b NM clip: a function that GROWS (stub -> real decode) does not fail the clip, it silently cuts game_libs_func_00062F08 off the end (objdiff then reports "Symbol data out of bounds" or a sentinel drop). Check `nm` for 62F08's offset after every post0b NM build, re-probe, and score with a clip-free rebuild (run 104, agent-c)](#post0b-clip-grow-silent-c104)
 
 
@@ -12849,6 +12849,16 @@ Scoring notes from the same run:
   is not a multiple of the next aligned block's alignment also moves padding into the preceding
   NM function's symbol. gl_func_0004D688 picked up 3 nops and scored 68.1 -> 66.2 with its code
   unchanged.
+
+Third run (agent-g, 2026-10-17, run 103): **`lw`/`sw` surplus with an equal `lwc1`/`swc1` deficit = a float
+copy written as an integer copy.** game_uso_func_00007C1C (80.0 -> 88.2) had lw +28 / sw +19 against
+lwc1 -27 / swc1 -27: its nine `hitA = scratch;` style Vec3 struct assignments are member-wise float copies
+in the target (the C++ Vec3 operator=). timproc_uso_b5_func_00008FC8 (80.8 -> 84.7): the VecH stage
+chains were s32 word moves of float data. The first member was `s32` holding `0x42DC0000`, the sources
+were s32 externs read with lwc1 in the target, and the final stores were word moves. Retype as f32, keep the
+middle stage copies as struct assignment (the target has lw/sw through an addiu pointer there), and write
+the final stores as float member reads. Check which copies are float by pairing `lwc1 X(sp)` with a
+following `swc1 Y(sp)` of the same register in the target and mapping X/Y to the locals' homes.
 
 Second run (agent-c, 2026-10-16), same scan: func_000077D0 0 -> 99.75 (s32 reads of u16 cells and a
 hand-copied unroll; IDO_CODEGEN #copy-then-bump-store-goto-loop-stride-var-77d0) and gl_func_00026790

@@ -14397,6 +14397,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [post0b jumptable decoder / fog / triangle / lookup kit (agent-g 2026-10-16): selector arg assigned INSIDE the default call (`f(msg, op = s->op)`) stops the selector spill; one var as cursor AND read value inherits a call-arg a1 precolor; 1-word / Pair struct copies re-phase the temp ring; `volatile` param = reload from its home slot; IDO evaluates the LAST operand of `a|b|c|d` first (51AD8 99.15, 5721C 95.9, 510F0 + 561A8 EXACT)](#post0b-decoder-kit-51ad8)
 - [4x4 matrix family = the natural triple loop: an alias pointer on a LOCAL source keeps per-iteration row loads, a PARAM source gets the beql/bnel pipelined column loop; per-loop index letters move the IV-eliminated LR; every declared scalar takes a frame home in decl order; `x / 2` keeps div.s; `a = arg0` copy recolours the param (5E288 65.2 / 5E718 72.5 / 5E944 / 5EB4C / 5ED54 -> EXACT, agent-g 2026-10-17)](#matrix-triple-loop-family-5e288) -- _Plus: as1 bound-check delay fill is liveness through the jumptable UNION of arms (a0 read in any arm blocks the default steal); partial zdbug:6 coloring and the zdbug:1 itab LR -> frame-home map print even when uopt dies on the ecvt assertion._
 - [post0b quaternion/matrix textbook kit II (agent-g 2026-10-17): rewrite m2c soups as the TEXTBOOK formula (GG III slerp, Shoemake Qt_ToMatrix, q*v*conj(q), axis-align matrix); `(f32)var` no-op cast makes cfe evaluate a plain float variable leaf FIRST in a commutative op; ONE SOURCE LINE PER MATRIX ROW fixes a load-order + colour pair no per-line order can; a copy temp declared LAST re-colours one web (5C284/5CE68/5CCF4/5DDE4/5EF00 EXACT)](#post0b-quat-matrix-textbook-kit-2) -- _Also: a constant spelled `*(f32 *)(&D_00000000 + K)` outranks a `(f32)int` conversion; a pinned extern f32 symbol does not._
+- [post0b math kit III (agent-g 2026-10-17, run 103): guPerspectiveF / axis-angle quaternion / Euler-rotate / s16 unpack / 4x4 load EXACT; `(f32)1 * s` and `(f32)0` keep IDO from folding a multiply by 1.0/0.0; a dead `while (0) { x = 0; ... }` makes a loaded constant colour LAST; "bc1tl ceiling" = K&R blank; outer+inner for headers on ONE line fixed a pointer-bump order (5F534/5D474/5EAA4/62D70/5FC64)](#post0b-math-kit-3-run103) -- _Also: the q/a0 home-store + `or aN,a0` copy in 5C548/5D134 stayed out of reach; IDO 7.1 and 5.3 both need 5 case labels for a jumptable (func_80001ADC target has a 4-entry table)._
 - [post0b dispatcher kit II (agent-c 2026-10-17): memory-resident list iterator = ADDRESS-TAKEN scalars (dead `while (0) { pp = &cur; pp = &next; }`), not volatile; global `G |= 4` emits a lui/addiu address register, the target's separate `lui/lw` + `lui/sw` = two symbol names (or a call between); `*(float *)&msg.f` makes `&msg` a whole-function candidate, use an int/float union member; a switch with default-mapped HOLES keeps `sll` in the bound-check delay; jumptable entry 0 under an outer `if (x)` = `case 0: break;`; the default printf argument puts the selector in a1; IDO pulls small call-free goto targets inline after a compare chain (open) (40304 99.82, 40640 99.88, 3FC58 85.1, 415A4 76.4)](#post0b-dispatcher-kit-2-40304)
 - [post0b cfront-inline kit III (agent-c 2026-10-17, run 104): ternary iterator step `(it.cur = it.next) != 0 ? (it.next = it.cur->next, it.cur->data) : 0` keeps the result in v0; write the "next" expression TWICE (init + loop step) when the target uses different temps for the two instances; Vec3 `operator-` = three differences into locals, then stores; whole-struct temp copies stay struct assignments but the LAST copy is field-by-field (lwc1/swc1); address-take stack params for per-iteration reloads; arg cursor `p = c->args, c->args = p + 1, *p` for store-before-load; `(u32)(f * 255.0f)` RGB packers (41A9C 99.25, 4E96C 99.5, 3B01C 96.3, 49B3C 95.7, 36A48 87.9; 46DC0 / 4771C / 3C7A4 EXACT)](#post0b-cfront-inline-kit-3)
 
@@ -31662,4 +31663,45 @@ stored to u8 or u16 fields.
 Open in this kit: 36A48's target copies the sret result from v0 into a separate temp before use (3 words
 the build lacks). 3DA14's target re-reads `it.next` after storing `it.cur` in the step (the build forwards
 it). 41A9C's loop uses t8/t9 where the build has v1/t7 (one extra temp in the target's first instance).
+
+## post0b math kit III (agent-g 2026-10-17, run 103) <a name="post0b-math-kit-3-run103"></a>
+
+Five more post0b math functions went EXACT, all from rewriting old NM bodies as the textbook routine:
+game_libs_func_0005F534 (29.7, guPerspectiveF without the identity fill), 0005D474 (27.7, rotate a
+quaternion by axis-angle), gl_func_0005EAA4 (59.0, Euler rotate x/y/z), game_libs_func_00062D70 (43.2,
+s16 record to float unpack), game_libs_func_0005FC64 (0, 4x4 load from a float stream). Levers:
+
+- **Unfolded multiply by 1.0 or 0.0.** cfe folds `1.0f * s`, `s * 1.0f`, `t = s; t *= 1.0f`, and even a
+  float local set to 1.0f (uopt const-props it and folds the multiply). `s * (f32)1` survives, which gives
+  the target's `lui at,0x3f80; mtc1; mul.s` (5D134). The same works for zero: `v *= (f32)0` keeps
+  `mtc1 zero; mul.s`, while `v *= 0.0f` becomes a plain zero store (game_uso 8CD8).
+- **Int literal divisor.** `x / 2` keeps `div.s` by a held 2.0; a float variable `two = 2.0f` is
+  const-propagated and the first use turns into `* 0.5f` (8CD8; see also #matrix-triple-loop-family-5e288).
+- **Colour a loaded constant last.** 62D70 loads a scale from RoData and multiplies four converted
+  shorts by it. The target colours x, y, z, w f0/f2/f12/f14 and the scale f16; every spelling of the scale
+  (pinned extern, cast-deref, pointer, named local, operand order) coloured it f2. A dead
+  `while (0) { x = 0; y = 0; z = 0; w = 0; }` before the load gives x..w the earlier candidates. The "FP
+  software-pipeline cap" in the old comment was only this colouring.
+- **Call result order for a quotient.** guPerspectiveF's `cos(h) / sin(h)` as one expression divides
+  first-call / second-call. The target divides second / first, which is `s = sin(h); cot = cos(h) / s;`.
+  Declaration order `float cot, s;` then put the arg spill at sp+28.
+- **The "bc1tl ceiling" was a K&R call.** 5EAA4 calls rotate(m, axis, angle, 0) three times. Through a
+  prototyped `(f32 (*)[4], s32, f32, s32)` blank alias the body matched on the first compile, bc1tl and
+  delay-slot reloads included.
+- **Line layout again (5FC64).** `for (i..4) for (j..4) { p = a1++; a0[i][j] = *p; }` matches only with
+  both `for` headers on one source line. On separate lines the final `a1 += 4` and row `+= 16` swap. The
+  standalone compile matched with separate lines too, so confirm in the tree.
+- **Frame homes for unused scalars (5D474).** The 0x50 frame needed seven scalar homes between the
+  quaternion and the arg-spill temp: h, c, x, y, z plus two unused. Named products assigned on one line
+  (`x = axis[0] * s; y = ...; z = ...;`) gave the loads-first order.
+
+Open: 5C548 and 5D134 (quaternion axis helpers) home-store a0 and move q to another register in the
+target (5C548) or keep it in a0 with &q[i]/&q[k] in a2/a1 (5D134); every spelling here either spills q to
+its home or moves it. 5F0B8 (axis-angle matrix, 74.7) keeps the 0.0f store constant in callee-saved
+$f22 and divides x first. 54144 (triangle centroid, 99.8) wants `addu v0,verts,idx*6`; every C spelling
+of the vertex address emits the index product first.
+
+Jumptables: IDO 7.1 and 5.3, at -O1 and -O2, lower a switch with 4 case labels (with or without default)
+to a compare chain; 5 labels give a table. func_80001ADC's target dispatches 4 relocation types through a
+4-entry table (`addiu t6,type,-1; sltiu at,t6,4`), so its source shape is still unknown.
 
