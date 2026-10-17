@@ -12,6 +12,7 @@
 
 _76 entries. Auto-generated from per-memo notes; content may be rough on first pass — light editing welcome._
 
+- [Parallel agents can share ONE scratchpad directory: keep scripts in a private subdir (agent-c run 105 ran agent-g's same-named gate.sh, which cd'd into agent-g's worktree)](#shared-scratchpad-collision-run105) -- _name every scratch script with your agent letter or put it under scratchpad/<agent><run>/._
 - [game_uso NCC (C++) donor recipe: game_uso is C++ -- compile a function with IDO 7.1 NCC from a `.cpp` donor and REPLACE_FUNC_BODY-splice it into game_uso.c.o; no Yay0 / objdiff / expected/ change (D204 85.8 + 10694 71.5 -> EXACT, 2026-10-15 agent-g)](#game-uso-ncc-cplusplus-donor-recipe) — _generic `build/src/%.cpp.o` NCC rule, all symbols `extern "C"`, placeholder body in the host, `+=` per function. Tell: pointer-to-member compare (`addi` + `lw at` 2-word loop), PMF passed by value (a1/a2 + home slots)._
 - [Mnemonic-histogram diff triages giant NM bodies in one pass — swc1-deficit + trunc.w.s-surplus = s32-cast float stores; sw-zero at vtable offset = blanked-reloc decoded as 0; check frame size before chasing sp offsets (90CC, agent-f 2026-08-22)](#mnemonic-histogram-giant-fn-triage)
 - [USO expected-side reloc injection (spimdisasm-migration phase 1) is score-NEGATIVE: objdiff 3.7 already fully credits blind literal-0 vs reloc-to-blank; C234/55A0/6808 residuals are structural, NOT reloc rendering (bootup_uso 526-site prototype, agent-f 2026-08-23)](#uso-expected-reloc-injection-negative)
@@ -12900,3 +12901,12 @@ Two related traps from the same run:
   existing `#ifdef NON_MATCHING` wrap. Otherwise the new C lands in the matching build next to the old NM
   body.
 
+
+
+## Parallel agents can share ONE scratchpad directory (agent-c run 105) <a name="shared-scratchpad-collision-run105"></a>
+
+Agents started from the same coordinator session got the same scratchpad path. agent-g wrote its own `gate.sh`
+over agent-c's (same name), so agent-c's next "gate" run did `cd projects/1080-agent-g`, rebuilt that worktree and
+refreshed its report.json, and printed agent-g's baseline diff. The sign: gate output in a format you didn't write.
+Fix: put every helper under `scratchpad/<agent-letter><run>/` (or prefix the name), and have each script `cd` to an
+absolute worktree path. Check `ls -la --time-style=+%T` mtimes on shared helpers before trusting one.

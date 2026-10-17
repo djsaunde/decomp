@@ -14400,6 +14400,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [post0b math kit III (agent-g 2026-10-17, run 103): guPerspectiveF / axis-angle quaternion / Euler-rotate / s16 unpack / 4x4 load EXACT; `(f32)1 * s` and `(f32)0` keep IDO from folding a multiply by 1.0/0.0; a dead `while (0) { x = 0; ... }` makes a loaded constant colour LAST; "bc1tl ceiling" = K&R blank; outer+inner for headers on ONE line fixed a pointer-bump order (5F534/5D474/5EAA4/62D70/5FC64)](#post0b-math-kit-3-run103) -- _Also: the q/a0 home-store + `or aN,a0` copy in 5C548/5D134 stayed out of reach; IDO 7.1 and 5.3 both need 5 case labels for a jumptable (func_80001ADC target has a 4-entry table)._
 - [post0b dispatcher kit II (agent-c 2026-10-17): memory-resident list iterator = ADDRESS-TAKEN scalars (dead `while (0) { pp = &cur; pp = &next; }`), not volatile; global `G |= 4` emits a lui/addiu address register, the target's separate `lui/lw` + `lui/sw` = two symbol names (or a call between); `*(float *)&msg.f` makes `&msg` a whole-function candidate, use an int/float union member; a switch with default-mapped HOLES keeps `sll` in the bound-check delay; jumptable entry 0 under an outer `if (x)` = `case 0: break;`; the default printf argument puts the selector in a1; IDO pulls small call-free goto targets inline after a compare chain (open) (40304 99.82, 40640 99.88, 3FC58 85.1, 415A4 76.4)](#post0b-dispatcher-kit-2-40304)
 - [post0b cfront-inline kit III (agent-c 2026-10-17, run 104): ternary iterator step `(it.cur = it.next) != 0 ? (it.next = it.cur->next, it.cur->data) : 0` keeps the result in v0; write the "next" expression TWICE (init + loop step) when the target uses different temps for the two instances; Vec3 `operator-` = three differences into locals, then stores; whole-struct temp copies stay struct assignments but the LAST copy is field-by-field (lwc1/swc1); address-take stack params for per-iteration reloads; arg cursor `p = c->args, c->args = p + 1, *p` for store-before-load; `(u32)(f * 255.0f)` RGB packers (41A9C 99.25, 4E96C 99.5, 3B01C 96.3, 49B3C 95.7, 36A48 87.9; 46DC0 / 4771C / 3C7A4 EXACT)](#post0b-cfront-inline-kit-3)
+- [post0b kit IV (agent-c 2026-10-17, run 105): two global loads issue in source order only when their statements share ONE line (48184 EXACT); a value colours by VARIABLE identity, so park a stream cursor in the int local another arm uses (4E96C EXACT); every block-local pointer temp reserves a frame home (+8 frame from two `{ int *t = ...; }`); a function-scope temp reused for a later sub-object shares its spill slot; m2c `s32 *p + 0x2C` bodies scale every offset x4](#post0b-kit-iv-run105) -- _check frame size and spill-slot offsets against the target first; they name the local set._
 
 ## IDO-O0-STALE-NM-PERCENT-TABLE-REFLECTS-C-SHAPE
 
@@ -31705,3 +31706,30 @@ Jumptables: IDO 7.1 and 5.3, at -O1 and -O2, lower a switch with 4 case labels (
 to a compare chain; 5 labels give a table. func_80001ADC's target dispatches 4 relocation types through a
 4-entry table (`addiu t6,type,-1; sltiu at,t6,4`), so its source shape is still unknown.
 
+
+
+## post0b kit IV: same-line load order, colour-by-variable, block temps take homes (agent-c 2026-10-17, run 105) <a name="post0b-kit-iv-run105"></a>
+
+- **Two global loads in source order need ONE source line.** game_libs_func_00048184 (99.57 -> EXACT):
+  `x0 = W / 2 - 64; y0 = H / 2 - 64;` on two lines issued `lw W` before `lw H`; written on one line,
+  IDO issued `lw H` first, as the target does. This is the load-side twin of
+  [#feedback-one-line-stores-fix-schedule-order](#feedback-one-line-stores-fix-schedule-order). In the same function an array subscript
+  (`tbl[idx]`) instead of `*(T *)(base + idx * 4 + K)` gave the base chain the lower t-reg.
+- **Registers follow variable identity, not role.** gl_func_0004E96C (99.55 -> EXACT, jumptable donor): two switch
+  arms had the stream cursor in v1 and the loaded word in v0, the other arms had the opposite. Holding the cursor
+  in the `int v` local that the float arms use for their trunc.w.s result, and the word in the `int *p` local
+  the other arms use as their cursor, matched it: `v = (int)a1->args; a1->args = (int *)v + 1; p = *(int **)v;`.
+  Separate locals, decl reorders and a reused pointer local all kept v0/v1 the other way round.
+- **Block-local pointer temps reserve frame homes.** gl_func_00041A9C: two `if (1) { int *t = G; f(.., t[2], t[0]); }`
+  blocks made the frame 8 too large (each t took a 4-byte home). Inlining `G[2], G[0]` fixed the frame, but the base
+  then coloured v1 rather than v0, and every way of keeping a fresh variable cost the 8 bytes back. Still open.
+- **One local reused for a later sub-object = one spill slot.** gl_func_00032E18: the target spilled the first
+  sub-object pointer and the later `self + 0x110` pointer to the same slot (92), so the source reused one local. Two
+  locals gave two slots.
+- **m2c `s32 *` arithmetic scales offsets x4.** The old 32E18 body had `var + 0x2C` on `s32 *` locals (built `+176`
+  where the target has `+44`) and an int temp for a float struct field. Retype the locals to `char *` before tuning.
+- **Frame sculpting order.** Read the target's sp offsets first: decl order top-down places aggregates (49B3C: `ai`
+  first plus a 12-byte pad struct; 4E244: one-int arrays between the iterator structs plus `int u[3]` below), and
+  unused `int pad;` scalars are dropped but unused arrays/structs keep their space.
+- **Float 0 in a GPR arg.** gl_func_00049B3C's `addiu a3,zero,0` was a `0.0f` arg to a prototyped
+  `(char *, char *, char *, float, float, int)` callee (see [#feedback-ido-knr-float-call](#feedback-ido-knr-float-call)).
