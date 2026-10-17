@@ -12189,6 +12189,17 @@ before the lw. (2) for a read before a `break`, use `q = arg1; arg1 = q + 1; fla
 the `b` and the addiu into its delay slot. `q = arg1; arg1 += 1;` with `flag = *q;` on the next line put the lw in the
 delay slot. Neither fix needs the donor, so in-unit percentages can use them too.
 
+**Third instance (agent-g 2026-10-17): gl_func_00061F8C (post0b, 0x208) 0 -> EXACT.** A (cmd, val) record loader
+with `switch (cmd)` over cases 1..5 after an explicit `if (cmd == 0) break;` (table at `lw t6,0x2080(at)`; the
+extractor at roff 0x2084 listed exactly the five arms in address order, arm = target - shim - vaddr with no -8).
+New wrinkles: (1) two NONZERO baked jals in the same body (stream reader `jal 0x0C01D913`, debug print
+`0x0C01D900`) next to plain `jal 0` calls; pin them as `gl_ref_0007644C` / `gl_ref_00076400` (call-side gl_ref,
+[#feedback-nonzero-baked-jal-gl-ref-callside-2026-06-22](#feedback-nonzero-baked-jal-gl-ref-callside-2026-06-22)).
+(2) `base = &D_00000000; ... base[1]` constant-folds to a fresh `lui t0` even though the base is live in s3; the
+target's `lw t0,4(s3)` came from a volatile read `((volatile int *)base)[1]`. (3) Printing the value just stored
+(`print(msg, *(int *)(self + 0xC))` after `*(int *)(self + 0xC) = val;`) store-forwards the register (`or a1,t7`);
+passing `val` reloads it from the stack because &val escaped to the reader, and a named copy grows the frame by 8.
+
 ## game_uso NCC (C++) sub-unit / donor recipe (D204 85.8 -> EXACT, 10694 71.5 -> EXACT, 2026-10-15 agent-g) <a name="game-uso-ncc-cplusplus-donor-recipe"></a>
 
 game_uso was written in C++ and compiled by IDO 7.1's own C++ driver `NCC`

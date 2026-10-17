@@ -14396,6 +14396,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [gl_func_000578B4 GBI loader (post0b): the target's dispatch `beq 0x120; 0x110; 0x408; 0x308; 0x304; 0x508` is SOURCE order (four `if (v == K) goto` + a 2-case goto switch fixes both ladders); `if (x < 0x7FF) t = x;` must be an if/else (`b` over the empty hoisted else); the `+` m2c wrote for the SetTile shiftt/shifts fields is `|` in the target but `|` lets uopt reassociate the chain (96.37 -> 96.39 only, NM drafts saved). timproc_uso_b5_func_00004118 negatives: case-0 arg0-in-v0 and block-1 0.5-before-1.0 resist 30 more shapes (agent-g 2026-10-16)](#gbi-loader-dispatch-order-578b4) -- _A block-scoped copy of a spilled param is copy-propagated away but still costs +8 frame._
 - [post0b jumptable decoder / fog / triangle / lookup kit (agent-g 2026-10-16): selector arg assigned INSIDE the default call (`f(msg, op = s->op)`) stops the selector spill; one var as cursor AND read value inherits a call-arg a1 precolor; 1-word / Pair struct copies re-phase the temp ring; `volatile` param = reload from its home slot; IDO evaluates the LAST operand of `a|b|c|d` first (51AD8 99.15, 5721C 95.9, 510F0 + 561A8 EXACT)](#post0b-decoder-kit-51ad8)
 - [4x4 matrix family = the natural triple loop: an alias pointer on a LOCAL source keeps per-iteration row loads, a PARAM source gets the beql/bnel pipelined column loop; per-loop index letters move the IV-eliminated LR; every declared scalar takes a frame home in decl order; `x / 2` keeps div.s; `a = arg0` copy recolours the param (5E288 65.2 / 5E718 72.5 / 5E944 / 5EB4C / 5ED54 -> EXACT, agent-g 2026-10-17)](#matrix-triple-loop-family-5e288) -- _Plus: as1 bound-check delay fill is liveness through the jumptable UNION of arms (a0 read in any arm blocks the default steal); partial zdbug:6 coloring and the zdbug:1 itab LR -> frame-home map print even when uopt dies on the ecvt assertion._
+- [post0b quaternion/matrix textbook kit II (agent-g 2026-10-17): rewrite m2c soups as the TEXTBOOK formula (GG III slerp, Shoemake Qt_ToMatrix, q*v*conj(q), axis-align matrix); `(f32)var` no-op cast makes cfe evaluate a plain float variable leaf FIRST in a commutative op; ONE SOURCE LINE PER MATRIX ROW fixes a load-order + colour pair no per-line order can; a copy temp declared LAST re-colours one web (5C284/5CE68/5CCF4/5DDE4/5EF00 EXACT)](#post0b-quat-matrix-textbook-kit-2) -- _Also: a constant spelled `*(f32 *)(&D_00000000 + K)` outranks a `(f32)int` conversion; a pinned extern f32 symbol does not._
 - [post0b dispatcher kit II (agent-c 2026-10-17): memory-resident list iterator = ADDRESS-TAKEN scalars (dead `while (0) { pp = &cur; pp = &next; }`), not volatile; global `G |= 4` emits a lui/addiu address register, the target's separate `lui/lw` + `lui/sw` = two symbol names (or a call between); `*(float *)&msg.f` makes `&msg` a whole-function candidate, use an int/float union member; a switch with default-mapped HOLES keeps `sll` in the bound-check delay; jumptable entry 0 under an outer `if (x)` = `case 0: break;`; the default printf argument puts the selector in a1; IDO pulls small call-free goto targets inline after a compare chain (open) (40304 99.82, 40640 99.88, 3FC58 85.1, 415A4 76.4)](#post0b-dispatcher-kit-2-40304)
 
 ## IDO-O0-STALE-NM-PERCENT-TABLE-REFLECTS-C-SHAPE
@@ -31558,3 +31559,44 @@ gl_func_0003FC58 85.1, gl_func_000415A4 76.4; the first two are 8 and 5 words fr
   every variable split / bitpos anchor / dead-if boost probed gives v1/a1 swapped or all v1. (3) 415A4: the record
   block stores +0x28 twice (1030, then the separately ori'd value) through `lui at` while the other fields go through
   a v1 base; one symbol through a pointer + direct access merges into v1, two symbols reorder the stores.
+
+## post0b quaternion/matrix textbook kit II (agent-g 2026-10-17) <a name="post0b-quat-matrix-textbook-kit-2"></a>
+
+Five more post0b math functions went EXACT (0x5C000..0x5F000): gl_func_0005C284 (0 -> 100, 4x4 determinant),
+5CE68 (96.8, slerp with spins), 5CCF4 (64.5, rotate vector by quaternion), 5DDE4 (56.4, quaternion -> matrix),
+5EF00 (82.9, axis-align rotation matrix). In every case the old body was an m2c temp soup, and the fix was to write
+the textbook formula and then apply one or two of the levers below.
+
+- **Write the textbook source, not the m2c temps.** 5CE68 is Morrison's slerp from Graphics Gems III (`beta`,
+  `theta`, `sin_t`, `cos_t`, `phi`, `bflip`, the float param `alpha` reused as the second scale). With NO
+  x/y/z/w locals (a->x is read in the dot and again in the blend), uopt's CSE temps take exactly the frame homes the
+  old body could not reach. 5DDE4 is Shoemake's Qt_ToMatrix (GG IV; the matrix -> quaternion half sits just above
+  it). 5CCF4 is q * (v, 0) * conj(q) written as two Hamilton products with the v.w = 0 terms dropped (IDO does not
+  fold `x * 0.0f`, so the source must leave them out). 5EF00 stores its 3x3 block column by column; that is the
+  compute order, and the scattered store order is as1's.
+- **`(f32)var` no-op cast = operand-order lever.** In a commutative FP op, cfe evaluates a plain float VARIABLE leaf
+  after a deref (`v->x`), a negated deref, or an int->float conversion, whichever side it is written on: `c * -v->x`
+  and `-v->x * c` both emit `mul.s fd, (-x), c`. When the target has the variable first (fs = var), write
+  `(f32)c * -v->x` (`c + 0.0f` also works). Used 1x in 5EF00, 5x in 5CE68 (`(f32)beta * a->x`, `(f32)theta + ...`),
+  1x in 5CCF4 (`(f32)tx * q->w`).
+- **Constant rank.** `*(f32 *)((char *)&D_00000000 + 0x2040) * (f32)spin` evaluates the cast-deref constant first and
+  rotates the whole FP temp ring by one register. A pinned extern (`extern f32 D_5CE68_pi;` with
+  `D_5CE68_pi = 0x00002040;` in undefined_syms_auto.txt) ranks below the conversion, as in the target. The baked
+  `lui at,0; lwc1 0x2040(at)` bytes are identical after the link.
+- **One source line per matrix row (5C284).** The 16 element loads `m0 = M[0]; ...` were one statement per line;
+  the target loads m7 before m6 (and m11 before m10) but colours m6 f0 / m7 f2. Every per-line assignment order
+  gave either the load order or the colours, never both (a 120-variant pair-swap search found nothing, and the permuter
+  only produced sp-offset false positives). Putting each row's four loads on ONE line (`m4 = M[4]; m5 = M[5]; m6 =
+  M[6]; m7 = M[7];`) gives both. Same family as the same-line levers elsewhere in this file: the line number
+  matters to uopt's ordering.
+- **Copy temp declared LAST re-colours one web (5DDE4).** The target homes yz (frame 0x58) where the textbook source
+  kept yz in a register (frame 0x50) and materialised 1.0f early. `t = q->y * s; ys = t;` (permuter find) fixes the
+  colouring. The permuter declared `t` mid-list, which shifted xx..yz down 4, and its score ignores sp offsets, so it
+  reported 0. Declaring `t` LAST puts its unused home on the target's empty slot (sp+32). Always raw-diff a permuter
+  "0".
+- **Homes are still declaration order** (5BE20 rule): 5C284 needs `float *M` declared FIRST (its unused home is the top
+  word) and the column-wise m0, m4, m8, m12, m1, ... decl list; named cofactor temps a/b/c follow.
+
+Tooling note: `scripts/disasm-func.py` printed a different function's code for gl_func_0005CCF4 and 0005DDE4 (frame
+0x90/0x98 where the real functions have 0x38/0x58). Read targets from `expected/src/game_libs/game_libs_post0b.c.o`
+(`objdump -d --disassemble=FN`) or the `.s` file, not from disasm-func, for post0b.
