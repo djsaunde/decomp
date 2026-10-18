@@ -14402,6 +14402,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [post0b dispatcher kit II (agent-c 2026-10-17): memory-resident list iterator = ADDRESS-TAKEN scalars (dead `while (0) { pp = &cur; pp = &next; }`), not volatile; global `G |= 4` emits a lui/addiu address register, the target's separate `lui/lw` + `lui/sw` = two symbol names (or a call between); `*(float *)&msg.f` makes `&msg` a whole-function candidate, use an int/float union member; a switch with default-mapped HOLES keeps `sll` in the bound-check delay; jumptable entry 0 under an outer `if (x)` = `case 0: break;`; the default printf argument puts the selector in a1; IDO pulls small call-free goto targets inline after a compare chain (open) (40304 99.82, 40640 99.88, 3FC58 85.1, 415A4 76.4)](#post0b-dispatcher-kit-2-40304)
 - [post0b cfront-inline kit III (agent-c 2026-10-17, run 104): ternary iterator step `(it.cur = it.next) != 0 ? (it.next = it.cur->next, it.cur->data) : 0` keeps the result in v0; write the "next" expression TWICE (init + loop step) when the target uses different temps for the two instances; Vec3 `operator-` = three differences into locals, then stores; whole-struct temp copies stay struct assignments but the LAST copy is field-by-field (lwc1/swc1); address-take stack params for per-iteration reloads; arg cursor `p = c->args, c->args = p + 1, *p` for store-before-load; `(u32)(f * 255.0f)` RGB packers (41A9C 99.25, 4E96C 99.5, 3B01C 96.3, 49B3C 95.7, 36A48 87.9; 46DC0 / 4771C / 3C7A4 EXACT)](#post0b-cfront-inline-kit-3)
 - [post0b/post kit V (agent-c 2026-10-17, run 106): BY-VALUE STRUCT PARAMS and struct returns explain many "caps": lh/lb from a param home +2/+3, every arg homed, `sw a1,4(sp)` outgoing-slot copy, an epilogue lw/sw word copy + `lw v0,<a0 home>` (Vec3 returned by value); a dead `sw` of a loaded pointer to the frame = address-taken local / member of an escaping local struct; alloc-or-given constructor shape; typed record view fixes the multi-index addu order; `if(1){p += K;}` keeps a held `addiu base,K`; per-site externs for each RMW access; float-copy-scan false positives (3695C/36E74/3E238/3593C/355A0/3EB3C/39A04/3D16C/476DC/1CFDC/1D0AC/1D870 EXACT)](#post0b-kit-v-run106) -- _check param homes and the epilogue before trusting a "register cap" note._
+- [post0b/bootup kit VI (agent-c 2026-10-17, run 107): UNSORTED compare chain = nested-!= goto chain (IDO sorts switch compares ascending; the flat goto ladder inverts the last test); an UNSIGNED selector stops the case constant CSE-ing with a later `a1 == 1`; a shared `end: return 0;` with two predecessors survives as a dead `or v0,zero,zero`; objdiff `functionRelocDiffs=none` scores a wrong in-TU `jal` 100 (only the ROM cmp catches it); by-value 4-byte ctor args through `.w` copies + escaped temps + per-site zero-page externs (bootup 55A0 51.9 -> 87.6); `(*p)++ >= K` vs `slti at,old,K`; byvalue-struct-scan.py `--chains` (35648/35370/356FC EXACT; 7D04 58 -> 96, 3E9C8 71 -> 99.6, 432BC 62 -> 96.6)](#nested-ne-goto-chain-35648) -- _scan `--chains` first on any dispatcher; a 1, 0, 2 order is never a switch._
 - [post0b kit IV (agent-c 2026-10-17, run 105): two global loads issue in source order only when their statements share ONE line (48184 EXACT); a value colours by VARIABLE identity, so park a stream cursor in the int local another arm uses (4E96C EXACT); every block-local pointer temp reserves a frame home (+8 frame from two `{ int *t = ...; }`); a function-scope temp reused for a later sub-object shares its spill slot; m2c `s32 *p + 0x2C` bodies scale every offset x4](#post0b-kit-iv-run105) -- _check frame size and spill-slot offsets against the target first; they name the local set._
 
 ## IDO-O0-STALE-NM-PERCENT-TABLE-REFLECTS-C-SHAPE
@@ -31840,4 +31841,78 @@ its callee was game_libs_func_0003443C was wrong (same word as 1CFDC).
 
 **Also:** gl_func_00047E00 (4x4 matrix multiply) needs the inner `for (k)` loop written out. IDO unrolls it but keeps
 the `0 + x` reload; four explicit terms fold the zero (96.6).
+
+
+## post0b/bootup kit VI: unsorted compare chains, by-value ctor args, objdiff jal blind spot (agent-c 2026-10-17, run 107) <a name="nested-ne-goto-chain-35648"></a>
+
+**Unsorted equality chain = nested-!= goto chain.** IDO emits a switch's compares in ascending case order, and puts
+the case bodies after the chain in source order. So a target whose chain tests 1, 0, 2 (`beq v0,at(1) -> A; beqz v0
+-> B; beq v0,at(2) -> C; b end`) is not a switch. The flat goto ladder (`if (k == 1) goto A; if (k == 0) goto B; if
+(k == 2) goto C; goto end;`) gets the order right but turns the last test into `bne k,2,end` + `b C`. This nesting
+keeps all three `beq`s and the trailing `b end`:
+
+```c
+if (k != 1) {
+    if (k != 0) {
+        if (k != 2) {
+        } else goto C;
+    } else goto B;
+} else goto A;
+goto end;
+```
+
+Cracked gl_func_00035648 / 00035370 (EXACT) and bootup func_00007D04 (58 -> 96). gl_func_000356FC needed only the
+flat ladder with `if (k != 2) goto end; goto L2;` (see #feedback-ido-split-last-eq-test-to-suppress-bnel) plus the
+items below. gl_func_0004D688's six-way chain (0x65, 0x66, 0x64, 0x67, 0x68, 0x6C) took the flat ladder (67 -> 73).
+`scripts/byvalue-struct-scan.py --chains` lists every non-exact function whose target chain on one register is not
+ascending.
+
+- **Unsigned selector.** With `int k`, the compare constant 1 is shared with a later `a1 == 1` and CSE'd into v1
+  (`addiu v1,zero,1` once). The target materializes `addiu at,zero,1` at each test. `unsigned k` (or a
+  `switch ((unsigned)x)`) keeps the constants apart, because 1u and 1 are different constants to uopt.
+- **Dead shared return block.** gl_func_000356FC ends `... beqz zero,epi; sw (kind-2 store); or v0,zero,zero; epi:`,
+  with the `or` unreachable. It survives only when `end: return 0;` has TWO goto predecessors (kind 1 and the
+  default). Each predecessor steals the `or` into its delay slot and branches past it. With one predecessor, or with
+  `return 0;` written in each arm, the block is deleted.
+- **Post-increment compares the old value.** `slti at,v1,31` on the value loaded before `addiu t7,v1,1; sw t7` =
+  `t = *p; *p = t + 1; if (t >= 31) ...`. `if ((*p)++ >= 31)` materializes a slti/xori boolean. Reuse the dispatch
+  variable for `t` when the target keeps both in the same register (7D04).
+
+**objdiff blind spot: in-TU jal targets.** `objdiff-cli diff -c functionRelocDiffs=none` and report.json scored
+gl_func_00035370 at 100 while it called the in-TU `gl_func_00034458` (`jal 0x34458`, word 0x0C00D116) where the
+target has the placeholder `jal 0`. Only `make` (ROM cmp) caught it. Before you promote a function, check its callees:
+an old NM body that names a real in-TU function where the target calls a placeholder will always score 100.
+
+**By-value 4-byte ctor args in bootup constructors** (func_000055A0 51.9 -> 87.6). The tell is
+`lui t4,0; lw t4,0(t4); sw t4,148(sp); jal alloc; sw t4,124(sp)`, then `lw t5,124(sp); sw t5,92(sp)` and
+`lw a1,92(sp); ...; jal ctor; sw a1,4(sp)`. That is: a zero-page struct word goes into a per-object temp, then into
+two inline-parameter copies (p1/p2, the same slots for every object), and is passed by value. What made it work:
+- Copy through the int member (`p1.w = v0.w`). A struct assignment between locals copies through `addiu`-addressed
+  temps.
+- Pass the comma form `f(0, (t.w = G, t), ...)` when the target stores the temp and passes it in one go
+  (`sw a1,372(sp); jal; sw a1,4(sp)`).
+- Escape the per-object temps (`if (1) { S4 *q = &v0, ...; }`). Their stores are dead (only the copies are read),
+  but the target keeps them.
+- Give every reloc-blind zero-page reference its own extern. With `DI(0)`-style macros over one `&D_00000000`, uopt
+  CSEs the base into an s-reg and deletes the dead first store of `DI(0) = DI(0) | 8; ...; DI(0) = 0;`. The target
+  keeps both, because they were different symbols before relocation.
+- Merge flag temporaries that the target keeps in one register (s0) into one C variable.
+- Spell constants the target rematerializes per use as `(f32)0`. A repeated `0.0f` that is live across calls is
+  hoisted into callee-saved $f20 (`sdc1 $f20` in the prologue).
+- `func(obj + 0x5C, ...)` after the in-place sub-object construction passes the field address, not the possibly
+  allocated pointer.
+
+**Token passed by value through an aligned local** (gl_func_0003E9C8 70.7 -> 99.6). The target loads the token with
+`lwl/lwr` (align-1 source), stores it with `swl/swr` into a stack local, and later reads it with `lw a1,68(sp)` and
+`sw a1,4(sp)`. Type the local as an aligned `struct { int w; }` and copy into it through an align-1 view:
+`*(Tag *)&key = *(Tag *)src`. Pass a per-call copy (`k1.w = key.w; f(a0, k1)`). Still open: the target gives the two
+copies 8-byte slots at 56/48 (frame 0x48). Every named copy, block-scoped or comma-form, packs at 4 (0x40).
+
+**cfront row transform** (gl_func_000432BC 61.8 -> 96.6). `x = m[8]*vz + (m[0]*vx + m[4]*vy)` gives the target's
+`add.s f14,f6(sum),f8(product)`. The natural `m[0]*vx + m[4]*vy + m[8]*vz` swaps the operands of the second add.s.
+Keep field accesses o-relative and use the `dst = o + 0xF0` pointer only for the calls.
+
+**Correction to kit V:** gl_func_00047E00's 96.6 is the build WITH the inner `for (k)` loop. Four explicit terms
+score 65.9 (re-measured this run). The residual is register choice only (t0/t3/a3 for the row pointer, end and the 16
+bound, against the build's a3/t2/a1).
 
