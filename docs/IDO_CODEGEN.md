@@ -14404,6 +14404,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [post0b/post kit V (agent-c 2026-10-17, run 106): BY-VALUE STRUCT PARAMS and struct returns explain many "caps": lh/lb from a param home +2/+3, every arg homed, `sw a1,4(sp)` outgoing-slot copy, an epilogue lw/sw word copy + `lw v0,<a0 home>` (Vec3 returned by value); a dead `sw` of a loaded pointer to the frame = address-taken local / member of an escaping local struct; alloc-or-given constructor shape; typed record view fixes the multi-index addu order; `if(1){p += K;}` keeps a held `addiu base,K`; per-site externs for each RMW access; float-copy-scan false positives (3695C/36E74/3E238/3593C/355A0/3EB3C/39A04/3D16C/476DC/1CFDC/1D0AC/1D870 EXACT)](#post0b-kit-v-run106) -- _check param homes and the epilogue before trusting a "register cap" note._
 - [post0b/bootup kit VI (agent-c 2026-10-17, run 107): UNSORTED compare chain = nested-!= goto chain (IDO sorts switch compares ascending; the flat goto ladder inverts the last test); an UNSIGNED selector stops the case constant CSE-ing with a later `a1 == 1`; a shared `end: return 0;` with two predecessors survives as a dead `or v0,zero,zero`; objdiff `functionRelocDiffs=none` scores a wrong in-TU `jal` 100 (only the ROM cmp catches it); by-value 4-byte ctor args through `.w` copies + escaped temps + per-site zero-page externs (bootup 55A0 51.9 -> 87.6); `(*p)++ >= K` vs `slti at,old,K`; byvalue-struct-scan.py `--chains` (35648/35370/356FC EXACT; 7D04 58 -> 96, 3E9C8 71 -> 99.6, 432BC 62 -> 96.6)](#nested-ne-goto-chain-35648) -- _scan `--chains` first on any dispatcher; a 1, 0, 2 order is never a switch._
 - [post0b/post1b kit VII (agent-g 2026-10-17, run 105): a loop stays ROLLED only with the counter initialised in the `for` header (`i = 0;` before it, do-while or a variable bound unroll it); `/ i` after the loop divides by the bound register; ONE local reused for unrelated pointers sets shared colours; dead `while (0)` placed AFTER a call or a copy picks the next web's colour; param typed as the list NODE type fixes `beq` operand order; comma-form `*(p8 = c, c = p8 + 1, p8) = v` fill store; hdr-before-magic store order; check expected for BAKED in-unit jals (0x6F620/0x7E970); beql + unreachable delay copy = call arm first; libultra -O1 functions in post1b take the 6A304 donor splice (5B070/5B23C/5BAF4/521F8/51520/52AE8/55FB4/60370/51694/5C548/66484/6A420 EXACT)](#post0b-kit-vii-run105) -- _when an old note says "unroll cap" or "structural cap", try the for-header init and the arm swap first._
+- [bootup/post0b kit VIII (agent-c 2026-10-17, run 108): bootup FP literals are RoData-section loads -- spell them through a DATA symbol pinned at 0 and indexed by the pool offset (`D_bu_ro_pool[0x95C / 4]`), never `*(f32 *)((char *)&func_X + K)` (that materializes the function address: lui/addiu/lwc1, +1 insn); the ROM word holds the full pool offset (0x95C), not the expected .o's small addend; two refs through one array symbol CSE the base (use per-address scalars there); named float locals pick f0/f2 over the f4+ temp ring; volatile pads between by-value copies give the 8-byte copy slots (CCE0 / 3783C EXACT; E270 69.8 -> 99.8, BF8C 88.3 -> 99.4, 3E9C8 frame fixed)](#bootup-ro-pool-data-symbol-cce0) -- _any bootup NM body with `&func_ + K` float reads: try the pool symbol first._
 - [post0b kit IV (agent-c 2026-10-17, run 105): two global loads issue in source order only when their statements share ONE line (48184 EXACT); a value colours by VARIABLE identity, so park a stream cursor in the int local another arm uses (4E96C EXACT); every block-local pointer temp reserves a frame home (+8 frame from two `{ int *t = ...; }`); a function-scope temp reused for a later sub-object shares its spill slot; m2c `s32 *p + 0x2C` bodies scale every offset x4](#post0b-kit-iv-run105) -- _check frame size and spill-slot offsets against the target first; they name the local set._
 
 ## IDO-O0-STALE-NM-PERCENT-TABLE-REFLECTS-C-SHAPE
@@ -31967,4 +31968,54 @@ Open: 51F5C wants the 100/101/0 compare order with the case-0 block after case 1
 the last test into `bnez` here. 5AFD4's `(n + 0xFF000000) - 1` with the constant held in a register is still folded to
 `+ 0xFEFFFFFF` by every spelling tried (incl. `(0xFF << 24)`, reordered terms). 5534C/558A0/600A4/5B90C residuals are
 single colour or as1-delay choices.
+
+
+## bootup/post0b kit VIII: RoData pool data symbol, named float locals, copy-slot pads (agent-c 2026-10-17, run 108) <a name="bootup-ro-pool-data-symbol-cce0"></a>
+
+**bootup FP literals through a data symbol.** Every bootup_uso FP literal load is `lui at,0; lwc1 OFF(at)` against
+the module's RoData section base (USO reloc symIdx 1, see
+N64_FORENSICS.md#bootup-uso-fp-literal-pool-folded-into-func-0000098C). The old NM spelling
+`*(f32 *)((char *)&func_00000940 + 0x1C)` names a FUNCTION, so IDO materializes its address
+(`lui t6; addiu t6,t6,0; lwc1 0x1C(t6)`, one extra insn per site and an extra t-ring temp). A data symbol folds the
+offset into the `%lo`:
+
+```c
+extern float D_bu_ro_pool[];     /* undefined_syms: D_bu_ro_pool = 0x00000000; (RoData base) */
+extern double D_bu_ro_dpool[];   /* same base, f64 view */
+... D_bu_ro_pool[0x95C / 4] ...  /* index = the RoData pool offset */
+```
+
+- Index by the FULL pool offset. func_0000CCE0's expected .o shows `lwc1 $f4,28(at)` (addend 0x1C against the
+  splat function symbol), but the ROM word holds `0x095C`. Pinning the base at 0 with index 0x1C failed the ROM cmp;
+  0x95C passed (CCE0 EXACT).
+- Two references through the same array symbol can CSE the base into a register (`lui v1; addiu v1; ldc1 88(v1)`,
+  func_00000610 93.2 -> 90.5). Keep per-address scalar externs (the existing `D_00000868 ...` list) where the target
+  re-emits `lui at` per load.
+- A store to the same section (`D_bu_ro_pool[0x2A0 / 4] = 1.0f`, 7328) takes the same base.
+- Measured: E270 69.8 -> 99.8 (now only the documented spill-slot swap), D94 59.7 -> 70.9, 2C94 55.9 -> 61.4, 43D4,
+  411C, 7328, C234, CAE8 +1 to 3. Call arguments that are text addresses (`&func_00008A40 + 0x20` passed to the
+  allocator) take the same fix with a char-array view (`D_BF8C_8A40 + 0x20` gives `lui a0; addiu a0,a0,32`).
+- CCE0's last diff was one store: write `f(cont, e0 = g(...))` so the spill of e0 schedules after the a0 copy.
+
+**Named float locals colour f0/f2.** gl_func_0003783C (EXACT): the target keeps 0.0 in f2 and the loaded y in f0.
+Plain stores (`s.v.y = *(f32 *)(a0 + 0x2C); s.v.z = 0.0f;`) use the f4+ temp ring. Named `float y, z;` locals give
+the f0/f2 pair. The dead `sw t6,68(sp)` + frame 0x48 come from the pointer living in a memory struct beside the Vec3
+(`struct { Vec3 v; char pad[12]; int p; } s;`) plus `int pad[3]`.
+
+**Volatile pads between by-value copies.** gl_func_0003E9C8 puts the token at 68, o1 at 64 and the two by-value copies
+k1/k2 at 56/48 (8-byte steps, frame 0x48). Declaration order `key; o1; volatile int pad1; k1; volatile int pad2; k2;`
+reproduces it (99.58 -> 99.81). Residual: the last copy temp is t3 vs target t4. Several near-misses this run
+(3E9C8, 372D4, 1DA7C, 4247C, BF8C's first if-arm FP ring) differ only by the t-/f-ring sitting one or two slots later
+in the target, i.e. the original consumed temps that left no instruction. No spelling tried moves the ring.
+
+**BF8C dispatch (88.3 -> 99.4).** Unsorted switch 0x63/0x61/0x62 = the kit VI nested-!= goto chain with the default
+body innermost. `*(s32 *)(o + 0x990) = (f64)x < -0.75;` gives the target's `or t6,zero,zero; bc1fl; sw t6` boolean.
+A flag stored, followed by an unrelated copy and then tested in the same register is one comma condition:
+`if ((o->9CC = (w & 0x400) != 0, o->9F8 = o->490, o->9CC) != 0)`. Separate statements re-load or recolour it.
+
+**Dead ends this run.** func_0000D900's clamp (copy-first `s = t;` + if/else-if) gets the target structure but the
+three FP webs come out as a 3-cycle (t f0 / k f2 / s f12 vs target f2 / f12 / f0); 99.08 stays. func_000031C0 keeps
+every value on the stack with no s-regs at -O2, so it is not a -O1 file (`-O1` reloads after each store). func_00007D04
+stays rolled with the agent-g for-header form as well. gl_func_0003800C's last call has no `a0` setup in the target
+(`f(?, n)`); uninitialised locals get a stack home instead.
 
