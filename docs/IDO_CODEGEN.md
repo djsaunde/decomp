@@ -14404,6 +14404,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [post0b/post kit V (agent-c 2026-10-17, run 106): BY-VALUE STRUCT PARAMS and struct returns explain many "caps": lh/lb from a param home +2/+3, every arg homed, `sw a1,4(sp)` outgoing-slot copy, an epilogue lw/sw word copy + `lw v0,<a0 home>` (Vec3 returned by value); a dead `sw` of a loaded pointer to the frame = address-taken local / member of an escaping local struct; alloc-or-given constructor shape; typed record view fixes the multi-index addu order; `if(1){p += K;}` keeps a held `addiu base,K`; per-site externs for each RMW access; float-copy-scan false positives (3695C/36E74/3E238/3593C/355A0/3EB3C/39A04/3D16C/476DC/1CFDC/1D0AC/1D870 EXACT)](#post0b-kit-v-run106) -- _check param homes and the epilogue before trusting a "register cap" note._
 - [post0b/bootup kit VI (agent-c 2026-10-17, run 107): UNSORTED compare chain = nested-!= goto chain (IDO sorts switch compares ascending; the flat goto ladder inverts the last test); an UNSIGNED selector stops the case constant CSE-ing with a later `a1 == 1`; a shared `end: return 0;` with two predecessors survives as a dead `or v0,zero,zero`; objdiff `functionRelocDiffs=none` scores a wrong in-TU `jal` 100 (only the ROM cmp catches it); by-value 4-byte ctor args through `.w` copies + escaped temps + per-site zero-page externs (bootup 55A0 51.9 -> 87.6); `(*p)++ >= K` vs `slti at,old,K`; byvalue-struct-scan.py `--chains` (35648/35370/356FC EXACT; 7D04 58 -> 96, 3E9C8 71 -> 99.6, 432BC 62 -> 96.6)](#nested-ne-goto-chain-35648) -- _scan `--chains` first on any dispatcher; a 1, 0, 2 order is never a switch._
 - [post0b/post1b kit VII (agent-g 2026-10-17, run 105): a loop stays ROLLED only with the counter initialised in the `for` header (`i = 0;` before it, do-while or a variable bound unroll it); `/ i` after the loop divides by the bound register; ONE local reused for unrelated pointers sets shared colours; dead `while (0)` placed AFTER a call or a copy picks the next web's colour; param typed as the list NODE type fixes `beq` operand order; comma-form `*(p8 = c, c = p8 + 1, p8) = v` fill store; hdr-before-magic store order; check expected for BAKED in-unit jals (0x6F620/0x7E970); beql + unreachable delay copy = call arm first; libultra -O1 functions in post1b take the 6A304 donor splice (5B070/5B23C/5BAF4/521F8/51520/52AE8/55FB4/60370/51694/5C548/66484/6A420 EXACT)](#post0b-kit-vii-run105) -- _when an old note says "unroll cap" or "structural cap", try the for-header init and the arm swap first._
+- [kit VIII (agent-g 2026-10-17, run 106): end every nested-!= goto-chain body with `if (1) goto end;` -- uopt then keeps the bodies in TEXT order and stops hoisting the last body under a `bne dflt` (5231C EXACT, 55470 44.9 -> 93.7, game_uso E5C8 77 -> 91); an `int`-typed `sp+K` address argument is CSE'd and spilled across calls, a pointer-typed one is rematerialised per call; cfront "dead sentinel stages" are constructors inlined on member sub-objects (`o = obj + off; if (o || (o = alloc(n))) {...}`) with by-value 4-byte template params (game_uso 41C0/18FC/3018 +33..40); every named local takes a home in declaration order, so int pads rebuild a target home map; one variable for both the loaded word and a later field pointer; guarded do-while vs `for` vs count-in-condition picks bne / slt / sltu bottom tests (timproc_b5 8688 EXACT, 6C00/8C44/CEB4/8AFC 13..39 -> 86..99)](#kit-viii-run106) -- _a dispatcher at 40-60 % with the right compare chain is usually a body-order problem: try the `if (1) goto` ending first._
 - [bootup/post0b kit VIII (agent-c 2026-10-17, run 108): bootup FP literals are RoData-section loads -- spell them through a DATA symbol pinned at 0 and indexed by the pool offset (`D_bu_ro_pool[0x95C / 4]`), never `*(f32 *)((char *)&func_X + K)` (that materializes the function address: lui/addiu/lwc1, +1 insn); the ROM word holds the full pool offset (0x95C), not the expected .o's small addend; two refs through one array symbol CSE the base (use per-address scalars there); named float locals pick f0/f2 over the f4+ temp ring; volatile pads between by-value copies give the 8-byte copy slots (CCE0 / 3783C EXACT; E270 69.8 -> 99.8, BF8C 88.3 -> 99.4, 3E9C8 frame fixed)](#bootup-ro-pool-data-symbol-cce0) -- _any bootup NM body with `&func_ + K` float reads: try the pool symbol first._
 - [post0b kit IV (agent-c 2026-10-17, run 105): two global loads issue in source order only when their statements share ONE line (48184 EXACT); a value colours by VARIABLE identity, so park a stream cursor in the int local another arm uses (4E96C EXACT); every block-local pointer temp reserves a frame home (+8 frame from two `{ int *t = ...; }`); a function-scope temp reused for a later sub-object shares its spill slot; m2c `s32 *p + 0x2C` bodies scale every offset x4](#post0b-kit-iv-run105) -- _check frame size and spill-slot offsets against the target first; they name the local set._
 
@@ -32019,3 +32020,54 @@ every value on the stack with no s-regs at -O2, so it is not a -O1 file (`-O1` r
 stays rolled with the agent-g for-header form as well. gl_func_0003800C's last call has no `a0` setup in the target
 (`f(?, n)`); uninitialised locals get a stack home instead.
 
+## kit VIII: `if (1) goto` body order, int-typed address CSE, inlined member constructors (agent-g 2026-10-17, run 106) <a name="kit-viii-run106"></a>
+
+Two exacts (gl_func_0005231C, timproc_uso_b5_func_00008688) and NM gains on gl_func_00055470 (44.9 -> 93.7), game_uso
+41C0 (61.3 -> 94.2), 3018 (56.0 -> 93.1), 18FC (50.9 -> 91.2), E5C8 (76.9 -> 91.4), timproc_b5 6C00 (17.2 -> 98.9),
+8C44 (22.9 -> 98.4), CEB4 (12.9 -> 92.4), 8AFC (38.7 -> 85.9), gui 329C/2DE0 (+1.3/+0.9).
+
+- **`if (1) goto end;` keeps goto-chain bodies in text order.** With the kit-VI nested-!= chain and labelled bodies
+  that each end in a plain `goto end;`, uopt lays the bodies out innermost-first (E5C8) or pulls the last body up under
+  an inverted `bne dflt` at the end of the chain (5231C, 51F5C-style). Writing `if (1) goto end;` as the last statement
+  of every body (or only of the body that gets hoisted, for 5231C) keeps each body where the source puts it. The old
+  55470 note ("goto-body order is textual-order-invariant") came from plain gotos; with the `if (1)` form the same
+  source went from 44.9 to 93.7. The lever did nothing on functions whose gotos are not chain-body exits (500EC,
+  61478, 591C, 117C were unchanged), and it did not move 51F5C's case-0 block (a loop-continue target).
+- **Switch or chain?** 5231C's old body was a `switch`, which IDO turned into a jumptable; the target is an unsorted
+  `beq` chain (3,13,14,15,22,23,17,24). `byvalue-struct-scan.py --chains` misses chains that include a `beqz` or start
+  after a `beqzl` on a different value (E5C8's chain runs on a3->0x12C, not on the 0xE8 field the old body switched
+  on), so read the target chain register before trusting a decoded switch.
+- **int-typed address arguments get CSE'd.** timproc_b5 func_00004068's colour parameter was typed `int`, so every
+  caller passed `(int)v`. uopt treats that int-typed `sp+0x40` as an ordinary expression, CSEs it across the three calls
+  and spills it (`sw a3,32(sp)` / reload). Typing the parameter `f32 *` and passing `v` gives the target's
+  `addiu a3,sp,64` before each call (CEB4 75 -> 92; C310 90.5 -> 90.9 for free).
+- **"Dead sentinel stages" in cfront constructors are inlined member constructors.** The game_uso 41C0 family
+  (`if ((int)obj == -8) { obj2 = alloc(0x18); ... }`) is `o = obj + 8; if (o || (o = alloc(0x18))) { ctor(o, obj, prm,
+  1); o->vptr = ...; }`: the compare against -8 is `obj + 8 == 0`, a failed alloc skips only that member (the old
+  bodies' `goto end` was wrong), and the 8-byte base sub-object is the same shape with its result discarded. The
+  template word is a by-value 4-byte struct (kit VI): one escaped temp per stage (`t1.w = tmpl->w`, kept with
+  `if (1) { T *q = &t1; q = &t2; ... }`) copied into ONE shared inline parameter `prm.w = tN.w`, passed by value
+  (`sw a2,8(sp)` in the jal delay). Stage 1 of 18FC/3018 also takes three by-value Vec3 params (struct assignments,
+  addiu-addressed word copies) and copies one through a temp into the member.
+- **Every named local takes a home in declaration order** (first declared = highest address), even locals that live
+  in registers. Unused int pads in the declaration list rebuild a target's home map (18FC: all homes match with 8
+  pads). A pad that crosses an 8-byte boundary moves everything below it by 8, so tune one word at a time.
+- **One variable for the loaded word and the field pointer.** In 5231C's 0x34 arms the target loads the command word
+  into v0, tests it, and loads `o + 0x34` into v0 in the branch delay slot: write `q = (s32 *)*p; if (q) { q = (s32 *)(o
+  + 0x34); ... }`. A separate `w` for the 0x30 arms gives their a0. `do { *q |= 2; } while (0);` keeps the
+  `addiu v0,a3,48` base unfolded.
+- **Bottom-test shapes.** `for (i = 0; i < n; i++)` with a call in the body kept `slt; bnez` (8C44 wanted `blez` guard
+  + `bne`: a guarded `if (n > 0) { i = 0; do {...} while (i != n); }`). E5C8 wanted `sltu` where the plain unsigned
+  `for` collapsed to `bne`: re-reading the count from memory in the condition (`v1 < *(u32 *)&D`) keeps the compare.
+- **cfront virtual calls** (8688 EXACT): `o = get(scr); vt = *(char **)(o + 0x28); ((void (*)(char *))*(int *)(vt +
+  0x6C))(*(s16 *)(vt + 0x68) + o);` -- entries are {s16 delta, fptr}. The old structural body had read them as a
+  vtable on `scr`.
+- Smaller: game_uso E5C8's `EAF4(a3, (v0 & 0x20) != 0 ? ...)` is unconditional with `g && (v0 & 0x40)` (sltu, beqz,
+  sltu); a final `x &= 6; if (t >= 21) {...}` with the then-store in the branch delay means the `&=` is unconditional;
+  gui 329C's descending 0x408/0x120/0x110 compare chain is the nested-!= chain too, with one variable for the ring
+  context and the switch value (the target's s0).
+
+Open: 51F5C (case-0 block after case 101 inside a loop; `if (1)` endings do not move it); 51448 (target keeps the
+inlined link() parameter `n = o` separate from `o` and spills it across the call; uopt copy-propagates every spelling
+tried, incl. block scope, field re-reads and dead `while (0)`); 18FC/3018 constant stores (target stores in source
+order reusing f0 for 0/-1000/1000).
