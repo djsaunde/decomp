@@ -14406,6 +14406,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [post0b/post1b kit VII (agent-g 2026-10-17, run 105): a loop stays ROLLED only with the counter initialised in the `for` header (`i = 0;` before it, do-while or a variable bound unroll it); `/ i` after the loop divides by the bound register; ONE local reused for unrelated pointers sets shared colours; dead `while (0)` placed AFTER a call or a copy picks the next web's colour; param typed as the list NODE type fixes `beq` operand order; comma-form `*(p8 = c, c = p8 + 1, p8) = v` fill store; hdr-before-magic store order; check expected for BAKED in-unit jals (0x6F620/0x7E970); beql + unreachable delay copy = call arm first; libultra -O1 functions in post1b take the 6A304 donor splice (5B070/5B23C/5BAF4/521F8/51520/52AE8/55FB4/60370/51694/5C548/66484/6A420 EXACT)](#post0b-kit-vii-run105) -- _when an old note says "unroll cap" or "structural cap", try the for-header init and the arm swap first._
 - [kit VIII (agent-g 2026-10-17, run 106): end every nested-!= goto-chain body with `if (1) goto end;` -- uopt then keeps the bodies in TEXT order and stops hoisting the last body under a `bne dflt` (5231C EXACT, 55470 44.9 -> 93.7, game_uso E5C8 77 -> 91); an `int`-typed `sp+K` address argument is CSE'd and spilled across calls, a pointer-typed one is rematerialised per call; cfront "dead sentinel stages" are constructors inlined on member sub-objects (`o = obj + off; if (o || (o = alloc(n))) {...}`) with by-value 4-byte template params (game_uso 41C0/18FC/3018 +33..40); every named local takes a home in declaration order, so int pads rebuild a target home map; one variable for both the loaded word and a later field pointer; guarded do-while vs `for` vs count-in-condition picks bne / slt / sltu bottom tests (timproc_b5 8688 EXACT, 6C00/8C44/CEB4/8AFC 13..39 -> 86..99)](#kit-viii-run106) -- _a dispatcher at 40-60 % with the right compare chain is usually a body-order problem: try the `if (1) goto` ending first._
 - [bootup/post0b kit VIII (agent-c 2026-10-17, run 108): bootup FP literals are RoData-section loads -- spell them through a DATA symbol pinned at 0 and indexed by the pool offset (`D_bu_ro_pool[0x95C / 4]`), never `*(f32 *)((char *)&func_X + K)` (that materializes the function address: lui/addiu/lwc1, +1 insn); the ROM word holds the full pool offset (0x95C), not the expected .o's small addend; two refs through one array symbol CSE the base (use per-address scalars there); named float locals pick f0/f2 over the f4+ temp ring; volatile pads between by-value copies give the 8-byte copy slots (CCE0 / 3783C EXACT; E270 69.8 -> 99.8, BF8C 88.3 -> 99.4, 3E9C8 frame fixed)](#bootup-ro-pool-data-symbol-cce0) -- _any bootup NM body with `&func_ + K` float reads: try the pool symbol first._
+- [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
 - [post0b kit IV (agent-c 2026-10-17, run 105): two global loads issue in source order only when their statements share ONE line (48184 EXACT); a value colours by VARIABLE identity, so park a stream cursor in the int local another arm uses (4E96C EXACT); every block-local pointer temp reserves a frame home (+8 frame from two `{ int *t = ...; }`); a function-scope temp reused for a later sub-object shares its spill slot; m2c `s32 *p + 0x2C` bodies scale every offset x4](#post0b-kit-iv-run105) -- _check frame size and spill-slot offsets against the target first; they name the local set._
 
 ## IDO-O0-STALE-NM-PERCENT-TABLE-REFLECTS-C-SHAPE
@@ -31970,6 +31971,66 @@ the last test into `bnez` here. 5AFD4's `(n + 0xFF000000) - 1` with the constant
 `+ 0xFEFFFFFF` by every spelling tried (incl. `(0xFF << 24)`, reordered terms). 5534C/558A0/600A4/5B90C residuals are
 single colour or as1-delay choices.
 
+
+## game_libs_post/bootup kit IX: unroll factor = body size, pool scalars, float param reuse (agent-c 2026-10-17, run 109) <a name="kit-ix-unroll-body-size-run109"></a>
+
+**The unroll factor follows the size of the loop body before optimisation.** gl_func_00024378's copy loop (five
+statements, each re-reading two pointer fields of the area global) is x4-unrolled with an `andi 3` remainder loop in the
+target. The NM body read the fields through a local `B = gl_d_24378 + (int)&proxy` (a proxy-extern trick to keep the
+base held). It unrolled x2 with a peeled single remainder. Typed views (`((Dst *)FW(B, 0x2030))[i].b2 = ...`, 0x14-byte
+struct) did not unroll at all. Naming the global at every access, `SB(FW(gl_d_24378, 0x2030) + i * 0x14, 2) = ...`,
+gave the x4 shape. uopt still CSEs `&gl_d_24378` into s0 for the whole function, so the held base did not need the
+local. 69.5 -> 95.4. When the target unrolls more than the build, shrink the per-iteration source (drop base locals,
+casts through typed arrays). When it unrolls less, grow it (the de-hoisting lever) or block it with a dead bound
+reload.
+
+- **Dead bound reload keeps loops rolled (confirms W33).** gl_func_0001DCB4's three classify loops are rolled in the
+  target with an s32 counter and `slt at,s1,a0; bnez` (no `i != n` conversion). With `for (i = 0; i < n; i++,
+  p += 0x20) { n = *(int *)(D + 0x2070); ... }` all three come out rolled with the target's bodies and no s8
+  narrowing. It was not kept: the rewrite dropped enough `&D` uses that uopt stopped holding `&D` in an s-register,
+  and that cost more than the loops gained. If the bound also feeds an address (`n * a3`), hoist that product into
+  its own variable first, or the reload makes the multiply loop-variant.
+- **Area global, store order.** In the same function each switch arm writes the float field before the int field
+  (`lwc1; li; sw; b; swc1`), and a short read back through a just-stored pointer field (`*(s16 *)FW(g, 0x201C)`) gives
+  the target's load after the four pointer stores.
+
+**bootup RoData pool, continued (kit VIII).**
+- Use per-address scalar externs whenever a function reads two or more pool slots. The run-108 rule (array symbol
+  CSEs the base) held in all three cases tried: func_000055A0's `CF(K)` macro (`&func_0000057C + K`) became six scalars
+  `D_bu_ro_598..5AC` (87.6 -> 92.5), func_00000610's two f64 reads became `D_bu_ro_d058/d060` (93.2 -> 97.5),
+  func_0000C234's `D_bu_ro_pool[0x944 / 4]` pair hoisted `lui a3; addiu a3` and the scalars D_00000940/44/48 did not.
+- An absolute `*(f32 *)0xC` in an NM body (func_000003F8, build `lwc1 f8,12(zero)`) was the pool slot
+  func_00000044 + 0xC = 0x50. Grep NM bodies for small literal float addresses as well as `&func_ + K`.
+- Scan used: for every bootup NM function, count target lwc1/ldc1 lines with `%lo(func_...)` against build lines
+  with any `%lo(`. A target count above the build count marks a pool read still spelled through a register base.
+
+**Float colours from param reuse (func_00000610 97.5 -> 99.9).** The target loads arg5 into f2 and writes the scaled
+value back into f2; the clamp result and the later fabs(arg4) result share f0. Writing `arg5 = (f32)((f64)arg5 /
+D_bu_ro_d058);` (no new temp) and using ONE `f32` local for both results gave that. Separate temps put the scaled value
+in f0 and the results in f2. `arg2 / 4.0f` compiles to `* 0.25f`; `arg2 / (f32)4` keeps the target's div.s (the kit IV
+`/ (f32)1024` rule).
+
+**Other decode tells.**
+- m2c `if (p->b5 == 1) { }` followed by an unconditional `p->b5 = n;` is a conditional store: target `lbu v0; ...;
+  bne one,v0; sh (delay); sb`. gl_func_0001E134.
+- A switch whose case blocks sit in an order different from the case values (1E134's 0, 3, 1 at 1b24/1b34/1b44 with
+  case 1 falling into the default code) needs the cases written in that order with `goto` to the shared label.
+  m2c put cases 3 and 1 at the end of the switch, jumping back.
+- Baked absolute addresses read with `lui at,2; lwc1 -0x38c8(at)` at each access (no reloc): one scalar extern per
+  access site. One symbol per address still got its base held (`lui; addiu v0`) when used twice in a block; a literal
+  `*(f32 *)0x1C738` gave `lui 1; ori` (worse). gl_func_0002E354.
+- An int chain `x == 1 || x == 2 || x == 3` whose 1 must not CSE with a later `== 1` test: compare `(u32)x` (kit VI
+  unsigned-selector rule). A `switch` CSEs the constant just the same.
+- gl_func_00026214 is the audio manager's frame handler (libultra `__amHandleFrameMsg` shape): `samplesLeft =
+  osAiGetLength() >> 2`, `frameSamples = 16 + ((frameSize - samplesLeft + 0x80) & ~0xF)` clamped, then an OSTask
+  fill with ucode_boot/ucode/ucode_data symbol addresses and `ucode_data_size = ((u64 *)end - (u64 *)start) * 8 - 1`.
+  The 0x214C table is s16. 67.3 -> 79.1.
+
+**Dead ends this run.** 24378's last diff is a dead `or a0,zero,zero` (an eliminated loop-counter init) that the target
+keeps live into the first call, shifting every t-register by one; indexed, pointer and comma-for forms of the u64 clear
+loop either unroll it or drop the init. 1E134's var_t4/var_t5 are memory-homed in the build (sw at each def) and in
+registers in the target, spilled around calls; deleting the m2c `spC8 = var_t4` copy statements costs 1.4.
+The `if (1) goto end;` lever (kit VIII agent-g) did not change C234's flat goto ladder.
 
 ## bootup/post0b kit VIII: RoData pool data symbol, named float locals, copy-slot pads (agent-c 2026-10-17, run 108) <a name="bootup-ro-pool-data-symbol-cce0"></a>
 
