@@ -14403,6 +14403,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [post0b cfront-inline kit III (agent-c 2026-10-17, run 104): ternary iterator step `(it.cur = it.next) != 0 ? (it.next = it.cur->next, it.cur->data) : 0` keeps the result in v0; write the "next" expression TWICE (init + loop step) when the target uses different temps for the two instances; Vec3 `operator-` = three differences into locals, then stores; whole-struct temp copies stay struct assignments but the LAST copy is field-by-field (lwc1/swc1); address-take stack params for per-iteration reloads; arg cursor `p = c->args, c->args = p + 1, *p` for store-before-load; `(u32)(f * 255.0f)` RGB packers (41A9C 99.25, 4E96C 99.5, 3B01C 96.3, 49B3C 95.7, 36A48 87.9; 46DC0 / 4771C / 3C7A4 EXACT)](#post0b-cfront-inline-kit-3)
 - [post0b/post kit V (agent-c 2026-10-17, run 106): BY-VALUE STRUCT PARAMS and struct returns explain many "caps": lh/lb from a param home +2/+3, every arg homed, `sw a1,4(sp)` outgoing-slot copy, an epilogue lw/sw word copy + `lw v0,<a0 home>` (Vec3 returned by value); a dead `sw` of a loaded pointer to the frame = address-taken local / member of an escaping local struct; alloc-or-given constructor shape; typed record view fixes the multi-index addu order; `if(1){p += K;}` keeps a held `addiu base,K`; per-site externs for each RMW access; float-copy-scan false positives (3695C/36E74/3E238/3593C/355A0/3EB3C/39A04/3D16C/476DC/1CFDC/1D0AC/1D870 EXACT)](#post0b-kit-v-run106) -- _check param homes and the epilogue before trusting a "register cap" note._
 - [post0b/bootup kit VI (agent-c 2026-10-17, run 107): UNSORTED compare chain = nested-!= goto chain (IDO sorts switch compares ascending; the flat goto ladder inverts the last test); an UNSIGNED selector stops the case constant CSE-ing with a later `a1 == 1`; a shared `end: return 0;` with two predecessors survives as a dead `or v0,zero,zero`; objdiff `functionRelocDiffs=none` scores a wrong in-TU `jal` 100 (only the ROM cmp catches it); by-value 4-byte ctor args through `.w` copies + escaped temps + per-site zero-page externs (bootup 55A0 51.9 -> 87.6); `(*p)++ >= K` vs `slti at,old,K`; byvalue-struct-scan.py `--chains` (35648/35370/356FC EXACT; 7D04 58 -> 96, 3E9C8 71 -> 99.6, 432BC 62 -> 96.6)](#nested-ne-goto-chain-35648) -- _scan `--chains` first on any dispatcher; a 1, 0, 2 order is never a switch._
+- [post0b/post1b kit VII (agent-g 2026-10-17, run 105): a loop stays ROLLED only with the counter initialised in the `for` header (`i = 0;` before it, do-while or a variable bound unroll it); `/ i` after the loop divides by the bound register; ONE local reused for unrelated pointers sets shared colours; dead `while (0)` placed AFTER a call or a copy picks the next web's colour; param typed as the list NODE type fixes `beq` operand order; comma-form `*(p8 = c, c = p8 + 1, p8) = v` fill store; hdr-before-magic store order; check expected for BAKED in-unit jals (0x6F620/0x7E970); beql + unreachable delay copy = call arm first; libultra -O1 functions in post1b take the 6A304 donor splice (5B070/5B23C/5BAF4/521F8/51520/52AE8/55FB4/60370/51694/5C548/66484/6A420 EXACT)](#post0b-kit-vii-run105) -- _when an old note says "unroll cap" or "structural cap", try the for-header init and the arm swap first._
 - [post0b kit IV (agent-c 2026-10-17, run 105): two global loads issue in source order only when their statements share ONE line (48184 EXACT); a value colours by VARIABLE identity, so park a stream cursor in the int local another arm uses (4E96C EXACT); every block-local pointer temp reserves a frame home (+8 frame from two `{ int *t = ...; }`); a function-scope temp reused for a later sub-object shares its spill slot; m2c `s32 *p + 0x2C` bodies scale every offset x4](#post0b-kit-iv-run105) -- _check frame size and spill-slot offsets against the target first; they name the local set._
 
 ## IDO-O0-STALE-NM-PERCENT-TABLE-REFLECTS-C-SHAPE
@@ -31915,4 +31916,55 @@ Keep field accesses o-relative and use the `dst = o + 0xF0` pointer only for the
 **Correction to kit V:** gl_func_00047E00's 96.6 is the build WITH the inner `for (k)` loop. Four explicit terms
 score 65.9 (re-measured this run). The residual is register choice only (t0/t3/a3 for the row pointer, end and the 16
 bound, against the build's a3/t2/a1).
+
+
+## post0b/post1b kit VII: rolled loops, shared-variable colours, baked in-unit jals (agent-g 2026-10-17, run 105) <a name="post0b-kit-vii-run105"></a>
+
+Twelve exacts (game_libs_func_0005C548, gl_func_00060370, 00051694, 00055FB4, 0005BAF4, 0005B070, 0005B23C, 000521F8,
+00051520, 00052AE8 in post0b; gl_func_00066484, 0006A420 in post1b) and NM gains on 533EC (11.7 -> 96.1), 5B90C (45.5
+-> 96.5), 600A4 (38.2 -> 95.4), 62194 (36.2 -> 95.7), 5534C / 558A0 (-> 97), 51ED8 (24.3 -> 95.0), 54D04 (0 -> 66.1),
+51F5C (81.9 -> 95.4), 50444 (53.1 -> 84.5), 60AD0 (82.0 -> 92.95), post1b 66264 (17.7 -> 93.8). Nearly all were m2c
+soups or wrong decodes; the typed rewrite did most of the work. Levers that were new:
+
+- **Rolled vs unrolled counted loop.** IDO -O2 unrolls a small counted loop (by 2 or 4) unless the counter is
+  initialised IN the `for` header. gl_func_000533EC (3-iteration colour average) stayed rolled with
+  `for (i = 0; i != 3; i++)`; an `i = 0;` statement before the loop, a do-while, or a variable bound `n = 3` all
+  unrolled it (the old note called this a cap). Dividing by `i` after the loop reuses the loop-bound register (div by
+  a register plus the break traps, as in the target). In gl_func_00050444 even the header form unrolled; only a
+  `volatile` start parameter (the target reloads it from its home after a call anyway) kept it rolled.
+- **Colours follow variables (again).** gl_func_00051520 keeps the stream pointer, the lookup result and a later arm
+  pointer all in v0: write ONE local `v` for all three. Its first web still took v1 until a dead
+  `while (0) { v = 0; p = 0; }` was placed right after the first call. In 5C548 a second dead loop AFTER the
+  `q = q0` copy (`while (0) { v = &v[j]; v = &v[k]; }`) moved two address webs ahead of a third. The placement of the
+  dead loop matters as much as its contents.
+- **Typed list param = `beq` operand order.** With a `char *` heap param and a cast in `p != (Blk *)h`, IDO put the
+  head register first; typing the param as the node type (`Blk *h`, no cast) gave the target's `beq v1,a0`
+  (5B070; also 5B90C's list walk).
+- **Comma-form store for an unrolled copy-then-store.** The target's fill loop did `or v1,v0; sb a0,0(v1); addiu
+  v0,1` in every unrolled copy. `*c++ = v`, `p8 = c; c = p8 + 1; *p8 = v` and friends scheduled the increment above
+  the first sb; `*(p8 = c, c = p8 + 1, p8) = 0xFF` matched (5B070, reused unchanged in 5B23C).
+- **Store order steers load scheduling.** In the split-block path, writing `r->hdr = b->hdr - n - 1` BEFORE
+  `r->magic = 0x87654321` let IDO hoist the `b->hdr` load above the magic store, as in the target.
+- **Baked in-unit jals hide in expected.** objdump of the expected .o shows `jal 6f620` / `jal 7e970` where a blank
+  import would show `jal 0`: the call is baked to an in-unit address, and the build must call a pinned
+  `gl_ref_000XXXXX` (5B070 / 5B23C -> gl_ref_0006F620; 6A420 -> new gl_ref_0007E970). Calling the visually similar
+  in-file function (62F08) scores 100 in objdiff but fails the ROM cmp.
+- **beql with an unreachable copy of its delay load is not a cap.** It is IDO's normal branch-likely fill when the
+  TAKEN side is the long block. gl_func_00066484 had the arms the wrong way round: `if (a != b) f(); else {...}`.
+- **No named locals for spilled sub-object addresses** (521F8): `o + 48` / `o + 52` written as expressions are CSE'd
+  and spilled to the target's slots; named `p`/`q` added frame homes. Default values copied by STRUCT assignment from
+  a global show as `lui/addiu base; lw 0(base)` (a plain int global folds the %lo into the lw).
+- **libultra -O1 functions in post1b** (homed pointer reloaded around every field access, unfilled delay slots): put
+  the libreultra C in an -O1 donor and splice it with `REPLACE_FUNC_BODY`, exactly as for 6A304 (gl_func_0006A420 =
+  osSpTaskLoad, first compile). An -O1 donor does NOT help when the target has filled delay slots (66AF0: the magic
+  constant is re-materialised per compare, but -O1 leaves the slots empty).
+- Smaller: a trailing alignment word after an exact body = all-zero `SUFFIX_BYTES_FORCE` (55FB4); a named
+  `m = e->mask` in the loop test flipped `and` operands (55FB4); by-value struct parameter (kit V) for the
+  `{int **pp; int w; ...}` command walkers 5534C / 558A0, where `s.w &= 0xFFFF` keeps the preceding `s.w = w` store
+  that `s.w = w & 0xFFFF` lets uopt delete.
+
+Open: 51F5C wants the 100/101/0 compare order with the case-0 block after case 101; the kit VI nested-!= chain inverted
+the last test into `bnez` here. 5AFD4's `(n + 0xFF000000) - 1` with the constant held in a register is still folded to
+`+ 0xFEFFFFFF` by every spelling tried (incl. `(0xFF << 24)`, reordered terms). 5534C/558A0/600A4/5B90C residuals are
+single colour or as1-delay choices.
 
