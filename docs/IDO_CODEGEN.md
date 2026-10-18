@@ -14401,6 +14401,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [post0b kit IV (agent-g 2026-10-17, run 104): float-copy-scan.py; struct assignment = int-word copy vs field = lwc1; row-typed `s16 (*v)[3]` gives base-first addu; dead `if (0)` constant store reorders constrained FP-constant colours; memory-homed param via if(0) address escape (or-copy at entry) vs dead param reassignment (stays in a0); `/ (f32)1024` keeps div.s; `(float)(u32)x` = IDO's bgez/2^32 pair; va_start = (sp+N+3)&~3; undefined symbol = ld SEGFAULT (550CC/54144/628EC/61C9C/622D8/6264C/62540/6275C/5FF14 EXACT)](#post0b-kit-4-run104) -- _Also: discarded-return tell (jal-delay sw of a pre-call value + post-call reload) re-confirmed on 61C9C (spilled value = a trailing prev pointer); store-then-call order (sb in the jal delay is BEFORE the call in program order)._
 - [post0b dispatcher kit II (agent-c 2026-10-17): memory-resident list iterator = ADDRESS-TAKEN scalars (dead `while (0) { pp = &cur; pp = &next; }`), not volatile; global `G |= 4` emits a lui/addiu address register, the target's separate `lui/lw` + `lui/sw` = two symbol names (or a call between); `*(float *)&msg.f` makes `&msg` a whole-function candidate, use an int/float union member; a switch with default-mapped HOLES keeps `sll` in the bound-check delay; jumptable entry 0 under an outer `if (x)` = `case 0: break;`; the default printf argument puts the selector in a1; IDO pulls small call-free goto targets inline after a compare chain (open) (40304 99.82, 40640 99.88, 3FC58 85.1, 415A4 76.4)](#post0b-dispatcher-kit-2-40304)
 - [post0b cfront-inline kit III (agent-c 2026-10-17, run 104): ternary iterator step `(it.cur = it.next) != 0 ? (it.next = it.cur->next, it.cur->data) : 0` keeps the result in v0; write the "next" expression TWICE (init + loop step) when the target uses different temps for the two instances; Vec3 `operator-` = three differences into locals, then stores; whole-struct temp copies stay struct assignments but the LAST copy is field-by-field (lwc1/swc1); address-take stack params for per-iteration reloads; arg cursor `p = c->args, c->args = p + 1, *p` for store-before-load; `(u32)(f * 255.0f)` RGB packers (41A9C 99.25, 4E96C 99.5, 3B01C 96.3, 49B3C 95.7, 36A48 87.9; 46DC0 / 4771C / 3C7A4 EXACT)](#post0b-cfront-inline-kit-3)
+- [post0b/post kit V (agent-c 2026-10-17, run 106): BY-VALUE STRUCT PARAMS and struct returns explain many "caps": lh/lb from a param home +2/+3, every arg homed, `sw a1,4(sp)` outgoing-slot copy, an epilogue lw/sw word copy + `lw v0,<a0 home>` (Vec3 returned by value); a dead `sw` of a loaded pointer to the frame = address-taken local / member of an escaping local struct; alloc-or-given constructor shape; typed record view fixes the multi-index addu order; `if(1){p += K;}` keeps a held `addiu base,K`; per-site externs for each RMW access; float-copy-scan false positives (3695C/36E74/3E238/3593C/355A0/3EB3C/39A04/3D16C/476DC/1CFDC/1D0AC/1D870 EXACT)](#post0b-kit-v-run106) -- _check param homes and the epilogue before trusting a "register cap" note._
 - [post0b kit IV (agent-c 2026-10-17, run 105): two global loads issue in source order only when their statements share ONE line (48184 EXACT); a value colours by VARIABLE identity, so park a stream cursor in the int local another arm uses (4E96C EXACT); every block-local pointer temp reserves a frame home (+8 frame from two `{ int *t = ...; }`); a function-scope temp reused for a later sub-object shares its spill slot; m2c `s32 *p + 0x2C` bodies scale every offset x4](#post0b-kit-iv-run105) -- _check frame size and spill-slot offsets against the target first; they name the local set._
 
 ## IDO-O0-STALE-NM-PERCENT-TABLE-REFLECTS-C-SHAPE
@@ -31781,3 +31782,62 @@ gl_func_000622D8, gl_func_0006264C, gl_func_00062540, gl_func_0006275C, gl_func_
   (60AD0, also the 61C9C/6264C decodes where the old C had the order reversed).
 - **One-shot `objdiff-cli diff` needs `-c functionRelocDiffs=none`** to agree with report.json on reloc'd USO
   functions; without it every jal/%hi/%lo against the blank expected words shows DIFF_ARG_MISMATCH even on exacts.
+
+
+## post0b/post kit V: by-value structs, escaping locals, constructors (agent-c 2026-10-17, run 106) <a name="post0b-kit-v-run106"></a>
+
+Twelve exacts and ~12 NM gains came from a handful of recurring source shapes. Older notes had listed them as caps.
+
+**Struct parameters passed BY VALUE.** IDO homes a struct parameter at entry (`sw aN,home(sp)`) and reads its members back
+from the home. That gives these tells:
+- `lh tX,46(sp)` / `lb a1,67(sp)` in a frame of 40/48 = a member at +2/+3 of a by-value struct (or a `char`
+  parameter passed on the stack). gl_func_0001CFDC / 0001D0AC (8-byte spec, `lh 46/50`), 0001D870 (12-byte), 000476DC
+  (two 4-byte `{short hi, lo}` structs, the call takes `.lo`), 00042684 (colour in `.lo`).
+- All of a1..a3 homed while one of them is never read as an int = that one is a struct. Its register is then free and
+  gets reused (gl_func_0003D16C puts `o` in a2).
+- `sw a1,4(sp)` in the function's OWN outgoing-arg area before a jal = passing a by-value struct on to the callee
+  (gl_func_0003EB3C; the old body faked it with `volatile int *p = &a1`).
+- A member read reloads from the home at each use (`lh t5,54(sp)` again before the call); a named local copy of the member
+  does not.
+
+**Struct RETURN.** An epilogue that copies a 12-byte local out word by word (`addiu t7,sp,36; lw t9,0(t7); lw t6,48(sp);
+sw t9,0(t6) ...`) and then does `lw v0,48(sp)` is `Vec3 f(...)` with a hidden a0 return buffer (gl_func_0003695C). The
+float-copy scan reports this as "int copy of floats". The build stores the fields with `swc1` through a `float *out`
+parameter. Retyping the fields does not help; change the signature.
+
+**Dead store of a loaded pointer** (`lw t6,20(a0); sw t6,68(sp)` with no reload): the local is address-taken, or it is a
+member of a local struct whose other member escapes to a call. `struct { Vec3 v; char pad[12]; int p; } s;` with `&s.v`
+passed reproduces it (gl_func_0003783C, 98.4). An unused `int **pp = &o;` does the same for a lone pointer
+(gl_func_000372D4, 98.1). Both need the frame sized with pads afterwards.
+
+**Alloc-or-given constructor.** `if (o == 0) { o = alloc(N); if (o == 0) goto out; } ... out: return o;`. Then match the
+store ORDER to the target's sw sequence: IDO keeps program order for stores through the same base. 36E74 (0x28, 0x4C=a2,
+floats, 0x00, 0x3C), 3E238, 39A04 (the 1.0f store before the next call), 3D16C (permute the last four stores). Placement-
+constructed sub-objects: `p = (S *)(o + K); if (p != 0 || (p = alloc(4)) != 0) p->w = 0;` gives the `addiu at,zero,-K;
+bne o,at` guard.
+
+**Typed record view fixes multi-index `addu` order.** `rec + attr*0x64 + sub*0x14 + 0x50` in byte arithmetic emits
+`addu t1,t0,v0` (index first). `&rec->grp[rec->attr].ent[sub]` through `typedef struct { char p[0x1B]; u8 attr; ...;
+Grp grp[2]; ... } Rec;` emits `addu t1,v0,t0`, and also fixed 1D870's "colouring" residual. Declare `e` before `rec`
+when the target spills `e` higher.
+
+**`if (1) { p += 6; }` keeps a held base address.** `a0[6] &= ~2` folds the offset into the `lw/sw`. A pointer advanced
+inside `if(1)` keeps the target's `addiu v0,a0,24; lw 0(v0); ... sw 0(v0)` (gl_func_0003E238). A bitfield gives
+`lbu/sb` instead, and so do volatile and an int-cast pointer.
+
+**Per-access externs.** In gl_func_0002F288 a counter at D+0x1C740 is loaded, stored and re-stored with three separate
+`lui`. Only three distinct externs (one per access) stop uopt from CSEing a held base (`lui a1,2; addiu a1,-32768;
+lw 18240(a1)`). Large offsets on an INDEXED access split as `lui 1; ori 0x8000` + `%lo(+0x4330)`. The target's folded
+`lui at,2; lw -15568(at)` is a separate (file-static) array symbol: `extern float D_x[]; D_x[idx]`.
+
+**Single-condition idioms.** `if ((r = o->type) == 1) return f(); return 0;` gives `lw v0` + `bnel v0,at` with `v0 = 0`
+in the delay (3593C). A vtable call spelled inline, `(*(int (**)(int))(*(char **)&D + 0x5C))(x)`, calls through t9.
+A named `f` pointer local puts it in v1.
+
+**Baked in-unit jals in game_libs_post.** `jal 31fb0` / `jal 3204c` (words 0x0C00C7EC / 0x0C00C813) are absolute in-unit
+targets. Pin them as `gl_ref_00031FB0 = 0x00031FB0;` in undefined_syms_auto.txt; ROM cmp passes. 1D870's note that
+its callee was game_libs_func_0003443C was wrong (same word as 1CFDC).
+
+**Also:** gl_func_00047E00 (4x4 matrix multiply) needs the inner `for (k)` loop written out. IDO unrolls it but keeps
+the `0 + x` reload; four explicit terms fold the zero (96.6).
+
