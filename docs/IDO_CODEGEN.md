@@ -14398,6 +14398,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [4x4 matrix family = the natural triple loop: an alias pointer on a LOCAL source keeps per-iteration row loads, a PARAM source gets the beql/bnel pipelined column loop; per-loop index letters move the IV-eliminated LR; every declared scalar takes a frame home in decl order; `x / 2` keeps div.s; `a = arg0` copy recolours the param (5E288 65.2 / 5E718 72.5 / 5E944 / 5EB4C / 5ED54 -> EXACT, agent-g 2026-10-17)](#matrix-triple-loop-family-5e288) -- _Plus: as1 bound-check delay fill is liveness through the jumptable UNION of arms (a0 read in any arm blocks the default steal); partial zdbug:6 coloring and the zdbug:1 itab LR -> frame-home map print even when uopt dies on the ecvt assertion._
 - [post0b quaternion/matrix textbook kit II (agent-g 2026-10-17): rewrite m2c soups as the TEXTBOOK formula (GG III slerp, Shoemake Qt_ToMatrix, q*v*conj(q), axis-align matrix); `(f32)var` no-op cast makes cfe evaluate a plain float variable leaf FIRST in a commutative op; ONE SOURCE LINE PER MATRIX ROW fixes a load-order + colour pair no per-line order can; a copy temp declared LAST re-colours one web (5C284/5CE68/5CCF4/5DDE4/5EF00 EXACT)](#post0b-quat-matrix-textbook-kit-2) -- _Also: a constant spelled `*(f32 *)(&D_00000000 + K)` outranks a `(f32)int` conversion; a pinned extern f32 symbol does not._
 - [post0b math kit III (agent-g 2026-10-17, run 103): guPerspectiveF / axis-angle quaternion / Euler-rotate / s16 unpack / 4x4 load EXACT; `(f32)1 * s` and `(f32)0` keep IDO from folding a multiply by 1.0/0.0; a dead `while (0) { x = 0; ... }` makes a loaded constant colour LAST; "bc1tl ceiling" = K&R blank; outer+inner for headers on ONE line fixed a pointer-bump order (5F534/5D474/5EAA4/62D70/5FC64)](#post0b-math-kit-3-run103) -- _Also: the q/a0 home-store + `or aN,a0` copy in 5C548/5D134 stayed out of reach; IDO 7.1 and 5.3 both need 5 case labels for a jumptable (func_80001ADC target has a 4-entry table)._
+- [post0b kit IV (agent-g 2026-10-17, run 104): float-copy-scan.py; struct assignment = int-word copy vs field = lwc1; row-typed `s16 (*v)[3]` gives base-first addu; dead `if (0)` constant store reorders constrained FP-constant colours; memory-homed param via if(0) address escape (or-copy at entry) vs dead param reassignment (stays in a0); `/ (f32)1024` keeps div.s; `(float)(u32)x` = IDO's bgez/2^32 pair; va_start = (sp+N+3)&~3; undefined symbol = ld SEGFAULT (550CC/54144/628EC/61C9C/622D8/6264C/62540/6275C/5FF14 EXACT)](#post0b-kit-4-run104) -- _Also: discarded-return tell (jal-delay sw of a pre-call value + post-call reload) re-confirmed on 61C9C (spilled value = a trailing prev pointer); store-then-call order (sb in the jal delay is BEFORE the call in program order)._
 - [post0b dispatcher kit II (agent-c 2026-10-17): memory-resident list iterator = ADDRESS-TAKEN scalars (dead `while (0) { pp = &cur; pp = &next; }`), not volatile; global `G |= 4` emits a lui/addiu address register, the target's separate `lui/lw` + `lui/sw` = two symbol names (or a call between); `*(float *)&msg.f` makes `&msg` a whole-function candidate, use an int/float union member; a switch with default-mapped HOLES keeps `sll` in the bound-check delay; jumptable entry 0 under an outer `if (x)` = `case 0: break;`; the default printf argument puts the selector in a1; IDO pulls small call-free goto targets inline after a compare chain (open) (40304 99.82, 40640 99.88, 3FC58 85.1, 415A4 76.4)](#post0b-dispatcher-kit-2-40304)
 - [post0b cfront-inline kit III (agent-c 2026-10-17, run 104): ternary iterator step `(it.cur = it.next) != 0 ? (it.next = it.cur->next, it.cur->data) : 0` keeps the result in v0; write the "next" expression TWICE (init + loop step) when the target uses different temps for the two instances; Vec3 `operator-` = three differences into locals, then stores; whole-struct temp copies stay struct assignments but the LAST copy is field-by-field (lwc1/swc1); address-take stack params for per-iteration reloads; arg cursor `p = c->args, c->args = p + 1, *p` for store-before-load; `(u32)(f * 255.0f)` RGB packers (41A9C 99.25, 4E96C 99.5, 3B01C 96.3, 49B3C 95.7, 36A48 87.9; 46DC0 / 4771C / 3C7A4 EXACT)](#post0b-cfront-inline-kit-3)
 - [post0b kit IV (agent-c 2026-10-17, run 105): two global loads issue in source order only when their statements share ONE line (48184 EXACT); a value colours by VARIABLE identity, so park a stream cursor in the int local another arm uses (4E96C EXACT); every block-local pointer temp reserves a frame home (+8 frame from two `{ int *t = ...; }`); a function-scope temp reused for a later sub-object shares its spill slot; m2c `s32 *p + 0x2C` bodies scale every offset x4](#post0b-kit-iv-run105) -- _check frame size and spill-slot offsets against the target first; they name the local set._
@@ -31733,3 +31734,50 @@ to a compare chain; 5 labels give a table. func_80001ADC's target dispatches 4 r
   unused `int pad;` scalars are dropped but unused arrays/structs keep their space.
 - **Float 0 in a GPR arg.** gl_func_00049B3C's `addiu a3,zero,0` was a `0.0f` arg to a prototyped
   `(char *, char *, char *, float, float, int)` callee (see [#feedback-ido-knr-float-call](#feedback-ido-knr-float-call)).
+
+## post0b kit IV (agent-g 2026-10-17, run 104) <a name="post0b-kit-4-run104"></a>
+
+Nine post0b exacts (gl_func_000550CC, game_libs_func_00054144, gl_func_000628EC, gl_func_00061C9C,
+gl_func_000622D8, gl_func_0006264C, gl_func_00062540, gl_func_0006275C, gl_func_0005FF14) and NM gains on
+5C548 (92.7 -> 99.18), 5D134 (71.2 -> 76.8), 61B30 (41.6 -> 65.9), 60AD0 (75.9 -> 82.0).
+
+- **Float-as-int copy scan.** `scripts/float-copy-scan.py` (1080 repo) counts lw/sw/lwc1/swc1 per NM function in
+  build/non_matching vs expected/ and pairs them by non-$sp field offset (`offm` column). `dir 1` = the C copies a
+  float through an int lvalue (retype to f32); `dir -1` = the C uses f32 where the original moved raw words. A pair
+  count with `offm 0` is usually a spill/regalloc coincidence (5F984, AC20), not a float copy. After run 103 the
+  remaining genuine hits in agent-g units were few; 550CC was the big one.
+- **Struct assignment is the int-word copy.** 550CC: `v = *(V3 *)(self + 0xDC)` and `v = *p` emit lw/sw word blocks
+  even with f32 members; the field-wise `p->x = v.x` moves emit lwc1/swc1. Spell whole-vector moves as struct
+  assignment and per-field moves as field copies, and pass raw tail args as `*(s32 *)` (lw, no lwc1).
+- **Row-typed array gives a base-first addu.** 54144 `&verts[idx]` (6-byte struct) emits `addu v0,idx*6,verts` in
+  every flat spelling (struct IXA, ptr+idx, char/u32 arithmetic, commuted, comma/cast index). Declaring the field
+  `s16 (*verts)[3]` and taking the ROW `s16 *v = m->verts[idx]` (array-to-pointer decay of a row IXA) emits
+  `addu v0,verts,idx*6`. Same family as the `typedef int Row[10]` rule in
+  [#addu-operand-order-is-ucode-shape-not-allocator--array-ixa-emits-base-first-flat-ptr-arith-emits-deeper-operand-first-timproc-twins-cracked](#addu-operand-order-is-ucode-shape-not-allocator--array-ixa-emits-base-first-flat-ptr-arith-emits-deeper-operand-first-timproc-twins-cracked).
+- **FP constant pair colours = constrained priority, flipped by a dead `if (0)` store.** 628EC stores 0.0f x12 and
+  1.0f x8; the target puts 0.0 in f0 and 1.0 in f2, ours the reverse. In uoptlist the two constants are
+  CONSTRAINED candidates coloured in priority order (the first coloured gets f2). One dead
+  `if (0) { *(f32 *)(self + 0xF4) = 1.0f; }` just before the first 0.0f store swaps them. `while (0)` boosts,
+  named locals, casts and double literals had no effect (run 102 probes).
+- **Memory-homed param vs register param.** The target `sw a0,0(sp); ... or a2,a0,zero` (5C548) = a param that is
+  memory-resident (home store) and loaded once into a register copy at entry (the load forwards to a move). Spell it
+  as `f32 *q = q0; if (0) { f(&q0); }`. The OPPOSITE problem (5D134: our build homed q and copied it to a1, the target
+  keeps q in a0) was fixed by a dead `while (0) { q = &q[i]; }` reassignment of the param. In both, dead `while (0)`
+  appearances placed before the copy set uopt's first-appearance colour order (5C548: i*4 v0, j v1, k a0, q a2).
+- **`/ (f32)1024` keeps div.s.** IDO strength-reduces `x / 1024.0f` to `x * 2^-10` (`lui 0x3a80; mul.s`). The
+  int-literal cast `/ (f32)1024` is not folded and gives `lui 0x4480; div.s`, the same cfe rule as `(f32)1 * s`.
+  `(float)(u32)x` produces IDO's `cvt.s.w; bgez; add.s 2^32` pair itself, so don't hand-write the raw < 0 branch.
+- **va_start tell.** A function homing all four arg regs and passing `(sp + FRAME + 7) & ~3` to a callee is a
+  varargs wrapper: the value is `((int)&fmt + sizeof(fmt) + 3) & ~3` (61B30). Its held base needed the int-cast
+  unfold (`int bi = (int)arr; base = (char *)bi;`) or every store folds to a lui-at macro.
+- **Undefined symbol makes ld SEGFAULT.** In this toolchain `mips-linux-gnu-ld` prints `ld: ` and segfaults (no
+  "undefined reference" text) when an unwrapped function references a symbol missing from undefined_syms_auto.txt
+  (6264C's `D_sym_6264C`, which was harmless while the function was NM-only). Check every extern of a function you
+  unwrap; `rm build/tenshoe.elf` after editing undefined_syms_auto.txt.
+- **Baked jals to the stream readers.** 622D8/6275C called 0x7644C/0x76488 (`0C01D913`/`0C01D922`): use the existing
+  `gl_ref_0007644C` / `gl_ref_00076488` pins with a plain extern call. The old fn-ptr casts gave lui/ori/jalr AND had
+  the wrong address (0x764C4).
+- **Store-then-call.** A flush `sb zero,0(tN)` in the delay of a `jal` runs BEFORE the call: write the store first
+  (60AD0, also the 61C9C/6264C decodes where the old C had the order reversed).
+- **One-shot `objdiff-cli diff` needs `-c functionRelocDiffs=none`** to agree with report.json on reloc'd USO
+  functions; without it every jal/%hi/%lo against the blank expected words shows DIFF_ARG_MISMATCH even on exacts.
