@@ -14410,6 +14410,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [post0b kit X (agent-c 2026-10-20, run 110): libultra gbi macros expanded VERBATIM reproduce the MIN/MAX clamp ladders (gSPScisTextureRectangle in 4BAF4, 71.3 -> 90.2); display-list appends written as cfront inlines read their ctx before the source call; MAX/MIN triples whose target shows sll/sra after every lh are int operands with an (s16) cast on EACH arm; declaration order rebuilds the whole home map (3BE1C: 10 homes above the Vec3, 13 between it and the memory cell pair); a zero compare of a difference `(a - b) < 0.0f` is folded to `c.lt.s a,b` unless the variable is escaped; one symbol for a table's start and end address turns the walk into an offset counter (split them); `i * 12` can come out as multu by a held 12 where the target shifts; eps gates that the target hoists into callee-saved FP registers are literals, not memory externs (493AC 72.4 -> 86.9, 3B2EC 60.5 -> 85.2, 3B9C0 67.0 -> 72.3, 3A58C 66.4 -> 68.3)](#post0b-kit-x-run110) -- _m2c-soup bodies in post0b gave +5..+25 per function from a typed rewrite; the remaining caps are constants/addresses held in s-regs that the target rematerializes after calls._
 - [kit X (agent-g 2026-10-20, run 108): void-callee-scan.py + five exacts. Discarded-return calls in a row must ALL be void (mgrproc 1614); the 0x6A8 constructor family (timproc_b3 0994, titproc C54, arcproc A3C, ex-"regalloc caps" at 87-97) is the E04 nested inlined-ctor skeleton + a void alias for the registration call; an empty `if (1) {}` between a pointer def and its `lh +0x20` def gives the target's pointer=v1/value=v0 (game_libs 1818), but only when each site has its OWN names; a void*-typed mirror store of a re-read field saves a t-ring slot; write `x * 30`, not `((x << 4) - x) * 2`; distinct stream-word symbol vs `&D_00000000` table decides which base gets CSE'd into s0](#kit-x-run108) -- _first thing to try on any constructor with alloc(0x6A8): paste the E04 / 0994 skeleton and diff._
 - [HOLD vs REMATERIALISE across a call is a cost compare in globalcolor: a fresh callee-saved register costs firstUseCost = 0.25 x (number of basic blocks), clamped 4..60; a caller-saved register costs freq per call crossing (x2 when the value is USED in the call's own BB); caller wins ties. Emission-free `if (1) { }` blocks raise the BB count and flip held constants / &locals / params from s-regs or f20+ to caller-saved registers with a post-call reload (3A58C 68.3 -> 75.1, 3B2EC 85.2 -> 88.4, 454C4 255.0f f22 -> f0, gl_func_00038108 51.0 -> EXACT, bootup 6254 67.3 -> EXACT, 74E8 +17, E800 +14; agent-c 2026-10-20, run 111)](#hold-vs-remat-firstusecost-run111) -- _Placement matters: put the adders where as1 has nothing to schedule across (before a call-free tail, at `return`). Uses inside the call BB double the caller cost, so two constants in one loop can split f0 (remat) / f20 (held) by moving a `do {` boundary. Diagnose with zdbug:5 (LR liveunits + reaching BBs) from a private ecvt-patched uopt._
+- [kit XIII (agent-c 2026-10-20, run 113): split OR constant burns a ring slot (`| 1 | 0x8000` vs `| 0x8001`, bootup 3B78 EXACT); `if (1) {}` after a list-head load burns two (430D8 EXACT); delay-slot result store = FIRST call's value (4DDF8 EXACT); NM objdiff scores of UNTOUCHED functions move with edits elsewhere in the unit (identical text+relocs) -- judge a batch by the unit sum; scripts/lever-sweep.py --void/--blocks; every declared local (incl. sibling-block ones) homes a word, u8s pack](#kit-xiii-agent-c-run113) -- _Ring-burn levers to try when every temp is one or two t-regs early: an unfolded constant split in an OR chain, an emission-free block after the first load._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
@@ -32459,3 +32460,76 @@ uninitialised local gets a home and a reload instead. gl_func_00039E24: the targ
 materialises `&D_b` into a2 and copies it to a0 for the call (one CSE candidate shared with
 the post-call `lwc1 0x128(a2)` loads); ours builds a0 directly. gl_func_0003E9C8: each
 by-value key copy spends a temp (no copies: t1, two named copies: t3, target: t4).
+
+## kit XIII (agent-c 2026-10-20, run 113): split-OR ring burn, list-head block burn, delay-slot result decode, cross-function NM scoring, lever-sweep.py <a name="kit-xiii-agent-c-run113"></a>
+
+**Split OR constant burns one ugen ring slot (bootup func_00003B78 EXACT).** After the
+3734/38C0 levers (void alias for the reg call, merged $s0 web, array-typed config base, four
+volatile ghost pads) the only residual was every temp from the flag chain onward numbered one
+ring slot early (`lbu t7 / ori t8 / or t9 / or t0` vs target `t8/t9/t0/t1`). Spelling the
+flag constant `(c | 1 | 0x8000) | 0x10000 | 0x40000` instead of `(c | 0x8001) | ...` gives
+identical instructions but the folded intermediate consumes one ring register, and the
+whole function matched. `(c | 0x8000 | 1)` and `((c | 1) | 0x8000)` also work;
+`c | 0x8001 | 0x50000` and `| (0x10000 | 0x40000)` do not. Same family as the
+`(unsigned char)` switch-selector burn (#uchar-switch-selector-ring-burn-jumptable-donor-44b78):
+a constant the front end folds late still costs a ring slot.
+
+**`if (1) {}` after the list-head load burns two ring slots (game_libs_func_000430D8 EXACT).**
+The 2026-09-09 NM was 107/107 by mnemonic with 45 words off by t-register only (target two
+slots later). `scripts/lever-sweep.py --blocks` found that one emission-free block right after
+`p->next = <list head>;` closes it. Why exactly two slots is not understood; the sweep is the
+way to find these.
+
+**A `sw v0,X(s0)` in the delay slot of the NEXT jal stores the FIRST call's result
+(gl_func_0004DDF8 EXACT).** The old decode read `call(n); o->2C = o->30 = call(n);`; the
+target is `o->2C = call(n); o->30 = call(n);` -- the delay-slot store runs before the second
+call. The wrong decode also pushed the shared `a1*4` CSE spill from 0x24 to 0x20, which looked
+like an allocator cap.
+
+**NM-build objdiff scores move for functions you did not touch.** In game_libs_post0b,
+gl_func_0004D688 read 74.61, 75.03, 75.19, 72.50 or 72.92 depending on which `if (1) {}`
+adders sat in OTHER functions (3B01C, 40070, 42938, 46050 ...), while its NM .o text and
+relocations stayed byte-identical (`objdump -dr` over the symbol, diffed). Blank lines change
+nothing. So it is an objdiff scoring artifact of the shared NM object, not codegen. Practical
+rule: after applying several lever wins to one unit, rebuild that unit's NM .o and compare the
+SUM of fuzzy bytes over the unit, not per-function deltas; drop a hunk only if its removal
+raises the sum; and before chasing a "regression" in an untouched function, diff its
+`objdump -dr` first.
+
+**`scripts/lever-sweep.py --void / --blocks`** (committed run 113) runs the two cheap levers
+on any NM function in-tree: it edits the real source, rebuilds only that unit's
+build/non_matching .o (with the post0b text clip disabled so shrinking variants still build),
+scores with `objdiff-cli diff -c functionRelocDiffs=none` (the report's number), always
+restores the source, and prints or writes (`--patch-dir`) the best variant as a git-apply
+patch. `--from-report 90 --units a,b` batches; unrelated units can run in parallel from
+copies of the worktree (tar the tree minus episodes/.git into scratch). Run-113 batch over
+130 NM functions >= 90%: 35 functions gained (+37.4 fuzzy points, every applied win an
+`if (1) {}`), one exact (430D8); on the five big partials it added +2.6 (bootup 6808), +2.4
+(46050), +0.8 (42938), +0.2 (E68). The void
+mode skips function-like macros (`DISPATCH_X(...)` would otherwise be renamed) and callees
+already declared void, and copies the callee's prototype params into the alias so float
+promotion does not change.
+
+**Every declared local homes a frame word -- including block-scoped ones in sibling
+blocks; byte-typed locals pack.** gl_func_000454C4 (frame 0xB8 vs target 0x58): four unused
+`int` declarations add 16 bytes, two sibling blocks `{int a;} {int b;}` add 8 (no slot
+sharing), eight `u8` locals add 8. So the original had about eight declared words in total
+(two of them the memory-homed `{cur,next}` iterator at 0x3C/0x40), and the gbi-style
+display-list appends cannot each have had a block-local pointer. Rewriting with eight
+declarations reaches frame 0x58, but the expression forms needed to drop the other names
+cost more than the frame gains (60.5 vs 61.7), so the NM was left as is.
+
+**gl_func_0003B1AC is not a boundary twin of game_libs_func_0003B1A8; it is the same
+function (open).** twin-finder scored 3B1AC <- 3B1A8 at 0.994 because 3B1A8's .s IS 3B1AC's
+.s plus the head word: the function really starts at 0x3B1A8 with `lw v1,0x8C(a0)` hoisted
+above `addiu sp`, and the report credits 3B1A8 (324 B) at 100 through the folded INCLUDE_ASM
+while 3B1AC (320 B) reads 0. But gl_func_000276E4 jals 0x3B1AC directly (baked `0x0C00EC6B`),
+skipping the v1 load, so a C body for 3B1A8 alone leaves the mid-function entry for 276E4 to
+resolve (an absolute undefined_syms pin) and needs the expected/ symbols re-bounded. The body
+is a matrix-apply loop: `p = e->v` (word copy), `q[3]` float array (so the stores survive)
+filled from p, x/y/z temps of `m[0..2] * q + m[4..6] * q + m[8..10] * q + m[12..14]`, written
+back to q, then `v->x += q[0]` etc. Best probe 42 diff lines of 162 (frame 0x48 and every
+slot exact with `float q[3]; int pad2[2]; V3 p; int pad1[2];`); the residual is the operand
+order of the final `+ m[12]` / `+ m[14]` adds and a forwarded q[0] (target reloads it).
+Probe C in scratch only; nothing committed.
+
