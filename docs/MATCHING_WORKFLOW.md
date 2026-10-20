@@ -286,6 +286,7 @@ explicit shared blocks (goto a common label), not regeneration.
 - [Low-scoring big NM wraps: diff MNEMONIC-CLASS COUNTS target vs build before grinding regalloc. Extra cvt.d.s/sdc1 = K&R float args (use a prototyped blank alias), extra cvt.s.w/trunc = s32 read of an f32 field, jr mismatch = switch vs if-chain or a misread jump table. Five wraps +6..+75 points in one run; objdiff fuzzy ignores sp offsets but scores jal symbol names (2026-10-16 agent-c). lw/sw surplus vs lwc1/swc1 deficit = float struct/member copies written as word copies (7C1C +8.2, 8FC8 +3.9, agent-g 2026-10-17)](#decode-error-mnemonic-scan-c100)
 - [post0b NM clip: a function that GROWS (stub -> real decode) does not fail the clip, it silently cuts game_libs_func_00062F08 off the end (objdiff then reports "Symbol data out of bounds" or a sentinel drop). Check `nm` for 62F08's offset after every post0b NM build, re-probe, and score with a clip-free rebuild (run 104, agent-c)](#post0b-clip-grow-silent-c104)
 - [scripts/twin-finder.py: fuzzy twin search (every non-exact fn vs every exact fn, opcode+register tokens, reloc/lui-derived immediates masked, difflib, len +-10%) + non-exact twin clusters. Run it FIRST each session; 10 exacts in run 110 from its top rows. A near-1.0 twin whose length is off by 1-3 words = a splat boundary error (hoisted const head left in the predecessor, shared-exit tail on the successor's head): fix the .s boundary, re-bound the expected/ symbols, then port (agent-g 2026-10-20)](#twin-finder-run110)
+- [Kernel libultra "handwritten region" / "alt-entry shared body, no honest C" notes can be ONE C function split across .s files or even across UNITS: jal'd mid-body addresses stay as absolute undefined_syms entries, so merge the .s, port the game_libs twin, regenerate expected/ for both units. __osLeoInterrupt+__osLeoAbnormalResume (3D40/43E4, 1932 B) and osEPiRawStartDma (52F0+5350 across kernel_005_b/006) EXACT; KEY: every kernel jal target sits 0x400 ABOVE our symbol numbering (the kernel runs at 0x80000400), so "jal'd alt entries" func_X are really calls to func_(X-0x400). 5 more split fns EXACT this way (4B8, 79F4 __rmonStopThread, 8430 __rmonClearBreak) + 9EC NM 99.94 (agent-g 2026-10-20, run 111)](#kernel-split-libultra-run111)
 
 
 ---
@@ -12946,4 +12947,70 @@ Leads left in the list: kernel func_80003D40 (1932 B, 0.936) is __osLeoInterrupt
 IDO 5.3 donor gl_func_0006B0FC, +58 words) with jal'd alabels 3E54/3E64/3FF0/4030 inside -- C needs those as absolute
 undefined_syms entries; kernel func_80005350 is the tail of osEPiRawStartDma (func_800052F0 + 5350 = gl_func_0006F8A4's body)
 but other code jals 0x80005350/53D0/5400, so it is not a simple merge.
+
+## Kernel libultra split across .s files / units: merge, port the game_libs twin, regenerate expected (agent-g 2026-10-20, run 111) <a name="kernel-split-libultra-run111"></a>
+
+**The root cause: kernel jal targets are 0x400 above our numbering.** The kernel image is loaded at 0x80000400 (ROM 0x1000), but
+splat maps it at 0x80000000. Every `jal` word therefore encodes "our address + 0x400". The jal-only symbols that were exported
+as absolute "alt entries" in undefined_syms_auto.txt name the wrong place: `jal func_800047E4` is __osLeoAbnormalResume at
+our 0x43E4, `jal func_800048CC` is __osLeoResume at our 0x44CC, `jal func_800056F0` is osEPiRawStartDma at our 0x52F0,
+`jal func_80007A98` is __rmonGetThreadStatus at our 0x7698, and `jal func_80000568` is the string compare func_80000168.
+Every "this .s has no prologue / no jr ra and other code jals into its middle" verdict in the kernel needs re-checking with
+this in mind. The bytes are fine as they are: keep the absolute entries so the jal words still assemble, and don't rename the
+whole kernel.
+
+Kernel functions recovered this way in run 111. They all matched quickly once merged; no new levers were needed beyond the
+ones listed:
+- **func_800004B8** (+ func_80000568.s "shared epilogue stub", -O2): `s32 i = 0;` at the declaration with a while loop, and
+  the entry address as `(char *)tab + i * 20` (tab is the first addu operand). expected/: the text was unchanged (the
+  branches into the 568 piece were resolved in-object), so a symtab patch was enough: 4B8 size 0xB0 -> 0xD4, 568 made UND.
+- **func_800079F4 = __rmonStopThread** (head at the end of kernel_034 + body func_80007A98 at the head of kernel_018_g,
+  -O1): its shape copies its exact sibling __rmonGetGRegisters. The reply struct must be 0x4C.
+- **func_80008430 = __rmonClearBreak** (8430+alabel 8454 in kernel_021 + 8498/84AC/84D0 at the head of kernel_022, -O1):
+  written from the libultra rmonbrk.c shape (register request/whichBreak), it matched on the first compile.
+- **func_800009EC** (+A88+A98, -O2 USO loader): merged, NM 99.94. The residual is the order of two preheader luis.
+
+Remaining kernel candidates with the same signature (no prologue or no epilogue, not COP0/handwritten), unchecked: func_80000000
+(0xB0), func_800005DC.s (its prologue is at 0x5D8, alabels 060C/0660), func_80008054 (12%), func_800073F8 (8%, __rmonSendReply
+itself), func_80004F50 / func_80005000, func_80002DF0, func_800017BC / 18F0 / 21A4 / 235C (pro=0 with 2+ jr; probably leaves,
+check first).
+
+The kernel carries a second libultra copy whose functions are mostly exact in game_libs (`game_libs_ido53_*` / `_o1_*`
+donors). Two old "cannot be C" verdicts were wrong for the same reason: one compiled function had been cut into pieces whose
+middles other code jal's.
+
+- **func_80003D40.s** ("handwritten PI-DMA chain", 0x78C, with `alabel` entries 3E0C/3E54/3E64/3FF0/4030 from 2026-08-22
+  fragment merges) = `__osLeoInterrupt` [0x3D40,0x43E4) + static `__osLeoAbnormalResume` [0x43E4,0x44CC), both IDO 7.1 -O1.
+  Every local is sp-resident at -O1; the only full prologue was 3D40's, which is what made the pieces look like
+  register-convention entries.
+- **func_800052F0 + func_80005350** = `osEPiRawStartDma`, split across units: a 0x60 "entry block" at the end of
+  kernel_005_b and the body at the head of kernel_006 (the old note proved 5350/53D0/5400/54C0 were mid-body).
+
+The jal'd mid-body addresses do not need to be symbols in an object. They resolve as absolute `undefined_syms_auto.txt`
+entries (most already existed; add any missing one, e.g. `func_80004030`). So: merge the .s pieces into one function (or
+split off the static sibling at its prologue), drop the alabels, and port the twin's C verbatim.
+
+Levers that differed from the game_libs donors:
+- PI/LEO hardware registers as **raw volatile literals** (`*(volatile u32 *)0xA4600010`). `extern volatile u32
+  D_A4600010` lets IDO share one `lui` across reads and hoist the first PI_STATUS load above the argument homing stores or the
+  blockInfo store. That hoist was the whole residual of the old kernel 52F0 NM. Splat's `D_A46000xx` / `D_A50005xx` %hi/%lo
+  are guesses, so de-symbolize them in the .s (the bytes are the same). Conversely, a literal `lui a0,(0x80020000 >> 16)` /
+  `-0x69BC(a0)` pair that is really `%hi/%lo(__osDiskHandle)` must be RE-symbolized. The C uses the symbol there, and the
+  target schedules the `lui` like a symbol load.
+- leointerrupt's `stat` is `volatile` in this copy (stored 0 up front, reloaded at every bit test). `bm_stat` stays plain.
+
+Moving code between units: the objects' .text alignment pads. kernel_005_b's C (0x224) is padded to 0x230 by IDO itself, so
+no SUFFIX is needed and the merged .s ends at the `jr` delay slot. kernel_006 lost 0x1D0 bytes, so its TRUNCATE_TEXT went
+from 0x500 to 0x330. Expected objects:
+- for a unit whose .s changed, rebuild it from a temporary copy of the .c with INCLUDE_ASM for the asm-only functions (run
+  the asm_processor / cc / post-process trio by hand into the scratchpad; do not let the Makefile's SUFFIX injection run).
+- for the unit that only lost its head, the new normal build IS the old expected minus the first N bytes. Verify .text
+  equality and shifted relocs (`objdump -r` offsets minus N) before copying.
+
+Finding more: twin-finder.py anchors at function starts, so it misses a twin that starts inside a non-exact fragment. A
+window scan helps here. For every non-exact function, take anchors at its start, at every internal `addiu sp,sp,-N` (minus
+0..3 words), and at the absolute (A) symbols in the linked ELF. Then compare a window of each exact donor's length (structural
+tokens only, so raw ROM words work without relocs). Both finds above score 0.955-0.97 this way. In run 111 the scan found
+nothing else in the kernel or agent-g units: the other hits were windows inside already-exact functions, or the
+timproc_uso_b5 2B74 constructor's head versus gl_func_0000135C (same alloc-cascade family, not a boundary error).
 
