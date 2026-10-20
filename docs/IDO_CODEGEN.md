@@ -579,6 +579,7 @@ lambda Auto-generated from per-memo notes; content may be rough on first pass �
 - [IDO -O0 respects `register` for $s0 and inline-callable exprs avoid stack spills](#feedback-ido-o0-register-and-inline) — At -O0, IDO normally assigns every local to a stack slot and reloads on every use.
 - [IDO -O0 with two `register` locals — declaration order flips which gets $a2 vs $a3 (later-declared gets HIGHER-numbered $a-reg)](#feedback-ido-o0-register-decl-order-flips-a-alloc) — When matching an -O0 function that uses two `register` locals filling the unused $a-slots (e.g., $a2 and $a3 when only a0/a1 are real args), the order you DECLARE them controls which gets which slot.
 - [-O0 named-local slots are DECL-ORDER top-down and `register` locals RESERVE slots in the same sequence — declare the home-slot local FIRST; pair with plain-home + `register`-alias object shape (8C3C 92/92 EXACT 2026-07-03)](#ido-o0-decl-order-slot-lever-register-reserve-plain-home-alias) — _An -O0 slot residual ("temp-pool artifact, not C-steerable") can be a decl-order effect: `register` vars consume slot positions, so a plain local declared after them lands N slots lower — permute the FULL decl list. And a target that sw-homes a ctor result + lw-reloads into s1 + returns-from-home = TWO variables (plain `obj` declared first + `register` alias), not one. Plus: distinct base-0 alias extern busts -O0 same-call &D arg CSE (restores dual lui/addiu + temp-reg phase). Cracked gl_func_00008C3C (exact) + 8FFC/9100/8E48 (to the dead-double-b toolchain gap)._
+- [-O1 frame slots = DECLARATION order top-down, and `register` locals take a ghost slot at their declaration position (the -O1 twin of the -O0 rule above): a -O1 "frame slot-ordering cap" is a decl-order fix, `register` ones included -- rmon 8E98/8FF4 EXACT with `register msg` first, the reply struct, the spilled pointers, `register i` LAST (agent-g 2026-10-20, run 112)](#ido-o1-decl-order-register-ghost-run112) -- _Adding pads changes the frame instead of moving the slots; only moving the `register` declaration does. Also: -O1 keeps a loaded value for the then-arm of `if (x->h) y = x->h;` only if x is a plain (non-volatile) local._
 - [IDO -O0 reserves a 4-byte backup stack slot for EACH `register`-typed local — adds frame overhead beyond what target needs](#feedback-ido-o0-register-locals-reserve-backup-stack-slots) — _At -O0, IDO honors `register T *p` hints to save callee-save s-regs (s0/s1/s2/s3) — but ALSO reserves a 4-byte backup stack slot per register-typed local.
 - [IDO register keyword for $s0 allocation](#feedback-ido-register) — IDO respects 'register' as a strong hint — required to match libultra interrupt-bracket functions
 - [IDO `register` keyword promotes to $s-class but doesn't pin the $s-number](#feedback-ido-register-promotes-class-not-number) — _Adding `register T x;` on locals forces IDO to allocate them to callee-saved $s-regs instead of caller-saved $t/spills.
@@ -32533,3 +32534,12 @@ slot exact with `float q[3]; int pad2[2]; V3 p; int pad1[2];`); the residual is 
 order of the final `+ m[12]` / `+ m[14]` adds and a forwarded q[0] (target reloads it).
 Probe C in scratch only; nothing committed.
 
+## -O1 frame slots follow declaration order, `register` locals included (agent-g 2026-10-20, run 112) <a name="ido-o1-decl-order-register-ghost-run112"></a>
+
+At -O1 every non-register local is memory-resident. Locals are laid out top-down in declaration order, and a `register` local also
+reserves a 4-byte slot at its declaration position, even though it lives in an s-register and nothing is ever stored there. The kernel
+rmon pair func_80008E98 / func_80008FF4 (filed as "allocator slot-ordering caps") matched once the declarations were
+`register s32 *msg = arg0; <reply struct>; void *ctx; s64 *src; register s32 i;`. With `register i` second, every memory slot sits 4
+bytes lower, and an extra pad grows the frame instead of shifting the slots. Same mechanism as the -O0 rule
+(#ido-o0-decl-order-slot-lever-register-reserve-plain-home-alias). Details and the other run-112 kernel fixes:
+docs/MATCHING_WORKFLOW.md#kernel-plain-loops-run112.

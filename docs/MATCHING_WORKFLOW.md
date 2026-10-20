@@ -287,6 +287,7 @@ explicit shared blocks (goto a common label), not regeneration.
 - [post0b NM clip: a function that GROWS (stub -> real decode) does not fail the clip, it silently cuts game_libs_func_00062F08 off the end (objdiff then reports "Symbol data out of bounds" or a sentinel drop). Check `nm` for 62F08's offset after every post0b NM build, re-probe, and score with a clip-free rebuild (run 104, agent-c)](#post0b-clip-grow-silent-c104)
 - [scripts/twin-finder.py: fuzzy twin search (every non-exact fn vs every exact fn, opcode+register tokens, reloc/lui-derived immediates masked, difflib, len +-10%) + non-exact twin clusters. Run it FIRST each session; 10 exacts in run 110 from its top rows. A near-1.0 twin whose length is off by 1-3 words = a splat boundary error (hoisted const head left in the predecessor, shared-exit tail on the successor's head): fix the .s boundary, re-bound the expected/ symbols, then port (agent-g 2026-10-20)](#twin-finder-run110)
 - [Kernel libultra "handwritten region" / "alt-entry shared body, no honest C" notes can be ONE C function split across .s files or even across UNITS: jal'd mid-body addresses stay as absolute undefined_syms entries, so merge the .s, port the game_libs twin, regenerate expected/ for both units. __osLeoInterrupt+__osLeoAbnormalResume (3D40/43E4, 1932 B) and osEPiRawStartDma (52F0+5350 across kernel_005_b/006) EXACT; KEY: every kernel jal target sits 0x400 ABOVE our symbol numbering (the kernel runs at 0x80000400), so "jal'd alt entries" func_X are really calls to func_(X-0x400). 5 more split fns EXACT this way (4B8, 79F4 __rmonStopThread, 8430 __rmonClearBreak) + 9EC NM 99.94 (agent-g 2026-10-20, run 111)](#kernel-split-libultra-run111)
+- [Kernel run 112: most kernel_000 / rmon "coloring caps" were HAND TRANSCRIPTIONS of IDO's own output (manual 4x unrolls, peeled "singleton" checks, pointer walks with `register` invariants, fn-ptr casts to "shared stubs"). Write the loop IDO started from: plain `for (i = 0; i < N; i++)` over the table (typed struct array or char arithmetic), direct calls to the +0x400 absolute names, then re-symbolize the .s (literal lui/addiu -> %hi/%lo(sym+off), branches to absolute func_ names -> local labels) and regenerate expected/ by swapping the new C back to INCLUDE_ASM. 17 kernel exacts (agent-g 2026-10-20, run 112)](#kernel-plain-loops-run112) -- _Tells: a "three singleton slot checks then a 4-way walk" body = one loop over 135 slots (135 % 4 = 3 peeled); an odd-iteration peel + x2 body = one loop; `jalr` through a cast where the target has `jal` = the cast is wrong. Frame holes: an unused local array of the hole's size. `return G = K;` = address in v1 + value in v0 on an early-error return._
 
 
 ---
@@ -13014,3 +13015,58 @@ tokens only, so raw ROM words work without relocs). Both finds above score 0.955
 nothing else in the kernel or agent-g units: the other hits were windows inside already-exact functions, or the
 timproc_uso_b5 2B74 constructor's head versus gl_func_0000135C (same alloc-cascade family, not a boundary error).
 
+## Kernel run 112: rewrite hand-transcribed IDO output as the loops IDO started from (agent-g 2026-10-20) <a name="kernel-plain-loops-run112"></a>
+
+Run 111 showed that kernel jal targets sit 0x400 above our numbering. In run 112 I went back through the kernel_000 and rmon NM wraps that had
+been filed as "-O2 coloring caps" or "allocator caps". Most of them were bodies someone had transcribed from m2c / the asm instruction by
+instruction: hand-written 4x unrolls, the peeled first iterations written out as "singleton" checks, pointer walks with three to five
+`register` locals, and calls through function-pointer casts to "shared epilogue stubs". IDO cannot reproduce its own output from such a
+body. It unrolls the hand unroll again, or it colors the explicit walk differently. Writing the source loop instead matched immediately in
+most cases:
+
+| function | was | how |
+| --- | --- | --- |
+| func_800017BC slot allocator | 67.0 | `for (i = 0; i < 135; i++)` with char arithmetic for both the flag and the returned pointer; the three "singleton" checks are IDO peeling 135 % 4 = 3 iterations. func_800018A8 ("empty function", jr ra; nop) was its return, cut off by splat. |
+| func_800007D4 / func_8000085C / func_800010E8 hook loops | 83.0 / 71.7 / 58.5 | plain index loops; uopt builds the p/end walk and keeps &D_80012BC0 in an s-reg by itself. |
+| func_80000260 path split | 0 | a plain for loop for the byte copy (the old body wrote the x4 unroll by hand, and IDO unrolled it again, +472 B); the tail copy is a `while (m = j++, k = i++, (file[m] = path[k]) != 0) {}` (the while form peels the first test, and the explicit post-increment copies stop strength reduction) plus one `if (1) {}`. |
+| func_800008F0 / uso_find_file | 75.4 / 92.3 | direct calls to func_80000568 / func_80000660 (the +0x400 names of strcmp / the path split, not stubs); uso_find_file is an index loop over a TYPED slot array (fixes the preamble order AND lets as1 hoist both loads above the `found = 1` store, which the pointer walk aliased); its 0x30-byte frame hole is an unused `s32 pad[11]`. |
+| func_800005DC bounded read | 66.2 | unsigned size/count/capacity; `return D_80013004 = -0x1C;` (errno address in v1, value in v0). |
+| func_800073DC __rmonGetTCB | 0x1C clip | the C was already right; splat had cut the function at 0x73F8 and kernel_018_e held only the body. Merged, kernel_018_e removed. |
+| func_80008E98 / func_80008FF4 rmon GPR fetch/store (-O1) | 88.9 / 83.5 | see the -O1 frame rule below; plus `else { return -2; }` arm + send in the common tail, tail stores through `*(s32 *)((char *)&hdr + K)`. |
+| func_80007698 __rmonGetThreadStatus (-O1) | 99.63 | the node is a plain local (not `volatile`), walked with `while (...) { if (match) break; node = next; }`; the u16 is read twice in a plain if/else. |
+| func_80004808 / func_8000487C KMC port helpers | 73.0 / 91.1 (-O2) | kernel_000_c holds only these two and both are -O1 code (unfilled jal delay slots, a stack-resident loop counter): the whole unit gets `OPT_FLAGS := -O1`. 4808: `{u8 cmd:6; u8 len:2; u8 data[3]}` with `pkt.len = arg1;` (an explicit `& 3` doubles the andi); 487C: two plain while loops. |
+| func_80000060 boot main | inside a "handwritten" 0xAC .s | the entry stub jumps to runtime 0x80000460 = our 0x60, and [0x60,0xAC) is a plain -O2 function. Split into a new unit kernel_000_entry.c (INCLUDE_ASM stub + C). IDO pads the unit's .text to 0xB0, which is exactly where kernel_000 starts. |
+
+**-O1 frame layout = declaration order, and `register` locals take a ghost slot.** At -O1 every non-register local lives in memory, laid out
+top-down in declaration order. A `register` local also takes a 4-byte slot at its declaration position, even though nothing is ever
+stored there. So a "frame slot-ordering cap" at -O1 can be fixed by reordering declarations, `register` ones included: 8E98's target
+(hdr@0x30, ctx@0x2C, src@0x28, frame 0xD8) is `register msg; hdr; ctx; src; register i;`. With `register i` declared second, every slot
+moves 4 down, and adding pads changes the frame size instead.
+
+**Keeping expected/ honest when a wrap becomes C.** The target .o is assembled from the .s. To get an exact reloc-for-reloc match:
+1. Re-symbolize the .s with the address expression the C produces. The ROM bytes stay the same. Splat's literal pairs
+   `lui (0x80010000 >> 16)` / `addiu 0x30A0` become `%hi/%lo(D_800130A0)`, and a separately named end symbol (D_80012F7C,
+   D_80018356) becomes `%hi/%lo(base + off)`. Branches to an absolute func_ name inside the function (`beq ..., func_8000785C`,
+   `bnel ..., func_80001994`) become local labels. Drop alabels that only exist because of the +0x400 confusion, and add any
+   now-undefined name to undefined_syms_auto.txt.
+2. Build the unit once with the new C functions swapped back to INCLUDE_ASM (a scratch script that replaces each definition by brace
+   matching, runs `make build/src/<unit>.c.o`, copies the object and restores the .c). Install that object as expected/.
+3. Compare the C build with it: `.text` must be identical, and the relocs identical as a sorted set (the only accepted difference is a
+   documented alias name for the same address, e.g. func_800005DC_d2c).
+
+objdiff scores 100 even when a target reloc names a different symbol for the same address, or has none where the C has one (85C before
+step 1). Do not use objdiff alone as the exactness gate for these.
+
+**Kernel DATA addresses are 0x400 lower too, including jump tables.** Three old notes ("the jumptable at 0x8000A63C / A64C is not
+in the ROM, those bytes are rmon strings"; docs/N64_FORENSICS "Kernel rmon switch fns: jumptable resolves to DATA") read the table at
+the symbol's value. The tables are at our 0xA23C / 0xA24C (ROM +0x1000), and their entries are runtime (+0x400) case addresses. Read
+them before you trust a case mapping (func_80001ADC: type 1 = R_26, 2 = LO16, 3 = HI16, 4 = R_32). This does not unblock those
+functions, though. A C switch emits a table of our-numbering `.text` relocs, so no kernel function with a jump table can match while
+the kernel is linked at 0x80000000 instead of 0x80000400. Separately, IDO 7.1 and 5.3 (-O1/-O2/-O3, with or without -g3) never emit a
+table for 4 case labels. 5 labels are needed, and an extra unreachable label (case 0/5/7/8/-1/0x10) widens the table instead of
+leaving a 4-entry one.
+
+Not cracked in run 112 (NM bodies improved, see the comments at each function): func_800018F0 89.2 (the found-store block placement and
+the ~8 constant in t5), func_800021A4 94.9 and func_8000235C 92.6 (i/p/count land in a1/v1/a2 where the target has v1/a2/a1; decl order
+has no effect, 120 permutations), func_80001184 94.7 (target shares one `lui at` between two zero stores), func_80009474 99.4 (the 0xFFF
+mask ping-pong).
