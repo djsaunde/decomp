@@ -14408,6 +14408,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit VIII (agent-g 2026-10-17, run 106): end every nested-!= goto-chain body with `if (1) goto end;` -- uopt then keeps the bodies in TEXT order and stops hoisting the last body under a `bne dflt` (5231C EXACT, 55470 44.9 -> 93.7, game_uso E5C8 77 -> 91); an `int`-typed `sp+K` address argument is CSE'd and spilled across calls, a pointer-typed one is rematerialised per call; cfront "dead sentinel stages" are constructors inlined on member sub-objects (`o = obj + off; if (o || (o = alloc(n))) {...}`) with by-value 4-byte template params (game_uso 41C0/18FC/3018 +33..40); every named local takes a home in declaration order, so int pads rebuild a target home map; one variable for both the loaded word and a later field pointer; guarded do-while vs `for` vs count-in-condition picks bne / slt / sltu bottom tests (timproc_b5 8688 EXACT, 6C00/8C44/CEB4/8AFC 13..39 -> 86..99)](#kit-viii-run106) -- _a dispatcher at 40-60 % with the right compare chain is usually a body-order problem: try the `if (1) goto` ending first._
 - [bootup/post0b kit VIII (agent-c 2026-10-17, run 108): bootup FP literals are RoData-section loads -- spell them through a DATA symbol pinned at 0 and indexed by the pool offset (`D_bu_ro_pool[0x95C / 4]`), never `*(f32 *)((char *)&func_X + K)` (that materializes the function address: lui/addiu/lwc1, +1 insn); the ROM word holds the full pool offset (0x95C), not the expected .o's small addend; two refs through one array symbol CSE the base (use per-address scalars there); named float locals pick f0/f2 over the f4+ temp ring; volatile pads between by-value copies give the 8-byte copy slots (CCE0 / 3783C EXACT; E270 69.8 -> 99.8, BF8C 88.3 -> 99.4, 3E9C8 frame fixed)](#bootup-ro-pool-data-symbol-cce0) -- _any bootup NM body with `&func_ + K` float reads: try the pool symbol first._
 - [post0b kit X (agent-c 2026-10-20, run 110): libultra gbi macros expanded VERBATIM reproduce the MIN/MAX clamp ladders (gSPScisTextureRectangle in 4BAF4, 71.3 -> 90.2); display-list appends written as cfront inlines read their ctx before the source call; MAX/MIN triples whose target shows sll/sra after every lh are int operands with an (s16) cast on EACH arm; declaration order rebuilds the whole home map (3BE1C: 10 homes above the Vec3, 13 between it and the memory cell pair); a zero compare of a difference `(a - b) < 0.0f` is folded to `c.lt.s a,b` unless the variable is escaped; one symbol for a table's start and end address turns the walk into an offset counter (split them); `i * 12` can come out as multu by a held 12 where the target shifts; eps gates that the target hoists into callee-saved FP registers are literals, not memory externs (493AC 72.4 -> 86.9, 3B2EC 60.5 -> 85.2, 3B9C0 67.0 -> 72.3, 3A58C 66.4 -> 68.3)](#post0b-kit-x-run110) -- _m2c-soup bodies in post0b gave +5..+25 per function from a typed rewrite; the remaining caps are constants/addresses held in s-regs that the target rematerializes after calls._
+- [kit X (agent-g 2026-10-20, run 108): void-callee-scan.py + five exacts. Discarded-return calls in a row must ALL be void (mgrproc 1614); the 0x6A8 constructor family (timproc_b3 0994, titproc C54, arcproc A3C, ex-"regalloc caps" at 87-97) is the E04 nested inlined-ctor skeleton + a void alias for the registration call; an empty `if (1) {}` between a pointer def and its `lh +0x20` def gives the target's pointer=v1/value=v0 (game_libs 1818), but only when each site has its OWN names; a void*-typed mirror store of a re-read field saves a t-ring slot; write `x * 30`, not `((x << 4) - x) * 2`; distinct stream-word symbol vs `&D_00000000` table decides which base gets CSE'd into s0](#kit-x-run108) -- _first thing to try on any constructor with alloc(0x6A8): paste the E04 / 0994 skeleton and diff._
+- [HOLD vs REMATERIALISE across a call is a cost compare in globalcolor: a fresh callee-saved register costs firstUseCost = 0.25 x (number of basic blocks), clamped 4..60; a caller-saved register costs freq per call crossing (x2 when the value is USED in the call's own BB); caller wins ties. Emission-free `if (1) { }` blocks raise the BB count and flip held constants / &locals / params from s-regs or f20+ to caller-saved registers with a post-call reload (3A58C 68.3 -> 75.1, 3B2EC 85.2 -> 88.4, 454C4 255.0f f22 -> f0, gl_func_00038108 51.0 -> EXACT, bootup 6254 67.3 -> EXACT, 74E8 +17, E800 +14; agent-c 2026-10-20, run 111)](#hold-vs-remat-firstusecost-run111) -- _Placement matters: put the adders where as1 has nothing to schedule across (before a call-free tail, at `return`). Uses inside the call BB double the caller cost, so two constants in one loop can split f0 (remat) / f20 (held) by moving a `do {` boundary. Diagnose with zdbug:5 (LR liveunits + reaching BBs) from a private ecvt-patched uopt._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
 - [post0b kit IV (agent-c 2026-10-17, run 105): two global loads issue in source order only when their statements share ONE line (48184 EXACT); a value colours by VARIABLE identity, so park a stream cursor in the int local another arm uses (4E96C EXACT); every block-local pointer temp reserves a frame home (+8 frame from two `{ int *t = ...; }`); a function-scope temp reused for a later sub-object shares its spill slot; m2c `s32 *p + 0x2C` bodies scale every offset x4](#post0b-kit-iv-run105) -- _check frame size and spill-slot offsets against the target first; they name the local set._
 
@@ -32237,3 +32239,122 @@ address in 3B2EC), where our build holds it in a callee-saved register and spill
 temps did remove the &tmp hold in 3A58C, but each temp then takes its own frame slot. IDO 5.3 makes the same choice as
 7.1 here (standalone check on 3A58C), so this is not a compiler-version difference.
 
+## HOLD vs REMATERIALISE across a call: firstUseCost (0.25 x BB count) against the call-crossing cost; emission-free `if (1) { }` BB adders flip it (agent-c 2026-10-20, run 111) <a name="hold-vs-remat-firstusecost-run111"></a>
+
+Closes the open problem from #post0b-kit-x-run110 (the target reloads `lui at,0x437f; mtc1` / `addiu v0,sp,236` / a param
+from its home after each call where our build holds the value in s0..s8 or f20+).
+
+**The rule (uoptreg2.c `globalcolor` + `cupcosts`, verified by probes).** For each live range uopt prices every register:
+- caller-saved register (v0..t9 / f0,f2,f12..f18): `cupcosts` = the sum of `movcost x freq` (movcost 1, freq = 10^(loopdepth-1))
+  over the call crossings inside the LR: +freq for each LR block whose first predecessor ends in a call (the post-call reload), and
+  another +freq for a call block that is itself a live unit of the LR (the value is USED in the block that ends with the jal).
+  A value that is only live THROUGH the call block costs freq once; a value used in it costs 2 x freq.
+- callee-saved register (s0..s8 / f20..f30): 0 if that register is already in `usedeeregs` (an earlier, non-interfering LR took
+  it), otherwise `firstUseCost = movcostused * curstaticno * 0.25`, clamped to [4, 60], where curstaticno = the number of basic
+  blocks in the function.
+- the caller-saved scan runs first and the compare is strict `<`, so a tie goes to the caller-saved register (= reload after
+  the call). If the best cost is >= adjsave x span, the LR is split instead (that is how params end up in their home slot).
+So a constant used once per region in a small function (F = 4) is held in f20 if it crosses one loop call (cost 10), and is
+rematerialised in a big function (F >= 10). Probe: the 454C4 standalone flips 255.0f from f22 to f2/f0 between 39 and 41 blocks
+(F 9.75 -> 10.25 against a crossing cost of 10).
+
+**Two constants, one loop (454C4).** The target has 255.0f in f0 (reloaded after the in-loop jal) and 120.0f in f20 in the same
+loop. That needs `X(255) <= F < X(120)`: the 120.0f uses must sit in the call block (cost 20) and the 255.0f uses in an earlier
+block (cost 10). Moving the DL-append `do {` up so it starts before the three `* 120.0f` stores does that (the do-label ends
+the 255 block), and two `if (1) { }` before the list walk lift F to >= 10. Result: f0/reload + f20, f22 save gone, exactly the
+target's FP allocation (the function is still 61.7: its frame and named-local homes are the bigger problem).
+
+**The lever: emission-free BB adders.** `if (1) { }`, `do { } while (0);`, `while (0) { }`, `for (;;) { break; }` and
+`goto L; L: ;` each leave 1-2 extra blocks in the flow graph and emit nothing, which raises firstUseCost. A bare label does
+not. Placement:
+- where you put them changes scheduling: the blocks are label boundaries for as1, so adders at the top of 3A58C cut the
+  prologue/first-block interleave (68.3 -> 66.9); the same four before the call-free tail (`pt = a + step`) gave 75.1.
+  Run `autosweep.py`-style sweeps (anchor x k) and keep the best; the end of the function / before `return` is usually safe.
+- the flip is per LR, at different k: 3A58C dropped s1 (&tmp) at k = 5 and s0 (param b) together with f20 (param r) at
+  k = 7. A dead `if (r) { }` (the dead-if priority boost) kept r colourable in f20 while b fell to its home slot at k = 6..7.
+- removing callee-saved saves shrinks the frame (8 per FP pair, 4 per s-reg plus alignment); put the difference back with a
+  `volatile int pad[N]` at the decl position that restores the target's offsets (kit VIII home rule).
+- does not help when every s-reg is already in use (493AC: s0..s8 saved, so a reused s-reg costs 0 and no BB count flips
+  it) or when the hold is inside a loop with several crossings (3BE1C's s8 needed > 40 adders and broke other things).
+- the inverse (target holds MORE than we do, e.g. 3B9C0's f24) needs fewer blocks or a use moved into the call block.
+
+**Diagnosing.** `-Wo,-zdbug:5` prints each LR with its live units (`- live bb - N loads stores reg`), the reaching-only blocks
+(`- live bb (default)`), `adjsave`, forbidden set and loopdepth per node; `-zdbug:6` gives the colour order. Count blocks from
+the `flow graph` list at the top of the dump. On this machine the shared IDO's uopt still has the ecvt assert, so the dump
+dies part-way; build a private copy instead of touching tools/: clone decompals/ido-static-recomp into the scratchpad,
+implement `wrapper_ecvt`/`wrapper_fcvt` in libc_impl.c (call host ecvt/fcvt, copy the string into a wrapper_malloc buffer,
+write decpt/sign through MEM_S32), `make -C tools/rabbitizer static CC=gcc CXX=g++`, `make VERSION=7.1 RELEASE=1
+build/7.1/out/uopt`, then copy the project's out/ directory and drop the new uopt in (codegen verified identical).
+
+**Applied (run 111, same session).** Scan for the class first: compare the prologue save set of target vs NM build for every
+NM function (`scripts/disasm-func.py fn` vs `--nm`) and keep the ones where the BUILD saves more s-regs / f20+ than the target.
+Then sweep `if (1) { }` x k (1, 2, 4, 8) at every top-level statement of the function, compiling the whole preprocessed TU
+(asm_processor + cc on the unit takes ~1 s, so 100 variants are cheap) and scoring register-exact against the target; verify the
+best 1-2 placements in-tree with objdiff. Results:
+
+| function | before | after | what else it needed |
+|---|---|---|---|
+| gl_func_00038108 (60 w) | 51.0 | EXACT | `p` folded into the a2 home; a distinct symbol for the 4th report arg (else copied from a0); `if (1) { r = o->0x28; }` for r v0 / o-reload v1 |
+| bootup func_00006254 (88 w) | 67.3 | EXACT | cfront ctor shape (below); comma-expression call arg for the z[] store schedule |
+| bootup func_000074E8 | 56.5 | 92.1 | adders (73.7), then the cfront ctor shape with no early returns, data symbols for %lo-folded globals (a function symbol + offset is NOT folded into the load), `if (1) { char **pa = &a0; }` so every a0->0x40 is re-read, a dead local reused for the tail stores |
+| bootup func_0000E800 | 55.1 | 87.8 | adders (69.4), then decl order under a pad for the out-param homes, zero inits after the first call, root = &D (not a load), store through a data symbol |
+| bootup func_00003D3C | 50.7 | 57.8 | float args through a typed placeholder prototype (target stores them with swc1, a K&R call promotes to double) |
+| bootup func_000043D4 | 56.4 | 62.0 | one adder |
+| gl_func_00040974 | 90.6 | 91.7 | adders only |
+| 0004FBA4, 00040E90, 0000E124 | | +1.1 / +0.2 / +0.6 | not kept (4FBA4's adders also cost 61478 -0.6 through the shared NM object) |
+
+**cfront constructor shape (6254).** `bnez a0,L; jal new(0xDC); beqz v0,END; or s0,v0` then `bnez s0,L2; or a2,s0; jal
+new(0xB4); beqz v0,SKIP; or a2,v0` is `if (this || (this = new(0xDC))) { s = this; if (s || (s = new(0xB4))) { base body }
+derived body } return this;` written on the PARAMETER (a `char *o = a0` copy takes a home and moves the `or s0,a0` copy past
+the arg stores). A member sub-object at +0x2C whose ctor is inlined twice shows as `addiu at,zero,-44; bne a2,at` (= this+44
+!= 0) then a second `bnez`: `c = s + 0x2C; if (c || (c = new(4))) { c2 = c; if (c2 || (c2 = new(4))) *c2 = 0; }` with a
+separate inner `this` (one variable leaves the store on v1 instead of a0).
+
+**Comma-expression argument moves the arg setup between stores.** 6254's `addiu a1,sp,52; swc1 z0; addiu a0,a2,48; swc1 z1;
+jal; swc1 z2` came from `z[0] = 0.0f; f(s + 0x30, (z[1] = 0.0f, z[2] = 0.0f, z));` -- three statements put the a0 setup
+last (into the delay slot). The comma temp costs one frame word; take it out of a pad.
+
+
+## kit X: void-callee scan, the 0x6A8 constructor family, per-site BB splits (agent-g 2026-10-20, run 108) <a name="kit-x-run108"></a>
+
+Five exacts (mgrproc_uso_func_00001614, game_libs_func_00001818, timproc_uso_b3_func_00000994, titproc_uso_func_00000C54,
+arcproc_uso_func_00000A3C) and small NM gains (arcproc 125C 99.13 -> 99.56, mgrproc 1C90 99.17 -> 99.52, 1824 98.42 -> 98.52).
+
+- **`scripts/void-callee-scan.py`** (1080 repo) aligns target vs NM build per function, finds jal sites where the target
+  writes v0 after the call without reading the return, our build does not read it either, and the following register
+  diffs are +1 shifts on the caller-saved ring (v0>v1, tN>tN+1). `--owner g|c`, `--all-calls` for the loose list.
+  Strict hits are often false (t-ring rotations, misaligned repeated blocks); the loose `v0>v1` list found the real wins.
+- **Every discarded-return call in front of the web.** mgrproc 1614's hdr web followed two discarded calls
+  (import_007FE4E8, undeclared = K&R int, then 07ACE0). Declaring 07ACE0 void alone (an old probe) and
+  import_007FE4E8 void alone were both neutral; both void together = EXACT.
+- **The 0x6A8 constructor family is one skeleton.** b3 0994 (96.8), titproc C54 (94.0) and arcproc A3C (87.9, noted as a
+  "global regalloc + frame cap") all went exact on the mgrproc E04 shape: `if (obj || (obj = alloc(N))) { o1 = obj; if
+  (o1 || (o1 = alloc(0x6A8))) { o2 = o1; if (o2 || (o2 = alloc(0x50))) { o3 = o2; if (o3 || (o3 = alloc(0x2C))) {...}
+  o2->28 = ..; } o1->28 = ..; f(o1 + 0x50); } ... } return obj;`, then ONE reused local `o1` for every object pointer
+  re-read through a field (`o1 = obj->6A8; link(obj + 16, o1); if (o1->14) o1->4 = 1; o1->14 = obj;`). The
+  `(obj->6A8, obj, 0x568, ...)` registration call is void (alias `gl_func_00000000_994v` / `_A3Cv` = 0): its dead int
+  return otherwise pushes the vtable base w from v0 to v1. NM-only `D_xxx` externs need `= 0` pins before unwrapping.
+  timproc_b1 097C (agent-c's unit) is the same family.
+- **Smaller tells from that family.** An if/else block storing through `obj->6A8` wants the field re-read into o1 in each
+  arm (a3 arm loads). Store order of two adjacent field stores before a jal decides which one lands in the delay slot
+  (A3C: 0x6A8 before 0x6B8). `x * 30` reproduces IDO's own `sll; subu; sll` on ONE temp; the hand-expanded
+  `((x << 4) - x) * 2` takes three. An `int`-typed mirror store `*(int *)G = *(int *)(root + 0x50)` re-reads through a
+  fresh temp and rotates every later t-reg by one; `*(void **)G = *(void **)(root + 0x50)` does not. A missing call
+  argument (`0139B0(x)` vs `(x, 1, 0)`) shows up as a beqz-vs-beqzl difference in the following finalizer.
+- **Which base IDO holds in s0.** Six `f(o, (*(int *)&W + 3) << 16 | k, -1, &T)` calls: with W = a distinct symbol and
+  T = `&D_00000000`, the target's `lw a1,0(s0)` (W base in s0) + rematerialized `lui/addiu a3` (T) came out; with the
+  roles reversed IDO held T in s0 and re-loaded W through lui. A local `p = &W` is copy-propagated away.
+- **Pointer v1 / value v0 for `p = obj->X; h = *(short *)(p + 0x20);`.** Seen in game_libs 1818, arcproc 125C, mgrproc
+  1C90. An empty `if (1) {}` between the two defs gives it (the per-BB dead-v0 rule, #dead-v0-poison-is-per-bb-split-the-defs-683d4),
+  but only when the pair is not shared across sites: 125C/1C90 reused `pb/hb` (`q/w`) at three call sites, which made
+  them one web, and the split did nothing until each site got its own names. `do { h = ...; } while (0);` did not work
+  where `if (1) {}` did.
+- **1818's last two words**: store the field first, then the m home, and test the LOCAL (`if (n >= 12)`; the else-if
+  keeps the field re-read). Spelling the call argument `m[0] + o->0x44` put m's load first (t5).
+
+Open: mgrproc 1824 (the outer two-case switch keeps `li at,1` hoisted above the beqz in every spelling tried -- switch,
+default arm, goto chain, nested if; the jtbl at RoData +0x5B8 also needs the module's earlier RoData in front of it in the
+built .rodata, see #game-uso-rodata-relayout-late-rodata); 125C/1C90 FP pair (`mtc1 255` vs field load register swap,
+operand order is normalised); game_uso 7C1C (13 insns short; its frame is 80 bytes small after the run-103 member-wise
+copies -- pads at the documented gaps overshoot by 56 because the trailing scalars p/q/node/k/metric/thresh/tx/tz take
+homes at the bottom; objdiff ignores frame offsets, so this does not move the score).
