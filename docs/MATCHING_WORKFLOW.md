@@ -285,6 +285,7 @@ explicit shared blocks (goto a common label), not regeneration.
 - [Run 97 (agent-c 2026-10-16): baked in-unit jal alias in post0b 55C34, 551E0 zero-suffix pad, timproc b1 block-equal via pinned-jal bake, NM levers for 4C300 / 1E08 / CFA0](#run-97-agent-c) -- _per-site blank args (lui/addiu 0) need distinct names; a for loop (not do-while) changes IDO loop-invariant hoisting; a volatile scalar reproduces sw/lw-around-every-test; unused scalars still consume frame slots, so declaration order sets the whole layout._
 - [Low-scoring big NM wraps: diff MNEMONIC-CLASS COUNTS target vs build before grinding regalloc. Extra cvt.d.s/sdc1 = K&R float args (use a prototyped blank alias), extra cvt.s.w/trunc = s32 read of an f32 field, jr mismatch = switch vs if-chain or a misread jump table. Five wraps +6..+75 points in one run; objdiff fuzzy ignores sp offsets but scores jal symbol names (2026-10-16 agent-c). lw/sw surplus vs lwc1/swc1 deficit = float struct/member copies written as word copies (7C1C +8.2, 8FC8 +3.9, agent-g 2026-10-17)](#decode-error-mnemonic-scan-c100)
 - [post0b NM clip: a function that GROWS (stub -> real decode) does not fail the clip, it silently cuts game_libs_func_00062F08 off the end (objdiff then reports "Symbol data out of bounds" or a sentinel drop). Check `nm` for 62F08's offset after every post0b NM build, re-probe, and score with a clip-free rebuild (run 104, agent-c)](#post0b-clip-grow-silent-c104)
+- [scripts/twin-finder.py: fuzzy twin search (every non-exact fn vs every exact fn, opcode+register tokens, reloc/lui-derived immediates masked, difflib, len +-10%) + non-exact twin clusters. Run it FIRST each session; 10 exacts in run 110 from its top rows. A near-1.0 twin whose length is off by 1-3 words = a splat boundary error (hoisted const head left in the predecessor, shared-exit tail on the successor's head): fix the .s boundary, re-bound the expected/ symbols, then port (agent-g 2026-10-20)](#twin-finder-run110)
 
 
 ---
@@ -12910,3 +12911,39 @@ over agent-c's (same name), so agent-c's next "gate" run did `cd projects/1080-a
 refreshed its report.json, and printed agent-g's baseline diff. The sign: gate output in a format you didn't write.
 Fix: put every helper under `scratchpad/<agent-letter><run>/` (or prefix the name), and have each script `cd` to an
 absolute worktree path. Check `ls -la --time-style=+%T` mtimes on shared helpers before trusting one.
+
+## twin-finder.py: port an exact twin's C before probing (agent-g 2026-10-20, run 110) <a name="twin-finder-run110"></a>
+
+`scripts/twin-finder.py [--min-score 0.6] [--len-tol 0.1] [--owner agent-g] [--tsv out]` reads target words from
+`expected/src/**.c.o` (so USO `.word` lines and symbolic `jal sym` lines are both real bytes), calls a function EXACT when
+report.json says 100 AND no `INCLUDE_ASM(..., fn)` exists (an NM wrap reads 100 when objdiff can't see baked/placeholder jal
+differences -- those are listed with tag `nm100`), and skips handwritten targets (`/* Handwritten function */`, cache/COP0 ops).
+Tokens keep opcode + registers; jal/branch targets, lui immediates and lo16 immediates that carry a reloc or sit on a lui-derived
+base register are masked. Output: non-exact fn, unit, owner, tag, pct, size, structural score, literal-immediate score, best exact
+twin and its source file, ranked size x score; then clusters of non-exact functions twinned with each other (crack one, port to all).
+
+What the run-110 list produced (all EXACT, each under ~20 min):
+- **identical twins whose old NM lacked the twin's levers**: kernel func_80000168 <- game_libs_func_00067B04 (dead `q = arg1;` +
+  dead `int r = 0;`), gl_func_00008510 <- gl_func_000085B0 (one reused `int *q` temp), arcproc 2884 <- b1 2BE4 (mutated-pointer
+  base `if (1) { s4 += 0x10; }`, `s2 = s4; s2 += vec[i] * 0x18;`), arcproc 14C8 <- b3 1240 (plain float[4] + `char pad[28]` +
+  named spill local, `x * (0, 255.0f)`). Several had "allocator tie, IMMUNE" notes: the twin's C is the cheaper probe.
+- **boundary errors exposed by a 1-3 word length mismatch**: arcproc 1C74 / mgrproc 2E3C (the 2-word "orphan" `lui at,0x3F80;
+  mtc1 at,$f0` before the prologue is the fn's OWN hoisted buf[] = 1.0f -- move it into the fn's .s head, keep the historical name,
+  like b1 19C0 @ 0x19B8); arcproc 1BBC then becomes a masked twin of b1 1908; kernel func_80003C24.s = [handwritten 31F0's tail:
+  nop; jr ra; addiu sp,8] + osDestroyThread + 3 pad nops -> `alabel func_80003C24` in 31F0.s (31F0 jal's it), C func_80003C30
+  ported from gl_func_0006AF44 (-O1), pad as all-zero SUFFIX_BYTES_FORCE.
+- **nm100 rows**: gl_func_00065250 / gl_func_00066210 had exact NM bodies; unwrap with a blank USO-jal alias (`= 0` in
+  undefined_syms_auto.txt) where the callee is in-unit, or as-is when every jal word is 0x0C000000.
+
+Re-bounding expected/ without a rebuild: text and relocs don't change, only st_value/st_size of the two symbols (and their
+`.NON_MATCHING` twins); patch the .symtab in place (struct-pack the 16-byte Elf32_Sym entries) and confirm with
+`objdump -t`. Copying build/ over expected/ is wrong for units with C bodies (different reloc/symbol sets).
+
+Twin-ported but NOT landed: mgrproc 1C90 (99.52) -- `x * (0, 255.0f)` at its three mul sites removes the documented FP pair-swap
+(words 55/71-72/106-107) but grows the frame 8; dropping `volatile int pad_a` restores the frame -> 9 diffs left, all the +-1
+t-ring phase at the 6D8/6A8 sites (operand order, `+ 0`, `if (1) {}` all inert or worse). Under +1 point, so not committed.
+Leads left in the list: kernel func_80003D40 (1932 B, 0.936) is __osLeoInterrupt (a newer/older leointerrupt.c than game_libs'
+IDO 5.3 donor gl_func_0006B0FC, +58 words) with jal'd alabels 3E54/3E64/3FF0/4030 inside -- C needs those as absolute
+undefined_syms entries; kernel func_80005350 is the tail of osEPiRawStartDma (func_800052F0 + 5350 = gl_func_0006F8A4's body)
+but other code jals 0x80005350/53D0/5400, so it is not a simple merge.
+
