@@ -14404,6 +14404,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [post0b/post kit V (agent-c 2026-10-17, run 106): BY-VALUE STRUCT PARAMS and struct returns explain many "caps": lh/lb from a param home +2/+3, every arg homed, `sw a1,4(sp)` outgoing-slot copy, an epilogue lw/sw word copy + `lw v0,<a0 home>` (Vec3 returned by value); a dead `sw` of a loaded pointer to the frame = address-taken local / member of an escaping local struct; alloc-or-given constructor shape; typed record view fixes the multi-index addu order; `if(1){p += K;}` keeps a held `addiu base,K`; per-site externs for each RMW access; float-copy-scan false positives (3695C/36E74/3E238/3593C/355A0/3EB3C/39A04/3D16C/476DC/1CFDC/1D0AC/1D870 EXACT)](#post0b-kit-v-run106) -- _check param homes and the epilogue before trusting a "register cap" note._
 - [post0b/bootup kit VI (agent-c 2026-10-17, run 107): UNSORTED compare chain = nested-!= goto chain (IDO sorts switch compares ascending; the flat goto ladder inverts the last test); an UNSIGNED selector stops the case constant CSE-ing with a later `a1 == 1`; a shared `end: return 0;` with two predecessors survives as a dead `or v0,zero,zero`; objdiff `functionRelocDiffs=none` scores a wrong in-TU `jal` 100 (only the ROM cmp catches it); by-value 4-byte ctor args through `.w` copies + escaped temps + per-site zero-page externs (bootup 55A0 51.9 -> 87.6); `(*p)++ >= K` vs `slti at,old,K`; byvalue-struct-scan.py `--chains` (35648/35370/356FC EXACT; 7D04 58 -> 96, 3E9C8 71 -> 99.6, 432BC 62 -> 96.6)](#nested-ne-goto-chain-35648) -- _scan `--chains` first on any dispatcher; a 1, 0, 2 order is never a switch._
 - [post0b/post1b kit VII (agent-g 2026-10-17, run 105): a loop stays ROLLED only with the counter initialised in the `for` header (`i = 0;` before it, do-while or a variable bound unroll it); `/ i` after the loop divides by the bound register; ONE local reused for unrelated pointers sets shared colours; dead `while (0)` placed AFTER a call or a copy picks the next web's colour; param typed as the list NODE type fixes `beq` operand order; comma-form `*(p8 = c, c = p8 + 1, p8) = v` fill store; hdr-before-magic store order; check expected for BAKED in-unit jals (0x6F620/0x7E970); beql + unreachable delay copy = call arm first; libultra -O1 functions in post1b take the 6A304 donor splice (5B070/5B23C/5BAF4/521F8/51520/52AE8/55FB4/60370/51694/5C548/66484/6A420 EXACT)](#post0b-kit-vii-run105) -- _when an old note says "unroll cap" or "structural cap", try the for-header init and the arm swap first._
+- [kit IX (agent-g 2026-10-18, run 107): a discarded `int` call result keeps a dead v0 def that pushes the next statement's values one register up -- declare the callee `void` (timproc_b5 6C00 EXACT); cfront nested inlined base ctors + "the 07ACE0 link child is the ARGUMENT" + a few REUSED pointer locals for the home map (mgrproc E04 79.2 -> EXACT); one-line source body flips a scheduling tie (permuter find); `bgez; sra; addiu 1; sra` is signed `/ 2` (arcproc 125C 90 -> 99); a two-case state gate laid out as beqz/beq/b with bodies after is a `switch` (mgrproc 1824 91 -> 98); CEB4 boundary move; objdiff can drop while raw diff lines shrink](#kit-ix-run107) -- _for a constructor stuck in the 70s, rewrite the alloc cascade in cfront form and recount the named homes first._
 - [kit VIII (agent-g 2026-10-17, run 106): end every nested-!= goto-chain body with `if (1) goto end;` -- uopt then keeps the bodies in TEXT order and stops hoisting the last body under a `bne dflt` (5231C EXACT, 55470 44.9 -> 93.7, game_uso E5C8 77 -> 91); an `int`-typed `sp+K` address argument is CSE'd and spilled across calls, a pointer-typed one is rematerialised per call; cfront "dead sentinel stages" are constructors inlined on member sub-objects (`o = obj + off; if (o || (o = alloc(n))) {...}`) with by-value 4-byte template params (game_uso 41C0/18FC/3018 +33..40); every named local takes a home in declaration order, so int pads rebuild a target home map; one variable for both the loaded word and a later field pointer; guarded do-while vs `for` vs count-in-condition picks bne / slt / sltu bottom tests (timproc_b5 8688 EXACT, 6C00/8C44/CEB4/8AFC 13..39 -> 86..99)](#kit-viii-run106) -- _a dispatcher at 40-60 % with the right compare chain is usually a body-order problem: try the `if (1) goto` ending first._
 - [bootup/post0b kit VIII (agent-c 2026-10-17, run 108): bootup FP literals are RoData-section loads -- spell them through a DATA symbol pinned at 0 and indexed by the pool offset (`D_bu_ro_pool[0x95C / 4]`), never `*(f32 *)((char *)&func_X + K)` (that materializes the function address: lui/addiu/lwc1, +1 insn); the ROM word holds the full pool offset (0x95C), not the expected .o's small addend; two refs through one array symbol CSE the base (use per-address scalars there); named float locals pick f0/f2 over the f4+ temp ring; volatile pads between by-value copies give the 8-byte copy slots (CCE0 / 3783C EXACT; E270 69.8 -> 99.8, BF8C 88.3 -> 99.4, 3E9C8 frame fixed)](#bootup-ro-pool-data-symbol-cce0) -- _any bootup NM body with `&func_ + K` float reads: try the pool symbol first._
 - [post0b kit X (agent-c 2026-10-20, run 110): libultra gbi macros expanded VERBATIM reproduce the MIN/MAX clamp ladders (gSPScisTextureRectangle in 4BAF4, 71.3 -> 90.2); display-list appends written as cfront inlines read their ctx before the source call; MAX/MIN triples whose target shows sll/sra after every lh are int operands with an (s16) cast on EACH arm; declaration order rebuilds the whole home map (3BE1C: 10 homes above the Vec3, 13 between it and the memory cell pair); a zero compare of a difference `(a - b) < 0.0f` is folded to `c.lt.s a,b` unless the variable is escaped; one symbol for a table's start and end address turns the walk into an offset counter (split them); `i * 12` can come out as multu by a held 12 where the target shifts; eps gates that the target hoists into callee-saved FP registers are literals, not memory externs (493AC 72.4 -> 86.9, 3B2EC 60.5 -> 85.2, 3B9C0 67.0 -> 72.3, 3A58C 66.4 -> 68.3)](#post0b-kit-x-run110) -- _m2c-soup bodies in post0b gave +5..+25 per function from a typed rewrite; the remaining caps are constants/addresses held in s-regs that the target rematerializes after calls._
@@ -32081,6 +32082,57 @@ three FP webs come out as a 3-cycle (t f0 / k f2 / s f12 vs target f2 / f12 / f0
 every value on the stack with no s-regs at -O2, so it is not a -O1 file (`-O1` reloads after each store). func_00007D04
 stays rolled with the agent-g for-header form as well. gl_func_0003800C's last call has no `a0` setup in the target
 (`f(?, n)`); uninitialised locals get a stack home instead.
+
+## kit IX: void callees, cfront nested ctors with reused locals, `/ 2`, two-case switch gates (agent-g 2026-10-18, run 107) <a name="kit-ix-run107"></a>
+
+Two exacts (timproc_uso_b5_func_00006C00, mgrproc_uso_func_00000E04) and NM gains on mgrproc 1824 (90.8 -> 98.4),
+arcproc 125C (90.1 -> 99.1) and timproc_b5 CEB4 (92.4 -> 94.4, boundary move).
+
+- **A discarded `int` return blocks v0.** 6C00 calls `func_00F954(...)` as a statement. Declared `extern int`, the
+  call leaves a dead v0 def and uopt coloured the next two values (a global base and a loaded table base) a0/v1
+  instead of the target's v1/v0. Declaring it `extern void` was the whole fix. Not universal: the same change did
+  nothing on mgrproc 1824 (import_00096228) or E04 (04C678). Only change the extern when no caller in the TU uses
+  the result (a conflicting later `extern int` redeclaration is a hard cfe error).
+- **Operand order inside one expression picks t-reg ring positions per term.** 6C00's row-4 OR of two indexed loads
+  needed the first term written base-first (`*(char **)(b + 0x40) + idx * 4`) and the second index-first; every
+  other row stays index-first.
+- **cfront nested inlined base constructors (E04).** A 4-level `if (o == 0) { o = alloc(n); if (!o) goto Lvt; }`
+  goto ladder becomes nested `o2 = o1; if (o2 || (o2 = alloc(80))) { o3 = o2; if (o3 || (o3 = alloc(44)))
+  {...; o3->vptr = vt3;} o2->vptr = vt2; } o1->vptr = vt1; member_ctor(o1 + 80);` -- note the 1704-level
+  vptr store comes BEFORE the member call. A failed outermost alloc returns 0 (`return obj`).
+- **The 07ACE0 list link tests the CHILD it was given, not its return value**: `link(obj + 16, child); if
+  (child->0x14) child->4 = 1; child->0x14 = obj;`. Target tell: the second argument is spilled (`sw a1,K(sp)`)
+  across the jal and reloaded into the register that the following `lw tN,20(aX)` uses. Bodies that read the
+  return value (`rec = link(...)`) are a decode bug.
+- **Reused pointer locals give the home map.** E04's frame 0x40 holds only three named homes (60/56/52) plus a
+  compiler temp at 44: the source reuses o1 for every linked child and o2 for a later 224-byte alloc (that is why
+  o2 is memory-homed). Folding the object pointer into the parameter (`obj`) and dropping the float-zero, count and
+  vtable locals removed the extra homes; the 0x7C8 count is read through the field itself.
+- **Store-before-call then re-read.** `obj->0x6A8 = a3` sits in the jal delay slot before 119C and the field is
+  re-read after the call: write the store before the call, never forward the parameter.
+- **One source line flips a scheduling tie.** E04's last two-word residual (an o1 spill reload vs a vptr lui/addiu)
+  was found by the permuter as `do { ... } while (0)` all on one line; the `do/while` is irrelevant -- writing the
+  44-byte ctor's `if (...) { call; store; }` on ONE line is enough. IDO's scheduler is line-sensitive (same lever
+  as gui_uso_func_00001794).
+- **`bgez x; sra y,x,1 (delay); addiu at,x,1; sra y,at,1` is signed `x / 2`.** arcproc 125C had it decoded as a
+  `sum < 0` if/else with `>> 1`; `span = 0xA0 - (a + b + 4) / 2` made the body size-exact.
+- **A two-case gate with the bodies after the compares is a `switch`.** mgrproc 1824's `beqz v0,L0; li at,1; beq
+  v0,at,L1; b end` = `switch (s0->0x7D4) { case 0: ... case 1: ... }`; switch on the field expression, not on a
+  named local (a local takes v-regs). Case 3's counter is stored unconditionally before the `>= 16` wrap, spelled
+  through the field so the re-read forwards the stored t-reg.
+- **Boundary move (CEB4).** Two words (`lui at,0x3F80; mtc1 at,f2`) hoisted above CEB4's prologue lived in the
+  predecessor's `_pad.s`. Moved into CEB4's `.s` head (size 0x1A4 -> 0x1AC, label unreferenced, ROM unchanged),
+  dropped the sidecar and its GLOBAL_ASM line, refreshed expected/ from the ROM-exact build.
+- **Measure with objdiff before you keep a variant.** game_uso 41C0: a declaration-order home map (one leading pad)
+  plus moving the template copy into the ctor body cut raw diff lines 146 -> 66, but objdiff fell 94.2 -> 91.0
+  (insertion misalignment). Reverted.
+- Permuter on this machine: run `import.py` / `permuter.py` with `/home/danjs/code/decomp/.venv/bin/python`
+  (tools/build-venv has no `toml`).
+
+Open: timproc_b5 8C44 (s0/s1 counter vs pointer swap; a `for (i < n + 1)` gets the s-regs right but keeps the
+slt), CEB4 block 1 (target keeps an empty then-arm as `bc1f; nop; b skip` with the init stores hoisted above the
+test -- no spelling reproduced it), C98C (t1/t2 on a spilled reload), 38B0/396C (store order vs volatile temps),
+1824 (outer switch value v1 vs v0; jtbl displacement cap), 125C (pb/hb colour v0/v1 swapped).
 
 ## kit VIII: `if (1) goto` body order, int-typed address CSE, inlined member constructors (agent-g 2026-10-17, run 106) <a name="kit-viii-run106"></a>
 
