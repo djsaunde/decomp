@@ -14406,6 +14406,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [post0b/post1b kit VII (agent-g 2026-10-17, run 105): a loop stays ROLLED only with the counter initialised in the `for` header (`i = 0;` before it, do-while or a variable bound unroll it); `/ i` after the loop divides by the bound register; ONE local reused for unrelated pointers sets shared colours; dead `while (0)` placed AFTER a call or a copy picks the next web's colour; param typed as the list NODE type fixes `beq` operand order; comma-form `*(p8 = c, c = p8 + 1, p8) = v` fill store; hdr-before-magic store order; check expected for BAKED in-unit jals (0x6F620/0x7E970); beql + unreachable delay copy = call arm first; libultra -O1 functions in post1b take the 6A304 donor splice (5B070/5B23C/5BAF4/521F8/51520/52AE8/55FB4/60370/51694/5C548/66484/6A420 EXACT)](#post0b-kit-vii-run105) -- _when an old note says "unroll cap" or "structural cap", try the for-header init and the arm swap first._
 - [kit VIII (agent-g 2026-10-17, run 106): end every nested-!= goto-chain body with `if (1) goto end;` -- uopt then keeps the bodies in TEXT order and stops hoisting the last body under a `bne dflt` (5231C EXACT, 55470 44.9 -> 93.7, game_uso E5C8 77 -> 91); an `int`-typed `sp+K` address argument is CSE'd and spilled across calls, a pointer-typed one is rematerialised per call; cfront "dead sentinel stages" are constructors inlined on member sub-objects (`o = obj + off; if (o || (o = alloc(n))) {...}`) with by-value 4-byte template params (game_uso 41C0/18FC/3018 +33..40); every named local takes a home in declaration order, so int pads rebuild a target home map; one variable for both the loaded word and a later field pointer; guarded do-while vs `for` vs count-in-condition picks bne / slt / sltu bottom tests (timproc_b5 8688 EXACT, 6C00/8C44/CEB4/8AFC 13..39 -> 86..99)](#kit-viii-run106) -- _a dispatcher at 40-60 % with the right compare chain is usually a body-order problem: try the `if (1) goto` ending first._
 - [bootup/post0b kit VIII (agent-c 2026-10-17, run 108): bootup FP literals are RoData-section loads -- spell them through a DATA symbol pinned at 0 and indexed by the pool offset (`D_bu_ro_pool[0x95C / 4]`), never `*(f32 *)((char *)&func_X + K)` (that materializes the function address: lui/addiu/lwc1, +1 insn); the ROM word holds the full pool offset (0x95C), not the expected .o's small addend; two refs through one array symbol CSE the base (use per-address scalars there); named float locals pick f0/f2 over the f4+ temp ring; volatile pads between by-value copies give the 8-byte copy slots (CCE0 / 3783C EXACT; E270 69.8 -> 99.8, BF8C 88.3 -> 99.4, 3E9C8 frame fixed)](#bootup-ro-pool-data-symbol-cce0) -- _any bootup NM body with `&func_ + K` float reads: try the pool symbol first._
+- [post0b kit X (agent-c 2026-10-20, run 110): libultra gbi macros expanded VERBATIM reproduce the MIN/MAX clamp ladders (gSPScisTextureRectangle in 4BAF4, 71.3 -> 90.2); display-list appends written as cfront inlines read their ctx before the source call; MAX/MIN triples whose target shows sll/sra after every lh are int operands with an (s16) cast on EACH arm; declaration order rebuilds the whole home map (3BE1C: 10 homes above the Vec3, 13 between it and the memory cell pair); a zero compare of a difference `(a - b) < 0.0f` is folded to `c.lt.s a,b` unless the variable is escaped; one symbol for a table's start and end address turns the walk into an offset counter (split them); `i * 12` can come out as multu by a held 12 where the target shifts; eps gates that the target hoists into callee-saved FP registers are literals, not memory externs (493AC 72.4 -> 86.9, 3B2EC 60.5 -> 85.2, 3B9C0 67.0 -> 72.3, 3A58C 66.4 -> 68.3)](#post0b-kit-x-run110) -- _m2c-soup bodies in post0b gave +5..+25 per function from a typed rewrite; the remaining caps are constants/addresses held in s-regs that the target rematerializes after calls._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
 - [post0b kit IV (agent-c 2026-10-17, run 105): two global loads issue in source order only when their statements share ONE line (48184 EXACT); a value colours by VARIABLE identity, so park a stream cursor in the int local another arm uses (4E96C EXACT); every block-local pointer temp reserves a frame home (+8 frame from two `{ int *t = ...; }`); a function-scope temp reused for a later sub-object shares its spill slot; m2c `s32 *p + 0x2C` bodies scale every offset x4](#post0b-kit-iv-run105) -- _check frame size and spill-slot offsets against the target first; they name the local set._
 
@@ -32132,3 +32133,55 @@ Open: 51F5C (case-0 block after case 101 inside a loop; `if (1)` endings do not 
 inlined link() parameter `n = o` separate from `o` and spills it across the call; uopt copy-propagates every spelling
 tried, incl. block scope, field re-reads and dead `while (0)`); 18FC/3018 constant stores (target stores in source
 order reusing f0 for 0/-1000/1000).
+
+
+## post0b kit X: verbatim gbi macros, per-arm s16 casts, home maps, folded zero compares (agent-c 2026-10-20, run 110) <a name="post0b-kit-x-run110"></a>
+
+Six post0b NM bodies (four were m2c soups) were re-decoded from the expected-object asm: gl_func_000493AC 72.4 -> 86.9,
+0004BAF4 71.3 -> 90.2, 0003BE1C 73.4 -> 76.3, 0003B9C0 67.0 -> 72.3, 0003B2EC 60.5 -> 85.2, 0003A58C 66.4 -> 68.3.
+
+- **libultra gbi macros, expanded as written.** 4BAF4's E4/B4/B3 sequence with nested sign tests and `>> 7` products is
+  `gSPScisTextureRectangle` (copy it from references/oot/include/ultra64/gbi.h). Written out verbatim (MAX/MIN ternaries,
+  `(s16)` casts, `(yl) < 0` without a cast in the t term, `_SHIFTL` masks) the whole clamp ladder matched on the first
+  compile. dsdx/dtdy were `(u16)(s32)(1024.0f / scale)`: `(u16)` straight from a float goes through the FCSR unsigned
+  dance, the `(s32)` gives `trunc.w.s` + `andi 0xffff` as in the target.
+- **cfront inline display-list appends.** When the target loads `ctx = G->254->158` BEFORE the call that produces the
+  DL word and allocates the slot after it, the append is an inline function (arguments first, then the body), not a
+  macro with `_g = pkt` first. Write `ctx = ...; r = f(...); g = NEXT(ctx); g->w0 = ..; g->w1 = r;`. The pool slot is
+  `n = p->n; p->n = n + 1; &ctx->gfx->buf[n]` with `ctx->gfx` re-read after the count store.
+- **MAX/MIN with sll/sra after every lh.** 3BE1C's three-way min/max re-casts each loaded s16 (`sll v1,a2,16; sra`).
+  That happens when the operands are int variables and each arm of the ternary is cast:
+  `#define MAXS(a, b) ((a) > (b) ? (s16)(a) : (s16)(b))` with `int ia = va[k], ...; hi = MAXS(MAXS(ia, ib), ic);`.
+  Casting the whole ternary, or s16 operands, drops the shifts.
+- **Home map from declaration order** (kit VIII rule, applied wholesale). 3BE1C's 0xF0 frame has 33 named homes: 10 words
+  above the Vec3 `q`, 13 between `q` and the memory-resident cell pair `s32 c[2]`, 10 below. Moving ten former block-scope
+  locals to function scope between `q` and `c` put every slot on the target's offset. 3B2EC: the escaped Vec3 declared
+  FIRST lands at the top (sp+140 of 0x98). Locals declared inside blocks are laid out after all function-scope ones.
+- **By-value Vec3 parameter scaled in place.** 3BE1C's `p.x *= K[0]` writes back to the caller's stack slot (sp+256): the
+  signature ends `..., V3 p)` (kit V). Without `if (1) { V3 *pp = &p; }` the members are promoted into f20/f22.
+- **Folded zero compare.** 3A58C: `disc = r*r - (len2 - dot*dot); if (disc < 0.0f)` compiled to `c.lt.s rr, x` (uopt
+  rewrites `a - b < 0` as `a < b`). The target subtracts, spills disc across the next call and compares against
+  `mtc1 zero`. Escaping disc (`if (1) { float *pd = &disc; }`) gives the target form; `(f32)0` and `0.0f > disc` do not,
+  `0.0` (double) does but emits c.lt.d.
+- **One symbol for a table's start and end.** 3B2EC walks the {1,2,0} next-vertex table from `&D` to `&D + 6`. With both
+  spelled through the same symbol IDO turns the walk into an offset counter (`addiu ...,-6`). Separate symbols for the
+  loop bound and the post-loop `nx != end` test kept the pointer walk (+3).
+- **`i * 12` as multu.** In 3B2EC the record offset compiled to `multu i, 12` with the 12 held in an s-reg. The target
+  shifts (`sll 2; subu; sll 2`); `off = ((i << 2) - i) << 2` reproduced it and freed the register. In 3BE1C the plain
+  product already shifted, so check the target before reaching for this.
+- **Literal eps gates.** 3B9C0's two double eps compares were memory externs in the old body. The target hoists the
+  in-loop one into callee-saved f24 before the loop, which IDO only does for a literal constant (a memory load is not
+  hoisted past the loop's dist[]/out[] stores). Use double literals (exact rodata values unchecked in the NM body).
+- **Inlined Array iterator (493AC).** cfront `ArrayIterator it = arr.iterator();` = a placement-constructed temp at one
+  slot (`if (1) { q = &t1; } if (q || (q = alloc(12))) {...}`), copied by value into a return temp, then into `it`
+  (`tmp = t1; it = tmp;`; the chained `it = tmp = t1` is worse). The constructor's `q->last = q->arr->count - 1` reads
+  through the just-stored field (forwarded to the register), where a separate `a` local folds to `self+0x90`.
+  Per-access aliases for the 0x1C4 flags word stop `&D` being held in a register. One shared temp for the target's s2
+  webs (loop-1 element, vtable pointer, ctx pointer) moved them to the right register class.
+
+Open, same class in four functions: the target rematerializes a constant or a local's address after each call (`lui
+at,0x437f; mtc1` in 454C4, `addiu v0,sp,236` in 3A58C, `addiu a0,sp,224` and the constant 1 in 493AC, the post-loop table end
+address in 3B2EC), where our build holds it in a callee-saved register and spills something else. Per-expression block
+temps did remove the &tmp hold in 3A58C, but each temp then takes its own frame slot. IDO 5.3 makes the same choice as
+7.1 here (standalone check on 3A58C), so this is not a compiler-version difference.
+
