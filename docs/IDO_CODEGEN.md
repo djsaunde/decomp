@@ -14410,6 +14410,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [post0b kit X (agent-c 2026-10-20, run 110): libultra gbi macros expanded VERBATIM reproduce the MIN/MAX clamp ladders (gSPScisTextureRectangle in 4BAF4, 71.3 -> 90.2); display-list appends written as cfront inlines read their ctx before the source call; MAX/MIN triples whose target shows sll/sra after every lh are int operands with an (s16) cast on EACH arm; declaration order rebuilds the whole home map (3BE1C: 10 homes above the Vec3, 13 between it and the memory cell pair); a zero compare of a difference `(a - b) < 0.0f` is folded to `c.lt.s a,b` unless the variable is escaped; one symbol for a table's start and end address turns the walk into an offset counter (split them); `i * 12` can come out as multu by a held 12 where the target shifts; eps gates that the target hoists into callee-saved FP registers are literals, not memory externs (493AC 72.4 -> 86.9, 3B2EC 60.5 -> 85.2, 3B9C0 67.0 -> 72.3, 3A58C 66.4 -> 68.3)](#post0b-kit-x-run110) -- _m2c-soup bodies in post0b gave +5..+25 per function from a typed rewrite; the remaining caps are constants/addresses held in s-regs that the target rematerializes after calls._
 - [kit X (agent-g 2026-10-20, run 108): void-callee-scan.py + five exacts. Discarded-return calls in a row must ALL be void (mgrproc 1614); the 0x6A8 constructor family (timproc_b3 0994, titproc C54, arcproc A3C, ex-"regalloc caps" at 87-97) is the E04 nested inlined-ctor skeleton + a void alias for the registration call; an empty `if (1) {}` between a pointer def and its `lh +0x20` def gives the target's pointer=v1/value=v0 (game_libs 1818), but only when each site has its OWN names; a void*-typed mirror store of a re-read field saves a t-ring slot; write `x * 30`, not `((x << 4) - x) * 2`; distinct stream-word symbol vs `&D_00000000` table decides which base gets CSE'd into s0](#kit-x-run108) -- _first thing to try on any constructor with alloc(0x6A8): paste the E04 / 0994 skeleton and diff._
 - [HOLD vs REMATERIALISE across a call is a cost compare in globalcolor: a fresh callee-saved register costs firstUseCost = 0.25 x (number of basic blocks), clamped 4..60; a caller-saved register costs freq per call crossing (x2 when the value is USED in the call's own BB); caller wins ties. Emission-free `if (1) { }` blocks raise the BB count and flip held constants / &locals / params from s-regs or f20+ to caller-saved registers with a post-call reload (3A58C 68.3 -> 75.1, 3B2EC 85.2 -> 88.4, 454C4 255.0f f22 -> f0, gl_func_00038108 51.0 -> EXACT, bootup 6254 67.3 -> EXACT, 74E8 +17, E800 +14; agent-c 2026-10-20, run 111)](#hold-vs-remat-firstusecost-run111) -- _Placement matters: put the adders where as1 has nothing to schedule across (before a call-free tail, at `return`). Uses inside the call BB double the caller cost, so two constants in one loop can split f0 (remat) / f20 (held) by moving a `do {` boundary. Diagnose with zdbug:5 (LR liveunits + reaching BBs) from a private ecvt-patched uopt._
+- [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
+- [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
 - [post0b kit IV (agent-c 2026-10-17, run 105): two global loads issue in source order only when their statements share ONE line (48184 EXACT); a value colours by VARIABLE identity, so park a stream cursor in the int local another arm uses (4E96C EXACT); every block-local pointer temp reserves a frame home (+8 frame from two `{ int *t = ...; }`); a function-scope temp reused for a later sub-object shares its spill slot; m2c `s32 *p + 0x2C` bodies scale every offset x4](#post0b-kit-iv-run105) -- _check frame size and spill-slot offsets against the target first; they name the local set._
 
@@ -32315,6 +32317,47 @@ jal; swc1 z2` came from `z[0] = 0.0f; f(s + 0x30, (z[1] = 0.0f, z[2] = 0.0f, z))
 last (into the delay slot). The comma temp costs one frame word; take it out of a pad.
 
 
+## kit XI: twin ports, one reused local, cast-literal divisors (agent-g 2026-10-20, run 109) <a name="kit-xi-run109"></a>
+
+Four exacts (timproc_uso_b3_func_000019CC, timproc_uso_b3_func_00000E60, arcproc_uso_func_00000FA8,
+arcproc_uso_func_00001D18) and timproc_uso_b5_func_00001460 93.68 -> 99.98.
+
+- **Sweep result for the 0x6A8 family.** Tells scripted over the target words (`bnez rObj,+N; ...; jal; li a0,SIZE` = cfront
+  `if (o || (o = alloc(N)))`; `sw at,4(rX)` + `sw rObj,0x14(rX)` = the record-link block). NOTE: USO .s files mix `.word`
+  lines with symbolic `jal sym` lines, so parse the hex out of the `/* off vram WORD */` comment, not only `.word`. Every
+  0x6A8 allocator in agent-g's units is already exact; eddproc and n64proc are 100% exact. Remaining ctor/link-tell NMs:
+  timproc_b5 D14C/D550/D884/DF14/8FC8 (the 0x2B8 group), gui 0148, titproc 05DC.
+- **Port the exact twin first.** b3 0E60 (97.5, "natural ceiling") went exact by copying timproc_b1 0EE8's C: `base = &D`
+  re-assigned right after the 0x6A8 load, the count stored to 0x6B0 and READ BACK as the for-init (store-forward), the
+  switch discriminant reused as the counter, and the call argument mult-first with no table local. arcproc 0FA8 (90.9) is
+  the same machine: its documented "list held in v0 across the call" cap was the call's return value
+  (`r = f(...); if (a0->6B0 != r->1C) break;`). Its case 1 also needed BOTH discarded-return calls void (the set-up call and
+  the link call; either alone kept the spilled `buf` in v1), all locals at function scope declared BEFORE the initialised
+  `i`/`s1` (frame 48), and `((int *)v0)[v0[1] + 4]` for `addu t1,v0,t0`.
+- **One reused local (E04 rule) beats the 3-arg trick.** b3 19CC's two link blocks used `o` and `sub`; the target shares
+  o's slot for both, and the 0x18/0x64 pointer mutations (`if (1) { o = o + 0x18; }`) are the same variable too. Then o's
+  use as the 3rd argument of the sub-create call colours the whole web a2, and the old "pass q as a dead 3rd argument"
+  hack is not needed. arcproc 1D18 is its twin: there a `tv = *(int *)(sub + 0x18)` pre-load local shifted the t-ring for
+  the rest of the function; `*(int *)sub = *(int *)sub & ~4` through the mutated pointer fixed 20 of 26 lines.
+- **Stack-argument store order.** 1D18's `0x4C = arg4` (arg4 from sp+88) had to be written BEFORE `0xB8 = arg3` so ugen
+  loads it first (t7, ahead of the `li 255` for 0xD0); the scheduler still sinks the store to the target's position.
+- **Flag RMW through the object pointer.** b5 1460's target `lw s0,56(s1); lw t6,196(s0); addiu s0,s0,196; ori; sw t7,0(s0)`
+  is `o = *(char **)(a0 + 0x38); o += 0xC4; *(int *)o |= 0x40;` (same s0 for object and flag address).
+- **Two registers for one constant: `num / (float)255`.** Target `lui at,0x437f; mtc1 at,$f4; mtc1 at,$f6; div.s $f0,$f4,$f6`.
+  `255.0f / denom`, `num / denom`, `(float)n / denom` all CSE to one register; a float VARIABLE over a CAST LITERAL keeps two
+  (the `(float)K` cast-literal has its own web, cf. #kit-x-run108 `(float)0`). Fixing it also fixed the float ring of a
+  later block. The sp+36 float in that function was not the 062880 return (both returns are discarded): it is the white
+  itself, spilled across the calls and reused as widget C's alpha; four `if (1) {}` adders
+  (#hold-vs-remat-firstusecost-run111) moved it from f20 to the stack. Open: the `a0 + 0x10` spill lands at 40 vs the
+  target's 32; a 1560-permutation decl sweep, an unnamed temp, and adder count/placement never put it below the float.
+- **Negative: the `255.0f * x` FP register swap** (target `mtc1 at,$f4` for the constant, `lwc1 $f6` for x; we get the
+  reverse) in arcproc 125C, mgrproc 1C90, mgrproc 2E3C, titproc 1710. Invariant across `x * 255.0f`, `(float)255 * x`,
+  `x * (float)255`, int `255`, a float var `k`, `k * (float)x`, `(k = 255.0f) * x`, `255.0f * (pr = x)` and all 2^3
+  site-orderings in 1C90; `255.0 * x` goes double. The int t-ring is also one register behind the target after the
+  same expression in 125C/1C90, so the missing piece probably consumes a temp in the original.
+- **Negative: gl_func_000525F0** (v1 vs v0 reload): an inline-param copy block, the cfront `||` lazy-init, the combined
+  assignment and a fresh `n` local are all byte-neutral (adds to the 12 spellings documented in the source).
+
 ## kit X: void-callee scan, the 0x6A8 constructor family, per-site BB splits (agent-g 2026-10-20, run 108) <a name="kit-x-run108"></a>
 
 Five exacts (mgrproc_uso_func_00001614, game_libs_func_00001818, timproc_uso_b3_func_00000994, titproc_uso_func_00000C54,
@@ -32358,3 +32401,61 @@ built .rodata, see #game-uso-rodata-relayout-late-rodata); 125C/1C90 FP pair (`m
 operand order is normalised); game_uso 7C1C (13 insns short; its frame is 80 bytes small after the run-103 member-wise
 copies -- pads at the documented gaps overshoot by 56 because the trailing scalars p/q/node/k/metric/thresh/tx/tz take
 homes at the bottom; objdiff ignores frame offsets, so this does not move the score).
+
+## kit XII (agent-c 2026-10-20, run 112): spilled plain local vs volatile, `(void)&x` no-op, sign-test bit tests, per-site void and adder sweeps <a name="kit-xii-agent-c-run112"></a>
+
+**1. A spilled plain local, not `T * volatile`, for the memory-resident web in a cfront constructor (timproc_uso_b1_func_0000097C EXACT, 94.96 -> 100).**
+The b1 twin of timproc_b3 0994 keeps its level-2 object pointer in a stack home
+(`sw a3,48(sp)` in the bnez delay, `lw a0,48(sp)` / `lw t9,48(sp)` after the joins),
+which earlier passes read as `char * volatile o2`. Ported to the b3 0994 / mgrproc E04
+skeleton (nested `oN = oN-1; if (oN-1 || (oN = alloc(n)))` inlined base ctors, void
+registration alias, one reused local o1), the volatile spelling put the `obj + 16` home 4
+bytes low (0x20 vs 0x24) and the whole t-ring started one register late (t6 vs t7: volatile
+spends an extra temp); a separate named alloc temp on top of it added two more frame words. The
+plain `char *o2;` is spilled around the calls into exactly that home, and inside a block
+uopt still uses the just-stored register value (the 0xE0 guard tests v0 and passes v0 in the
+jal delay, `or a0,v0,zero`), which volatile can never do. Tell: a "memory variable" that is
+also forwarded from its register within a block is a spill home, not volatile.
+
+**2. `(void)&x;` is a no-op in IDO cfe.** It does not make `x` address-taken (097C stays
+exact with it removed; it was inert on game_libs 41820, 372D4 and bootup E270). A real
+address-taken local needs a live use of the address, e.g. `T **p = &x;` (gl_func_000372D4's
+`int **po = &o;` is what homes `o` at 0x1C there).
+
+**3. Bit tests: the sign-test spelling, and inline re-reads for ring temps (h2hproc_uso_func_000017A0 EXACT, 95.66 -> 100).**
+The target tested bit 16 of `parent->0x4F0` as `sll t7,t6,15; bgez t7` and every later
+temp was one ring register ahead of ours. `(((u32)x << 15) >> 31)` is folded to the same
+sign test but its dead `srl` temp is still numbered, so the whole t-ring shifts +1; write
+`(x << 15) < 0`. Same function: `v->0x94`, held by the target in ring temp t4 across two
+tests, must be re-read inline (`if (v[0x94/4] == 0) ... else if (v[0x94/4] != 0)`); a
+named `p148` becomes a v1 candidate. The remaining shift was the void-callee case
+(#feedback-ido-void-callee-kills-dead-v0-def): all 14 discarded-return gl calls go through a
+void alias.
+
+**4. Sweep the void-callee lever per call site, and try pairs.** `scripts/void-callee-scan.py --owner X`
+flags functions; finishing them is mechanical: rewrite ONE statement-level call of the blank
+callee (`gl_func_00000000`, `func_00000000`, `gl_func_00034458`, a local alias) to a
+distinct `extern void NAME_XXXXv();`, rebuild only the NM .o, disassemble target and build
+(`scripts/disasm-func.py F` / `--nm`) and score; repeat for every site, then for "all" and
+leave-one-out. Results this run: gl_func_00037AF0 EXACT (only the registration call),
+gl_func_0004C300 EXACT (only the `if (G240 == 0) cb(&D + 0x20138)` call: the else-arm temp
+moves v1 -> v0 and its `lui v0` hoists into the beqz delay, the documented "4 word" residual),
+gl_func_000201B8 gained only with sites 3 AND 4 voided together (each alone: no change), bootup
+CFA0 only with all 19. Skip call sites that are casts or assignments (`(T *)f(...)`, `x = f()`):
+the void alias does not compile there. Unwrapping needs `NAME_XXXXv = 0x00000000;` plus any
+NM-only data aliases in undefined_syms_auto.txt, then `rm build/tenshoe.elf`.
+
+**5. Sweep `if (1) {}` adder positions automatically.** Inserting one adder after each
+statement end of the NM body (one NM .o rebuild per position, about 1.5 s for post0b) found
+gl_func_000372D4 98.10 -> 99.66 (adder right after `p = o->F4 + 0x30;`, restoring the
+`addiu v1,v1,48` rebase between the stores) and gl_func_000432BC 96.61 -> 97.59 (after the
+first `it.next = *(D + 0x18C);`). The same sweep was flat on 3E9C8, 4247C, 4EE44, 437C0,
+1DA7C, bootup E270, 0610, BF8C and D900: their residuals are not hold-vs-reload.
+
+**Open residuals noted this run.** gl_func_0003800C: the last call `o->0x20 = gl(o, n)` has
+no a0 setup at all in the target (a0 still holds o from the previous `gl(o, 0)` as far as
+the code goes), so the original's first argument was probably an undefined value; an
+uninitialised local gets a home and a reload instead. gl_func_00039E24: the target
+materialises `&D_b` into a2 and copies it to a0 for the call (one CSE candidate shared with
+the post-call `lwc1 0x128(a2)` loads); ours builds a0 directly. gl_func_0003E9C8: each
+by-value key copy spends a temp (no copies: t1, two named copies: t3, target: t4).
