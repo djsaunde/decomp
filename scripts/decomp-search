@@ -8,9 +8,9 @@
 #   decomp-search --asm "ddivu"         # search .s files for a specific instruction
 #   decomp-search --reg "FPCSR_FS"      # search include/ headers for register defines
 #
-# Refs live under /home/dan/Documents/code/decomp/references/
+# Refs live under $(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/references/
 
-REFS="/home/dan/Documents/code/decomp/references"
+REFS="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/references"
 MODE="symbol"
 QUERY=""
 
