@@ -14,6 +14,7 @@ _76 entries. Auto-generated from per-memo notes; content may be rough on first p
 
 - [Parallel agents can share ONE scratchpad directory: keep scripts in a private subdir (agent-c run 105 ran agent-g's same-named gate.sh, which cd'd into agent-g's worktree)](#shared-scratchpad-collision-run105) -- _name every scratch script with your agent letter or put it under scratchpad/<agent><run>/._
 - [game_uso NCC (C++) donor recipe: game_uso is C++ -- compile a function with IDO 7.1 NCC from a `.cpp` donor and REPLACE_FUNC_BODY-splice it into game_uso.c.o; no Yay0 / objdiff / expected/ change (D204 85.8 + 10694 71.5 -> EXACT, 2026-10-15 agent-g)](#game-uso-ncc-cplusplus-donor-recipe) — _generic `build/src/%.cpp.o` NCC rule, all symbols `extern "C"`, placeholder body in the host, `+=` per function. Tell: pointer-to-member compare (`addi` + `lw at` 2-word loop), PMF passed by value (a1/a2 + home slots)._
+- [game_libs NCC donor (gl_func_00062A2C, agent-g run 113): the game_uso recipe works unchanged on game_libs_post0b -- `.cpp` donor + `REPLACE_FUNC_BODY +=` + placeholder host; jal-0 imports need zero-valued alias names (the in-file name resolves to its real address); the NM body size change moves the post0b clip; plus scripts/transcription-tell-scan.py](#game-libs-ncc-donor-run113) -- _Clip rule: NON_MATCHING_TEXT_CLIP_KEEP_ALIGN must equal game_libs_func_00062F08's NM offset + 0x50 (0x2e66c -> 0x2e668 when the 210-word NM wrap became the 209-word splice)._
 - [Mnemonic-histogram diff triages giant NM bodies in one pass — swc1-deficit + trunc.w.s-surplus = s32-cast float stores; sw-zero at vtable offset = blanked-reloc decoded as 0; check frame size before chasing sp offsets (90CC, agent-f 2026-08-22)](#mnemonic-histogram-giant-fn-triage)
 - [USO expected-side reloc injection (spimdisasm-migration phase 1) is score-NEGATIVE: objdiff 3.7 already fully credits blind literal-0 vs reloc-to-blank; C234/55A0/6808 residuals are structural, NOT reloc rendering (bootup_uso 526-site prototype, agent-f 2026-08-23)](#uso-expected-reloc-injection-negative)
 - [NM-body GROWTH in a clipped unit shifts tail symbols past NON_MATCHING_TEXT_CLIP_KEEP_ALIGN — sentinel false-drops (62F08 100->20) until the Makefile clip is advanced to the tail's new end (54E78 pass, 2026-08-22)](#nm-clip-advance-on-body-growth) — _clip = last real fn's end in the NM object; recompute as st_value+st_size of the tail symbol after `make non_matching_objects` prints the resize warnings; sentinels re-probe 100 after. Baseline-vs-edit stash test distinguishes this from a real regression._
@@ -13070,3 +13071,28 @@ Not cracked in run 112 (NM bodies improved, see the comments at each function): 
 the ~8 constant in t5), func_800021A4 94.9 and func_8000235C 92.6 (i/p/count land in a1/v1/a2 where the target has v1/a2/a1; decl order
 has no effect, 120 permutations), func_80001184 94.7 (target shares one `lui at` between two zero stores), func_80009474 99.4 (the 0xFFF
 mask ping-pong).
+
+
+## game_libs NCC donor + transcription-tell scanner (agent-g 2026-10-21, run 113) <a name="game-libs-ncc-donor-run113"></a>
+
+**game_libs NCC donor.** gl_func_00062A2C went EXACT the same way as the game_uso donors. These are
+the parts specific to game_libs_post0b:
+- Callees that are USO imports (`jal 0` in the ROM) must be called through new zero-valued names
+  (`gl_func_00000000_62a2c_get = 0x00000000;` in undefined_syms_auto.txt). The in-file name the old
+  NM used (`gl_func_00034458`) is a real function at 0x34458, and the jal would be relocated to it.
+  After editing undefined_syms, `rm build/tenshoe.elf`.
+- The host placeholder is a tiny C body. In the NON_MATCHING object the old wrap was one word longer
+  than the spliced body, so every later symbol moved 4 bytes down. The post0b clip
+  (`NON_MATCHING_TEXT_CLIP_KEEP_ALIGN`) has to equal game_libs_func_00062F08's NM offset + 0x50. Re-probe
+  it with `mips-linux-gnu-objdump -t build/non_matching/src/game_libs/game_libs_post0b.c.o`. A wrong value
+  fails the build with ".text 0x... smaller than requested".
+- Verify before landing: donor .text word-equal to the expected/ slice (the only relocs are on the
+  jal-0 words), ROM cmp, verify-blocks, NM rebuild + report (sentinels 551E0/55B10/EBC8/C5B0/62F08).
+
+**scripts/transcription-tell-scan.py** ranks NM bodies by unmatched bytes and flags transcription
+tells: `register` locals, fn-pointer-cast calls with no matching target jalr, hand x4 unrolls (>= 4
+statements that differ in one arithmetic-progression constant), x4 loop steps, gotos, and duplicated
+statement pairs. Outside the kernel, the real hits in agent-g's units were not unroll loops. They were
+m2c transcriptions of macro or C++ code: 578B4 (gbi macros), 5062C/62A2C (C++ Vec3 class), and goto-heavy
+game_uso bodies. For those, find the source idiom (gbi macro, inline member, operator) rather than
+re-spelling the m2c body.

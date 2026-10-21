@@ -14372,6 +14372,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [game_uso is C++ compiled by IDO 7.1 NCC (edg front end), not cfe: the `addi`/`at` 2-word compare loop + 1/0 flag is a pointer-to-member-function `pmf != 0` test, the bgez / vptr-offset-40 block is `(this->*pmf)()`; NCC compiles the C++ body of game_uso D204 instruction-identical (0x214), cfe can't (2026-10-15 agent-g)](#game-uso-is-cplusplus-ncc-pmf-compare-d204) -- _Tell: `or t7,v1; addi t8,v1,8; lw at,0(t7); lw t9,0(t6); addi t7,4; addi t6,4; bnel at,t9; li t8,1; bnel t7,t8; lw at,0(t7); b; li t8,0`. NCC also orders mul.s operand loads differently from cfe on plain C (game_uso 7448's "reversed mul operands" lever is a cfe-side compensation)._
 - [`sltu tB,zero,tM; beqzl tB` (a flag test materialized as 0/1 before the branch) + a RELOAD of the same flag word for the next test = `((p->f & 0x100) != 0) == 0 || (((unsigned *)p)->f & 0x200)`; the pointer into a dead param takes that arg reg (game_uso F060 91.18 -> 99.64, F13C 78.85 -> 99.57, 2026-10-15 agent-g)](#materialized-bool-flag-test-sltu-beqzl-f060) -- _`!(x & 0x100)` / `(x & 0x100) == 0` branch directly on the andi (no sltu); the extra `!= 0 ... == 0` keeps it. The type-split cast defeats the load CSE._
 - [game_uso under NCC: an inlined member that returns a child pointer (`self->0xB4->child()`) colours the 0xB4 pointer v1 (edg return temp holds v0) -- F060 99.64 + F13C 99.57 -> EXACT; plus NCC address/inline-accessor facts from B274 / 7448 (2026-10-15 agent-g)](#ncc-inline-member-child-v1-f060) -- _`(char *)(unsigned)&sym` is a no-op under edg (no s-reg caching); `int s1 = (int)&sym` caches it; `int d = (int)&sym + K` keeps `lui/addiu sym+K` + small offsets; inline `get()` returns via f0, `float &r()` stays in the expression ring; a load-expression `this` stays unfolded, a named-local `this` folds._
+- [**game_libs is C++ too (NCC): gl_func_00062A2C EXACT via an NCC donor; the Vec3 class recipe (by-value operator= forwarding to set(const V3 &), inline flerp, implicit record assignment, frame slots of inline locals) + 5062C/578B4 drafts at 93-95 (2026-10-21 agent-g run 113)**](#ncc-game-libs-vec3-62a2c) -- _Tells for a C++ game_libs/USO function: per-Vec3 copies through a stack temp (`addiu vN,sp,K` + three lw/sw into it, then lwc1/swc1 per field into the destination) = an inline `operator=(V3 v)` taking its argument BY VALUE; `lh` this-adjust + `jalr` through vtable +0x50/+0x54 = a virtual call (vptr at +0x28). edg facts: a `switch` is lowered to a SOURCE-ORDER compare chain (`beq last; <delay>; b default; nop`), cfe sorts case values; every inline call's params/`this` are frame-slotted locals; const-ref-bound temporaries are allocated at the TOP of the frame in reverse creation order; `volatile` on params is ignored; unreferenced locals are dropped (no slot)._
+- [gl_func_000578B4 (9676 B) is the libultra-gbi texture loader: gDPSetTextureLUT + gDPLoadTextureTile (SetTileSize at 0,0) / gDPLoadMultiBlock(_4b) + gDPLoadTLUT_pal256, one frame slot per gbi `_g` (the 0x1C arm stride), DL pointer = C++ inline `&dl->buf[dl->count++]` (2026-10-21 agent-g run 113)](#ncc-578b4-texture-loader) -- _In cfe the count-store-before-buf-reload needs `(d = c->dl, n = d->count, d->count = n + 1, &c->dl->buf[n])` (makes game_libs_func_0005769C exact too); a single shared temp var steals a2 for the whole function. NCC draft 2418/2419 words, 95.0._
 - [game_uso under NCC: a stack float param reassigned in place (`if (!(f & 8)) arg4 = 1.0f;`) and a class temporary whose ctor forwards to an inline `set()` fix frame size and FP colouring -- B750 72.8 -> EXACT (2026-10-15 agent-g)](#ncc-ctor-forwarding-inline-set-frame-b750) -- _Tell: the same `lwc1 fN,104(sp)` of a stack arg on two paths into one register; frame larger than your C by 8 with the temp object 4 higher. edg gives every named local and every live inline-argument temp its own 4-byte stack slot even when it lives in a register, so the count of locals and nested inline params sets the frame._
 - [game_uso under NCC: a named copy local (`prev = F0; F4 = prev; ...`) colours v0 and renumbers every later temp; writing the move through the members (`F4 = F0; F0 = 0; if (F8 == F4) ..; F8 = F4;`) gives the target's t0/t1 expression temps; NCC is NOT a universal lever (B4B8 sentinel loop is NCC-immune) -- F6D4 95.4 + E35C 95.3 -> EXACT (2026-10-15 agent-g)](#ncc-no-named-copy-local-f6d4) -- _Tell: target values in the ugen temp ring (t8, t9, then t0, t1) right after a call, where your build has a v0 local; a 2-copy `bne; or v0,t0 / or v0,t0` join is what a pure member re-read leaves, not a ternary._
 - [game_uso under NCC: 1DDC homing is a Vec3 value class (by-value `operator=`, ctor forwarding to `set`, `set(const Vec3 &)` for plain copies, a 4-byte `Ptr` class for the output pointer, `getPos` returning `Vec3 &`); all 382 instructions identical, only the frame layout left (2026-10-15 agent-g)](#ncc-vec3-class-shape-1ddc) -- _The cfe wrap's Tri3i word-copy hops are edg return / by-value temps. Read edg's slot assignment by name from `-g3` `.mdebug` local symbols. Residual: two swapped binding temps plus 3x8 bytes of horizontal-pass temps._
@@ -29884,6 +29886,80 @@ local moved the spill slot to 28. Giving the u32 header and the prev pointer one
 register (v0 when that variable outranked n, v1 once n was folded into p), so here IDO coloured per variable, not per
 web. The call-shape-scan `SPILL #0 a0` hit was the heap param's home store, and the first call is `(heap, blk)`.
 `h + 1 + size` (not `size + h + 1` or `h + size + 1`) gave the target's `addu t3,v1,t2` operand order.
+
+## game_libs is C++ too: gl_func_00062A2C EXACT under NCC, and the Vec3 class recipe (agent-g 2026-10-21, run 113) <a name="ncc-game-libs-vec3-62a2c"></a>
+
+The game_uso NCC route (MATCHING_WORKFLOW #game-uso-ncc-cplusplus-donor-recipe) also applies to
+game_libs_post0b. gl_func_00062A2C (camera/transform blend, 209 words, cfe capped at 210/209
+words with FP colouring residuals) is byte-exact from src/game_libs/game_libs_ncc_62A2C.cpp,
+spliced over a placeholder with REPLACE_FUNC_BODY.
+
+**Tells that a function is C++:**
+- A Vec3 copied `addiu vN,sp,K; lw/sw x3 into (vN)` and then `lwc1/swc1` per field from the stack
+  temp into the destination. That is an inline `operator=(V3 v)` with a BY-VALUE argument (the temp
+  is the parameter), whose body stores the floats member by member.
+- `lw v1,0x54(o); lw v0,0x28(v1); lw t9,0x54(v0); lh t1,0x50(v0); jalr t9; addu a0,t1,v1`: a virtual
+  call with the cfront `{s16 delta; s16 index; fnptr}` vtable entry, vptr at +0x28
+  (`struct L { char pad[0x28]; virtual ...; }`).
+
+**The V3 recipe that matched (every item moved frame slots or registers):**
+```cpp
+inline float flerp(float a, const float &b, float t) { return (b - a) * t + a; }
+struct V3 { float x, y, z;
+    void set(const V3 &v) { x = v.x; y = v.y; z = v.z; }
+    void operator=(V3 v) { set(v); }
+    void lerp(const V3 &b, float t) { x = flerp(x, b.x, t); y = flerp(y, b.y, t); z = flerp(z, b.z, t); } };
+```
+- Writing the lerp per component directly (`x = (b.x - x) * t + x`) lets uopt hoist all three
+  `a` loads (f0/f2/f12 live together). The inline scalar `flerp` keeps the components sequential:
+  `a` in $f0, `t` in $f2, `b` in the ugen FP ring, which is the target's shape.
+- The set() forwarder adds two inline locals per copy: the temps land 32 bytes apart
+  (sp+100/68/36), which pins the frame (216).
+- A member whose temp is lowest in the frame (declared after its inline locals) is a different
+  class: `V3c &operator=(const V3c &v) { set(v); return *this; }` with `set(V3c v)` by value.
+- `o->dst = o->cur;` as a plain record assignment: the implicit `Rec::operator=` calls the member
+  operators. The getter's 24-byte output object (only its first V3 used) fills a 12-byte hole.
+
+**edg frame/temp facts (all measured with `-Wo,-zdbug:1` isvar lists):**
+- Every inline call's parameters and `this` are named frame locals (vregs). They take slots even
+  when they are register-coloured. edg reuses an inline temp across statements in some cases
+  (62A2C: one temp for all three copies of `o->dst = o->cur`).
+- A temporary bound to a `const V3 &` parameter (`(a + b) / 2.0f` with `operator/(const V3 &, float)`)
+  is a function-scope temp at the TOP of the frame. Each statement gets its own, and the LAST
+  created is the highest. In gl_func_0005062C the target has the opposite order, which is still unsolved.
+- `volatile` on a parameter has no effect under NCC (the param was still cached in an s-reg).
+  Unreferenced locals (even with a declaration) are dropped and take no slot.
+- `switch` is lowered by edg to a compare chain in SOURCE order ending `beq <last>; <delay from
+  default>; b default; nop`, which is the shape cfe cannot produce (it sorts the case values,
+  and a goto ladder gives `bne default; b last`). The switch expression gets a temp with a frame home.
+- `V3(float, float, float)` constructor temporaries (`return V3(a.x + b.x, ...)`) colour their float
+  arguments as FP candidates (f12/f0/f2) before the stores. Plain `V3 r; r.x = ...` does not.
+
+**In progress:** src/game_libs/ncc_drafts/gl_func_0005062C.cpp (recursive triangle subdivider, 690/689
+words, 93.3, frame exact) and gl_func_000578B4.cpp (95.0), see #ncc-578b4-texture-loader. Other C++ candidates
+by tell (scan for the stack-temp copy / lh+jalr): timproc_uso_b5 8FC8/4118/5BF0/5FC0/D14C,
+gl_func_000076F0 (16 virtual calls), gl_func_00065494, titproc 116C.
+
+## gl_func_000578B4 is the gbi texture loader (agent-g 2026-10-21, run 113) <a name="ncc-578b4-texture-loader"></a>
+
+The 12-pass m2c transcription of this 9676-byte function was hiding a libultra texture loader:
+```
+gDPSetTextureLUT(G_TT_NONE); cms/cmt from flags 0x100/0x200/0x400 and 0x1000/0x2000/0x4000;
+masks/maskt = log2 helper(tex->w / tex->h);
+if (flags & 0x10) switch (fmt) {  /* sub-image: gDPLoadTextureTile, SetTileSize(0, 0, lrs-uls, lrt-ult) */
+    RGBA32 0x120, RGBA16 0x110, IA8 0x408, I8 0x308, I4 0x304 (_4b), CI8 0x508 (gDPLoadTLUT_pal256 +
+    gDPSetTextureLUT(G_TT_RGBA16) first); default: error(str); }
+else switch (fmt) { gDPLoadMultiBlock(_4b)(timg, tmem, tex->rtile, ..., tex->shifts, tex->shiftt);
+    CI8 reads the UNINITIALISED sub pointer (original bug) and falls through to default: error(str, fmt); }
+```
+- One frame slot per gbi command (`Gfx *_g` block local), so an arm is 7 slots (0x1C).
+- The display-list pointer increments `count` before reloading `ctx->dl->buf`, so there is a sequence point
+  between them. In C++ it is `Gfx *next() { return &dl->buf[dl->count++]; }`. In cfe, the only working form is
+  the two-variable comma macro `(d = c->dl, n = d->count, d->count = n + 1, &c->dl->buf[n])`
+  (game_libs_func_0005769C matches with it). A one-variable `(n = c->dl->count++, &c->dl->buf[n])`
+  makes `n` a whole-function live range that takes $a2.
+- Under cfe one of masks/maskt/cms/cmt always takes $ra. Under NCC with the goto ladder they stay in memory
+  like the target. With a real `switch` (target-exact chain), cmt goes back into $ra. That is the open item.
 
 ## game_uso under NCC: inlined member returning a child pointer = the target's v1 colouring (F060 / F13C -> EXACT), and other edg facts from B274 / 7448 (2026-10-15 agent-g) <a name="ncc-inline-member-child-v1-f060"></a>
 
