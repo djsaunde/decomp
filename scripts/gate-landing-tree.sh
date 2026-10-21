@@ -15,8 +15,8 @@ dups=$(comm -23 <(dupkeys < Makefile) <(git show origin/main:Makefile | dupkeys)
 if [ -n "$dups" ]; then echo "!! duplicate target-specific := assignments in Makefile (stale merge?):"; echo "$dups"; exit 5; fi
 chg=$(git diff origin/main -- Makefile | grep -E '^[-+][^-+].*(CLIP_KEEP_ALIGN|TRUNCATE_TEXT) :=' | cut -c1-160)
 [ -n "$chg" ] && { echo "   ?? clip/TRUNCATE values changed vs origin/main — confirm each is intended:"; echo "$chg" | sed 's/^/      /'; }
-echo "== gate: make"; rm -f build/tenshoe.elf  # undefined_syms_auto.txt is not an ELF prerequisite: always relink
-make RUN_CC_CHECK=0 -j8 >"$LOG-make.log" 2>&1; rc=$?; echo "   make exit=$rc"
+echo "== gate: make"; rm -f build/tenshoe.elf tenshoe.z64  # undefined_syms_auto.txt is not an ELF prerequisite: always relink; no stale ROM can pass cmp
+make RUN_CC_CHECK=0 -j8 all >"$LOG-make.log" 2>&1; rc=$?; echo "   make exit=$rc"
 # a failed link leaves the previous tenshoe.z64 in place, so cmp would pass on a stale ROM
 if [ $rc -ne 0 ]; then echo "   !! make failed -- ROM is stale; see $LOG-make.log"; tail -5 "$LOG-make.log"; exit 2; fi
 if cmp tenshoe.z64 baserom.z64; then echo "   ROM: BYTE-IDENTICAL"; else echo "   ROM: !! MISMATCH"; exit 3; fi

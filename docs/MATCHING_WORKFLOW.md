@@ -15,6 +15,7 @@ _76 entries. Auto-generated from per-memo notes; content may be rough on first p
 - [Parallel agents can share ONE scratchpad directory: keep scripts in a private subdir (agent-c run 105 ran agent-g's same-named gate.sh, which cd'd into agent-g's worktree)](#shared-scratchpad-collision-run105) -- _name every scratch script with your agent letter or put it under scratchpad/<agent><run>/._
 - [game_uso NCC (C++) donor recipe: game_uso is C++ -- compile a function with IDO 7.1 NCC from a `.cpp` donor and REPLACE_FUNC_BODY-splice it into game_uso.c.o; no Yay0 / objdiff / expected/ change (D204 85.8 + 10694 71.5 -> EXACT, 2026-10-15 agent-g)](#game-uso-ncc-cplusplus-donor-recipe) — _generic `build/src/%.cpp.o` NCC rule, all symbols `extern "C"`, placeholder body in the host, `+=` per function. Tell: pointer-to-member compare (`addi` + `lw at` 2-word loop), PMF passed by value (a1/a2 + home slots)._
 - [game_libs NCC donor (gl_func_00062A2C, agent-g run 113): the game_uso recipe works unchanged on game_libs_post0b -- `.cpp` donor + `REPLACE_FUNC_BODY +=` + placeholder host; jal-0 imports need zero-valued alias names (the in-file name resolves to its real address); the NM body size change moves the post0b clip; plus scripts/transcription-tell-scan.py](#game-libs-ncc-donor-run113) -- _Clip rule: NON_MATCHING_TEXT_CLIP_KEEP_ALIGN must equal game_libs_func_00062F08's NM offset + 0x50 (0x2e66c -> 0x2e668 when the 210-word NM wrap became the 209-word splice)._
+- [NM-only NCC donor (gl_func_0005062C, agent-g run 114): when a function's closest source is C++ but not exact, splice the compiled `.cpp` into the NON_MATCHING object only (`build/non_matching/...: REPLACE_FUNC_BODY += fn=$(DONOR)`), with a placeholder C body in the wrap; re-probe the post0b clip](#game-libs-ncc-nm-only-donor-run114) -- _5062C NM 65.4 -> 99.99; clip 0x2e668 -> 0x2e7a4. The default build keeps INCLUDE_ASM, so no undefined_syms entry is needed for the donor's jal-0 callees (the NM object is never linked)._
 - [Mnemonic-histogram diff triages giant NM bodies in one pass — swc1-deficit + trunc.w.s-surplus = s32-cast float stores; sw-zero at vtable offset = blanked-reloc decoded as 0; check frame size before chasing sp offsets (90CC, agent-f 2026-08-22)](#mnemonic-histogram-giant-fn-triage)
 - [USO expected-side reloc injection (spimdisasm-migration phase 1) is score-NEGATIVE: objdiff 3.7 already fully credits blind literal-0 vs reloc-to-blank; C234/55A0/6808 residuals are structural, NOT reloc rendering (bootup_uso 526-site prototype, agent-f 2026-08-23)](#uso-expected-reloc-injection-negative)
 - [NM-body GROWTH in a clipped unit shifts tail symbols past NON_MATCHING_TEXT_CLIP_KEEP_ALIGN — sentinel false-drops (62F08 100->20) until the Makefile clip is advanced to the tail's new end (54E78 pass, 2026-08-22)](#nm-clip-advance-on-body-growth) — _clip = last real fn's end in the NM object; recompute as st_value+st_size of the tail symbol after `make non_matching_objects` prints the resize warnings; sentinels re-probe 100 after. Baseline-vs-edit stash test distinguishes this from a real regression._
@@ -13072,6 +13073,26 @@ the ~8 constant in t5), func_800021A4 94.9 and func_8000235C 92.6 (i/p/count lan
 has no effect, 120 permutations), func_80001184 94.7 (target shares one `lui at` between two zero stores), func_80009474 99.4 (the 0xFFF
 mask ping-pong).
 
+
+## NM-only NCC donor (gl_func_0005062C, agent-g 2026-10-21, run 114) <a name="game-libs-ncc-nm-only-donor-run114"></a>
+
+The NM build compiles C with cfe, so a C++ (NCC) body cannot go into the wrap itself. When the `.cpp` beats
+the C wrap but is not exact, splice it into the NON_MATCHING object only. 65EE4's `-Olimit` donor is the
+precedent:
+```make
+GAMELIBS_5062C_NM_DONOR := build/src/game_libs/game_libs_ncc_5062C.cpp.o
+build/non_matching/src/game_libs/game_libs_post0b.c.o: REPLACE_FUNC_BODY += gl_func_0005062C=$(GAMELIBS_5062C_NM_DONOR)
+build/non_matching/src/game_libs/game_libs_post0b.c.o: $(GAMELIBS_5062C_NM_DONOR)
+```
+- The wrap's `#ifdef NON_MATCHING` body becomes a placeholder (`s32 fn(void) { return 0; }`) with a pointer to the
+  `.cpp`. The `#else INCLUDE_ASM` side is unchanged, so the ROM, expected/ and undefined_syms are untouched. The
+  donor's jal-0 callees can keep descriptive names (`gl_func_00000000_5062c_nrm`) because the NM object is
+  never linked.
+- REPLACE_FUNC_BODY runs before the clip, so the clip has to cover the spliced size. For post0b, read
+  game_libs_func_00062F08's offset from `mips-linux-gnu-objdump -t` on the rebuilt NM object and set
+  `NON_MATCHING_TEXT_CLIP_KEEP_ALIGN` to that offset + 0x50. A too-large value fails with ".text 0x... smaller than
+  requested 0x...", and the message gives the right number. 5062C: placeholder -> 689 words, clip 0x2e668 -> 0x2e7a4.
+- Gate: report shows the function at the donor score, and the post0b sentinels (551E0, 55B10, 62F08) and 62A2C stay 100.
 
 ## game_libs NCC donor + transcription-tell scanner (agent-g 2026-10-21, run 113) <a name="game-libs-ncc-donor-run113"></a>
 
