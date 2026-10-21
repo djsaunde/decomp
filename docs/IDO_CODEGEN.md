@@ -29998,6 +29998,14 @@ involves a base class or conversion somewhere; not found yet.
   `alloc(12)`), with inline `this`/reference params in s0..s7 in pool order, so it shows which slot is
   which kind. It does not show what the slots are used for at -O2.
 
+**Side probe, gui_func_00000148 (99.98, the glyph-grid "find-or-create" constructor):** it is a cfront
+constructor. `GuiGlyphGrid148::GuiGlyphGrid148(char *, int, int, int, int)` with a class-scope
+`operator new(unsigned n) { return gl_func_00000000(n); }`, called as `new`, compiles under NCC to the same 255
+instructions, `if (this == 0) this = alloc(40)` protocol included. Using `this` directly and dropping `line` gives the
+target's 128-byte frame. Seven spill homes stay 4 bytes low (68/72 -> 64/68) and one named home is off. 400 random
+declaration orders reach at most 246/255. That is the same residual the cfe wrap documents, so NCC alone does not
+solve it. Not wired.
+
 ## gl_func_000578B4 is the gbi texture loader (agent-g 2026-10-21, run 113) <a name="ncc-578b4-texture-loader"></a>
 
 The 12-pass m2c transcription of this 9676-byte function was hiding a libultra texture loader:

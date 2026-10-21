@@ -16,6 +16,7 @@ _76 entries. Auto-generated from per-memo notes; content may be rough on first p
 - [game_uso NCC (C++) donor recipe: game_uso is C++ -- compile a function with IDO 7.1 NCC from a `.cpp` donor and REPLACE_FUNC_BODY-splice it into game_uso.c.o; no Yay0 / objdiff / expected/ change (D204 85.8 + 10694 71.5 -> EXACT, 2026-10-15 agent-g)](#game-uso-ncc-cplusplus-donor-recipe) — _generic `build/src/%.cpp.o` NCC rule, all symbols `extern "C"`, placeholder body in the host, `+=` per function. Tell: pointer-to-member compare (`addi` + `lw at` 2-word loop), PMF passed by value (a1/a2 + home slots)._
 - [game_libs NCC donor (gl_func_00062A2C, agent-g run 113): the game_uso recipe works unchanged on game_libs_post0b -- `.cpp` donor + `REPLACE_FUNC_BODY +=` + placeholder host; jal-0 imports need zero-valued alias names (the in-file name resolves to its real address); the NM body size change moves the post0b clip; plus scripts/transcription-tell-scan.py](#game-libs-ncc-donor-run113) -- _Clip rule: NON_MATCHING_TEXT_CLIP_KEEP_ALIGN must equal game_libs_func_00062F08's NM offset + 0x50 (0x2e66c -> 0x2e668 when the 210-word NM wrap became the 209-word splice)._
 - [NM-only NCC donor (gl_func_0005062C, agent-g run 114): when a function's closest source is C++ but not exact, splice the compiled `.cpp` into the NON_MATCHING object only (`build/non_matching/...: REPLACE_FUNC_BODY += fn=$(DONOR)`), with a placeholder C body in the wrap; re-probe the post0b clip](#game-libs-ncc-nm-only-donor-run114) -- _5062C NM 65.4 -> 99.99; clip 0x2e668 -> 0x2e7a4. The default build keeps INCLUDE_ASM, so no undefined_syms entry is needed for the donor's jal-0 callees (the NM object is never linked)._
+- [timproc b5 jumptable donor (timproc_uso_b5_func_00005FC0, agent-g run 114): the 29CCC recipe in a Yay0 unit -- the host placeholder must re-emit the RoData words the INCLUDE_ASM .s carried as `.late_rodata`, and the `<fn>_rodata` pin in undefined_syms must have NO trailing comment on its line (bake-data-relocs.py cannot parse `0x190;  /* ... */`)](#timb5-jumptable-donor-5fc0-run114) -- _Symptom of the missing RoData: verify-blocks still says OK but lo16 jumps from 0 to 16 (later functions' %lo 0x44 low). Also: ROM cmp does not cover Yay0 code blocks; verify-blocks is the gate._
 - [Mnemonic-histogram diff triages giant NM bodies in one pass — swc1-deficit + trunc.w.s-surplus = s32-cast float stores; sw-zero at vtable offset = blanked-reloc decoded as 0; check frame size before chasing sp offsets (90CC, agent-f 2026-08-22)](#mnemonic-histogram-giant-fn-triage)
 - [USO expected-side reloc injection (spimdisasm-migration phase 1) is score-NEGATIVE: objdiff 3.7 already fully credits blind literal-0 vs reloc-to-blank; C234/55A0/6808 residuals are structural, NOT reloc rendering (bootup_uso 526-site prototype, agent-f 2026-08-23)](#uso-expected-reloc-injection-negative)
 - [NM-body GROWTH in a clipped unit shifts tail symbols past NON_MATCHING_TEXT_CLIP_KEEP_ALIGN — sentinel false-drops (62F08 100->20) until the Makefile clip is advanced to the tail's new end (54E78 pass, 2026-08-22)](#nm-clip-advance-on-body-growth) — _clip = last real fn's end in the NM object; recompute as st_value+st_size of the tail symbol after `make non_matching_objects` prints the resize warnings; sentinels re-probe 100 after. Baseline-vs-edit stash test distinguishes this from a real regression._
@@ -13073,6 +13074,32 @@ the ~8 constant in t5), func_800021A4 94.9 and func_8000235C 92.6 (i/p/count lan
 has no effect, 120 permutations), func_80001184 94.7 (target shares one `lui at` between two zero stores), func_80009474 99.4 (the 0xFFF
 mask ping-pong).
 
+
+## timproc b5 jumptable donor: timproc_uso_b5_func_00005FC0 EXACT (agent-g 2026-10-21, run 114) <a name="timb5-jumptable-donor-5fc0-run114"></a>
+
+The 96.9 cfe NM body needed only C fixes (see the donor header, src/timproc_uso_b5/timproc_uso_b5_o2_5FC0.c):
+a prototyped `f32 fn(f32)` for a float helper that the wrap declared K&R (`f32 fn();` promotes every argument
+to double: a `cvt.d.s` before each call), `+=`, base-first sums for IDO's add/mul operand order, and no named
+float local held across a call (IDO spilled it, +8 frame). Landing it in the Yay0 unit took three more steps:
+1. **Donor + pinned jumptable (29CCC recipe).** An in-unit `switch` would add a second table to the TU's .rodata.
+   Compile the function in its own `.c` (filtered out of C_FILES), splice it with `REPLACE_FUNC_BODY +=` on both
+   timproc_uso_b5.c.o trees, and pin `timproc_uso_b5_func_00005FC0_rodata = 0x00000190;` (the ROM's baked %lo).
+2. **Put the line in undefined_syms with no trailing comment.** The block is baked by
+   `scripts/bake-data-relocs.py`, whose parser takes everything after `=` up to `;` and gives up on
+   `0x190;  /* ... */` ("no value for symbol"). Put the comment on its own line above the entry. Linked
+   units such as game_libs never hit this, because ld parses the comment.
+3. **The placeholder must re-emit the INCLUDE_ASM's RoData.** The function's `.s` carried RoData +0x190..+0x1D4
+   (its 11-word table, five pi/2 literals and a 0.1f that belongs to 79A4) as `.late_rodata`
+   (#game-uso-rodata-relayout-late-rodata). Dropping INCLUDE_ASM moved every later `%lo` in block 5 down by 0x44.
+   verify-blocks still printed OK, but with `lo16=16`, so check that it stays at the baseline (0 for every block now). The host
+   placeholder now has an 11-case `switch` plus six float literal stores, which lays out the same 17 words in
+   function order. Its text and relocs are dropped by the splice. IDO merges equal float literals within one
+   function (five `1.5707964f` stores gave ONE entry), so the stand-ins have to be distinct values.
+
+**Gate note:** `cmp tenshoe.z64 baserom.z64` does not cover the Yay0 code blocks (the ROM packs the extracted
+assets), so `make verify-blocks` is the only gate for timproc/game_uso/mgrproc code. Also, a Makefile whose first rule
+is a donor rule makes a bare `make` build only that object (origin/main now has `.DEFAULT_GOAL := all`). Gate
+with `rm -f build/tenshoe.elf tenshoe.z64; make RUN_CC_CHECK=0 -j8 all`.
 
 ## NM-only NCC donor (gl_func_0005062C, agent-g 2026-10-21, run 114) <a name="game-libs-ncc-nm-only-donor-run114"></a>
 
