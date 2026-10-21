@@ -16,6 +16,7 @@ _76 entries. Auto-generated from per-memo notes; content may be rough on first p
 - [game_uso NCC (C++) donor recipe: game_uso is C++ -- compile a function with IDO 7.1 NCC from a `.cpp` donor and REPLACE_FUNC_BODY-splice it into game_uso.c.o; no Yay0 / objdiff / expected/ change (D204 85.8 + 10694 71.5 -> EXACT, 2026-10-15 agent-g)](#game-uso-ncc-cplusplus-donor-recipe) — _generic `build/src/%.cpp.o` NCC rule, all symbols `extern "C"`, placeholder body in the host, `+=` per function. Tell: pointer-to-member compare (`addi` + `lw at` 2-word loop), PMF passed by value (a1/a2 + home slots)._
 - [game_libs NCC donor (gl_func_00062A2C, agent-g run 113): the game_uso recipe works unchanged on game_libs_post0b -- `.cpp` donor + `REPLACE_FUNC_BODY +=` + placeholder host; jal-0 imports need zero-valued alias names (the in-file name resolves to its real address); the NM body size change moves the post0b clip; plus scripts/transcription-tell-scan.py](#game-libs-ncc-donor-run113) -- _Clip rule: NON_MATCHING_TEXT_CLIP_KEEP_ALIGN must equal game_libs_func_00062F08's NM offset + 0x50 (0x2e66c -> 0x2e668 when the 210-word NM wrap became the 209-word splice)._
 - [NM-only NCC donor (gl_func_0005062C, agent-g run 114): when a function's closest source is C++ but not exact, splice the compiled `.cpp` into the NON_MATCHING object only (`build/non_matching/...: REPLACE_FUNC_BODY += fn=$(DONOR)`), with a placeholder C body in the wrap; re-probe the post0b clip](#game-libs-ncc-nm-only-donor-run114) -- _5062C NM 65.4 -> 99.99; clip 0x2e668 -> 0x2e7a4. The default build keeps INCLUDE_ASM, so no undefined_syms entry is needed for the donor's jal-0 callees (the NM object is never linked)._
+- [Dead-epilogue nops across a donor splice + a new TU at a 32-byte boundary (func_800056EC, agent-g run 115): as1 32-byte-aligns an unreachable epilogue in the TU's .text, so a splice that shrinks an earlier function must shift by a multiple of 32 (size the host placeholder to slot + 0x20); a function after the target's .text pad is a separate TU](#dead-epilogue-align-across-splice-56ec) -- _56EC NM 85.5 -> EXACT with no C change: host 5520 placeholder 0x1E8 -> 0x1EC (one dead store), func_80005800 moved to kernel_006_b.c, kernel_006 TRUNCATE_TEXT dropped, expected/ = old expected cut at 0x2E0._
 - [timproc b5 jumptable donor (timproc_uso_b5_func_00005FC0, agent-g run 114): the 29CCC recipe in a Yay0 unit -- the host placeholder must re-emit the RoData words the INCLUDE_ASM .s carried as `.late_rodata`, and the `<fn>_rodata` pin in undefined_syms must have NO trailing comment on its line (bake-data-relocs.py cannot parse `0x190;  /* ... */`)](#timb5-jumptable-donor-5fc0-run114) -- _Symptom of the missing RoData: verify-blocks still says OK but lo16 jumps from 0 to 16 (later functions' %lo 0x44 low). Also: ROM cmp does not cover Yay0 code blocks; verify-blocks is the gate._
 - [Mnemonic-histogram diff triages giant NM bodies in one pass — swc1-deficit + trunc.w.s-surplus = s32-cast float stores; sw-zero at vtable offset = blanked-reloc decoded as 0; check frame size before chasing sp offsets (90CC, agent-f 2026-08-22)](#mnemonic-histogram-giant-fn-triage)
 - [USO expected-side reloc injection (spimdisasm-migration phase 1) is score-NEGATIVE: objdiff 3.7 already fully credits blind literal-0 vs reloc-to-blank; C234/55A0/6808 residuals are structural, NOT reloc rendering (bootup_uso 526-site prototype, agent-f 2026-08-23)](#uso-expected-reloc-injection-negative)
@@ -13144,3 +13145,35 @@ statement pairs. Outside the kernel, the real hits in agent-g's units were not u
 m2c transcriptions of macro or C++ code: 578B4 (gbi macros), 5062C/62A2C (C++ Vec3 class), and goto-heavy
 game_uso bodies. For those, find the source idiom (gbi macro, inline member, operator) rather than
 re-spelling the m2c body.
+
+## Dead-epilogue nops across a donor splice, and a TU boundary at the .text pad (func_800056EC, agent-g 2026-10-21, run 115) <a name="dead-epilogue-align-across-splice-56ec"></a>
+
+func_800056EC (kernel_006, the PI event-pump `for (;;)` loop) had an instruction-exact C body for months and
+was held at NM 85.5 by "seven nop words between the loop's back-branch and the dead epilogue". Those nops are
+as1's 32-byte alignment of the unreachable epilogue block
+([IDO_CODEGEN #whole-tu-o1-in-tu-def-at-share-dead-epilogue-align](IDO_CODEGEN.md#whole-tu-o1-in-tu-def-at-share-dead-epilogue-align)):
+the epilogue label is aligned in the TU's own .text, so the pad depends on where the function sits when IDO
+compiles it, not on its C. Two layout facts decided it here:
+
+1. **A donor splice moves later functions.** kernel_006 compiles a C host body for func_80005520 and
+   REPLACE_FUNC_BODY swaps in the real -O1 donor (0x1CC). The host compiled to 0x1E8, so 56EC was laid out
+   at 0x1E8 (0x8 mod 32) and then slid down by 0x1C: no pad at all. The ROM has 56EC at TU offset 0x1CC
+   (0xC mod 32). Rule: **the host placeholder must be the slot size plus a multiple of 32** so the splice shift
+   keeps every later alignment. One dead store (`sp24 = 0;`) took the host to 0x1EC; the shift is 0x20 and
+   the 7-nop pad appears in both the default and the NON_MATCHING objects.
+2. **The target's trailing zero words are a TU's .text pad.** After 56EC's `jr ra; nop` the ROM has three
+   zero words, then func_80005800 at 0x80005800 (32-aligned). IDO pads .text to 16, and an IDO .o's .text has
+   addralign 32, so 56EC was the last function of its TU and 5800 starts the next one. 5800 moved to a new
+   unit `src/kernel/kernel_006_b.c` (-O1 line in the Makefile, `tenshoe.ld` entry right after kernel_006,
+   objdiff.json unit). kernel_006's .text is now 0x2E0 after the splice, so its TRUNCATE_TEXT went away.
+
+Mechanics that mattered:
+- The 56EC `.s` carried the three pad words after `endlabel`; with them the INCLUDE_ASM symbol is 0x114 and
+  objdiff scores the C (0x108) below 100. Drop them from the `.s` (the TU pad supplies them; ROM unchanged).
+- expected/: kernel_006 = the old expected object cut at 0x2E0 (.text size, relocs past 0x2E0 dropped,
+  the 5800 symbol turned into an UND, 56EC st_size 0x108); kernel_006_b from an INCLUDE_ASM-only build of
+  5800. Regenerating kernel_006 from today's `.s` files is not equivalent: the 5520 `.s` now symbolizes
+  D_8000A454/8/C where the old expected has D_8000A450+N, which would perturb 5520's score.
+- How to spot the class: a function that is masked-exact in cmpfn but scores below 100, with a zero run
+  before an unreachable epilogue. Compute the epilogue's TU offset mod 32 in the ROM; if it is 0, the gap is
+  alignment and the fix is layout (host sizes, TU boundaries), never the C.

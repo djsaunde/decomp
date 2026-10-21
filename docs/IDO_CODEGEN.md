@@ -14375,6 +14375,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [**game_libs is C++ too (NCC): gl_func_00062A2C EXACT via an NCC donor; the Vec3 class recipe (by-value operator= forwarding to set(const V3 &), inline flerp, implicit record assignment, frame slots of inline locals) + 5062C/578B4 drafts at 93-95 (2026-10-21 agent-g run 113)**](#ncc-game-libs-vec3-62a2c) -- _Tells for a C++ game_libs/USO function: per-Vec3 copies through a stack temp (`addiu vN,sp,K` + three lw/sw into it, then lwc1/swc1 per field into the destination) = an inline `operator=(V3 v)` taking its argument BY VALUE; `lh` this-adjust + `jalr` through vtable +0x50/+0x54 = a virtual call (vptr at +0x28). edg facts: a `switch` is lowered to a SOURCE-ORDER compare chain (`beq last; <delay>; b default; nop`), cfe sorts case values; every inline call's params/`this` are frame-slotted locals; const-ref-bound temporaries are allocated at the TOP of the frame in reverse creation order; `volatile` on params is ignored; unreferenced locals are dropped (no slot)._
 - [gl_func_000578B4 (9676 B) is the libultra-gbi texture loader: gDPSetTextureLUT + gDPLoadTextureTile (SetTileSize at 0,0) / gDPLoadMultiBlock(_4b) + gDPLoadTLUT_pal256, one frame slot per gbi `_g` (the 0x1C arm stride), DL pointer = C++ inline `&dl->buf[dl->count++]` (2026-10-21 agent-g run 113)](#ncc-578b4-texture-loader) -- _In cfe the count-store-before-buf-reload needs `(d = c->dl, n = d->count, d->count = n + 1, &c->dl->buf[n])` (makes game_libs_func_0005769C exact too); a single shared temp var steals a2 for the whole function. NCC draft 2418/2419 words, 95.0._
 - [game_libs under NCC: gl_func_0005062C (2756 B) to 4 words -- a ctor forwarding to an inline `set(float, float, float)` fixes the FP colouring of every V3 temporary, named sum locals give the top-of-frame order, a macro abs keeps the result in f12; plus the edg stack-pool rules measured with `.mdebug`/micro probes (2026-10-21 agent-g run 114)](#ncc-5062c-subdivider-run114) -- _Score instructions with stack offsets masked first (cmpfn `--nosp`): a variant that is exact under masking is a pure frame-layout puzzle. edg pool slots: scalar inline params/temps get 4-byte slots allocated on demand and reused per type; the order relative to class temps is the residual here._
+- [game_uso 3AC0 under NCC: the 12-way shared staging slot is an edg inline-ctor parameter pool slot -- `new Item(x)` with an inline cfront ctor and no class operator new emits one alloc, evaluates the argument into the ctor's parameter BEFORE the alloc, and reuses one bottom-of-frame slot for all 12 calls; all 261 instructions identical, frame layout open (agent-g run 115)](#ncc-3ac0-new-expr-param-pool) -- _Param-type rules measured: class with trivial copy = one shared pool slot (sp+36, like the target); class with a user copy ctor = a fresh top-of-frame temp per call; POD struct param + struct copies = pointer-based copies (s1 = &slot); reading or assigning a global struct lvalue adds an ascending top temp. 5062C: V3 derived from POD P3 + operator+(const P3 &) = 688/689._
+- [timproc_uso_b5_func_00004118 run 115 (98.34 -> 99.14 NM): store 0x3B8 before 0x3C8 so as1 does not pull the arg6 store into a load-delay slot; 4118 is cfe (jumptable), open residuals: block-1 constant order, case-0 arg0 piece](#b5-4118-run115-arg-store-order)
 - [game_uso under NCC: a stack float param reassigned in place (`if (!(f & 8)) arg4 = 1.0f;`) and a class temporary whose ctor forwards to an inline `set()` fix frame size and FP colouring -- B750 72.8 -> EXACT (2026-10-15 agent-g)](#ncc-ctor-forwarding-inline-set-frame-b750) -- _Tell: the same `lwc1 fN,104(sp)` of a stack arg on two paths into one register; frame larger than your C by 8 with the temp object 4 higher. edg gives every named local and every live inline-argument temp its own 4-byte stack slot even when it lives in a register, so the count of locals and nested inline params sets the frame._
 - [game_uso under NCC: a named copy local (`prev = F0; F4 = prev; ...`) colours v0 and renumbers every later temp; writing the move through the members (`F4 = F0; F0 = 0; if (F8 == F4) ..; F8 = F4;`) gives the target's t0/t1 expression temps; NCC is NOT a universal lever (B4B8 sentinel loop is NCC-immune) -- F6D4 95.4 + E35C 95.3 -> EXACT (2026-10-15 agent-g)](#ncc-no-named-copy-local-f6d4) -- _Tell: target values in the ugen temp ring (t8, t9, then t0, t1) right after a call, where your build has a v0 local; a 2-copy `bne; or v0,t0 / or v0,t0` join is what a pure member re-read leaves, not a ternary._
 - [game_uso under NCC: 1DDC homing is a Vec3 value class (by-value `operator=`, ctor forwarding to `set`, `set(const Vec3 &)` for plain copies, a 4-byte `Ptr` class for the output pointer, `getPos` returning `Vec3 &`); all 382 instructions identical, only the frame layout left (2026-10-15 agent-g)](#ncc-vec3-class-shape-1ddc) -- _The cfe wrap's Tri3i word-copy hops are edg return / by-value temps. Read edg's slot assignment by name from `-g3` `.mdebug` local symbols. Residual: two swapped binding temps plus 3x8 bytes of horizontal-pass temps._
@@ -14417,6 +14419,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit XIII (agent-c 2026-10-20, run 113): split OR constant burns a ring slot (`| 1 | 0x8000` vs `| 0x8001`, bootup 3B78 EXACT); `if (1) {}` after a list-head load burns two (430D8 EXACT); delay-slot result store = FIRST call's value (4DDF8 EXACT); NM objdiff scores of UNTOUCHED functions move with edits elsewhere in the unit (identical text+relocs) -- judge a batch by the unit sum; scripts/lever-sweep.py --void/--blocks; every declared local (incl. sibling-block ones) homes a word, u8s pack](#kit-xiii-agent-c-run113) -- _Ring-burn levers to try when every temp is one or two t-regs early: an unfolded constant split in an OR chain, an emission-free block after the first load._
 - [kit XIV (agent-c 2026-10-20, run 114): comma-temp display-list append `(_n = dl->count++, &dl->buf[_n])`; per-site zero aliases for global RMWs (IDO always CSEs the base of a same-BB load+store); f32 ARRAY stays in memory where a 3-float struct is scalarised; real gbi.h macro clones reproduce IDO's odd reassociations; game_libs callee = baked jal target - 0x1466C; `objdiff-cli diff` is reloc-strict, `report generate` is lenient](#kit-xiv-agent-c-run114) -- _Fresh hand decodes: bootup 6808 63->92, E68 74->87, 31C0 41->93, 1A44 28->92, 139B0 34->92, 3F8 49->99.7; game_libs 4E600 EXACT, 23914 100 (NM, jumptable), 1DCB4 63->85, 46FA8 71->99, 41D40 47->92._
 - [kit XV (agent-c 2026-10-21, run 115): bootup builder chains from the reloc table (one shared `new` temp, object ARRAYS o[2]/r[2] keep results in the frame, block temps for cross links); asm `%lo(func_X + K)` operands mean the alias must be pinned at X+K; a LOCAL loop bound keeps `slt` (constant bounds get LFTR'd to `bne`); last-term-first nested dot products + inner pair reversed; distinct aliases let IDO hoist loads past stores; asm refs to `.L` labels inside a function you turn into C make ld segfault; bootup has C++ too](#kit-xv-agent-c-run115) -- _15 bootup/game_libs EXACTs: 3D3C 58, 3F00 58, 43D4 62, 7EC8 60, E124 53, 2C94 61, D94 71, 14010/14598 29, 144F4 63, 411C 89, 139B0 92, 13B20 78, 3F8 99.7, 4F704 99.0. NM: CAE8 62->99.9, 485C 53->93, CA0 77->97, 76F4 75->81._
+- [kit XVI (agent-c 2026-10-21, run 116): bootup_uso is C++ -- NCC donors splice into bootup_uso.c.o (ROM cmp is the gate); block-scope locals go below earlier inline pool slots; one source line = one as1 schedule unit (also under NCC); real virtual calls instead of hand dispatch; edg flips compare and product operand order; dead stores to named locals buy frame slots; splices drop INCLUDE_ASM pad words](#kit-xvi-agent-c-run-116) -- _EXACT: bootup CAE8 99.94, 485C 94.1, CFA0 99.03, E740 26.4, E800 87.8. Open: B1B4 (4 words), 41EDC/7328 list iterator, 437C0, h2hproc 0620, 48AEC._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
@@ -32715,3 +32718,143 @@ docs/MATCHING_WORKFLOW.md#kernel-plain-loops-run112.
 11. **Makefile default goal.** Since the 62A2C donor rule, the first rule in the Makefile is `build/src/game_libs/game_libs_post0b.c.o: $(DONOR)`; a bare `make` builds only that object. Use `make RUN_CC_CHECK=0 -j8 all` (a stale ROM then passes `cmp`).
 12. **Small-function spellings that closed 14010/14598/144F4.** (a) A byte walk the target addresses as `lbu v0,0xE4(s0)` with `s0 = a0 + i` is `(a0 + i)[0xE4]`, not `s[i]` off a hoisted `s = a0 + 0xE4`; read the byte inline at every use (`(u8)(a0 + i)[0xE4]` three times) - a named `unsigned char c` lands in v1 where the CSE'd inline read lands in v0. `for (i = 0; i < strlen(p); i++)` re-evaluates the call each trip like the target. (b) A float field loaded inside the first test as an assignment-expression, `if ((spd = o->f) < 16.0f)`, schedules the `mtc1` of the constant before the `lwc1`; a separate `spd = o->f;` statement does the opposite.
 
+## game_uso 3AC0 under NCC: the shared staging slot is an inline-ctor parameter pool slot; edg new-expression and parameter-temp rules (agent-g 2026-10-21, run 115) <a name="ncc-3ac0-new-expr-param-pool"></a>
+
+game_uso_func_00003AC0 (1044 B, cfe NM 99.97, capped by the "12 stagings through one slot" problem in
+[#feedback-ido-struct-copy-staging-ptr-flip-ghost-slot](#feedback-ido-struct-copy-staging-ptr-flip-ghost-slot))
+is twelve `arg0->add(new Item(name_k), -1)` statements. Under NCC this body is instruction-identical to the
+target (261/261 with stack offsets masked; scratch `g115/3ac0/z5.cpp`, `v2.cpp`, `s1.cpp`):
+
+```cpp
+struct P { int v; };
+typedef P Name;
+struct Q { P p; Q(const P &x) { p.v = x.v; } };            // trivial copy ctor
+extern "C" void game_uso_func_051E64(void *, P, int, int);  // base ctor, P by value
+struct Item { char pad[0x28]; void *vt; char pad2[0x58 - 0x2C];
+    Item(Q q) { game_uso_func_051E64(this, q.p, 0, 0); vt = &game_uso_D_807FEAA8; } };
+#define NM(k) (*(Name *)(game_uso_D_807FEC70 + 0x680 + 4 * (k)))
+... game_uso_func_052F70(arg0, new Item(NM(k)), -1); ...   // x12
+```
+
+What each piece does (all measured on this function):
+- **`new T(arg)` with an inline cfront ctor and NO class-scope operator new** compiles to one
+  `jal operator new(sizeof)`, `beqz v0` over the body, then the inlined ctor: the target's alloc / skip /
+  init / vptr shape. A class-scope `operator new` forwarding to the import made edg emit the cfront
+  `this == 0` re-test inside the ctor (a second alloc). The global operator new reloc is `__nw__FUi`; it
+  needs the usual alias for a real donor.
+- **The argument is evaluated into the inline ctor's parameter before operator new is called.** That is the
+  target's `sw t6,36(sp)` in the alloc's delay slot.
+- **Parameter slot classes.** A parameter of class type with a trivial copy ctor (Q above, or a POD) gets one
+  pool slot reused by every expansion and allocated after the named locals, so it is the bottom slot
+  (sp+36): the target's shared staging slot. A parameter whose class has a user copy ctor gets a fresh temp
+  per call at the top of the frame (ascending). A POD parameter filled by struct copy is reused too, but 12
+  struct copies into one variable turn every copy pointer-based (`addiu s1,sp,K` + lw/sw 0(s1)), the same
+  >= 9 rule as cfe.
+- **Passing to the out-of-line base ctor.** A class with a user copy ctor is passed by address (cfront ABI,
+  `addiu a1,sp,K`); a POD/trivial class is passed by value (`lw a1,36(sp)` + the `sw a1,4(sp)` arg home).
+  `*(P *)&n` on an `int` parameter loses the store to the parameter slot (the read is not seen as a use).
+- **Open: the frame.** The target has twelve 4-byte slots at sp+108..64, first block highest, and frame
+  112. Every form tried that reads the global name (`NM(k)`, an `extern Name names[]` element, `NM(k).v`,
+  `d = NM(k)` with named locals) adds one ascending top temp per statement (first block lowest). Named
+  function-scope locals do come out descending (first highest), but then the temp is extra (273 words).
+  So the twelve target slots are named locals filled without that temp. **Closest form (n1.cpp):** declare
+  each one in the OUTER function block right before its statement, `Q q0(NM(0)); add(arg0, new Item(q0), -1);
+  Q q1(NM(1)); ...`. Outer-block locals are allocated at function entry in declaration order, so q0..q11 come
+  out contiguous and descending (first highest) and the shared parameter slot stays the bottom slot
+  (sp+36), all 261 instructions identical. Left: the target has six unused pool slots between q11 and the
+  parameter (sp+40..60), this source two, so every q is 16 low and the frame is 96 vs 112. Extra int
+  parameters (constant args), inline `set()` layers in Q's ctor, an inline vptr setter, a named `Item *`
+  and `const P &get()` did not add slots in the right place (the last moves the parameter up instead).
+  Block-scoped `{ Q q(...); ... }` allocates on demand and puts the parameter right under q0. Tried before
+  that: Q(int) with `d.v` (v0 candidate), Q(P) by value, member init, user operator=, references,
+  pointers, comma, block-scoped `Name n = NM(k)`.
+
+**gl_func_0005062C (run 115):** deriving V3 from a POD `P3` and declaring `operator+(const P3 &, const P3 &)`
+moves the first operator+ ctor temporary to the target's sp+336: 688/689 words. The return slot is the
+last word (sp+348, target sp+356): the base-class conversions allocate their two pool slots before the
+return slot, the target after it. operator+ as a member of V3 or P3, a const return, a sum ctor,
+explicit `operator+(...)`, and reference/pointer locals inside operator+ were all no better.
+
+## timproc_uso_b5_func_00004118 run 115: arg-store order before the jal (agent-g 2026-10-21) <a name="b5-4118-run115-arg-store-order"></a>
+
+**timproc_uso_b5_func_00004118 (run 115, NM 98.34 -> 99.14, landed as NM).** The 99.02 literal/pad draft
+plus one source change: store `FW(arg0, 0x3B8) = arg4;` BEFORE `FW(arg0, 0x3C8) = arg6;`. With the
+original order as1 fills the `lw t4,940(sp)` load delay with the arg6 store (`sw a1,968(a0)` moves up one);
+the target keeps it in front of the jal. 4118 is cfe, not NCC: its tail switch is a jumptable and edg
+always lowers `switch` to a compare chain. Still open: block 1 materializes 1.0 before 0.5 (colours are
+already right), and switch case 0 gets an arg0 split piece in v0 (target) where ours reloads per use.
+Neither responded to same-line joins, `if (1) {}` after the call, case-body order, or the natural
+`switch (FW(arg0, 0x3C8))` (that one turns into a beq chain plus a frame slot for the switch value).
+
+## kit XVI (agent-c 2026-10-21, run 116): bootup_uso is C++ -- five NCC donors; edg block-scope slots, same-line schedules, virtual-call colouring, dead-store frame slots <a name="kit-xvi-agent-c-run-116"></a>
+
+bootup_uso takes IDO 7.1 NCC (`.cpp`) donors exactly like game_uso / game_libs
+([MATCHING_WORKFLOW #game-uso-ncc-cplusplus-donor-recipe](MATCHING_WORKFLOW.md#game-uso-ncc-cplusplus-donor-recipe)):
+`REPLACE_FUNC_BODY += func_X=$(DONOR)` on `build/src/bootup_uso/bootup_uso.c.o` (+ the NM object) over a
+placeholder C body. bootup_uso is not Yay0-packed, so `cmp tenshoe.z64 baserom.z64` is the byte gate and
+verify-blocks is unaffected. Blank (USO-relocated) refs keep using pinned aliases in undefined_syms; a
+callee or datum whose expected reloc names a real bootup symbol (`func_00000080 + 0x20`,
+`func_0000023C + 4`, `func_00000008 + 0x20`) can be referenced by that name directly (`extern "C" char
+func_00000080[];`) and the reloc then matches the expected object's name. Landed this run: CAE8 (99.94),
+485C (94.1), CFA0 (99.03), E740 (26.4), E800 (87.8), all instruction-exact.
+
+**Tells, in order of reliability:** a real virtual call (`lw vX,0x28(o); lw t9,K+4(vX); lh tN,K(vX);
+jalr t9; addu a0,tN,o` -- vptr at +0x28, slot (K-8)/8); a Vec3 copied through a stack temp then per field;
+the cfront `this == 0` alloc protocol; a cfe NM whose only residual is frame slots, a v-reg swap around a
+hand-written dispatch, or hacks like `volatile` locals / `if (1) {}` that a C++ inline would explain.
+The CAE8..E800 region (rider state object) is all C++; so are the alloc cascades (B1B4, 90CC) and
+h2hproc's 0620 (an out-of-line cfront ctor).
+
+Facts measured this run:
+
+1. **Block-scope named locals are allocated when the block opens, after the pool slots of earlier
+   inline calls** (485C). `V3 b1(...); f(&b1); { V3 b2(...); f(&b2); }` puts b2 at sp+0x20 under five pool
+   slots; the same b2 at function scope sits right under b1 (sp+0x34). Use an inner block to push a named
+   local below the inline temps; function-scope names are homed top-down in declaration order first.
+2. **One source line = one as1 scheduling unit.** 485C: b2's constructor and the call on one line
+   (`V3 b2(...); f(STR, &b2);`) put the a0 `%lo` before the x store; on two lines the store went first.
+   E800: `f(&g4); *(void **)(func_00000008 + 0x20) = &v;` on one line gives the target's
+   `addiu t6; lui v1; lui at; sw t6; addiu v1`. Same mechanism as cfe's same-line pairs
+   (#same-line-store-pair-schedule-35440), and it works under NCC too.
+3. **A hand-written vtable dispatch costs colours; a real virtual call is free.** CFA0's cfe NM (54 words
+   off) had `o`/`vt` locals for three dispatches; `(*(VO **)(st + off))->f()` with
+   `struct VO { char pad[0x28]; virtual void v0(); virtual void v1(); virtual void f(); }` gave the
+   target's v1/v0 pair at every site.
+4. **edg operand order.** Compares come out reversed relative to cfe for the same `beq` (CFA0:
+   `st->0x8DC == CTX` loads CTX first). Every `a * b` product of two memory loads also loads in the
+   opposite order (BF8C: swapping all products fixed 23 words at once). Port a cfe body, then flip compares
+   and products before anything else.
+5. **Colour a post-call reload a0 by first defining the variable as the call argument** (CFA0):
+   `r = probe(ctx = CTX, ...); ... ctx = CTX; changed = (ctx->0x98 < out) || ...` -- the context pointer
+   web is constrained to a0 by its first def, so the post-call reload lands in a0 (v1 otherwise).
+6. **Frame slots under edg are bought with named locals, even dead ones.** Every referenced named local
+   gets a 4-byte slot whether or not it is register-allocated; an unreferenced one is dropped. CFA0's three
+   missing slots came back with `dst = 0; o = 0; vt = 0;` (dead stores, no code). CAE8: `int mode = g;
+   switch (mode)` and two named destination pointers took the frame from 64 to 80 without code change.
+   E800: a named `root` declared first moves z/x/y from 44/40/36 to the target's 40/36/32. Conversely
+   B1B4 lost its extra 16 bytes by dropping named `t`/`n`/`buf` (and a block-scoped `n` sits below the
+   spill homes). Check with `-g3` `.mdebug` names (a 40-line parser of the local SYMR table is enough).
+7. **Copy loops: step the source pointer per element.** E740 (26.4 under cfe with a hand x4 body):
+   `for (x = 0; x < 64; x++) { *dst++ = *src; src += 4; } src += 0x540;` lets IDO unroll x4 into the
+   target's 0/8/16/24 offsets with one `addiu v1,v1,32`.
+8. **Splices drop INCLUDE_ASM padding.** E740's `.s` carried three file-end pad nops (E7F4..E800); the
+   donor body is 0xB4, so everything after shifted until `func_0000E740=0x0,0x0,0x0` went into both
+   SUFFIX_BYTES_FORCE lines (all-zero pad, legal). A Makefile variable change does not rebuild the object:
+   rm the `.o` files.
+9. **cfront chains (h2hproc 0620, B1B4).** The 0xF0 "Thing" built after the cascade is `new Thing` with a
+   POLYMORPHIC out-of-line base (`struct R1 { char pad[0x28]; R1(); virtual void r0(); }; struct Thing :
+   R1 { char t[0xC4]; Thing() {} virtual void r0(); };`): the base ctor call comes first, then the
+   derived vptr at +0x28. A non-polymorphic base puts the vptr after Thing's own data (+0xEC), and an
+   intermediate polymorphic class adds a second `this == 0` alloc. The class-scope operator-new rule is
+   agent-g's (#ncc-3ac0-new-expr-param-pool): use the global operator new (`__nw__FUi`, alias 0).
+
+**Open (all scratch in `c116/`):** B1B4 is one 4-word colour off under NCC (the table counter reads into
+v0, target a1; block-scope/register/unsigned/inline-helper/param-reuse spellings all v0). 41EDC and 7328
+share a `{cur, nxt}` list iterator whose loop-bottom `next()` colours the nxt temp v0 (target t7 + a
+pre-zeroed v0 result); the entry copy matches. 437C0 (stack `Derived obj` with the 0x60 Base of B1B4)
+keeps the Derived `this` as a separate first pool slot, so the protocol var lands at sp+68 and colours a2
+(target sp+72, a1). D900's clamp and BF8C's if/else FP ring give the same residual under NCC as under cfe.
+h2hproc 0620 reaches the target structure (cfront chain, polymorphic Thing) but colours the level-2 `this`
+s0 where the target spills it through a shared home. 48AEC (game_libs, iterator with protocol + Mtx/Gfx
+inline appends) is 511/519 words structurally; it needs the iterator class to derive from a base for the
+`this == 0` check and an `inline void pushMtx(void *src)` for the two matrix arms.
