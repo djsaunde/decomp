@@ -14448,6 +14448,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit XXIII (agent-g 2026-10-22, run 120): float/double LITERALS in a C++ unit are reg-alloc-prep constant candidates (coloured after the variables, load still scheduled first) -- game_uso 0000 exact with `1.0f / 6.0f`; the game_uso block is extracted UNLINKED, so a literal's %lo is the donor's own .rodata offset and `<fn>_rodata` pins only work in baked blocks (use distinct zero-valued externs + offset addends otherwise); the 3DB38 {cur, nxt} iterator cracks game_uso 43D8; edg pools inline result temps by type (28C0's lenSq() temp shared operator-'s first ctor arg -> $f12); a block's temporaries are laid out before its named locals; under edg a global's address stays in an s-reg only through a named int copy; 28C0/24BC/5062C/7448/B274 residual mechanics](#kit-xxiii-agent-g-run-120) -- _EXACT: game_uso 0000, 43D8. NM: 28C0 85 -> 72 words, D9CC 17 -> 4, B274 29 -> 20._
 - [kit XXIV (agent-c 2026-10-22, run 121): raw-diff decode sweep of agent-c's 85-99.99 band; cfe reserves a frame word for EVERY declared local (-g3 .mdebug), so frame-size residues are local-count decode errors (4A6E8, 7D04); m2c int temps as named locals colour v0/v1 where the target keeps t-ring temps (4406C); a switch assigning one result variable under NCC (A9C); t8/t7-alternating lw/sw pairs = a struct copy (7288); a dead `addiu rX,rX,K` after a load = an assignment to a named local; 0x10000-off offsets, blank USO refs held as a base (0xA0), distinct zero aliases](#kit-xxiv-agent-c-run-121) -- _scripts/rdiff.py --raw --pins + a mnemonic-multiset count first; frame off by 8 = one local too many._
 - [kit XXV (agent-g 2026-10-22, run 121): a "branch-likely cap" at a join was a NESTED if (inner end label directly followed by the outer one leaves as1 nothing to steal: game_uso D9CC exact); gui DL colour emitters = an inline next() append member + per-append `*(Ctx **)&D` (late-coloured address constant) + `& 0xFF` on the red channel under `<< 24` (a folded mask still burns a t-ring slot): 1A5C/1CA8/06B8/1EF4 exact; gui texture loaders = verbatim gbi.h macro bodies with `uls + w - 1` corner text (413C/4354/3F18 exact); leading zero words in a symbol = predecessor pad (SUFFIX + in-place expected/ edit); uopt regalloc reading notes](#kit-xxv-agent-g-run-121) -- _8 exacts, all from recognising the original C++/gbi shape, none from colour tuning; open: 17DC/2334 (3rd slot pointer colour), 08C0 (3 words), 7448._
+- [kit XXVII (agent-g 2026-10-22, run 122): frame too small by N words = N unused declared locals (64588, plus per-box slot pointers); `if (1) {}` splits one block's float-literal candidates so each group reuses f0, and a two-use `1.0f` becomes a candidate only as `1.0`/`1`; a game_libs "D+off data variable" was the double literal 0.2 (bootup.uso RoData +X = ROM 0xD9FE44+X, leading marker word) -> 675A4 donor with `_rodata` pin; same-line call + brace + store fixes an as1 order (546E8); edg source-order dispatch chains as a goto ladder ending `!= last -> default` (578B4); 591C/76F0 switch-temp copy, 5062C, gui family, 148 negatives](#kit-xxvii-agent-g-run-122) -- _EXACT: gl 64588, 675A4, 546E8. Do not list a REPLACE_FUNC_BODY donor as a host prerequisite; rdiff --pins misses calls to real in-module functions (ROM cmp catches them)._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
@@ -33618,3 +33619,87 @@ shape; none from colour tuning.
    the function's first instruction (objdump prints them up front with `--disassemble=fn`), giving a
    spurious one-word diff at index 0 (`addiu 0`, `lw 0`) on game_uso / post0b; scripts/rdiff.py
    (agent-c run 121) attaches by offset.
+
+## kit XXVII (agent-g 2026-10-22, run 122): declared-local frame gaps, BB-split literal candidates, double-literal "data variables", same-line stores, edg dispatch order <a name="kit-xxvii-agent-g-run-122"></a>
+
+Three exacts (gl 64588 2148 B, gl 675A4 1048 B, gl 546E8 812 B) and one NM step (gl 578B4 raw 1822 -> 1799).
+
+1. **A frame that is too SMALL by N words, with every used offset shifted by a constant, is N unused
+   declared locals (gl 64588, 95.64 -> exact).** cfe gives every declared local its own frame word, used
+   or not (kit XXIV #2), in declaration order (first declared = highest). The target's 336-byte frame had
+   84 bytes more than ours and a block of homes below `t`/`m` that ours did not have. Method: histogram
+   every `N(sp)` and `addiu rX,sp,N` operand in both objects (scratch `spo.sh`), find the constant shift
+   per region, and insert unused `int gN;` locals where the target has gaps. Here: one word above u1,
+   three above m/t, seven between t and the box-1 slot pointer, three between `set[]` and `tmp`, four
+   between `tmp` and the box-2 slot pointer, four below. The two box slots each have their OWN slot
+   pointer (`mb1` home 148, `mb2` home 56), not the shared `m` of the 13 simple slots. After the frame
+   matched, every sp offset was exact on the first build.
+2. **Literal candidates in one straight-line block all interfere; `if (1) {}` splits them (gl 64588).**
+   uopt interference is per BB (`livebbs`), so the -1000/0/1000 (box 1) and 1.0/-10/10/0 (box 2)
+   constants of one block got f0/f12/f2 where the target reuses f0 for each group in turn. An
+   `if (1) {}` after each constant group makes a BB boundary: the ranges stop overlapping and every group
+   colours f0, with the next `mtc1` scheduled after the previous group's stores, as in the target.
+   Box 2's 1.0 has only two uses, and as `1.0f` uopt rematerialised it per use (two `mtc1`, f16/f18).
+   Written as the double literal `1.0` (or int `1`), it becomes a candidate (one `mtc1`, f0) and the
+   function is exact. Rule: when a float constant is materialised once per use in ours but once in the
+   target, try the double or int spelling of the same literal.
+3. **A "data variable" read through `&D + off` in game_libs can be a double literal (gl 675A4, 8 words
+   -> exact).** The NM read the stick dead-zone through `extern struct { char pad[0x2200]; f64 v; }`
+   into a named `f64 temp_f14`, which uopt colours with the variables (first, f12), swapping it with
+   the 0.0f literal (target zero f12, threshold f14). bootup.uso RoData (module 0xD9FE28, section type 7
+   at ROM 0xD9FE40) holds 0x3FC999999999999A = 0.2 at +0x2200. **The section data starts with one
+   marker word, so offset X is at ROM 0xD9FE44 + X** (10000.0f at +0x1C78 and the 3430 jumptable at
+   +0xCCC confirm it). As the literal `0.2`, the threshold is a constant candidate coloured after the
+   zero: exact. Landed as an IDO 7.1 -O2 donor (game_libs_o2_675A4.c, the 3C0C recipe) so the .rodata
+   reloc is renamed `gl_func_000675A4_rodata` and pinned to 0x2200. Two traps hit while wiring it:
+   - Do NOT list a REPLACE_FUNC_BODY donor as a Make prerequisite of the host. Target-specific variables
+     propagate to prerequisites, so the donor gets the host's whole REPLACE_FUNC_BODY list (dozens of
+     "symbol not found"). The recipe already runs `$(MAKE) $$donor`.
+   - `rdiff --pins` does not catch a call to a real in-module function (`gl_func_00062F64`): it links to
+     its address (`jal 0x62F64`) where the ROM has a blank `jal 0`. ROM cmp caught it (6 bytes); use
+     gl_func_00000000 for blank imports.
+   Negative: the same "literal, not data" idea on timproc_b5 32C8/2B74 (zero wants f0 before the
+   +0x134/+0x120 loads) does not change their colouring, as literals or as data, in any statement order.
+4. **A two-word as1 order residue fell to the same-line rule (gl 546E8, 99.01 -> exact; permuter, about
+   2 min).** The rematerialised `mtc1 zero,$f2` after the `s1 + 0x30` call was scheduled before the
+   0x28 vtable store; the target has the store first. Writing the call, the closing brace of its `if`
+   and the store on ONE source line (`gl_func_00000000(s1 + 0x30, &zv); } FW(self, 0x28) = ...;`) gives
+   the target order. The call and the store on one line without the brace, or the store and the next
+   statement on one line, do not. Standalone permuter setup that worked: base.c = the function plus its
+   decls, compile.sh = cfe -O2, target.s = the expected words as `.word` (reloc noise is a constant
+   offset on the score).
+5. **game_libs dispatch compare chains are edg source order (gl 578B4).** Both texture-format dispatches
+   compare 0x120, 0x110, 0x408, 0x308, 0x304, 0x508 in that order, which a cfe `switch` (sorted) cannot
+   give. A goto ladder in source order works if the last test is written `if (x != 0x508) goto def;
+   goto arm;`, so uopt keeps the target's `beq arm; b default` tail (`== 0x508 -> arm; goto def` gets
+   inverted). The two leading calls are baked `jal 0x6A750` words (pin
+   `game_libs_func_00062F08_578B4`). Raw 1822 -> 1799; the rest is the NCC-vs-cfe colouring of an
+   m2c transcription (see the run-113 NCC draft).
+6. **Not moved (all re-verified with `rdiff --raw --pins`):**
+   - game_uso 591C: the "five gates" are case 0 of the first `switch (self->0x74)`: the target branches
+     to a `b join; or v0,v1` block (switch temp copied at the join), ours goes straight to the join. The
+     target keeps a second register (v0) for the selector, copies it at every join, and stores
+     `vsel = 1` from v1. No cfe or NCC spelling tried keeps the copy: `v0 = vsel; switch (v0)` in either
+     or both switches, `self->0x74` re-reads, and `v0 = vsel;` at the end of each case all produce the
+     same code. 558 raw words of colouring remain.
+   - gl 76F0: no decode error. difflib alignment made the case blocks look reordered, but the block
+     order is identical (compare the `lh ..,N(v0)` vtable offsets in order). Still capped by the
+     4-entry jumptables (cfe tables only from 5 labels, NCC never) and the same switch-temp copy as 591C.
+   - gl 5062C (1 word): typing the six vector parameters as the POD base `P3` (the `nrm`/`vtx`
+     prototypes taking `P3 *`) moves the first operator+ return slot to the target's sp+356, but the
+     ctor temporary moves 4 high (`[2][ret][1][ctor]`, the target is `[2][ret][2][ctor]`). Sweeping all
+     64 operator+ parameter-type pairs and all 64 P3/V3 parameter mixes: best is still 1 word.
+   - gui 17DC/2334/08C0/055C: no shared fix. Verbatim gbi.h `gDPSetEnvColor` / `gDPSetPrimColor` /
+     `gDPSetColor` macros (block-scoped `_g`), an inline `W::prim()` member for 08C0's third append (it
+     brings its own pooled temps and shifts the whole ring), and declaration placement all leave the
+     third slot pointer's colour (17DC: ours v1, target t2; 08C0: ours a0, target v1). 055C under NCC
+     has a different defect: each packet's constant `lui` is allocated before the dl temp dies (ours a
+     fresh t-reg, the target reuses the dl temp register).
+   - gui 148: all homes from 120 down are exact. The frame is 136 vs 128 because the target has exactly
+     ONE declared local above `col` (ours has three: sum, maxw, row). Block-scoping `row` in either loop
+     or reusing `col` for the fill loop moves other homes. The run-114 note (reuse a1 for maxw, drop
+     `line`) is still the closest.
+   - timproc_b5 32C8 (5 words) / 2B74 (25): see #3. gl 3430 (15 words, the prologue places the step load
+     and the hoisted 1.0f/10.625f before the saves): a permuter run (same setup as #4, 10k iterations,
+     about 8 minutes) found nothing real below its base score. Its four 0.1f step literals (RoData +0xCC8/+0xCEC/+0xCF0/+0xCF4) do
+     merge into one candidate as `0.1f`, `0.1` or `(f32)0.1`.
