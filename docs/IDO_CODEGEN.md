@@ -14448,6 +14448,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit XXIII (agent-g 2026-10-22, run 120): float/double LITERALS in a C++ unit are reg-alloc-prep constant candidates (coloured after the variables, load still scheduled first) -- game_uso 0000 exact with `1.0f / 6.0f`; the game_uso block is extracted UNLINKED, so a literal's %lo is the donor's own .rodata offset and `<fn>_rodata` pins only work in baked blocks (use distinct zero-valued externs + offset addends otherwise); the 3DB38 {cur, nxt} iterator cracks game_uso 43D8; edg pools inline result temps by type (28C0's lenSq() temp shared operator-'s first ctor arg -> $f12); a block's temporaries are laid out before its named locals; under edg a global's address stays in an s-reg only through a named int copy; 28C0/24BC/5062C/7448/B274 residual mechanics](#kit-xxiii-agent-g-run-120) -- _EXACT: game_uso 0000, 43D8. NM: 28C0 85 -> 72 words, D9CC 17 -> 4, B274 29 -> 20._
 - [kit XXIV (agent-c 2026-10-22, run 121): raw-diff decode sweep of agent-c's 85-99.99 band; cfe reserves a frame word for EVERY declared local (-g3 .mdebug), so frame-size residues are local-count decode errors (4A6E8, 7D04); m2c int temps as named locals colour v0/v1 where the target keeps t-ring temps (4406C); a switch assigning one result variable under NCC (A9C); t8/t7-alternating lw/sw pairs = a struct copy (7288); a dead `addiu rX,rX,K` after a load = an assignment to a named local; 0x10000-off offsets, blank USO refs held as a base (0xA0), distinct zero aliases](#kit-xxiv-agent-c-run-121) -- _scripts/rdiff.py --raw --pins + a mnemonic-multiset count first; frame off by 8 = one local too many._
 - [kit XXV (agent-g 2026-10-22, run 121): a "branch-likely cap" at a join was a NESTED if (inner end label directly followed by the outer one leaves as1 nothing to steal: game_uso D9CC exact); gui DL colour emitters = an inline next() append member + per-append `*(Ctx **)&D` (late-coloured address constant) + `& 0xFF` on the red channel under `<< 24` (a folded mask still burns a t-ring slot): 1A5C/1CA8/06B8/1EF4 exact; gui texture loaders = verbatim gbi.h macro bodies with `uls + w - 1` corner text (413C/4354/3F18 exact); leading zero words in a symbol = predecessor pad (SUFFIX + in-place expected/ edit); uopt regalloc reading notes](#kit-xxv-agent-g-run-121) -- _8 exacts, all from recognising the original C++/gbi shape, none from colour tuning; open: 17DC/2334 (3rd slot pointer colour), 08C0 (3 words), 7448._
+- [kit XXVI (agent-c 2026-10-22, run 122): a record/table pointer that is spilled across a call must be an EXPRESSION, not a named local (cfe gives the name a frame word and spills to a separate temp: 1D200, 1D4B0 frame fixes); one-level typed member reads flip addu operand order (kit #99 on a single `->`); `(x + 0xF) & ~0xF` into a short = the target's dead `li at,-16`; a redundant `& 0xFFFF` on a u16 burns one t-ring slot (1DA7C); `int` function falling off its end keeps v0 live at exit = beqzl+lw ra (3190C); decode errors the raw diff exposed: wrong jal callees (23914, 3190C, 23760), dropped stores (2D7D0), else-arm constants (3190C), busy-path return value (23760); a leading zero word = predecessor's all-zero SUFFIX pad (4D0B4); objdiff scores reloc-only residues 100, so report-100 NM wraps can still be ROM-unmatched](#kit-xxvi-agent-c-run-122) -- _EXACT: 1DA7C, 3190C, 23760, 1D200, 1D4B0, 4247C, 2D7D0, 23914 (jumptable donor), 4D0B4. NM: 445AC 14 -> 6 words; NCC drafts for bootup 1438C (6) / 7204 (5)._
 - [kit XXVII (agent-g 2026-10-22, run 122): frame too small by N words = N unused declared locals (64588, plus per-box slot pointers); `if (1) {}` splits one block's float-literal candidates so each group reuses f0, and a two-use `1.0f` becomes a candidate only as `1.0`/`1`; a game_libs "D+off data variable" was the double literal 0.2 (bootup.uso RoData +X = ROM 0xD9FE44+X, leading marker word) -> 675A4 donor with `_rodata` pin; same-line call + brace + store fixes an as1 order (546E8); edg source-order dispatch chains as a goto ladder ending `!= last -> default` (578B4); 591C/76F0 switch-temp copy, 5062C, gui family, 148 negatives](#kit-xxvii-agent-g-run-122) -- _EXACT: gl 64588, 675A4, 546E8. Do not list a REPLACE_FUNC_BODY donor as a host prerequisite; rdiff --pins misses calls to real in-module functions (ROM cmp catches them)._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
@@ -33619,6 +33620,87 @@ shape; none from colour tuning.
    the function's first instruction (objdump prints them up front with `--disassemble=fn`), giving a
    spurious one-word diff at index 0 (`addiu 0`, `lw 0`) on game_uso / post0b; scripts/rdiff.py
    (agent-c run 121) attaches by offset.
+
+## kit XXVI (agent-c 2026-10-22, run 122): expression pointers for temp spills, operand rank on one ->, dead li from & ~0xF, decode errors behind pins <a name="kit-xxvi-agent-c-run-122"></a>
+
+Nine exacts (59.53 -> 61.13 % code on the rebased tip; seven of them report-moving): gl_func_0001DA7C,
+gl_func_0003190C, gl_func_00023760, gl_func_0001D200, game_libs_func_0001D4B0, gl_func_0002D7D0
+(game_libs_post, in-unit cfe), game_libs_func_0004247C, gl_func_0004D0B4 (post0b), gl_func_00023914
+(post, IDO -O2 jumptable donor). Scratch tooling: `c122/tools/rdiffn.py` = scripts/rdiff.py that also
+resolves jal relocs to `gl_func_000XXXXX` / `game_libs_func_000XXXXX` names at their encoded address
+(game_libs links at VRAM 0); without it, every call to a real in-module function shows as `jal 0`
+and real wrong-callee errors (a placeholder name like gl_func_0001CA10 used for a blank import) hide
+among them.
+
+1. **A pointer that the target spills across a call into a TEMP slot is an expression, not a named
+   local.** cfe reserves a frame word for a named local and still spills it to a separate temp slot,
+   so the frame comes out 8 bytes large and every slot shifts. Writing the record pointer as a macro
+   expression (`#define e (&TAB[a1])`, or `(char *)&D + a2 * 0x158` inline at each use) lets IDO CSE
+   it into one temp whose spill lands where the target's does:
+   - game_libs_func_0001D4B0 (frame 0x30 -> 0x28, the open item from kit XXIV #2): record pointer as
+     a macro, `int k = e->k` kept in the if-block for the `(short)` narrowing.
+   - gl_func_0001D200: same for `rec`, plus the dl parameter reused as the cursor (one fewer word).
+   Check: the target's spill offset is BELOW the named-local area (sp+32 with locals at 52..60).
+2. **One typed member read flips the addu operand order.** `rec + *(u8 *)(rec + 0x1B) * 100` and
+   `w2 + *(short *)(e + 0x10)` emit `addu t,rX,rY` with the cast-deref first whatever the textual
+   order (kit #99's rank). Spelling the single read as `((struct { char p[0x1B]; u8 b; } *)rec)->b`
+   restored the target's operand order in 1D200 (kit #99 needed two levels in its case; here one
+   anonymous-struct level was enough). Swapping the source operands changed nothing.
+3. **`(x + 0xF) & ~0xF` stored into a short** emits `addiu at,zero,-16` and then `andi 0xfff0`
+   (the and is narrowed by the store, the `li at` stays dead). A target with a dead `li at,-16`
+   wants `& ~0xF` / `& -16`; `& 0xFFF0` drops the word (1D200, 1 word length difference).
+4. **A redundant `& 0xFFFF` on an `unsigned short` field burns exactly one t-ring slot** (no
+   emission) -- 1DA7C was t9-vs-t1 everywhere after its calls; same lever as kit XIX's 1D3E0 `& 0xFFFF`
+   and kit XXV's `& 0xFF`. Probe it first on any uniform +1 ring phase after a u16 load.
+5. **`int` function with no return statement**: v0 is treated as live at the exit, so a guard that
+   branches to the epilogue cannot take the `lui v0` (next block) into its delay slot and as1 emits
+   `beqzl ...; lw ra` instead (3190C's last guard). `void` gives `beqz; lui v0` (1 word short).
+6. **Decode errors the raw diff exposed (all were "colouring" or "reloc" notes before):**
+   - 23914 called the in-file 23B44 / 23B98; the target's jals go to 0x381B0 / 0x38204 (gl_ref_ pins).
+     240A0's NM still calls `gl_func_0001CA10` where the target has a blank import (jal 0): a real
+     name links to its address, so that placeholder must become gl_func_00000000 before any exact.
+   - 3190C: the guard query is a baked jal (0x45F04) and each else arm's second command is
+     0x0602x000 (the NM had x004).
+   - 23760: the busy path returns the 381B0 result (spilled over the acquire call), not acquire's.
+     Slots: the return-holder copy declared first (sp+52), the type byte assigned to `ok` (v0), the
+     37F80 result reusing the copy (no extra word).
+   - 2D7D0: three leading stores of 8 to three blank USO refs (`lui at; sw v0,0(at)` x3) were simply
+     missing; three distinct zero aliases (one symbol would be DSE'd).
+   - 4247C (permuter, re-verified): the 5th argument as a named int read before the call and the
+     global re-read at each use = two more ring slots.
+7. **report.json scores reloc-only residues as 100.** 23914 (jumptable %lo) and 4D0B4 (a leading
+   zero word in its INCLUDE) were "exact" in the report while still INCLUDE_ASM in the ROM. Promote them:
+   23914 via the 29CCC donor recipe (`game_libs_o2_23914.c`, `gl_func_00023914_rodata = 0xEA0`; keep the
+   donor's C_FILES filter-out on its own `C_FILES := $(filter-out ...,$(C_FILES))` line -- the shared
+   filter-out line conflicts on every rebase); 4D0B4: the zero word at 0x4D0B0 is gl_func_0004D084's
+   all-zero SUFFIX_BYTES_FORCE pad, with `gl_func_0004D084=0x2c` added to the post0b clip line so the NM
+   symbol keeps its size. Both change the post0b NM text size: re-probe the clip.
+8. **post0b iteration hazard:** a post0b NM edit that changes a function's length makes the NM build
+   fail at the clip (`.text 0x... smaller than requested`). Build with
+   `NON_MATCHING_TEXT_CLIP_KEEP_ALIGN=` on the command line to diff, but that also drops the
+   551E0/55B10/4D084 symbol resizes; delete the NM object afterwards, or the next refresh-report shows
+   the sentinels "lost".
+9. **Dead named-local defs are colour candidates.** 445AC (permuter hint): `v = D_glob_e` as an
+   argument (v dead afterwards) re-phased the t-ring after it (12 -> 6 words), but v takes v1 where the
+   target has a t7 temp, and the base of the following `*(int *)((int)&D_alias + 0x1C) = a3` (int cast:
+   IDO then materialises lui/addiu instead of folding) colours t8/t7 where the target has v0 -- the target
+   looks like the same burn with the base as the candidate. Frame: dropping the `s0 = a0` copy AND the
+   `g` base pointer together fixed 0x60 -> 0x58 (either alone did not).
+
+**Open (scratch in `c122/w/`):**
+- 3E0F0 / bootup 8124 / bootup 7204: NCC cfront-protocol constructors whose new-expression result is
+  a SEPARATE web from the ctor's `this` (7204: `or a1,a2` copy before the call; 3E0F0/8124: the result
+  is spilled to sp+76 around the last call and reloaded into v0). Every NCC spelling tried coalesces them
+  (named copies, inline mk()/attach(), return through an inline, const-ref params, casts, prototypes,
+  operator new vs __nw). 3E0F0's ctor part is exact with `Base(const char *)` out of line + a virtual
+  (vptr at +0x28 = `__vtbl__3Obj`, needs a rename to the blank alias) + the W4/M4 member protocol.
+- 1438C: NCC draft with every instruction right; the two Val temporaries are laid out 56/60 (target
+  60/56) and the member-this spill at 48 (target 40). Draft in the NM comment.
+- 1DA7C-style ring burns did nothing for 2A258 (pure schedule: sh 0x14/0x10 ten slots early),
+  4EE44 (src base v0 vs a1), 40640 (n webs a1/v1 swapped in the loop), 39E24 (hoisted `lui a2;
+  beqz; addiu a2` arg copy), 2F9D4 (a2 reload), 2F1B8 (`jr ra; or v0,v1` filled epilogue vs ours
+  `or; jr; nop`), 610 (frame 0x38 vs 0x30), E270 (spill pair swap), D900 (clamp copy at entry).
+- 445AC: 6 words (see #9). 40304 / 396FC / 40640 still need their jumptable donors after the colour fix.
 
 ## kit XXVII (agent-g 2026-10-22, run 122): declared-local frame gaps, BB-split literal candidates, double-literal "data variables", same-line stores, edg dispatch order <a name="kit-xxvii-agent-g-run-122"></a>
 
