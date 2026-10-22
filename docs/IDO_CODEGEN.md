@@ -14377,6 +14377,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [game_libs under NCC: gl_func_0005062C (2756 B) to 4 words -- a ctor forwarding to an inline `set(float, float, float)` fixes the FP colouring of every V3 temporary, named sum locals give the top-of-frame order, a macro abs keeps the result in f12; plus the edg stack-pool rules measured with `.mdebug`/micro probes (2026-10-21 agent-g run 114)](#ncc-5062c-subdivider-run114) -- _Score instructions with stack offsets masked first (cmpfn `--nosp`): a variant that is exact under masking is a pure frame-layout puzzle. edg pool slots: scalar inline params/temps get 4-byte slots allocated on demand and reused per type; the order relative to class temps is the residual here._
 - [game_uso 3AC0 under NCC: the 12-way shared staging slot is an edg inline-ctor parameter pool slot -- `new Item(x)` with an inline cfront ctor and no class operator new emits one alloc, evaluates the argument into the ctor's parameter BEFORE the alloc, and reuses one bottom-of-frame slot for all 12 calls; all 261 instructions identical, frame layout open (agent-g run 115)](#ncc-3ac0-new-expr-param-pool) -- _Param-type rules measured: class with trivial copy = one shared pool slot (sp+36, like the target); class with a user copy ctor = a fresh top-of-frame temp per call; POD struct param + struct copies = pointer-based copies (s1 = &slot); reading or assigning a global struct lvalue adds an ascending top temp. 5062C: V3 derived from POD P3 + operator+(const P3 &) = 688/689._
 - [game_uso cfront-lowered ctors: 3AC0 EXACT via four dead named locals (frame 96 -> 112); 3018 + 18FC EXACT in plain cfe via struct-copy stage temps (`prm = T`), s0 as the parameter, and `if (1) {}` BB splits + int zeros so each stage-1 FP constant takes $f0 in turn; NCC temps are always ascending (agent-g run 116)](#cfront-ctor-stage-struct-copy-3018) -- _descending per-stage temp slots = cfront named temps: prefer cfe with named locals; a rodata word carried by a replaced .s must be re-emitted by the placeholder._
+- [timproc_b5 32C8 / 2B74 + game_uso 97EC (agent-g run 117): the 3018 stage recipe ports to the timproc_b5 panel ctors (92.6 -> 366/370, 95.9 -> 450/469); more than 11 struct copies into one struct variable make uopt copy EVERY one of them through a held `&var` register; vec-child values are named floats assigned like cfront inline-ctor parameters; 97EC as an NCC donor 71.9 -> 99.1 (escaped |e|^2), edg hoists full-expression temporaries to the block top in reverse creation order](#struct-copy-count-pointer-switch-2b74) -- _Tell for the cap: `addiu s1,sp,K` in the prologue region and every stage copy reading `lw tN,0(t8); sw tN,0(s1)` instead of the target's `sw tN,K(sp)`; convert the LAST stage(s) to `uK = *(T *)&G; nm.v = uK.v;` (word identical to the target)._
 - [timproc_uso_b5_func_00004118 run 115 (98.34 -> 99.14 NM): store 0x3B8 before 0x3C8 so as1 does not pull the arg6 store into a load-delay slot; 4118 is cfe (jumptable), open residuals: block-1 constant order, case-0 arg0 piece](#b5-4118-run115-arg-store-order)
 - [game_uso under NCC: a stack float param reassigned in place (`if (!(f & 8)) arg4 = 1.0f;`) and a class temporary whose ctor forwards to an inline `set()` fix frame size and FP colouring -- B750 72.8 -> EXACT (2026-10-15 agent-g)](#ncc-ctor-forwarding-inline-set-frame-b750) -- _Tell: the same `lwc1 fN,104(sp)` of a stack arg on two paths into one register; frame larger than your C by 8 with the temp object 4 higher. edg gives every named local and every live inline-argument temp its own 4-byte stack slot even when it lives in a register, so the count of locals and nested inline params sets the frame._
 - [game_uso under NCC: a named copy local (`prev = F0; F4 = prev; ...`) colours v0 and renumbers every later temp; writing the move through the members (`F4 = F0; F0 = 0; if (F8 == F4) ..; F8 = F4;`) gives the target's t0/t1 expression temps; NCC is NOT a universal lever (B4B8 sentinel loop is NCC-immune) -- F6D4 95.4 + E35C 95.3 -> EXACT (2026-10-15 agent-g)](#ncc-no-named-copy-local-f6d4) -- _Tell: target values in the ugen temp ring (t8, t9, then t0, t1) right after a call, where your build has a v0 local; a 2-copy `bne; or v0,t0 / or v0,t0` join is what a pure member re-read leaves, not a ternary._
@@ -32835,6 +32836,56 @@ pointers each cost a bottom slot); the condition re-loads `a0->0x40` while the a
 load (3A28's trick: that is what put the node in v0). Left: the node store `sw v0,64` belongs in the
 07ACE0 jal delay slot with the p1 spill before it; here they are swapped (tried: store before/after/inside
 the call, same-line joins, p1 placement, escaping p1).
+
+## timproc_b5 panel ctors (32C8, 2B74) on the 3018 recipe; the struct-copy count switch; 97EC as an NCC donor (agent-g 2026-10-22, run 117) <a name="struct-copy-count-pointer-switch-2b74"></a>
+
+**Porting the 3018 recipe** ([#cfront-ctor-stage-struct-copy-3018](#cfront-ctor-stage-struct-copy-3018)) to
+timproc_uso_b5 32C8 (370 words, 92.6 -> 366/370 words) and 2B74 (469 words, 95.9 -> 450/469), both NM:
+- Per-stage `uK.v = NAME; nm = uK;` (struct copy) and the 3018 `if (1) { T *q = &u0; q = &u1; ... }` escape
+  instead of the old dead `if (0) call(&u0, ...)` escape. With the dead call every copy went pointer-based.
+- Rows whose target order is `lui tA; addiu tA,vt; addiu tB,K; sw tB,16(a0); sw tA,12(a0)` want the vtable
+  store written FIRST (`FW(c,0xC) = vt, FW(c,0x10) = K, FW(c,0x14) = 0`): source order picks the register
+  numbering, as1 still emits the 0x10 store first.
+- One function-scope `c` for all 0x18 children (target's shared home), separate `cA` / `cB` for the 0x20
+  vec children; block-scoped `register char *c` per stage gives one home per block.
+- Frame: the int pads move between "above c" and the bottom; a `f32` named local can add 8 bytes of frame
+  (rounding), so re-check `addiu sp` after every new float local.
+
+**The struct-copy count switch (2B74).** With 12 stage struct copies `nm = uK;` into the same `nm`, uopt
+stops addressing nm directly and holds `&nm` in a callee-saved register for every copy and every by-value
+argument read (`addiu s1,sp,172` up front, `sw t0,0(s1)` / `lw a2,0(s1)` at every stage, frame and saved
+regs change). With 11 copies everything is direct, byte-for-byte like the target. The target has 12 stages
+plus two more copies into nm, so its source did not have 14 plain struct copies. A form that gives the
+target's words for a stage without counting: `uK = *(struct T *)((char *)&G + off); nm.v = uK.v;` (struct
+copy from the global INTO the stage temp, member copy into the carrier: `lui tN; lw tN; sw tN,uK; sw tN,nm`).
+The member form `uK.v = NAME; nm.v = uK.v;` is NOT equivalent (v0 and the nm store first). In the two vec
+blocks the target reloads the stage temp (`lw t8,232(sp); sw t8,172(sp)` after the cp copies): that is
+`uK = *(T *)&G;` before the vectors and `nm.v = uK.v;` after the cp copies. 32C8 has only 10 copies and
+never hits the switch.
+
+**Vec-child values (2B74).** The target loads both vec constants and materialises the zero before any
+store (`lwc1 $f2; lwc1 $f12; mtc1 zero,$f0`, then the nine stores). Writing `vA.x = L; vA.y = L; ...`
+gives the 3018 shape (one `$f0` reused per vector). Assigning named floats like cfront inline-ctor
+parameters, `f = L11C; g = L120; h = 0;` then the stores, and in the second child
+`(c = alloc(0x20)), (f = L124), (h = 0), (g = L128), (c != 0)` / after the 04A188 call `f = L12C; g = L130;
+h = 0;`, reproduces all of it except the colour of g vs the zero (target zero=$f0, g=$f12; here
+swapped, insensitive to declaration order, assignment order and int / float zero spelling). 32C8's
+residual is the same kind: l134 takes $f0 instead of $f2.
+
+**97EC as an NCC donor (71.9 -> 99.14, NM-only splice).** `XZ a(w->vel); XZ b(w->other->vel);
+XZ e((a - b) * k); XZ f(w->other->pos - w->pos);` with the 6A30 classes (`XZ : Vec3`, inline class
+operator new to the import, `XZ operator-(const XZ &) const { return XZ(x - v.x, z - v.z); }`) gives
+every word except: (1) two edg temporaries of the e statement swap homes, and (2) the FP colouring that
+follows. The target's `swc1 m2,32(sp)` ... `lwc1 m2,32(sp)` spill plus the DUPLICATED f.x / f.z loads in
+the dot/cross tail come from an ESCAPED |e|^2 local (`float m2 = ...; float *pm = &m2; t = dot / *pm;`):
+the store to an address-taken local kills the CSE of the earlier f loads. What we measured on edg temp
+placement (`-g3` + scratchpad mdebug.py): temporaries are hoisted to the top of the enclosing block as
+`__V<address>` locals in REVERSE creation order, before the block's named locals; for
+`XZ e((a - b) * k)` the materialised `(a - b)` always lands above the `* k` result bound to the ctor
+parameter. The target has them the other way round. No spelling tried flips that: free or member
+operators, `.scaled()`, copy-init, `const Vec3 &r = ...`, member-init temporaries, preceding dummy
+functions. A named `XZ d = a - b;` puts B above d but costs the B chain its private middle slot. A named
+`Vec3 dp;` (assigned) fixes the C chain's position.
 
 ## kit XVI (agent-c 2026-10-21, run 116): bootup_uso is C++ -- five NCC donors; edg block-scope slots, same-line schedules, virtual-call colouring, dead-store frame slots <a name="kit-xvi-agent-c-run-116"></a>
 
