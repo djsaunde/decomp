@@ -12,6 +12,7 @@
 
 _76 entries. Auto-generated from per-memo notes; content may be rough on first pass — light editing welcome._
 
+- [scripts/rdiff.py (1080): branch-offset- and jal-aware per-function diff -- `--raw --pins` keeps branch targets (measured from the function's FIRST label) and jal targets and applies undefined_syms pins; the masked default view hides decode errors (agent-c run 121)](#rdiff-raw-pins-run121) -- _run it on every near-miss before trusting an old cap note; classify each residue as decode / pin / schedule / colour._
 - [Parallel agents can share ONE scratchpad directory: keep scripts in a private subdir (agent-c run 105 ran agent-g's same-named gate.sh, which cd'd into agent-g's worktree)](#shared-scratchpad-collision-run105) -- _name every scratch script with your agent letter or put it under scratchpad/<agent><run>/._
 - [game_uso NCC (C++) donor recipe: game_uso is C++ -- compile a function with IDO 7.1 NCC from a `.cpp` donor and REPLACE_FUNC_BODY-splice it into game_uso.c.o; no Yay0 / objdiff / expected/ change (D204 85.8 + 10694 71.5 -> EXACT, 2026-10-15 agent-g)](#game-uso-ncc-cplusplus-donor-recipe) — _generic `build/src/%.cpp.o` NCC rule, all symbols `extern "C"`, placeholder body in the host, `+=` per function. Tell: pointer-to-member compare (`addi` + `lw at` 2-word loop), PMF passed by value (a1/a2 + home slots)._
 - [Variant-sweep harness gotcha: restoring the source with the original bytes can leave its mtime OLDER than an object built from a variant -> make keeps the stale object -> ROM mismatch far from your edit; touch/utime the restored file (agent-g 2026-10-22)](#variant-harness-stale-object-mtime) -- _Also: an NM wrap's placeholder callee name can link to a REAL function (8E48's gl_func_00008C3C); objdiff hides it, only ROM cmp shows the jal target._
@@ -725,6 +726,37 @@ The aliased-pointer is the cheapest knob — try it first.
 ---
 
 <a id="feedback-batch-in-tree-diff-scan-finds-near-misses"></a>
+## scripts/rdiff.py: the raw, branch- and jal-aware function diff (agent-c run 121) <a name="rdiff-raw-pins-run121"></a>
+
+`projects/1080/scripts/rdiff.py` diffs one function between two objects with difflib:
+
+```
+scripts/rdiff.py --unit src/game_libs/game_libs_post0b gl_func_0004A6E8 --raw --pins
+scripts/rdiff.py OURS.o TARGET.o FUNC --raw --pins     # e.g. a standalone NCC donor .o
+```
+
+- `--raw` keeps branch targets as `L<offset>` and jal targets as hex, and does not mask relocated
+  immediates. Without it (the old default) branch targets become `L`, jal targets `jal R` and reloc'd
+  fields `R`, which is roughly what objdiff's fuzzy score sees and is exactly what hid six decode errors
+  in run 120 (both calls skipped, nested clamps, missing return paths, an argless call, a baked jal).
+- `--pins` applies `undefined_syms_auto.txt` to relocated HI16/LO16/26 fields (HI16 pairs with its LO16
+  for the full addend), so a `gl_ref_X = 0x...` alias compares as the bytes the ROM will hold. A pinned
+  symbol whose expected-side reloc targets a different symbol shows as a one-word difference
+  (`addiu t6,t6,660` vs `addiu t6,t6,24` for `func_0000027C + 0x18`); ROM cmp is the gate there.
+- Branch offsets are measured from the function's FIRST label (its symbol). bootup_uso expected objects
+  carry `alabel D_XXXX` symbols inside functions and objdump prints some reloc blocks out of place;
+  the script attaches each reloc to the instruction at its offset.
+- `--nosp` / `--noreg` normalise stack offsets / registers (schedule-only views); `-q` prints only the
+  summary line (`diffwords` = the larger side of every non-equal run).
+
+How to read a residue: `b... L<x>` rows whose targets do not map to each other = control-flow extent
+(decode); `jal` rows = a baked USO target that needs a `gl_ref_` pin, or a wrong callee; a different
+constant (`lui 0x3` vs `lui 0x2`) = a wrong offset or a missing pin; `addiu sp` rows = frame size, which
+in cfe tracks the number of declared locals (see IDO_CODEGEN kit XXIV); same mnemonics with permuted
+registers = colouring; the same multiset in another order = schedule. A mnemonic-multiset count
+(ours minus target per opcode) is a quick pre-filter: zero means no decode error is left unless a
+constant or the frame differs.
+
 ## Batch in-tree-diff scan: the fastest way to find lever-crackable / decode-bug near-misses
 
 Instead of triaging NM wraps one at a time, build a whole file's non_matching `.o` ONCE and compare every function's `.text` against `expected/.o`, ranked by per-function word-diff count. Functions with **1–2 word diffs** are almost always a quick fix (a known codegen lever or an outright decode bug), not a deep cap.

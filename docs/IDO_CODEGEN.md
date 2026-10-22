@@ -14446,6 +14446,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit XXI (agent-g 2026-10-22, run 119): game_uso's camera-homing family (1DDC/24BC/28C0/2CC8) is NCC V3-class code -- by-value 023D4 return, memory-resident pointer homes from a local aggregate with an inline ctor, `void operator*=`, dead block-scope int for the else pool slot (28C0 69 -> 98.1, 24BC 72 -> 89.2, NM-only donors); D9CC under NCC: re-read the field through memory to crack the andi/or-coalesce cap (17 -> 4 words); the (float)255 cast-literal CSE break does not survive edg; the swap/-O0 sweep of run 118 is exhausted](#kit-xxi-agent-g-run-119) -- _Open everywhere: the inline V3 ctor's first float param colours f12 where the target has f0; D9CC's beqz+nop vs branch-likely at a 3-way join._
 - [kit XXII (agent-c 2026-10-22, run 120): diff tools that mask branch/jal targets hid six decode errors (233E4 both calls skipped, h2h 1204 nested clamps, 231B4/21D84 no-return paths, 74E8 argless call, 25AC8 baked-jal pin); a no-arg function running the cfront this==0 protocol on a GLOBAL is edg's __sti__ static initializer (4E584; rename the hashed symbol in a Makefile rule); the permuter as single-colour fixer (43654 dead if, 1D944 u16 K&R param + `a1++; a1--;`, 27D00 double mask, 25AC8, 21D84, 47E00 + declaration-order search); `p[k] = v; p[k] <<= 4;` keeps both stores (2F720); post REPLACE_FUNC_BODY := hazard](#kit-xxii-agent-c-run-120) -- _15 exacts; first rerun every near-miss through a branch-offset- and jal-aware diff._
 - [kit XXIII (agent-g 2026-10-22, run 120): float/double LITERALS in a C++ unit are reg-alloc-prep constant candidates (coloured after the variables, load still scheduled first) -- game_uso 0000 exact with `1.0f / 6.0f`; the game_uso block is extracted UNLINKED, so a literal's %lo is the donor's own .rodata offset and `<fn>_rodata` pins only work in baked blocks (use distinct zero-valued externs + offset addends otherwise); the 3DB38 {cur, nxt} iterator cracks game_uso 43D8; edg pools inline result temps by type (28C0's lenSq() temp shared operator-'s first ctor arg -> $f12); a block's temporaries are laid out before its named locals; under edg a global's address stays in an s-reg only through a named int copy; 28C0/24BC/5062C/7448/B274 residual mechanics](#kit-xxiii-agent-g-run-120) -- _EXACT: game_uso 0000, 43D8. NM: 28C0 85 -> 72 words, D9CC 17 -> 4, B274 29 -> 20._
+- [kit XXIV (agent-c 2026-10-22, run 121): raw-diff decode sweep of agent-c's 85-99.99 band; cfe reserves a frame word for EVERY declared local (-g3 .mdebug), so frame-size residues are local-count decode errors (4A6E8, 7D04); m2c int temps as named locals colour v0/v1 where the target keeps t-ring temps (4406C); a switch assigning one result variable under NCC (A9C); t8/t7-alternating lw/sw pairs = a struct copy (7288); a dead `addiu rX,rX,K` after a load = an assignment to a named local; 0x10000-off offsets, blank USO refs held as a base (0xA0), distinct zero aliases](#kit-xxiv-agent-c-run-121) -- _scripts/rdiff.py --raw --pins + a mnemonic-multiset count first; frame off by 8 = one local too many._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
@@ -33461,3 +33462,76 @@ bytes no named local or temp explains, and its constants schedule late).
    `this` in v0, the set `this` (blocks 2-4) in a1, &q in a3 and the 4C8 get `this` in a2, i.e. four
    separate pooled temps; ours merges them. D9CC under NCC with field-first products is 4 words (the
    branch-likely pair; double literals colour the same as data reads).
+
+## kit XXIV (agent-c 2026-10-22, run 121): raw-diff decode sweep, one frame word per declared local, temps vs named locals, NCC switch results, struct copies <a name="kit-xxiv-agent-c-run-121"></a>
+
+Four exacts (gl_func_0004A6E8, game_libs_func_0004406C in-unit cfe; bootup func_00007288 in-unit cfe;
+bootup func_00000A9C NCC donor) and decode fixes on 445AC, 3E9C8, 35B1C, 4BAF4/39E24, 34EB4 and 7D04.
+`scripts/rdiff.py` (MATCHING_WORKFLOW#rdiff-raw-pins-run121) is now in the project.
+
+1. **Sweep method.** Run `rdiff.py --raw --pins` over every NM wrap in the band, then count each opcode in
+   ours minus target (sp-relative loads/stores counted apart). Zero mnemonic difference with only
+   register changes = colouring; zero with a different order = schedule; anything else, or a different
+   constant, frame size or jal target, is a decode candidate. Of 128 agent-c wraps at 85-99.99, 52 had a
+   zero multiset; most decode errors were in the small nonzero group.
+2. **cfe reserves a frame word for every declared local, used or not.** Compile the extracted function with
+   `-g3` and read `.mdebug`: `local 5 -4 root / -8 v / -12 a3 / -16 k` for 7D04, while its spills used
+   other slots. A frame 8 bytes too large with identical slot usage therefore means one or two named
+   locals too many. Fixes:
+   - 7D04: keep only a3 (its spill home lands at 36) and k; the root/v pointers become expressions.
+   - 1D4B0: the DL pointer reuses the `dl` parameter (parameters do not count) and the index is read
+     inline. This fixes the frame but drops the (short) sign-extension of the signed-char index; objdiff
+     scored the size change 99.90 -> 96.10, so it was reverted.
+   - 4A6E8: block-scope the g pointer; `dst` declared before `i` then puts dst's home where the target has it.
+
+   The rule is not exact: on 445AC, dropping one of five locals left the frame unchanged, so rounding and
+   temp slots matter too. Under-sized frames point the other way: 36A48 (+40), 3E0F0 (+24), 41D40 (+40)
+   and the open 42938 (+40) probably need extra declared locals or temporaries. 36A48 passes and returns
+   Vec3 by value, which points to NCC temporaries. None of these was tested.
+3. **m2c int temps declared as named locals colour v0/v1.** The target keeps them as t-ring temps
+   (4406C, 89.3 -> exact). The two int fields were `s32 a10 = FW(arg0, 0x10)` locals (v0/v1). The target
+   loads them into t6/t0 and converts each into the SAME float `d` the float lines use
+   (`d = (f32)FW(arg0, 0x10); FW(arg0, 0x10) = (s32)(((f32)FW(arg1, 0x10) - d) * t + d);`).
+   Tell: our `lw v0/v1/aN` against the target's `lw tN` at the same index. 40 wraps show it, most of them
+   large.
+4. **A dead `addiu rX,rX,K` after a load from rX is an assignment to a named local.** cfe keeps the
+   assignment even though nothing reads it:
+   - 7D04's `lw t6,4(v0); addiu v0,v0,4` is `v = *(int **)(root + 0x84) + 1; f(..(*v)..)`, and splitting
+     one variable into two webs (`k = s0->0x40; k = k->0x84 + 4`) gives the v1/v0 pair.
+   - 46BC4's `addiu v1,v1,256` is `child = o->0x254 + 0x100; if (child[1] & 2)`.
+5. **A constant return through a register means a switch that assigns one result variable, under NCC**
+   (A9C, 97.8 -> exact). The tell is `addiu v1,zero,8` hoisted into the 'n' compare's delay slot, then
+   `jr ra; or v0,v1`. edg lowers the switch to a compare chain in case order (NCC never emits a
+   jumptable; the same switch under cfe becomes one).
+6. **t8/t7-alternating `lw`/`sw` pairs are an IDO struct copy** (7288, 95.8 -> exact): `*(Q16 *)(d + 0xDC) =
+   src;`. The held source base comes from the asm operand `%lo(func_0000027C + 0x18)`, so the alias is
+   pinned at 0x294 (kit XV #2). The flags RMW goes through the advanced pointer (`q = base->0x254 + 0x78;
+   *q |= 4;`). rdiff shows `addiu t6,t6,660` against the expected `24` (its reloc targets
+   func_0000027C), but the ROM bytes are equal.
+7. **Constants and pins the raw diff exposed:**
+   - 3E9C8: `lui 0x2` + negative lo is 0x1F34C, not 0x2F34C (every offset was 0x10000 high).
+   - 35B1C: an unpinned `gl_ref_0001E6B0`.
+   - 4BAF4 and 39E24: a camera block the ROM holds as the base `lui 0 / addiu 0xA0` with fields at +0x30.
+     Pin the alias at 0xA0 and drop the 0xA0 pad from the struct, otherwise IDO folds 0xD0 into every
+     field offset.
+   - 34EB4: the flags test needs its own zero alias, because one shared `&D_00000000` was CSE'd into s3
+     with `base`.
+   - 445AC: the first ctor stores the NEW 32-byte object into `a3->0x18` before the init call (the NM
+     reassigned a3), and the nested base-ctor alloc(20) goes to v1 only.
+8. **Permuter on bootup is useless** (confirming kit XXII #3). The 7D04 base score was 8200 of reloc
+   noise. The "better" outputs inserted `goto end;` at the top and removed real code; re-scored with the
+   raw diff, all of them were worse than the base.
+
+**Open:**
+- 3800C: the last call gets no a0. An uninitialised int or float first argument gets a stack home and a
+  reload, `register` too.
+- 34890 / 8124 / 1438C: cfront ctor protocols whose inner `this == 0` tests survive in the target, so they
+  are C++ (NCC). A first C++ draft of 34890 was worse than the cfe NM.
+- 46BC4: the dead child temp is reproduced; the state-flag pointer is recomputed per arm in the target.
+- 35E64: V3 temporaries under NCC. Each trivial `V3()` emits the `this == 0` protocol, so the point local
+  must not be default-constructed.
+- 1D17C: the target keeps every gbi `p++` step in its own register (a0, a2 = a0+8, t0 = a2+8,
+  v0 = t0+8). cfe and NCC fold them.
+- 240A0: the colour of the early `return h` (v0 raw, a1/v1 copy) is not a decode error. A bare `return;`
+  makes the jump target right but the code longer.
+- 4AFB4, 4EE44, 4CDB0, 437C0, 40640: pure colouring.
