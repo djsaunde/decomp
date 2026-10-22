@@ -293,6 +293,7 @@ explicit shared blocks (goto a common label), not regeneration.
 - [scripts/twin-finder.py: fuzzy twin search (every non-exact fn vs every exact fn, opcode+register tokens, reloc/lui-derived immediates masked, difflib, len +-10%) + non-exact twin clusters. Run it FIRST each session; 10 exacts in run 110 from its top rows. A near-1.0 twin whose length is off by 1-3 words = a splat boundary error (hoisted const head left in the predecessor, shared-exit tail on the successor's head): fix the .s boundary, re-bound the expected/ symbols, then port (agent-g 2026-10-20)](#twin-finder-run110)
 - [Kernel libultra "handwritten region" / "alt-entry shared body, no honest C" notes can be ONE C function split across .s files or even across UNITS: jal'd mid-body addresses stay as absolute undefined_syms entries, so merge the .s, port the game_libs twin, regenerate expected/ for both units. __osLeoInterrupt+__osLeoAbnormalResume (3D40/43E4, 1932 B) and osEPiRawStartDma (52F0+5350 across kernel_005_b/006) EXACT; KEY: every kernel jal target sits 0x400 ABOVE our symbol numbering (the kernel runs at 0x80000400), so "jal'd alt entries" func_X are really calls to func_(X-0x400). 5 more split fns EXACT this way (4B8, 79F4 __rmonStopThread, 8430 __rmonClearBreak) + 9EC NM 99.94 (agent-g 2026-10-20, run 111)](#kernel-split-libultra-run111)
 - [Kernel run 112: most kernel_000 / rmon "coloring caps" were HAND TRANSCRIPTIONS of IDO's own output (manual 4x unrolls, peeled "singleton" checks, pointer walks with `register` invariants, fn-ptr casts to "shared stubs"). Write the loop IDO started from: plain `for (i = 0; i < N; i++)` over the table (typed struct array or char arithmetic), direct calls to the +0x400 absolute names, then re-symbolize the .s (literal lui/addiu -> %hi/%lo(sym+off), branches to absolute func_ names -> local labels) and regenerate expected/ by swapping the new C back to INCLUDE_ASM. 17 kernel exacts (agent-g 2026-10-20, run 112)](#kernel-plain-loops-run112) -- _Tells: a "three singleton slot checks then a 4-way walk" body = one loop over 135 slots (135 % 4 = 3 peeled); an odd-iteration peel + x2 body = one loop; `jalr` through a cast where the target has `jal` = the cast is wrong. Frame holes: an unused local array of the hole's size. `return G = K;` = address in v1 + value in v0 on an early-error return._
+- [Standalone NCC probe loop and NM-only donor size (agent-g run 119): compile a .cpp draft with NCC straight into scratch and diff it against expected/ (relocs stripped, stack offsets optionally masked) -- ~1 s per variant, no tree build; an NM-only REPLACE_FUNC_BODY donor may differ in word count from the target (24BC: 152 vs 150) and still splices into the NON_MATCHING object, which grows/shrinks the NM .o only](#ncc-standalone-probe-loop-run119)
 
 
 ---
@@ -13199,3 +13200,18 @@ it as matching (jal targets are relocations), so only the full ROM `cmp` shows
 `0C00230F` vs `0C000000`. When promoting a donor, use `gl_func_00000000` (or the
 target's real callee) for every jal-0 in the target.
 
+## Standalone NCC probe loop and NM-only donor size (agent-g 2026-10-22, run 119) <a name="ncc-standalone-probe-loop-run119"></a>
+
+- Compile the draft with `$(NCC) -c -G 0 -non_shared -Wab,-r4300_mul -O2 -mips2 -32 -o
+  scratch.o draft.cpp`. Diff `objdump -d -M no-aliases --disassemble=FN` of scratch.o against the
+  expected/ object. Drop relocation annotations: the expected objects carry baked or garbage relocs
+  at function granularity, and `objdump -dr --disassemble=` prints the whole section's reloc list.
+  Normalize branch targets. Report two counts: words that differ, and words that differ with
+  `N(sp)` / `addiu r,sp,N` masked. A low masked count means only the frame layout is left. Scratch
+  .o files are never linked, so this needs no Makefile change.
+- An NM-only donor (`build/non_matching/...: REPLACE_FUNC_BODY += fn=$(DONOR)`) splices even when
+  its size differs from the `.s` (game_uso 24BC: 152 words vs 150). Only the NON_MATCHING object
+  changes size. The ROM path is untouched. The NM clip only matters in units that have one (post0b).
+- `scripts/refresh-report.sh` (objdiff `report generate`) is lenient. A donor at 85/250 differing
+  words (86 with offsets masked) reports 98.08, so do not read the NM percentage as distance to
+  exact.
