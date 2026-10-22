@@ -14376,6 +14376,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [gl_func_000578B4 (9676 B) is the libultra-gbi texture loader: gDPSetTextureLUT + gDPLoadTextureTile (SetTileSize at 0,0) / gDPLoadMultiBlock(_4b) + gDPLoadTLUT_pal256, one frame slot per gbi `_g` (the 0x1C arm stride), DL pointer = C++ inline `&dl->buf[dl->count++]` (2026-10-21 agent-g run 113)](#ncc-578b4-texture-loader) -- _In cfe the count-store-before-buf-reload needs `(d = c->dl, n = d->count, d->count = n + 1, &c->dl->buf[n])` (makes game_libs_func_0005769C exact too); a single shared temp var steals a2 for the whole function. NCC draft 2418/2419 words, 95.0._
 - [game_libs under NCC: gl_func_0005062C (2756 B) to 4 words -- a ctor forwarding to an inline `set(float, float, float)` fixes the FP colouring of every V3 temporary, named sum locals give the top-of-frame order, a macro abs keeps the result in f12; plus the edg stack-pool rules measured with `.mdebug`/micro probes (2026-10-21 agent-g run 114)](#ncc-5062c-subdivider-run114) -- _Score instructions with stack offsets masked first (cmpfn `--nosp`): a variant that is exact under masking is a pure frame-layout puzzle. edg pool slots: scalar inline params/temps get 4-byte slots allocated on demand and reused per type; the order relative to class temps is the residual here._
 - [game_uso 3AC0 under NCC: the 12-way shared staging slot is an edg inline-ctor parameter pool slot -- `new Item(x)` with an inline cfront ctor and no class operator new emits one alloc, evaluates the argument into the ctor's parameter BEFORE the alloc, and reuses one bottom-of-frame slot for all 12 calls; all 261 instructions identical, frame layout open (agent-g run 115)](#ncc-3ac0-new-expr-param-pool) -- _Param-type rules measured: class with trivial copy = one shared pool slot (sp+36, like the target); class with a user copy ctor = a fresh top-of-frame temp per call; POD struct param + struct copies = pointer-based copies (s1 = &slot); reading or assigning a global struct lvalue adds an ascending top temp. 5062C: V3 derived from POD P3 + operator+(const P3 &) = 688/689._
+- [game_uso cfront-lowered ctors: 3AC0 EXACT via four dead named locals (frame 96 -> 112); 3018 + 18FC EXACT in plain cfe via struct-copy stage temps (`prm = T`), s0 as the parameter, and `if (1) {}` BB splits + int zeros so each stage-1 FP constant takes $f0 in turn; NCC temps are always ascending (agent-g run 116)](#cfront-ctor-stage-struct-copy-3018) -- _descending per-stage temp slots = cfront named temps: prefer cfe with named locals; a rodata word carried by a replaced .s must be re-emitted by the placeholder._
 - [timproc_uso_b5_func_00004118 run 115 (98.34 -> 99.14 NM): store 0x3B8 before 0x3C8 so as1 does not pull the arg6 store into a load-delay slot; 4118 is cfe (jumptable), open residuals: block-1 constant order, case-0 arg0 piece](#b5-4118-run115-arg-store-order)
 - [game_uso under NCC: a stack float param reassigned in place (`if (!(f & 8)) arg4 = 1.0f;`) and a class temporary whose ctor forwards to an inline `set()` fix frame size and FP colouring -- B750 72.8 -> EXACT (2026-10-15 agent-g)](#ncc-ctor-forwarding-inline-set-frame-b750) -- _Tell: the same `lwc1 fN,104(sp)` of a stack arg on two paths into one register; frame larger than your C by 8 with the temp object 4 higher. edg gives every named local and every live inline-argument temp its own 4-byte stack slot even when it lives in a register, so the count of locals and nested inline params sets the frame._
 - [game_uso under NCC: a named copy local (`prev = F0; F4 = prev; ...`) colours v0 and renumbers every later temp; writing the move through the members (`F4 = F0; F0 = 0; if (F8 == F4) ..; F8 = F4;`) gives the target's t0/t1 expression temps; NCC is NOT a universal lever (B4B8 sentinel loop is NCC-immune) -- F6D4 95.4 + E35C 95.3 -> EXACT (2026-10-15 agent-g)](#ncc-no-named-copy-local-f6d4) -- _Tell: target values in the ugen temp ring (t8, t9, then t0, t1) right after a call, where your build has a v0 local; a 2-copy `bne; or v0,t0 / or v0,t0` join is what a pure member re-read leaves, not a ternary._
@@ -32785,6 +32786,54 @@ always lowers `switch` to a compare chain. Still open: block 1 materializes 1.0 
 already right), and switch case 0 gets an arg0 split piece in v0 (target) where ours reloads per use.
 Neither responded to same-line joins, `if (1) {}` after the call, case-body order, or the natural
 `switch (FW(arg0, 0x3C8))` (that one turns into a beq chain plus a frame slot for the switch value).
+
+## game_uso cfront-lowered constructors: 3AC0 (NCC, dead named locals), 3018 + 18FC (plain cfe, struct-copy stage temps + BB-split constants), 41C0 partial (agent-g 2026-10-21, run 116) <a name="cfront-ctor-stage-struct-copy-3018"></a>
+
+**The model.** The game_uso alloc-cascade constructors look like cfront output compiled by cfe: every
+per-stage temporary is a NAMED local declared at the top of the function (so they come out descending,
+first stage highest), inline-function parameters are shared locals (one slot per name, the "pool"), and
+the `this == 0 -> alloc` protocol is explicit. IDO 7.1 NCC (edg) allocates its temporaries ASCENDING
+(measured: mem-init conversion temps, Vec3 argument temps, default-argument temps, `const &`-bound temps,
+inline/out-of-line ctors, -O0..-O3: always ascending; only named locals and inline-function named locals
+descend). So a function whose target has several descending per-stage temps is usually easier in plain
+cfe with named locals (C48C, 3018, 18FC) than under NCC.
+
+**3AC0 (1044 B, NCC donor) -- the 4 missing frame slots were dead named locals.** The run-115 draft
+(`Q q_k(NM(k)); add(arg0, new Item(q_k), -1);` x12) matched all 261 instructions with frame 96 vs 112.
+Adding `int z0, z1, z2, z3; z0 = 0; z1 = 0; z2 = 0; z3 = 0;` AFTER the twelve statements gives four
+4-byte homes between q11 and the shared parameter slot: frame 112, byte-exact (kit XVI fact 6 applies to
+outer-block declarations placed last too). Landing notes: the donor calls the global operator new, so the
+Makefile rule renames it after NCC (`$(OBJCOPY) --redefine-sym __nw__FUi=game_uso_func_055750`, a symbol
+name only) so the imported reloc names the expected import; and the old `.s` carried 3ED4's `.late_rodata`
+word (pi at RoData +0x90), so the placeholder body returns `3.14159274f` to keep it -- without it
+verify-blocks showed `lo16=4` on four later `%lo` sites.
+
+**3018 (1164 B, 93.1 -> EXACT) and 18FC (1076 B, 91.2 -> EXACT), plain C.** Three source changes to the
+run-106 cfe bodies:
+1. Stage template copy: `T.w = G; prm = T;` (STRUCT copy) instead of `prm.w = T.w;`. With the member copy
+   uopt loads the word into v0 and stores the shared `prm` first; with the struct copy the load stays in a
+   t-reg and the per-stage slot store comes first, the shared store in the bne delay slot (both targets).
+2. Frame: `s0` is the parameter itself (a `char *s0 = (char *)a0;` copy costs a top-of-frame home), then
+   re-fit the int pads (3018: drop g8 and g7; 18FC: drop g8, g0[3], one int after o1). Watch the
+   first-stage `addiu tN,sp,X` and the `sw a0,K(sp)` this-spill slots while moving pads.
+3. The stage-1 FP constants: the target materializes 0 / -1000 / 1000 (18FC: 0 / 64 / -1000 / 1000) into
+   `$f0` one after another, each followed by its three stores. In cfe all three got different registers and
+   as1 regrouped the stores. Two things were needed together: put `if (1) {}` between the vector
+   initializations (a basic-block split, otherwise the constants' live ranges overlap), AND spell the zero
+   vector with int zeros (`hi.x = 0;`). With `0.0f` the zero is one CSE candidate with the stage
+   `*(f32 *)(o + 0x10) = 0.0f` stores and stays live (it took $f12/$f2). Any one of these two alone did
+   nothing; statement order, same-line joins, pointer-based stores and shared float locals were no-ops.
+The NCC draft of 3018 (Big::Big() with M1/M member classes, out-of-line NodeBase ctor, Name(int)
+conversion) reached the same instruction stream except the frame (ascending temps) and the same FP
+constant schedule.
+
+**41C0 (536 B, 94.2 -> 132/134 words, NM).** Same stage fix plus: the `new Outer` result lives in a temp
+`x` that is reused for `a0->node` in the tail (target: both at sp+64, memory-resident, so `x` is escaped);
+`p1 = x;` in the tail (v1, spill home 68); one `void *q` escape pointer for t1..t3 and x (separate escape
+pointers each cost a bottom slot); the condition re-loads `a0->0x40` while the argument uses the earlier
+load (3A28's trick: that is what put the node in v0). Left: the node store `sw v0,64` belongs in the
+07ACE0 jal delay slot with the p1 spill before it; here they are swapped (tried: store before/after/inside
+the call, same-line joins, p1 placement, escaping p1).
 
 ## kit XVI (agent-c 2026-10-21, run 116): bootup_uso is C++ -- five NCC donors; edg block-scope slots, same-line schedules, virtual-call colouring, dead-store frame slots <a name="kit-xvi-agent-c-run-116"></a>
 
