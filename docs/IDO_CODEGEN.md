@@ -605,7 +605,7 @@ lambda Auto-generated from per-memo notes; content may be rough on first pass �
 - [Stack-residency does NOT imply -O0 — `residency + FILLED delay slots` is an -O1 build with original register-pressure spill, NOT reproducible by the project cc](#feedback-ido-stack-residency-plus-filled-slots-is-o1-not-o0) — _Refines `#feedback-ido-o0-loop-stack-reload-signal`: loop-reloads-all-locals is necessary but NOT sufficient for -O0. -O0 ALSO leaves delay slots UNFILLED (b;nop / jr;nop). If the target reloads locals from sp every use AND has its delay slots FILLED (≈0-1 nops), it is NOT -O0 — it is an -O1 object whose original register pressure spilled those locals while the assembler still filled slots. The project cc can't emit that combo — but **IDO 5.3 -O1 CAN (verdict superseded 2026-06-09)**: these are statically-linked libultra objects; verbatim libreultra source at 5.3 -O1 matched 71864/718C0 byte-exact. Test 5.3 before declaring this cap._
 - [-O0 stack-offset +8 shift between mine and target — declaration reorder + extra padding locals all grow the frame instead of shifting layout (gl_func_00008A40, 4-diff stays 4)](#feedback-ido-o0-local-offset-shift-not-c-reachable) — _When -O0 codegen produces a 4-diff residual where target's struct locals are at sp+8 higher offset than mine but frame size is identical: declaration reorder, type swaps (Tri3i → long long pad), or adding pad locals all GROW the frame (extra 8 diffs from prologue/epilogue) without shifting tmp/raw's offsets the desired +8. The -O0 allocator's bottom-padding-vs-top-padding choice between saved-regs and locals isn't driven by C-source structure. Verified 2026-05-27 on gl_func_00008A40 (4 stack-offset diffs at 0x24/0x38/0x3c/0x5c): swap raw↔tmp decl order, add 12-byte pad_low first, add long long pad_align first — all worsened to 8 diffs. Cap class: -O0 stack-layout non-determinism similar to register-rename cap. Don't grind -O0 4-diff stack-offset residuals; wrap NM with stack-layout-cap label._
 - [Same cap at -O2: which stack ARRAY lands low vs high is an IDO-allocator choice, not C-reorderable; and a global accessed as both lvalue-read + lvalue-write may CSE its address (lui+addiu, reused) where the target folds %lo per access (lui+lbu) — neither is C-forceable](#feedback-ido-o2-stack-array-placement-and-addr-fold) — _Confirmed 2026-06-04 across the rmon family. (1) **Stack-array placement:** when the target lays a small header struct at the LOW start of a contiguous packet and the big buffer above it (e.g. func_800073F8(hdr,0xB0) sends hdr+buf as one block), but your build places them reversed — swapping the C decl order does NOTHING (func_80001348: `s32 file[10]; s32 header[3]` swap = no-op, 68.1%), and wrapping them in one `struct{int hdr[4]; int buf[40];}` GROWS the frame (func_80009314: 0xe0→0xe8, the introduced base pointer spills). The placement is the IDO -O2 allocator's call. (2) **Global address fold vs CSE:** `if (G==0){G=1;...}` on an `extern u8 G` should fold to `lui;lbu %lo(G)` per access, but if several adjacent-page globals + an `&G_other` pointer coexist, IDO computes `lui;addiu` once and reuses the base (func_800017BC) or keeps `&D_80012BC0` in a saved reg vs the target re-materializing (func_800010E8). Moving the `&G_other` init later nudged +0.1pp only. Both are RA/allocator caps — log the residual and move on, do NOT grind decl-order / struct-wrap / pointer-hoist variants._
-- [-O0 RETURN-VALUE functions get a DEAD second `b epilogue; nop` after the return's branch — our ido-static-recomp cc emits it, the original 1080 toolchain didn't; not C-fixable (TOOLCHAIN-BINARY GAP, blocks all -O0 return fns)](#ido-o0-stale-nm-percent-table-reflects-c-shape) — _func_00012188 carried a `Tried: -O0 (35%) ... -O2 -g3 (55%) wins` table; the -O0 number was measured against a `volatile sp4` do/while body. A plain `for` + direct-constant stores + `register int v` at -O0 is byte-exact. When the asm shows -O0 traits (fresh `addiu rN,zero,1` per const, stack-stored loop counter, unfilled-delay epilogue), the recorded `-O0 %` is evidence about the old C, not the tier. Anchor below._
+- [-O0 RETURN-VALUE functions get a DEAD second `b epilogue; nop` after the return's branch — our ido-static-recomp cc emits it, the original 1080 toolchain didn't; not C-fixable (TOOLCHAIN-BINARY GAP, blocks all -O0 return fns)](#ido-o0-stale-nm-percent-table-reflects-c-shape) — _func_00012188 carried a `Tried: -O0 (35%) ... -O2 -g3 (55%) wins` table; the -O0 number was measured against a `volatile sp4` do/while body. A plain `for` + direct-constant stores + `register int v` at -O0 is byte-exact. When the asm shows -O0 traits (fresh `addiu rN,zero,1` per const, stack-stored loop counter, unfilled-delay epilogue), the recorded `-O0 %` is evidence about the old C, not the tier. Anchor below._ **2026-10-22 UPDATE (agent-c run 119, [kit XIX #1](#kit-xix-agent-c-run-119)): edg (NCC -O0) emits no closing-brace marker, so in C++ segments the same body compiled with NCC -O0 is byte-exact -- bootup func_00011B5C and 7 more landed this way. Test this before any toolchain patch.**
 - [-O0 RETURN-VALUE functions get a DEAD second `b epilogue; nop` after the return's branch — TOOLCHAIN-BINARY GAP, blocks all -O0 return fns](#feedback-ido-o0-return-value-dead-double-b) — _A frame-having -O0 function ending in `return X;` compiles to `lw v0,off(sp); b epi; nop; b epi; nop; <epilogue>` — TWO unconditional branches to the epilogue (the return's, then a dead/unreachable closing-brace one). The 1080 target has only ONE. Proven a toolchain-binary codegen gap, NOT a C-structure issue: the trivial `int f(int*a0){int x=a0[0];g();return x;}` reproduces the double-b. Full matrix (IDO 7.1 AND 5.3): -O0/-O0-g/g1/g2/g3 and -O1-g/-O1-g2 all give b=2 with full -O0 reloads; -O1-g3/-O2/-O2-g3 give b=0 (over-optimized, registers cached, breaks the -O0 reload structure). NO setting yields the target's "b=1 + full reloads". VOID -O0 functions are unaffected (no return → the single closing-brace b is LIVE and matches — that's why void -O0 fns DO land, e.g. gl_func_000093DC). Blocks ALL -O0 return-value fns project-wide (func_00011B5C, arcproc_uso_func_0000012C, gl_func_000092F4, etc.). Removing the dead b post-cc would be match-faking (BANNED). Only real fix = the exact original 1080 IDO cc binary that elides it (focused acquisition, not a tick). Verified 2026-05-25._ **ROOT CAUSE CONFIRMED (2026-07-10, 17+ shapes on arcproc B4/12C): the third branch is emitted by UGEN at the source line of the closing `}` (visible in `cc -S -O0` output as `b $33` attributed to the `}` line), an unconditional end-of-function marker to the epilogue label — even for a trivial single-return non-leaf. The redundant consecutive branch is elided ONLY by uopt, which `-O0` bypasses entirely (opt-sweep on the identical body: -O0=3 branches, -O1=1, -O2=1 — but -O1/-O2 destroy the -O0 spill-everything body 35→29→20 insns). The matching -O0 value-returns in-tree (bootup 11D40/11D78/11DBC) are all LEAF functions: no epilogue label, each return is a direct `jr $31`, so no shared epilogue for the marker to target. The B4/12C class is NON-LEAF (shared epilogue → marker). So the class blocker is precisely: ugen's -O0 emits the marker + uopt (off at -O0) would remove it. ACTIONABLE PATH beyond acquiring a different binary: this is a candidate for a local `tools/ido-static-recomp` ugen/uopt patch (the project already patches ido-static-recomp locally, e.g. the ecvt regalloc-dump patch) — patch the recompiled ugen to suppress the redundant trailing branch when the prior insn is already an unconditional branch to the same target. That would unblock the whole ~10-fn class at once. Higher-risk toolchain work — a deliberate infra decision, not a loop tick._
 
 ### indirect / function pointer
@@ -14441,6 +14441,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit XVI (agent-c 2026-10-21, run 116): bootup_uso is C++ -- NCC donors splice into bootup_uso.c.o (ROM cmp is the gate); block-scope locals go below earlier inline pool slots; one source line = one as1 schedule unit (also under NCC); real virtual calls instead of hand dispatch; edg flips compare and product operand order; dead stores to named locals buy frame slots; splices drop INCLUDE_ASM pad words](#kit-xvi-agent-c-run-116) -- _EXACT: bootup CAE8 99.94, 485C 94.1, CFA0 99.03, E740 26.4, E800 87.8. Open: B1B4 (4 words), 41EDC/7328 list iterator, 437C0, h2hproc 0620, 48AEC._
 - [kit XVII (agent-c 2026-10-22, run 117): inline-method expression temps colour arg registers (registry `tbl[n++]` -> a1); the `{cur, nxt}` list iterator advances through `nxt = nxt->next`; a one-pointer smart-pointer aggregate = a dead home store; NCC never emits jumptables (jumptable => cfe); NCC temps are ascending, edg mem-init temps reversed; inline by-value params; .L refs into a donor function](#kit-xvii-agent-c-run-117) -- _EXACT: bootup B1B4 96.7, 7328 66.6; post0b 372D4 99.7, 38964 98.9, 3D48C 98.6, 38598 75.7, 38728 64.5. Open: 41EDC v0/v1, 8124 (2 words), 4247C/42438 ring, 3800C a0, 470E4 twins, E270 spill pair._
 - [kit XVIII (agent-c 2026-10-22, run 118): the list iterator's entry call through an inline `first() { return next(); }` gives it its own edg return temp, so the loop variable becomes a phi of two temps (no copy-prop onto v0); an inline member on the iterated object (`tick() { if (flags & 4) update(); }`) fixes the get()/vptr colours; non-void callee declarations keep v0 busy; dead block-scope ints buy bottom frame slots; a body-scope `Flags &f = o->fl` gives the target's shared `addiu v0,s0,K`](#kit-xviii-agent-c-run-118) -- _EXACT: post0b 3DBEC, 3DDC0, 3E1B0, 41EDC, 3D2C8, 47F9C, 478FC, 40E90, 40974, 3863C. first() is not universal (478FC needs plain next())._
+- [kit XIX (agent-c 2026-10-22, run 119): bootup -O0 C bodies compile to the shipped bytes under NCC -O0 (edg has no closing-brace marker, so the cfe "return-value dead-double-b" gap vanishes); an if/return next() gives every call its own return value without first()'s pool slot; dead `if (n) {}` in the innermost loop flips NCC s0/s1 priority ties; unconstrained candidates colour in first-occurrence order (dead `T *n = 0;` first); ABS inside a sum must be a macro under edg; NCC accepts cfront `this =` assignment; boundary fix with in-place expected/ symbol edits; .mdebug frame maps for cfe](#kit-xix-agent-c-run-119) -- _EXACT: bootup 11E00/11ED4/11FA8, F81C, 11B5C, FC28/FD4C/FEE8; post0b 432BC, 38DC0, 393B8, 3DE48, 3DA14, 3DB38. Open: 41A9C, 437C0, 3DF58, 454C4, 4E244, 3D54C, 46FA8, 8124._
+- [kit XX (agent-g 2026-10-22, run 118): edg (NCC) keeps the SOURCE operand order of commutative ops -- the "commutative FP/int operand-order canonicalization cap" in a C++ unit is a cfe artifact; NCC -O0 also clears the -O0 extra-branch group in game_libs / mgrproc / arcproc; edg -O0 spelling rules (compare order, no compound assignment); loop-IV lui order (func_800009EC)](#kit-xx-agent-g-run-118) -- _EXACT: timproc_b5 1DB0 (const-first mul/add, -O2 NCC); game_libs_mid 8FFC/9100/8E48/9204/92F4, game_libs 959C, mgrproc 700/A14, arcproc B4/12C (-O0 NCC); kernel 800009EC (cfe). Placeholder must re-emit the .s rodata; an INCLUDE_ASM host leaves a .NON_MATCHING symbol objdiff scores as unmatched._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
@@ -33093,4 +33095,151 @@ Manhattan sum; also 3DE48's .s ends with 3DF5C's stolen `lw t6,16(a0)`, a bounda
 iterator is a DERIVED class built through the cfront protocol on a stack temp, two by-value copies; colour
 and frame residuals); 437C0 (stack Derived: Base `this` pool slot 4 low); 90CC (bootup, 422 diff words:
 the tail colours, see its NM comment).
+
+
+## kit XIX (agent-c 2026-10-22, run 119): NCC -O0 for bootup's -O0 islands, if/return next(), .mdebug frame maps <a name="kit-xix-agent-c-run-119"></a>
+
+1. **bootup's -O0 islands are C++ too: compile the NM C body with NCC -O0.** The cfe -O0
+   "return-value dead-double-b" gap ([#feedback-ido-o0-return-value-dead-double-b](#feedback-ido-o0-return-value-dead-double-b):
+   a second dead `b epi; nop` before the epilogue after a `return` arm, from cfe's closing-brace
+   marker) does not exist under edg: the same body built with `NCC -O0` is the shipped code. Eight
+   exacts on the first try (func_00011E00/11ED4/11FA8, F81C, 11B5C, FC28/FD4C/FEE8), each a byte-
+   identical recompile of the existing cfe NM body. Recipe: the body goes into a self-contained
+   `extern "C" { ... }` .cpp (K&R `f()` externs become `f(...)`, `(*)()` casts become `(*)(...)`;
+   scratch `mkdonor.py` in c119 does it), Makefile `$(DONOR): OPT_FLAGS := -O0` on the donor object,
+   `REPLACE_FUNC_BODY += fn=$(DONOR)` on both trees of the unit, placeholder `{ return 0; }`, and the
+   unit's TRUNCATE_TEXT copied to `NON_MATCHING_TRUNCATE_TEXT` (the NM tree no longer has the extra
+   pairs either). One donor .cpp can serve several functions of a unit. Scan for more: compile every
+   -O0 unit's NM TU as C++ and compare per function (`o0scan.py`). Other agents' -O0 units with the
+   same gap (game_libs_mid, game_libs_o0_949C, mgrproc_uso_o0_19C, game_uso) are worth the same test
+   if those segments are C++.
+2. **An if/return `next()` gives each call its own return value.** `T *next() { if ((cur = nxt) != 0)
+   { nxt = nxt->next; return cur->obj; } return 0; }` instead of the `?:` form: the loop variable is no
+   longer copy-propagated onto the shared edg temp, so the target's `beqz v0; or s0,v0` comes out
+   without first()'s extra pool slot (kit XVIII #1 cost +8 frame). gl_func_000432BC: first() gave
+   instructions-exact at frame 112; if/return gives frame 104, exact. The top expansion still
+   pre-zeroes v0 (`or v0,zero,zero; beqz tN; ...; lw v0,0(tN)`), same as the ?: form.
+3. **Rebuild a cfe frame map from `.mdebug`, then add or delete named locals.** A `-g3` compile of the NM
+   TU plus a .mdebug SYMR dump (c118/tools/mdebug.py) gives every name's offset; diff that against the
+   target's sp offsets (compare relative to the frame top). In func_00006808 (frame 240, nine s-regs)
+   cfe gave even unreferenced named locals a slot, in declaration order from the top, with block-scope
+   locals below all function-scope ones, so two dummy declarations above e4, one before va/vb, op moved
+   above v4C and no block-scope temps made every offset match the target. This is not universal: small
+   functions whose named locals all live in registers get no slots (game_libs_func_0003D54C's cfe NM has
+   six named locals in an 8-byte frame), so measure before relying on it. Under edg (kit XVI #6)
+   referenced named locals get slots and unreferenced ones are dropped.
+4. **`(T *)(int)&sym` keeps a global's address in an s-register.** `p = &g; *p = x;` is folded back to
+   `lui at; sw x,%lo(g)(at)` by uopt; through an int cast the pointer stays a variable, held in a
+   callee-saved register like the target's `lui s5; addiu s5; ...; sw t,0(s5)` (6808's post-loop
+   D_776C/D_1EBDC pair). It costs registers elsewhere (6808: frame +8), so it is a lever to try, not a
+   fix.
+5. **The dead `if (v) {}` priority lever works under NCC too** (cf. #dead-empty-if-priority-boost-placement-is-everything-a7b4-d418-cracked-2026-07-03).
+   gl_func_00038DC0 and gl_func_000393B8 (kit XVIII's "s0/s1 swap": the hoisted constant 16 of the matrix
+   loop took s0 before the loop variable): `if (n) {}` as the first statement of the j loop adds
+   loop-weighted refs to n, which then outranks the constant and takes s0. With first() + an if/return
+   next() for the frame (38DC0), or the if/return next() plus one dead `int e0; e0 = 0;` beside src
+   (393B8, the 40974 slot trick), both are exact. Placement matters: after the call, before the loop
+   or at the end of the body did nothing; inside the innermost statement broke the unroll.
+6. **Unconstrained candidates are coloured in first-occurrence (bitpos) order, so declare the loop
+   variable early.** In game_libs_func_0003DB38 the regalloc dump (`ra.sh`/`ran.sh` with the
+   diagnostic compiler copy) listed every candidate as `assigned (unconstrained)`: no priority lever can
+   help there. The target's loop variable takes v0 and the next() temp a0; a dead `Node *n = 0;` before
+   `for (n = it.first(); n; n = it.next())` makes n occur first and gives exactly that.
+7. **An ABS inside a sum must be a macro, not an inline function, under edg.** game_libs_func_0003DE48
+   and game_libs_func_0003DA14 sum `|dx| + |dy| + |dz|`. With `inline float adiff(a, b)` every one of
+   the 12 operand orders and associations came out wrong: edg materialises inline-call results in a
+   non-source order (`(x + y) + z` evaluated y, z, x) and the final add operands flip. With
+   `#define adiff(a, b) ((a) < (b) ? -((a) - (b)) : ((a) - (b)))` the plain ?: expressions evaluate left
+   to right and `x + y + z` is the target's x, y, x+y, z, (x+y)+z. 3DA14 also reads the position through
+   `V3 *q = &n->pos` (the target's `addiu a1,a0,48` repeated in both ABS arms).
+8. **IDO NCC accepts cfront's assignment to `this`** (`warning(3442): assignment to "this"
+   (anachronism)`), and `new T(...)` on such a class calls no operator new: the constructor allocates.
+   That is the literal cfront protocol `if (this || (this = alloc(sizeof(T), heap))) { ... }`, the shape of
+   gl_func_00034890's three-level constructor chain whose protocol allocations all pass the heap
+   argument. The ordering of the base-class calls relative to the assignment is not solved yet (scratch
+   c119/w/34890).
+9. **Boundary fix with a renamed successor** (game_libs_func_0003DE48 / gl_func_0003DF58): the
+   predecessor's .s carried the successor's first word (`lw t6,16(a0)`), so 3DE48's real body is 68
+   words and the successor starts at 0x3DF58. Move the word, rename the successor's .s/glabel/C, and
+   adjust the expected/ object in place instead of running the whole-tree baseline refresh: shrink the
+   predecessor symbol (and its `.NON_MATCHING` alias) by 4 and rename/re-base the successor pair
+   (`scripts/rename-elf-symbol.py`, then a 20-line st_value/st_size editor, scratch `symedit.py`). ROM
+   bytes are unchanged; the report then scores the 68-word body.
+
+**Open (scratch in `c119/w/`):** 41A9C (the first next() shares the D41/E41 new-expression pool temp, so
+it colours a2; an if/return next() makes it its own var but it lands in v1, target v0); 437C0 (the
+protocol var of the stack Derived's Base ctor sits one slot low and colours a2: a dead `if (this) {}` in the
+ctor did nothing; moving the init call into Derived fixes the colours but moves the call); 3DF58
+(34 words: the first loop wants first() with separate temps, the second the coalesced plain form, and the
+target frame has one more slot above the iterator); 454C4 (NCC port with `GCtx::next()`/`newLights()` is
+506/507 words; residuals are the 255.0f web held in f22 instead of rematerialised into f0 after the jal,
+0x03000000 hoisted into s5, iterator slots 8 low); 4E244 (array iterator: base-class ctor stores give the
+target's protocol and both by-value copies, 78/78 words; frame 8 short and two colours); 3D54C (frame 8:
+no named locals at all, so the counter and loop variable cannot be named under edg); 46FA8 (GCtx emit:
+the gc var colours a0, target v1; dead ifs move it to v0, not v1); 8124 (key temps still ascending).
+
+
+## kit XX (agent-g 2026-10-22, run 118): NCC keeps source operand order; NCC -O0 for the -O0 extra-branch group; loop-IV lui order <a name="kit-xx-agent-g-run-118"></a>
+
+1. **edg (NCC) does NOT canonicalize commutative operands; cfe does.** Standalone
+   proof (IDO 7.1 -O2, same body): `*q = 41.0f + 5.0f * p[0x15]` -> cfe
+   `mul.s f8,f4(field),f6(5.0); add.s f16,f8(prod),f10(41)` (constant always
+   rt), NCC `mul.s f8,f4(5.0),f6(field); add.s f16,f10(41),f8(prod)` (source
+   order). Same for `C0 + B8 * (double)(1.0f - *r)`: NCC gives the exact
+   `mul.d f18,f16(B8),f10(cvt); add.d f6,f4(C0),f18` with the same register
+   numbers as cfe, only rs/rt swapped. Integers too: `j + p[i]` -> NCC
+   `addu v0,a2,t8`, cfe `addu v0,t8,a2`; `p + i*24 + 16` -> NCC base-first.
+   IDO 5.3 cfe canonicalizes like 7.1 cfe (not a version difference).
+   **So in any C++ unit (game_uso, timproc b1/b3/b5, mgrproc, arcproc, game_libs,
+   bootup) a residual that is ONLY "operands of mul/add/addu reversed vs target"
+   is the compiler front end, not the allocator: compile the same body with NCC
+   and spell the operands in the target's rs,rt order.** timproc_b5 1DB0 went
+   99.55 -> EXACT with the cfe NM body unchanged. A quick finder: diff every
+   NM function and count `-`/`+` line pairs that are the same op with rs/rt
+   swapped (agent-g run 118 scan: post0b 28A68 (1 line), 35E64, 3B01C are agent-c
+   units with only that residue). Not universal: in 2B74/32C8/BBDC/C98C/1460 the
+   residue is something else and NCC is worse (bodies tuned for cfe).
+2. **NCC -O0 clears the "-O0 extra-branch" group outside bootup too** (kit XIX #1
+   was bootup): game_libs_mid 8FFC/9100/8E48, game_libs_o0_949C 959C, mgrproc
+   _o0_19C 700/A14, arcproc_o0 B4/12C all became EXACT from their cfe NM bodies.
+   Donor rule: `$(DONOR): OPT_FLAGS := -O0` on the `.cpp.o` (the generic NCC
+   rule passes `$(OPT_FLAGS)`). edg -O0 spelling differences vs cfe:
+   - evaluation order is SOURCE order: `if (a0[2] == a0[1] + 1)` loads a0[2]
+     first; write the side the target evaluates first on the left
+     (`a0[1] + 1 == a0[2]`);
+   - compound assignment through a pointer (`*p -= 1`, `p[1] += 1`) makes edg
+     take the lvalue address into a fresh register (an extra s-reg + save);
+     spell it `*p = *p - 1`;
+   - K&R definitions must become prototypes; implicit-int returns `int f(...)`
+     without a return statement are accepted.
+   - NCC drops stores to an unused local array that cfe keeps (arcproc 125C's
+     `ones[4]`): a unit whose target keeps such dead stores is cfe, not C++.
+3. **The 9204/92F4 "s-reg promotion cap" was the 8FFC shape:** a plain `int obj`
+   (home slot, sw v0 / lw s1 / return-from-home) + `register` base/o/tmp
+   aliases + a base-0 alias symbol for the `&D + 8` read. Re-decoding the
+   siblings on that shape and compiling with NCC -O0 = 60/60, 58/58.
+4. **Placeholder hygiene for donor splices:** (a) if the old `.s` carried
+   `.rdata`/`.late_rodata`, the placeholder must re-emit those bytes in order
+   (1DB0: 14 state-name strings then its two doubles -- string literals and
+   double constants in a dummy body; verify the host `.rodata` size); (b) do
+   NOT keep INCLUDE_ASM as the host: replace-function-body then skips ("already
+   matches donor") and the asm-processor `.NON_MATCHING` symbol makes objdiff
+   report the function with no fuzzy (unmatched); (c) a donor that is 4 bytes
+   short of the `.s` size where the `.s` ended with a nop = the alignment pad:
+   re-add it with `SUFFIX_BYTES_FORCE := fn=0x00000000` (+ the
+   `NON_MATCHING_` twin) -- all-zero pad, legal (959C).
+5. **Loop IV materialization order (func_800009EC, last 2 words).** Two loop
+   pointers whose `lui`s scheduled in the wrong order were cracked by changing
+   which one is an induction variable: the second pointer is NOT a stepped
+   variable but `&D_80013112 + i * 0x9C` in the call (uopt strength-reduces it
+   into an IV created after `mod`'s), and the init is the comma for-init
+   `for (mod = base, i = 0; i != 0x87; mod++, i++)` (a separate `mod = base;`
+   statement, or `i++, mod++`, swaps the two `addiu` or moves the step into
+   the bne delay slot). 240 statement orders of the stepped form had been inert.
+6. **Regalloc dump caveat for FP constants:** `-zdbug:6` colours expression
+   candidates (`uilod` loads used twice) and creates constant candidates after
+   the itab (index > itab size); 32C8/2B74's residue is a constant zero coloured
+   after the loaded floats (target: before). Moving the zero vector first makes
+   it span both loads (gets $f12); `while(0)` boosts and int/float zero
+   spellings did not reorder it. Open.
 

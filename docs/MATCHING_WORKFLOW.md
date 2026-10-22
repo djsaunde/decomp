@@ -14,6 +14,7 @@ _76 entries. Auto-generated from per-memo notes; content may be rough on first p
 
 - [Parallel agents can share ONE scratchpad directory: keep scripts in a private subdir (agent-c run 105 ran agent-g's same-named gate.sh, which cd'd into agent-g's worktree)](#shared-scratchpad-collision-run105) -- _name every scratch script with your agent letter or put it under scratchpad/<agent><run>/._
 - [game_uso NCC (C++) donor recipe: game_uso is C++ -- compile a function with IDO 7.1 NCC from a `.cpp` donor and REPLACE_FUNC_BODY-splice it into game_uso.c.o; no Yay0 / objdiff / expected/ change (D204 85.8 + 10694 71.5 -> EXACT, 2026-10-15 agent-g)](#game-uso-ncc-cplusplus-donor-recipe) — _generic `build/src/%.cpp.o` NCC rule, all symbols `extern "C"`, placeholder body in the host, `+=` per function. Tell: pointer-to-member compare (`addi` + `lw at` 2-word loop), PMF passed by value (a1/a2 + home slots)._
+- [Variant-sweep harness gotcha: restoring the source with the original bytes can leave its mtime OLDER than an object built from a variant -> make keeps the stale object -> ROM mismatch far from your edit; touch/utime the restored file (agent-g 2026-10-22)](#variant-harness-stale-object-mtime) -- _Also: an NM wrap's placeholder callee name can link to a REAL function (8E48's gl_func_00008C3C); objdiff hides it, only ROM cmp shows the jal target._
 - [game_libs NCC donor (gl_func_00062A2C, agent-g run 113): the game_uso recipe works unchanged on game_libs_post0b -- `.cpp` donor + `REPLACE_FUNC_BODY +=` + placeholder host; jal-0 imports need zero-valued alias names (the in-file name resolves to its real address); the NM body size change moves the post0b clip; plus scripts/transcription-tell-scan.py](#game-libs-ncc-donor-run113) -- _Clip rule: NON_MATCHING_TEXT_CLIP_KEEP_ALIGN must equal game_libs_func_00062F08's NM offset + 0x50 (0x2e66c -> 0x2e668 when the 210-word NM wrap became the 209-word splice)._
 - [NM-only NCC donor (gl_func_0005062C, agent-g run 114): when a function's closest source is C++ but not exact, splice the compiled `.cpp` into the NON_MATCHING object only (`build/non_matching/...: REPLACE_FUNC_BODY += fn=$(DONOR)`), with a placeholder C body in the wrap; re-probe the post0b clip](#game-libs-ncc-nm-only-donor-run114) -- _5062C NM 65.4 -> 99.99; clip 0x2e668 -> 0x2e7a4. The default build keeps INCLUDE_ASM, so no undefined_syms entry is needed for the donor's jal-0 callees (the NM object is never linked)._
 - [Dead-epilogue nops across a donor splice + a new TU at a 32-byte boundary (func_800056EC, agent-g run 115): as1 32-byte-aligns an unreachable epilogue in the TU's .text, so a splice that shrinks an earlier function must shift by a multiple of 32 (size the host placeholder to slot + 0x20); a function after the target's .text pad is a separate TU](#dead-epilogue-align-across-splice-56ec) -- _56EC NM 85.5 -> EXACT with no C change: host 5520 placeholder 0x1E8 -> 0x1EC (one dead store), func_80005800 moved to kernel_006_b.c, kernel_006 TRUNCATE_TEXT dropped, expected/ = old expected cut at 0x2E0._
@@ -13177,3 +13178,24 @@ Mechanics that mattered:
 - How to spot the class: a function that is masked-exact in cmpfn but scores below 100, with a zero run
   before an unreachable epilogue. Compute the epilogue's TU offset mod 32 in the ROM; if it is 0, the gap is
   alignment and the fix is layout (host sizes, TU boundaries), never the C.
+
+
+## Variant-sweep harness gotcha: stale object after restoring the source <a name="variant-harness-stale-object-mtime"></a>
+
+A script that writes variant N of a `.c`, builds the NM object (whose rule may
+also rebuild the default `build/src` object), then writes the ORIGINAL bytes
+back can leave the source mtime older than the last-built object (agent-g run
+118: game_libs_post1b.c.o built from the last variant at 12:37, source restored
+with mtime 12:33). `make` then keeps the variant object and the ROM differs in a
+segment you never meant to change (shifted by a few bytes). Fix: after the
+restore, set the source mtime to now+2s (`os.utime`) or `touch` it; if a ROM
+mismatch appears in an unrelated segment, touch every source you swept and
+rebuild before debugging anything else.
+
+Second trap from the same run: an NM wrap may call a "placeholder" name that is
+in fact a real function address in the linker map (game_libs_mid 8E48 called
+`gl_func_00008C3C`; the target's jal is the USO placeholder 0). objdiff scores
+it as matching (jal targets are relocations), so only the full ROM `cmp` shows
+`0C00230F` vs `0C000000`. When promoting a donor, use `gl_func_00000000` (or the
+target's real callee) for every jal-0 in the target.
+

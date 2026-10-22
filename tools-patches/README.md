@@ -20,3 +20,10 @@ that writes `./uoptlist`) crashes.
 That dump is the tool for register-allocation near-misses — it shows which
 candidate uopt ranked where, so you can target the one priority that decides a
 tie instead of sweeping C spellings blindly.
+
+## ido-static-recomp-ecvt.patch
+
+The same change as a `git apply`-able diff against decompals/ido-static-recomp
+d5aec59. Apply it to a SEPARATE diagnostic copy at
+`tools/ido-static-recomp-dump/` (not the build compiler), then
+`make VERSION=7.1 -j8`. `scripts/regalloc-dump.sh` uses that copy by default.
