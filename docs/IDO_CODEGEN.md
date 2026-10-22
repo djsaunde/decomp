@@ -14450,6 +14450,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit XXV (agent-g 2026-10-22, run 121): a "branch-likely cap" at a join was a NESTED if (inner end label directly followed by the outer one leaves as1 nothing to steal: game_uso D9CC exact); gui DL colour emitters = an inline next() append member + per-append `*(Ctx **)&D` (late-coloured address constant) + `& 0xFF` on the red channel under `<< 24` (a folded mask still burns a t-ring slot): 1A5C/1CA8/06B8/1EF4 exact; gui texture loaders = verbatim gbi.h macro bodies with `uls + w - 1` corner text (413C/4354/3F18 exact); leading zero words in a symbol = predecessor pad (SUFFIX + in-place expected/ edit); uopt regalloc reading notes](#kit-xxv-agent-g-run-121) -- _8 exacts, all from recognising the original C++/gbi shape, none from colour tuning; open: 17DC/2334 (3rd slot pointer colour), 08C0 (3 words), 7448._
 - [kit XXVI (agent-c 2026-10-22, run 122): a record/table pointer that is spilled across a call must be an EXPRESSION, not a named local (cfe gives the name a frame word and spills to a separate temp: 1D200, 1D4B0 frame fixes); one-level typed member reads flip addu operand order (kit #99 on a single `->`); `(x + 0xF) & ~0xF` into a short = the target's dead `li at,-16`; a redundant `& 0xFFFF` on a u16 burns one t-ring slot (1DA7C); `int` function falling off its end keeps v0 live at exit = beqzl+lw ra (3190C); decode errors the raw diff exposed: wrong jal callees (23914, 3190C, 23760), dropped stores (2D7D0), else-arm constants (3190C), busy-path return value (23760); a leading zero word = predecessor's all-zero SUFFIX pad (4D0B4); objdiff scores reloc-only residues 100, so report-100 NM wraps can still be ROM-unmatched](#kit-xxvi-agent-c-run-122) -- _EXACT: 1DA7C, 3190C, 23760, 1D200, 1D4B0, 4247C, 2D7D0, 23914 (jumptable donor), 4D0B4. NM: 445AC 14 -> 6 words; NCC drafts for bootup 1438C (6) / 7204 (5)._
 - [kit XXVII (agent-g 2026-10-22, run 122): frame too small by N words = N unused declared locals (64588, plus per-box slot pointers); `if (1) {}` splits one block's float-literal candidates so each group reuses f0, and a two-use `1.0f` becomes a candidate only as `1.0`/`1`; a game_libs "D+off data variable" was the double literal 0.2 (bootup.uso RoData +X = ROM 0xD9FE44+X, leading marker word) -> 675A4 donor with `_rodata` pin; same-line call + brace + store fixes an as1 order (546E8); edg source-order dispatch chains as a goto ladder ending `!= last -> default` (578B4); 591C/76F0 switch-temp copy, 5062C, gui family, 148 negatives](#kit-xxvii-agent-g-run-122) -- _EXACT: gl 64588, 675A4, 546E8. Do not list a REPLACE_FUNC_BODY donor as a host prerequisite; rdiff --pins misses calls to real in-module functions (ROM cmp catches them)._
+- [kit XXIX (agent-g 2026-10-22, run 123): a compare-chain dispatcher with no jumptable, or a `lw t9; lh; jalr; addu a0` virtual call, in game_libs / game_uso NM wraps is C++ -- rewrite under NCC instead of tuning the cfe goto ladder (55470 opcode dispatcher with a real cfront virtual + inline next(), 56974/56D14 combine-mode switches, game_uso 57D8 8-way switch that cfe jumptables); an m2c frame 64 bytes short = `s32 pad[16]` + multu operand swap + guard-local zeroing (53560); a donor host placeholder must keep the .s's .late_rodata (move it to the next INCLUDE_ASM .s); literal sweep and frame sweep results; NCC drops unused scalars but keeps class objects](#kit-xxix-agent-g-run-123) -- _EXACT: gl 53560, 55470, 56974, 56D14, game_uso 57D8 (+4288 B, 61.13 -> 61.69 %). Sweep scripts: vsweep (NCC fingerprints), frames (frame-size deltas), litsweep (RoData literal lookup)._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
@@ -33785,3 +33786,83 @@ Three exacts (gl 64588 2148 B, gl 675A4 1048 B, gl 546E8 812 B) and one NM step 
      and the hoisted 1.0f/10.625f before the saves): a permuter run (same setup as #4, 10k iterations,
      about 8 minutes) found nothing real below its base score. Its four 0.1f step literals (RoData +0xCC8/+0xCEC/+0xCF0/+0xCF4) do
      merge into one candidate as `0.1f`, `0.1` or `(f32)0.1`.
+
+## kit XXIX (agent-g 2026-10-22, run 123): NCC fingerprints in cfe NM wraps, m2c frame/operand fixes, donor .late_rodata, sweep results <a name="kit-xxix-agent-g-run-123"></a>
+
+Five exacts (gl 53560 1228 B, gl 55470 1072 B, gl 56974 928 B, gl 56D14 736 B, game_uso 57D8 324 B; 61.13 -> 61.69 %).
+Four of them came from one observation: these cfe NM wraps were C++.
+
+1. **Fingerprints of a C++ (NCC) function hiding behind a cfe NM wrap.** Sweep the target of every NM wrap for
+   (a) a compare chain `addiu at,zero,K; beq rX,at,..` of three or more cases with NO `jr` jumptable in the
+   function (cfe sorts the cases and tables any switch of 5+ labels; edg lowers `switch` to a chain in CASE
+   order and never emits a table), or (b) a virtual call in edg's order `lw t9,N+4(vt); lh tK,N(vt); jalr t9;
+   addu a0,tK,obj` (delay slot filled; cfe's hand-written `(*(fn*)(vt+N+4))(obj + *(short*)(vt+N))` gives
+   `lh; addu; lw t9; jalr; nop`). Any hit is worth a first NCC compile before more cfe tuning. Results:
+   - **gl 55470 (93.72 -> exact)**, the command-stream opcode dispatcher (src/game_libs/game_libs_ncc_55470.cpp):
+     `switch (s->cmd)` with the cases in target chain order (1014, 1012, 1015, ... `case 113:` falling into
+     `default:`, then `case 1018` last); `int next() { return cmd = *(*cp)++; }`; flag ops as inline Flags
+     members on the D block (this = a0, arg = a1); 1017/1003 pass the 76-byte stream struct by value; the
+     default arm is a REAL virtual call (`struct Obj : ObjPad { virtual m1()..m7(int *); }`, 40-byte base so
+     the vptr is at +0x28, entry +0x38 = 7th virtual). Last three words: the 1012 test is `s->next();
+     if (!(s->f18 & s->cmd))` (the `and` operands come out in target order only with the statement form; both
+     source orders of `f18 & next()` give the same, wrong, order), the {cmd, cur} pair is a function-scope
+     class object declared after a dead `Two pt;` (frame 0x130), filled by an inline `set()` through a block
+     `int c = s->cmd;` and followed by `if (1) {}`.
+   - **gl 56974 (93.86) / 56D14 (96.41) -> exact** on the first compile (one TU, game_libs_ncc_56974.cpp):
+     `switch (k)` with `int k = m->w1 & 0xF00;`, each arm one SETCOMBINE through `G *next() { int n =
+     dl->n++; return &dl->buf[n]; }`. The 56D14 NM's long lever list (if-goto ladder, `if (1) {}` arms,
+     `long long` stores) was all imitation of edg's chain.
+   - **game_uso 57D8 (82.51 -> exact)**: the 8-way value selector that cfe always jumptables is one switch;
+     the `addiu v0,a1,0x758; swc1 0x10(v0)` store is an inline `Val::set()` whose `this` is
+     `AT(char *, a0, 0x30) + 0x758` (re-read, not the cached `sub`), and reading the state pointer through
+     `a0->0x30` too makes the `== 2` constant colour v0.
+   - Not exact yet (drafts in this run's scratch, best raw words): gl 61478 printf panic (39; the target
+     keeps the switch value in v0 and copies it to a1 for the per-char calls -- `int c` fixes the frame, no
+     spelling of c / the switch found that keeps both registers), game_uso E5C8 (47; EAF4 call args fixed by
+     reading `a0->0xB4->0xA58` three times; open: count address candidate a1 vs a2, the `&4` test keeps a
+     plain `beqz; nop` in the target where ours goes likely), gl 68DD4 (23; homes fixed with `One x1; int t;
+     Thing *a; One x2; int r;` -- one-word class objects as frame pads -- open: one reused local `x` must
+     take t0 for the 0xC object / second clear base / vptr), timproc_b5 5BF0 (72; real virtuals v16/v12
+     fix the call shape; the 255 numerator merges with the 255.0f divisor under edg in every spelling tried),
+     mgrproc 23FC (93; `255.0f * f` operand order fixes the four alpha sites under NCC).
+   - Not C++: titproc 116C and timproc_b5 D884/DF14 have real jumptables; gl D288 / 51ED8 and timproc_b5 D14C
+     use the cfe virtual-call order.
+2. **NCC drops unused scalar locals (no frame word) but keeps an unused class object.** To pad an NCC
+   frame use `struct One { int a; One() {} };` (one word) or a two-word class; `int pad[2]` / `volatile int`
+   pads vanish.
+3. **An m2c transcription with a frame N words short is N unused declared words (gl 53560, 97.49 ->
+   exact).** All used homes were right and the frame was 64 bytes short: `s32 pad[16];` declared FIRST
+   (above sp4C) fixed it (cfe keeps an unused array's words). The same function also had:
+   - the second product of each cross-product row in the wrong source order: IDO emits `multu` with the
+     operands swapped relative to the source, so write `(c - b) * (b - a)` where the target multiplies
+     `(b - a)` by `(c - b)`; the same for the block's float sums (`v1[k] + v0[k]`);
+   - a `ori` immediate that is a symbol (`&D + 0x2103C`);
+   - the manual `if (n < 0) f += 4294967296.0f` that is IDO's own u32 -> float conversion of a `u32` count;
+   - a branch landing 4 bytes late: the second loop's `var_s7 = 0; var_s2 = 0;` belong INSIDE the loop's
+     `if (count != 0)` guard. With them outside, the join's `var_s7 = 0` is partially redundant and uopt sinks
+     it into the loop exit; inside, uopt hoists them above the branch (dead on the bypass path) and keeps the
+     join store.
+   - every call is a blank import: in-unit `gl_func_00034458` calls link to `jal 0x34458` (ROM cmp caught
+     10 words that rdiff --pins could not see), so use gl_func_00000000.
+4. **A donor host placeholder must keep the INCLUDE_ASM .s's `.late_rodata`.** game_uso 57D8.s carried 24
+   words of 44F4's float pool (RoData +0x9C); with an empty placeholder the unit's .rodata lost them and seven
+   later `lwc1 %lo` fields moved by 0x60 (verify-blocks `lo16=7`, ROM cmp still passed). Re-emitting them from
+   C does not work for lui-only floats (`-10000.0f` is `lui`, no pool entry), `static const` arrays go to the
+   START of .rodata, and auto aggregates become immediate stores. What works: move the block verbatim to the
+   end of the next INCLUDE_ASM .s in text order (here 591C.s) and compare `objcopy -j .rodata` before/after.
+5. **Literal-recovery sweep (scratch litsweep.py: target lwc1/ldc1 through a lui base -> value at ROM
+   0xD9FE44 + off).** Only six of my game_libs wraps at >= 90 still read FP values through data symbols (64388,
+   693A4, 697C4, 15FC, 3430, 2840); none moved: 64388's 1e-5/455.0 and 693A4's 0.01 as literals leave the
+   colouring unchanged; 15FC's colour pool is n/255 (193, 123, 246, 9, 155, 119) + 0.18 and is byte-identical
+   as literals or externs (its residue is the 100-constant v0/v1 tie). timproc_b5 32C8: the zero there is a
+   uopt constant candidate; it only interferes with the l134 load when both are in one BB, and then it colours
+   f12 (coloured last) instead of the target's f0 (6 placements of the zero group and `if (1)` tried).
+6. **Frame-size sweep (scratch frames.py)** listed 22 wraps in my units with a frame delta; 53560 was the
+   only clean decode win. gl 59E80 (the GBI state setter, permuter body at 94 %) rewritten with gbi-style
+   blocks (`n = dl->n++; _g = &dl->buf[n]`) matches the load order and frame, but the t-ring phase depends on
+   how many uopt candidates sit in t-registers (target: per-packet `_g` in v0/v1/a0/t0/t1, constants 3 and
+   0xFFFD reusing t0/t1 late); block-scoped `n`/`_g` put the ring one register late, function-scope ones fix
+   the ring but give one `_g` register. Not cracked.
+7. **The switch-value copy register (591C / 76F0 / 61478):** under NCC the 61478 target's `beq v0,at; or
+   a1,v0,zero` pattern (switch value in v0, the per-case argument copy in a1) did not appear with `int c`,
+   `char c`, a separate `k = c`, `switch (c = *fmt++)`, or `register`. 76F0 has real jumptables (cfe).
