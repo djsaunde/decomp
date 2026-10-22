@@ -14447,6 +14447,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit XXII (agent-c 2026-10-22, run 120): diff tools that mask branch/jal targets hid six decode errors (233E4 both calls skipped, h2h 1204 nested clamps, 231B4/21D84 no-return paths, 74E8 argless call, 25AC8 baked-jal pin); a no-arg function running the cfront this==0 protocol on a GLOBAL is edg's __sti__ static initializer (4E584; rename the hashed symbol in a Makefile rule); the permuter as single-colour fixer (43654 dead if, 1D944 u16 K&R param + `a1++; a1--;`, 27D00 double mask, 25AC8, 21D84, 47E00 + declaration-order search); `p[k] = v; p[k] <<= 4;` keeps both stores (2F720); post REPLACE_FUNC_BODY := hazard](#kit-xxii-agent-c-run-120) -- _15 exacts; first rerun every near-miss through a branch-offset- and jal-aware diff._
 - [kit XXIII (agent-g 2026-10-22, run 120): float/double LITERALS in a C++ unit are reg-alloc-prep constant candidates (coloured after the variables, load still scheduled first) -- game_uso 0000 exact with `1.0f / 6.0f`; the game_uso block is extracted UNLINKED, so a literal's %lo is the donor's own .rodata offset and `<fn>_rodata` pins only work in baked blocks (use distinct zero-valued externs + offset addends otherwise); the 3DB38 {cur, nxt} iterator cracks game_uso 43D8; edg pools inline result temps by type (28C0's lenSq() temp shared operator-'s first ctor arg -> $f12); a block's temporaries are laid out before its named locals; under edg a global's address stays in an s-reg only through a named int copy; 28C0/24BC/5062C/7448/B274 residual mechanics](#kit-xxiii-agent-g-run-120) -- _EXACT: game_uso 0000, 43D8. NM: 28C0 85 -> 72 words, D9CC 17 -> 4, B274 29 -> 20._
 - [kit XXIV (agent-c 2026-10-22, run 121): raw-diff decode sweep of agent-c's 85-99.99 band; cfe reserves a frame word for EVERY declared local (-g3 .mdebug), so frame-size residues are local-count decode errors (4A6E8, 7D04); m2c int temps as named locals colour v0/v1 where the target keeps t-ring temps (4406C); a switch assigning one result variable under NCC (A9C); t8/t7-alternating lw/sw pairs = a struct copy (7288); a dead `addiu rX,rX,K` after a load = an assignment to a named local; 0x10000-off offsets, blank USO refs held as a base (0xA0), distinct zero aliases](#kit-xxiv-agent-c-run-121) -- _scripts/rdiff.py --raw --pins + a mnemonic-multiset count first; frame off by 8 = one local too many._
+- [kit XXV (agent-g 2026-10-22, run 121): a "branch-likely cap" at a join was a NESTED if (inner end label directly followed by the outer one leaves as1 nothing to steal: game_uso D9CC exact); gui DL colour emitters = an inline next() append member + per-append `*(Ctx **)&D` (late-coloured address constant) + `& 0xFF` on the red channel under `<< 24` (a folded mask still burns a t-ring slot): 1A5C/1CA8/06B8/1EF4 exact; gui texture loaders = verbatim gbi.h macro bodies with `uls + w - 1` corner text (413C/4354/3F18 exact); leading zero words in a symbol = predecessor pad (SUFFIX + in-place expected/ edit); uopt regalloc reading notes](#kit-xxv-agent-g-run-121) -- _8 exacts, all from recognising the original C++/gbi shape, none from colour tuning; open: 17DC/2334 (3rd slot pointer colour), 08C0 (3 words), 7448._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
@@ -33535,3 +33536,85 @@ bootup func_00000A9C NCC donor) and decode fixes on 445AC, 3E9C8, 35B1C, 4BAF4/3
 - 240A0: the colour of the early `return h` (v0 raw, a1/v1 copy) is not a decode error. A bare `return;`
   makes the jump target right but the code longer.
 - 4AFB4, 4EE44, 4CDB0, 437C0, 40640: pure colouring.
+
+## kit XXV (agent-g 2026-10-22, run 121): nested-if labels, gui DL emitters, gbi.h texture macros, pad-word boundaries <a name="kit-xxv-agent-g-run-121"></a>
+
+Eight exacts (59.44 -> ~60.1 % code): game_uso D9CC (2096 B); gui 1A5C, 1CA8, 06B8, 1EF4 (DL colour
+emitters), 413C, 4354, 3F18 (texture-tile loaders). Every one came from recognising the original
+shape; none from colour tuning.
+
+1. **A branch-likely residue at a join can be label structure, not as1 (game_uso D9CC, 4 words ->
+   exact).** The raw diff (`rdiff.py --raw --pins`) showed the target's plain `beqz t8; nop` and
+   `bc1f; nop` branching to L20c while our branch-likely forms went to L210 (= L20c + 4, the stolen
+   `lui`). The masked diffs only showed "beqz vs beqzl". Cause: the first gate was ONE `&&` in the
+   NM body; in the original it is two NESTED ifs (`if (x > 30.0f) { if (mask & 0x1F0) {`), and the
+   early `goto` lands after BOTH closing braces. The mask test and the 0x22C test then branch to the
+   inner if's end label, which is directly followed by the outer end label, so as1 has no
+   instruction to steal and keeps the nop; the first gate's target starts with the 500.0f `lui` and
+   becomes `bc1fl` with the lui duplicated. Rule: when a branch keeps a nop where a sibling branch to
+   the same address was likely-filled, look for an empty label (a closing brace) between them.
+   Kit XXI #2's "nested ifs neutral" probe nested the wrong pair. The host placeholder re-emits the
+   .s's three .rodata doubles (`*(volatile double *)a0 = 0.8;` etc.; compare `objcopy -j .rodata`).
+2. **gui display-list colour emitters are inline-member C++ (1A5C/1CA8 92 -> exact, 06B8 90 ->
+   exact, 1EF4 91 -> exact on the first compile).** Recipe (src/gui_uso/gui_uso_ncc_1A5C.cpp):
+   - `struct Ctx { ...; DL *dl; Gfx *next() { int n = dl->n++; return &dl->buf[n]; } };` and
+     `Gfx *p = CTX->next(); p->w0 = ..; p->w1 = ..;` per command. The context, list and index are
+     edg's pooled inline temps (v0/v1/a0 in every append); each named slot pointer is its own
+     candidate (a3, t0, ...).
+   - The context global read as `*(Ctx **)&D_00000000` per append: its address becomes a uopt
+     constant candidate coloured after the variables (the target's `lui t1/t3; addiu` held base).
+     A named `int gi = (int)&D` (kit XXIII #6) colours it first (v0) and shifts everything.
+   - Every colour channel is `(u32)(c * 255.0f) & 0xFF` BEFORE its shift, red included. Under
+     `<< 24` the mask is redundant and folded away, but only after the t-ring has spent a register on
+     it: without it every later temp of the float -> u32 sequence is one ring slot early (the old
+     "colour cascade" of the whole family). This is just gbi.h's `_SHIFTL(r, 24, 8)`.
+   - The first parameter is an unused `this`-like pointer: edg still stores it to its home
+     (`sw a0,0(sp)` with no frame), even when declared `int`.
+   - 06B8's context is `w->ctx` (a0+0x24); 1EF4 has three appends (combine, env, prim).
+   **Not cracked (same family):** 17DC and 2334 (combine, `a1 & 0xFF` env alpha, prim colour + a3
+   alpha): every word but the third slot pointer's colour (target t2, ours v1 -- it reuses the list
+   temp's register) and the resulting one-slot ring shift (192 raw words). Tried: real gbi.h
+   DPRGBColor/SetPrimColor macros, block-scope slot pointers, set() members, separate next2(),
+   `(unsigned char)` alpha, dead `while (0)` anchors (edg emits code for them: +4 words). 08C0
+   (combine x2 + prim colour from a memory `float col[4]` of 1.0f): 3 words left, the third slot
+   pointer again (target v1, ours a0); `col` must be declared FIRST (frame 16, col at 0, any
+   earlier named local grows the frame) and kept in memory through a pointer copy
+   (`float *c = col;`), and the four 1.0f stores on separate lines. Permuter 15 min (C form with a
+   `static inline` next(), see scratch g121/perm08c0) found nothing real: its lenient score
+   counted reordered stores as near-equal.
+3. **gui texture-tile loaders are the stock gbi.h macros (413C 85.8, 4354 85.7, 3F18 83.9 ->
+   exact).** SETTIMG / load SETTILE (tile 7) / LOADSYNC / LOADTILE / PIPESYNC / render SETTILE /
+   SETTILESIZE at origin 0, `tmem = tile << 8`, maskt 8, masks 8 or 9: write it with the verbatim
+   libreultra 2.0I macro bodies (src/gui_uso/gui_ncc_gbi.h: `_SHIFTL`, `gSetImage`, `gDPSetTile`,
+   `gDPLoadTileGeneric`, `gDPNoParam`) and `c->next()` as the packet, and pass the corners as macro
+   TEXT (`#define LRS (uls + w - 1)`): IDO reassociates the expanded `(uls + w - 1) - uls + 1` into
+   the target's `a3 = uls + w; t0 = a3 - uls` and `a3 - 1` forms, which a named `lrs` local or the
+   open-coded cfe reconstruction (85 %) never reproduces. Twins differ only in fmt/siz/masks
+   (RGBA16, IA8, RGBA32). Look for more gbi.h macro users wherever an NM body open-codes
+   `0xF5`/`0xF4`/`0xFD` words.
+4. **Leading zero words inside a function symbol are the predecessor's pad (gui 3F18).** Its .s
+   began with three zero words before the real entry (`sw a3,12(sp)` at 0x3F24); the donor is 134
+   words and the splice made the ROM 12 bytes short. Boundary fix (ROM-neutral, separate commit):
+   drop the words from the .s (`nonmatching ..., 0x218`), add them as
+   `SUFFIX_BYTES_FORCE := ... gui_func_00003B80=0x00000000,0x00000000,0x00000000` (APPEND to the
+   unit's existing `:=` line, + the NON_MATCHING mirror), and edit expected/gui_uso.c.o in place
+   (3B80 and its .NON_MATCHING alias size +12; 3F18 and alias value +12, size -12; scratch
+   symedit.py, one exact name per call). Check `nm -S expected/...` size against the donor's word
+   count BEFORE wiring any splice.
+5. **uopt regalloc facts read this run (c111/ido/src/uopt/uoptreg2.c):** unconstrained live ranges
+   are coloured in bitpos order; each picks the lowest-cost register, and on ties (leaf functions:
+   `allcallersave`) the FIRST register in class order that an earlier range already took
+   (`regstaken`). Interference is `intfering()` = intersection of `livebbs`, but in the gui
+   emitters a param register is shared with a later slot pointer inside one uopt basic block, so in
+   practice ranges are finer than a whole block; do not reason from "one BB, all interfere".
+   Address constants of globals and float literals enter in reg-alloc prep with the highest bitpos
+   (coloured last), which is why they land in the first free t-register after the variables.
+6. **game_uso 7448 (14 -> 11 raw words, not exact).** The target has four distinct int temps (gets'
+   `this` v0, sets' `this` a1, the 4C8 get's `this` a2, &q a3); a named `P *d, *s` pair for the
+   last statement gives a1/a2 there, but the earlier sets then share v0. 40 spelling variants
+   (types, references, named locals, member vs cast access, field 0x36C direct) in scratch
+   g121/gen74*.py; none separates all four.
+7. **Raw-diff sweep tooling note:** the scratch rdiff attached ALL printed relocs of a big object to
+   the function's first instruction (objdump prints them up front with `--disassemble=fn`), giving a
+   spurious one-word diff at index 0 (`addiu 0`, `lw 0`) on game_uso / post0b; scripts/rdiff.py
+   (agent-c run 121) attaches by offset.
