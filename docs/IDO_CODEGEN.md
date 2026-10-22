@@ -14450,6 +14450,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit XXV (agent-g 2026-10-22, run 121): a "branch-likely cap" at a join was a NESTED if (inner end label directly followed by the outer one leaves as1 nothing to steal: game_uso D9CC exact); gui DL colour emitters = an inline next() append member + per-append `*(Ctx **)&D` (late-coloured address constant) + `& 0xFF` on the red channel under `<< 24` (a folded mask still burns a t-ring slot): 1A5C/1CA8/06B8/1EF4 exact; gui texture loaders = verbatim gbi.h macro bodies with `uls + w - 1` corner text (413C/4354/3F18 exact); leading zero words in a symbol = predecessor pad (SUFFIX + in-place expected/ edit); uopt regalloc reading notes](#kit-xxv-agent-g-run-121) -- _8 exacts, all from recognising the original C++/gbi shape, none from colour tuning; open: 17DC/2334 (3rd slot pointer colour), 08C0 (3 words), 7448._
 - [kit XXVI (agent-c 2026-10-22, run 122): a record/table pointer that is spilled across a call must be an EXPRESSION, not a named local (cfe gives the name a frame word and spills to a separate temp: 1D200, 1D4B0 frame fixes); one-level typed member reads flip addu operand order (kit #99 on a single `->`); `(x + 0xF) & ~0xF` into a short = the target's dead `li at,-16`; a redundant `& 0xFFFF` on a u16 burns one t-ring slot (1DA7C); `int` function falling off its end keeps v0 live at exit = beqzl+lw ra (3190C); decode errors the raw diff exposed: wrong jal callees (23914, 3190C, 23760), dropped stores (2D7D0), else-arm constants (3190C), busy-path return value (23760); a leading zero word = predecessor's all-zero SUFFIX pad (4D0B4); objdiff scores reloc-only residues 100, so report-100 NM wraps can still be ROM-unmatched](#kit-xxvi-agent-c-run-122) -- _EXACT: 1DA7C, 3190C, 23760, 1D200, 1D4B0, 4247C, 2D7D0, 23914 (jumptable donor), 4D0B4. NM: 445AC 14 -> 6 words; NCC drafts for bootup 1438C (6) / 7204 (5)._
 - [kit XXVII (agent-g 2026-10-22, run 122): frame too small by N words = N unused declared locals (64588, plus per-box slot pointers); `if (1) {}` splits one block's float-literal candidates so each group reuses f0, and a two-use `1.0f` becomes a candidate only as `1.0`/`1`; a game_libs "D+off data variable" was the double literal 0.2 (bootup.uso RoData +X = ROM 0xD9FE44+X, leading marker word) -> 675A4 donor with `_rodata` pin; same-line call + brace + store fixes an as1 order (546E8); edg source-order dispatch chains as a goto ladder ending `!= last -> default` (578B4); 591C/76F0 switch-temp copy, 5062C, gui family, 148 negatives](#kit-xxvii-agent-g-run-122) -- _EXACT: gl 64588, 675A4, 546E8. Do not list a REPLACE_FUNC_BODY donor as a host prerequisite; rdiff --pins misses calls to real in-module functions (ROM cmp catches them)._
+- [kit XXVIII (agent-c 2026-10-22, run 123): bootup.uso RoData literal sweep (TextReloc symIdx 1 = RoData; only 36 agent-c NM wraps load FP from it); a literal used twice inline instead of a named f32 ratio fixes E270's "spill-slot swap" (frame word); inline list member `L::add(Pair *n)` keeps the new-expression result a separate web from the call argument (7204 exact under NCC); cfe frame accounting: a `switch` costs a temp word, unused arrays/words size the frame, dot/s as ONE variable, `if (arg3) {}` keeps an argument live; an index read into its own int before the store + a held list pointer (45178 14 -> 5); 240A0 blank imports](#kit-xxviii-agent-c-run-123) -- _EXACT: bootup E270 (pi literal donor), 7204 (NCC donor). NM: 45178 27 -> 5, 240A0 20 -> 10, E2D0 55 -> 19, 8124 40 -> 31 raw words._
 - [kit XXIX (agent-g 2026-10-22, run 123): a compare-chain dispatcher with no jumptable, or a `lw t9; lh; jalr; addu a0` virtual call, in game_libs / game_uso NM wraps is C++ -- rewrite under NCC instead of tuning the cfe goto ladder (55470 opcode dispatcher with a real cfront virtual + inline next(), 56974/56D14 combine-mode switches, game_uso 57D8 8-way switch that cfe jumptables); an m2c frame 64 bytes short = `s32 pad[16]` + multu operand swap + guard-local zeroing (53560); a donor host placeholder must keep the .s's .late_rodata (move it to the next INCLUDE_ASM .s); literal sweep and frame sweep results; NCC drops unused scalars but keeps class objects](#kit-xxix-agent-g-run-123) -- _EXACT: gl 53560, 55470, 56974, 56D14, game_uso 57D8 (+4288 B, 61.13 -> 61.69 %). Sweep scripts: vsweep (NCC fingerprints), frames (frame-size deltas), litsweep (RoData literal lookup)._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
@@ -33786,6 +33787,73 @@ Three exacts (gl 64588 2148 B, gl 675A4 1048 B, gl 546E8 812 B) and one NM step 
      and the hoisted 1.0f/10.625f before the saves): a permuter run (same setup as #4, 10k iterations,
      about 8 minutes) found nothing real below its base score. Its four 0.1f step literals (RoData +0xCC8/+0xCEC/+0xCF0/+0xCF4) do
      merge into one candidate as `0.1f`, `0.1` or `(f32)0.1`.
+
+## kit XXVIII (agent-c 2026-10-22, run 123): RoData literal sweep, inline-member arg webs, cfe frame accounting <a name="kit-xxviii-agent-c-run-123"></a>
+
+Two exacts (bootup func_0000E270 via an IDO 7.1 -O2 literal donor, func_00007204 via an NCC donor) and
+four NM steps (45178 27 -> 5, 240A0 20 -> 10, E2D0 55 -> 19, 8124 40 -> 31 raw words, `rdiff --raw --pins`).
+
+1. **Which loads are literals: read the USO TextReloc table, not the values.** game_libs and bootup_uso
+   are both bootup.uso's Text (ROM 0xDD0A6C + offset); its TextReloc section (ROM 0xE620EC, 0x2D894
+   bytes, entries `[(symIdx << 4) | kind, text offset, flag]`, kind 2 = LO16, 3 = HI16) gives every
+   relocated load's target symbol, and symIdx 1 is the RoData section (data at ROM 0xD9FE44 + offset).
+   Scanning every agent-c NM wrap for `lwc1/ldc1` whose LO16 targets symIdx 1 (scratch
+   `c123/litscan.py`) found only 36 functions: the FP-heavy colouring group of run 121 (437C0, 4CDB0,
+   46FA8, 470E4, 4AFB4, ...) loads NO RoData constants at all (their FP comes from object fields and
+   `lui`-built immediates), so the literal lever cannot touch them.
+2. **Results of the literal swap** (in-tree NM, literal for the data read, nothing else changed):
+   - E270 (99.83 -> exact): pi at +0x998. The old "f0/a1 spill-slot swap cap" was the named
+     `float ratio` local; written as `3.14159265f / arg1` inline in both calls, IDO CSEs the quotient into
+     one temp and the frame drops 0x28 -> 0x20. Donor `bootup_uso_o2_E270.c`, `func_0000E270_rodata = 0x998`
+     (host = the same C; the splice discards the in-unit .rodata).
+   - 45178: the -32700/32700/32700 clamp bounds as literals colour lo f12 / hi f14 like the target
+     (27 -> 14). Exact still needs a donor with `gl_func_00045178_rodata = 0x1B60`.
+   - E2D0: the f64 at +0x9A0 is 0.1 (no colour change by itself; see #5 for the real fixes).
+   - No change: D900 (0.1/0.2; residue is the clamp copy), BF8C (0.1f/0.1; ring phase is in an earlier
+     if-arm), 610 (5000.0/0.3; frame), 3C43C, 36F0C, 1304C (+-3 words, far from exact).
+   - A function's literals must be contiguous and in donor emission order for ONE `_rodata` pin:
+     396FC's 0.01 sits at +0x1A10, before its jumptable (+0x1A64) and 1/32767 (+0x1A7C), so it needs a
+     second symbol or is a shared constant.
+3. **Inline member as the hand-off keeps the new-expression result a separate web** (7204, 5 words ->
+   exact under NCC). `new Pair(a1, p)` then `func(a0 + 0x2C, o)` always coalesced o into the call's a1;
+   the target keeps it in the ctor's register (a2) and copies it at the call. Writing the hand-off as an
+   inline member of the list, `struct L { void add(Pair *n) { func(this, n); } }; ((L *)(a0 + 0x2C))->add(o);`,
+   gives the parameter n its own web: 33/33. Line breaks matter here too: the same body on one source
+   line moved the prologue `addiu a0,zero,8` (7 words).
+4. **3E0F0 / 8124: the returned object pointer is spilled to the first declared local's home (-4)**, not
+   kept in s0 with the ctor's this. Under NCC, a memory-resident pointer reproduces the store/reload:
+   `inline Obj *link(Obj *&q, Obj *n, char *a) { gl_func_00000000(q = n, *(int *)(a + 0x40)); return q; }`
+   + `Obj *p; return link(p, new Obj, arg0);` puts the `sw` in the jal delay slot and `lw v0,76(sp)` at
+   the end (8 words: frame 72 vs 80, stores s0 not the a0 copy, W4 member this a1 vs a0). A plain named
+   copy, `Base *`, references without the assignment inside the call, `volatile`, and a by-value holder
+   struct (7 words, wrong store timing) do not. 8124 under cfe: frame 88 -> 80 by declaring the result
+   pointer first (its spill home sp+76) and dropping the second sub-object pointer (31 words left).
+5. **cfe frame accounting seen this run:**
+   - A `switch` costs one frame temp word (610: `switch` + 4 named locals = 0x38, either alone 0x30);
+     its five sparse cases still compile to a compare chain. An if/goto ladder does not keep the target's
+     out-of-line case layout (uopt re-sinks the bodies). Kit XXIX says a 5+ case compare chain is NCC,
+     but 610 under NCC is far worse (param homes, 114 words); unresolved.
+   - Unused arrays size the frame only from a threshold (E2D0: `int pad[8]` moved everything to the
+     target's 112, pad[4..7] did not), so fit pads by measuring, not by counting words.
+   - E2D0: `dot` and the clamp result `s` are ONE variable (f0 across the normalise call, spilled to its
+     own home at sp+68 = one unused word below `s`), and `dot *= k` keeps dot as the first `mul.s`
+     operand where `dot = dot * k` / `k * dot` both flip it. The normalise call takes only `&v[0]`, yet
+     arg3 stays live in a3 (spilled to its home around both calls): `if (arg3) {}` after the call
+     reproduces exactly that.
+6. **45178: an index read into its own named int before the store** (permuter hint, cleaned):
+   `t = FW(p, 0xC); n3 = FW(FW(p, 0xC), 4); i = n3; FW(t, 4) = i + 1;` gives the target's list v0 /
+   index v1 / packet a3 in the second vertex slot, while the first slot wants `i = FW(FW(p, 0x3C), 4)++;`
+   (with `++` in both slots the ring burns one t-register). The frame stays 104 only with `lo` turned
+   into the inline literal (one declared word fewer). Left: the packet pointer spills to its home (40)
+   where the target uses the temp area (36), i.e. the original pointer is an unnamed temp; written as a
+   register expression (`(int *)((char *)q + i * 8)` twice) it does go to 36 but recolours (22).
+7. **240A0:** the `gl_func_0001CA10` placeholder is a blank import (jal 0) in the ROM; the two fixed thunks
+   are `gl_ref_000381B0` / `gl_ref_00038204`. Raw 20 -> 10: the jumptable %lo (donor pin 0xEB4) and the
+   case-0/3 return-value colouring are left (four more spellings of the case-0 store tried, all 10+).
+
+**Open:** 45178 (5: spill slot), 3E0F0 (NCC 8, cfe 11), 240A0 (10), E2D0 (19: z-first dot sum is cfe's
+canonical order, the target's `(x + y) + z` order looks NCC; NCC compile of the body is far worse),
+610 (frame: switch temp vs the clamp result variable).
 
 ## kit XXIX (agent-g 2026-10-22, run 123): NCC fingerprints in cfe NM wraps, m2c frame/operand fixes, donor .late_rodata, sweep results <a name="kit-xxix-agent-g-run-123"></a>
 
