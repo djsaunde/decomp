@@ -14458,6 +14458,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit XXXIII (agent-g 2026-10-22, run 125): gui blitters 27A0 / 3B80 and glyph-grid 0148 EXACT under NCC -- a pooled scratch that is also a call ARGUMENT takes that argument register (27A0), as1 schedules per SOURCE LINE inside a case arm (3B80: `budget = K;` on one line, `fn = ...; break;` on the next), an NCC frame is one word per declared scalar (0148: drop a local, reuse a dead parameter, a dead `if (v) {}` re-ranks two s-reg webs); 329C/2DE0 need an inline member call in the switch arms to put the pooled temp in s0, then stall on xl/yl block placement; 65494 NCC draft (V3 by-value operator= / operator+=, P3-free Hit, component-wise accumulation); timproc_b5 is cfront output compiled by cfe (`new T` = ctor allocates), not NCC; 4118 tail case-0 reload](#kit-xxxiii-agent-g-run-125) -- _EXACT: gui 27A0, 3B80, 0148 (+3116 B, 61.85 -> 62.25 %). NM: timproc_b5 4118 raw 86 -> 76._
 - [kit XXXIV (agent-c 2026-10-22, run 126): bootup 1304C EXACT -- the DL packet-pointer rotation (a1 a2 a3 a1 a2 t0 ...) is uopt block placement: an exhaustive empty-if search over packet boundaries, inside one packet macro after its slot pointer (`G2B`) and inside one `next()` between the index bump and the slot address (`nextb`), 42 -> 15 -> 6 -> 0 raw words; gl 46FA8 is C++ (inline next() + memory-homed params): `(g = ctx)->next()` pooled this + named result in next() found by a -varref sweep (3 words at N=21) then a spelling product at N=20; bootup 7D04 EXACT in cfe by giving the list pointer its own variable; 4A7C4 decode fix (the flag test falls into the final call, not a return) 16 -> 2; NCC frame forensics with -g3 (`__V<n>` names edg reference temps); what did not move: D900, h2h 1360, 49B3C frame (now exact frame, colours left), 4CDB0 / 43BEC / 470E4 under NCC; gl 45CB0 EXACT under NCC (chained byte stores through one pointer cut counted loads + two empty ifs + `k1 = 0; k2 = 0;` frame words); cfe unit sweeps (varref, empty-if K=2) found nothing else](#kit-xxxiv-agent-c-run-126) -- _EXACT: bootup 1304C (2264 B), gl 46FA8 (316 B), bootup 7D04 (332 B), gl 45CB0 (368 B) = +3280 B (62.91 -> 63.34 %). NM: gl 4A7C4 raw 16 -> 2. Tools: c126/tools/pksearch.py, variants.py, sub.py, cfeif.py, usweep.py, fr.sh._
 - [kit XXXV (agent-g 2026-10-22, run 126): uopt ends a straight-line basic block after 20 counted variable loads (`varreflimit`, no label, but a real node for `livebbs` interference) -- that boundary, not a colour tie, set the "third slot pointer one register off" residual of the gui DL emitters; diagnose by sweeping `-Wo,-varref,N` (diagnostic only); remove counted loads with spellings that leave the code unchanged (`return &dl->buf[dl->n++]`, an inline `Gfx::set()`, a reused `d = max - min`); place missing boundaries with an empty-if layout search (`if (1) {}` after a statement or inside an inline `nextb()`); timproc_b5 4118 case-0 LR split; game_uso 0B3C has a 4-entry jumptable no front end tried makes; gui 2BB0 NCC draft](#kit-xxxv-agent-g-run-126) -- _EXACT: gui 08C0, 17DC, 2334, 055C, 16A4 (NCC), gl 5721C (cfe) (+3388 B). NM: timproc_b5 4118 raw 76 -> 72. Tools: g126/vr.sh, vs/sweep.py, vs/dsweep.py, ifs/nccif.py, ifs/ifsearch.py._
+- [kit XXXVI (agent-c 2026-10-23, run 127): game_libs_post big-list pass -- 25504 106 -> 76 raw (`--noreg` 2: declaration order sets the frame, a plain indexed first loop keeps the target's dead IV init `or s5,zero,zero` without unrolling, a `(s32)` cast on a call argument stops the coalesce that turned the target's `or a3,v1` delay copy into a `bnel`); blockcut-search can insert `if (1) {}` between `}` and `else` (rebinds the else: three fake "wins"), and raw-word gains that change the function length are fake (24378 cut rolls the x4 unroll); 90CC is cfront-style C for cfe, not edg (single top alloc check, `this` in s2, out-of-line base ctors, per-site by-value Key temps); 26790 / 26D64 / 4EE44 / 437C0 probes; the PR #10 imports (D900, 437C0) as technique references](#kit-xxxvi-agent-c-run-127) -- _No exacts. NM: 25504 106 -> 76, 49B3C 60 -> 32 (NCC donor in the NM object), 2C7A4 219 -> 206, 250C8 85 -> 82._
 - [kit XXXVII (agent-g 2026-10-22, run 127): systematic block-cut sweep of every agent-g NM function with the new scripts/blockcut-search.py (promote-mode cfe builds, NCC donors, `--swap`, `--also`): single cuts right after a loop's `{` or between straight-line statements crack small loops (gl B958, timproc_b5 8C44); a cfe varargs function written as K&R `f(a0, va_alist) char *a0; int va_alist;` saves a1..a3 ONCE (the ANSI `int a1, ...` form re-stores the address-taken a1: gl 51ED8); frame = one word per DECLARED local in timproc_b5 m2c bodies (6E08 81 -> 23 by cutting 11 locals to 4); `-varref` is flat for almost every cfe residual; sweep table + what did not move](#kit-xxxvii-agent-g-run-127) -- _EXACT: gl 51ED8 (132 B), gl B958 (276 B), timproc_b5 8C44 (244 B) = +652 B (63.34 -> 63.43 %). NM: timproc_b5 6E08 raw 81 -> 23. Tool: projects/1080 scripts/blockcut-search.py (docs/MATCHING_WORKFLOW.md#blockcut-search-run127)._
 - [kit XXXIX (agent-g 2026-10-23, run 128): rewrites from scratch -- timproc_b5 6E08 EXACT (slot RMW through a block pointer `p = base; p += i; *p -= 1` = the target's `addiu v0,v0,976` + `sw 0(v0)`; the second loop's counter as a block-scoped variable keeps `j = 0` after the call); game_uso 7538 rewritten (VOID: an int / long long return makes uopt constrain the accumulating word away from v0; `m = t - 1` computed BEFORE a range chain is not folded to `t == 1`; reusing two named variables n / m sets the a-register colours because uopt colours whole variables in first-appearance order) 611 -> 18; game_uso BB8C NCC donor from scratch (V3 operator temporaries, by-value void operator=, ONE double for two constants, dead `if (k) {}` at the function end lowers a variable's colour priority) 287 -> 66; cfe frame = one word per declared referenced local (gui 2BB0); run-127 cuts landed on six movers; 7C1C NCC route and why the 852 pool did not reproduce; spill-slot order is colouring order (1460)](#kit-xxxix-agent-g-run-128) -- _EXACT: timproc_b5 6E08 (624 B, 63.43 -> 63.51 %). NM: 7538 611 -> 18, BB8C 287 -> 66, 5F0B8 100 -> 34, 2BB0 57 -> 34, D550 66 -> 38, E5C8 93 -> 74, 5BF0 80 -> 71, 1DDC 39 -> 36 raw words._
 - [kit XL (agent-g 2026-10-23, run 129): the game_uso camera family as NCC donors -- game_uso 2CC8 (768 B, from scratch) and 24BC (600 B, run-119 donor finished) EXACT. Levers: an inline accessor on the Ctx aggregate (`Out *getOut() const { return out; }`) turns each `c.out` reload into an edg temporary, which ugen puts in v0 / v1 like the target (reading `c.out` directly gives t-register loads and shifts the t-ring by one); a POD return type (P3) for a by-value call result gives a plain word copy while V3 keeps a BY-VALUE `void operator=` for the ret temp -> param temp -> float-store chain; a named `int key` costs a frame slot and pushes the first block local 4 bytes down; a tail `Out *o` in a nested block lands below the call return temp; one `if (1) {}` after `q += r` makes the caller-saved a2 reload / re-save between two calls; 28C0 / 7538 / 5F0B8 / 2BB0 / D550 / BB8C did not move](#kit-xl-agent-g-run-129) -- _EXACT: game_uso 2CC8 (768 B) + 24BC (600 B) = +1368 B (63.51 -> 63.69 %). NM: none landed._
@@ -34467,6 +34468,63 @@ where that boundary falls picks the colours.
    object (my sweep's way of reading compile commands) re-ran sub-makes and rebuilt four NM-tree objects
    (post1b2c, post1c, post2b_c, post2b_d) stale. The report then lost 16 exacts until those objects were
    deleted and rebuilt. Read compile lines from a plain `make -n` on a deleted object, or hard-code them.
+
+## kit XXXVI (agent-c 2026-10-23, run 127): game_libs_post big list, blockcut-search traps, 90CC is cfront C <a name="kit-xxxvi-agent-c-run-127"></a>
+
+No exacts this run. NM improvements: gl 25504 106 -> 76 raw, gl 49B3C 60 -> 32 (run-126 NCC draft spliced into
+the NM object only), gl 2C7A4 219 -> 206 and gl 250C8 85 -> 82 (one block cut each). Scratch: `c127/` (`d25504`,
+`d26790`, `d26D64`, `d24378`, `d4EE44`, `d437C0`, `dD900`, `d90cc`), tools `c127/tools/fx.py` (replace one function
+in the NM-tree processed `.c`, compile out of tree with cfe, raw-diff), `cfeif2.py` (cfeif on any full source),
+`survey.py` (raw diffwords of every non-exact function in the agent-c units).
+
+1. **gl 25504 (106 -> 76, `--noreg` 2).** Three source facts the old body missed:
+   - frame 88 -> 104 by declaration order alone: `sum, i, cur, e, sh, idx, ret` (ret 7th puts cur's home at sp+92
+     as the target; no dummies needed);
+   - the first loop is a plain indexed `for (i = 0; i < GW(0x1030); i++) sum += (tab[i]->msk + 15) & -16;` through
+     its own table symbol. IV elimination leaves the dead init `or s5,zero,zero` in the target twice (before this
+     loop and again as the second loop's init); the hand-written pointer loop dropped it, and the bound re-read from
+     the global keeps the loop rolled (no x4 unroll);
+   - `gl(e->key, cur, e->msk, (s32)e->sh)` in the else arm: with plain `e->sh` the CSE temp coalesced into a3 and as1
+     stole a `lui` into a `bnel`; the cast makes the argument a separate value, the temp stays v1 and the target's
+     `bne v1,at; or a3,v1` delay copy appears. (`(u8)` gives an `andi`, `(s8)` a shift pair.) The `if (1) {}` after
+     `sh = e->sh;` had to go (the arg2[4] load then becomes a t-temp first operand: `bne t9,v1`).
+   Left: the t-ring runs one register low from the first loop on (the target spends t0 and t1 before the word load;
+   no cast, mask, `x++; x--;` or block cut reproduces the extra slot), the first loop's sum / -16 colours are swapped
+   (a1 / v1 in the target), and the main loop's slot address is v0 here, a t-temp there.
+2. **24378: the same dead IV init.** The target's `or a0,zero,zero` at the top (live into the first call's a0) is
+   most likely the init of the u64 clear loop's index after IV elimination, not an argument. Every indexed spelling
+   tried unrolls x4 there (the target does not); not solved. A block cut inside the unrolled byte loop "improves" raw
+   words 323 -> 263 only because the function shrinks to 290 words: **reject any raw-word gain that changes the
+   function length.**
+3. **blockcut-search trap: cuts between `}` and `else`.** The tool inserts `if (1) {}` at every statement end,
+   including right after the closing brace of an if-arm, which turns `} else {` into `} if (1) {} else {` and
+   re-binds the else to the empty if (the else body becomes dead code). Three of this run's best "layouts" were that:
+   2119C 146 -> 108, 2B5F4 197 -> 175, and the second cut of 250C8. Check every proposed position against the source
+   before landing (or exclude positions followed by `else`). The valid single cuts landed: 250C8 after
+   `gl(sub, field18 & 0xff);`, 2C7A4 after the opcode fetch `r = gl_func_0003F010(sub);`. `-Wo,-varref` sweeps leave
+   all eleven big-list functions unchanged (labels everywhere).
+4. **bootup 90CC is cfront-style C (cfe), not edg.** An NCC prefix draft (Named base with vptr at +0x28, member Sub
+   at +0x3EC, FloatParam members) shows edg's out-of-line ctor homing `this` and reloading it, and inlining the base
+   ctor with its own this==0 check. The target keeps self in s2 from a single top-level `if (self == 0 && !(self =
+   alloc(2700))) return 0`, calls the base ctor out of line (`func(this, &D_8730)`), then expands each member ctor
+   with the alloc protocol on the MEMBER address (`if (this + 0x3EC == 0) alloc(0x154)`, failure skips to the next
+   member). The param members are 0x18-byte objects: out-of-line base ctor `(this, owner, Key by value, 1)` (`sw
+   a2,8(sp)` home), vptr +0xC, float +0x10, int +0x14; each site copies its Key into its own temp (sp+324, 320, ...)
+   and then into one shared parameter temp (sp+260): cfront temporaries. The second member group (+0x540) passes the
+   key through a pointer to a stack temp held in s1. The in-tree cfe body already has this shape; its 553 raw words
+   include local-symbol addend diffs (`func_00008744 + 4` vs `&D + 0x8748`) that link to the same address, and the
+   reloc-masked count is 421. Next step there is colour/schedule work on the cfe body, not a rewrite.
+5. **Probes that did not move:** 26790 (64): the target keeps the `&D` constant candidate in ONE register (a3) in
+   every case including through the 0xF3 loop (`lw 8304(a3)` / `lw 11516(a3)`, IV `addu v1,a1,t1` offset first);
+   ours folds the 0xF3 loads to `lui; lw %lo` and colours the candidate a2 elsewhere. `g` through F5/F6, a struct-array
+   alias, `i * 208 + base` (int or pointer), `&arr[i]`, a PRE-style memory bound all left it. 26D64 (93): loop-head
+   spellings (2-D queue index, `<< 3`, idx after the test, break + tail store) do not stop uopt sinking the `sll`.
+   4EE44 (2): the src base load colours v0 vs a1 in every spelling (float** + 45, int, unsigned, reused counters).
+   437C0: dead `if (arg1) {}` anywhere and reusing x/g/arg1 for the sub-object pointers fail (PR #10 matched it with
+   one `s32 var_a2` for both sub-objects among ~25 m2c-named locals: `src/match_imports/gl_func_000437C0.c`).
+   D900 (now exact via PR #10): our NCC frame hunt was the wrong front end. The import is cfe C with an explicit
+   goto dispatch chain, `int pad[2]` / `int pad[7]` frame pads and staged struct copies (`scaled -> stage -> impulse`):
+   `src/match_imports/func_0000D900.c`. Read the PR #10 imports before resuming any of their siblings.
 
 ## kit XXXVII (agent-g 2026-10-22, run 127): block-cut sweep with scripts/blockcut-search.py, K&R va_alist, declared-local frames <a name="kit-xxxvii-agent-g-run-127"></a>
 
