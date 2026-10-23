@@ -14477,6 +14477,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit LIII (agent-g 2026-10-23, run 137): the NCC test -- recompile a capped cfe NM body under IDO 7.1 NCC before hand work; three exacts as NCC donors (5D134 quaternion rotate, 51F5C edg case-order switch, 67D50 memset), NCC-only levers (int-local constants defeat literal CSE, declaration-order frame, a named pointer assigned early takes the first free arg register), `ncctry.py` bulk lifter + results table, NM-only NCC comparison donors; pin scan of agent-g units found nothing left](#kit-liii-agent-g-run-137) -- _EXACT: game_libs_func_0005D134, gl_func_00051F5C, game_libs_func_00067D50. NM: 5F5F0 85.0 -> 98.5, 5F984 85.1 -> 88.2, gui 3714 83.0 -> 85.4._
 - [kit LIV (agent-c 2026-10-23, run 133): three NCC exacts: two through the C++ `{cur, nxt}` list iterator -- an inline `first() { return next(); }` gives the loop variable a separate copy of the next() temp, `int r = 0;` swaps the a0 / v1 pair (3D54C), and print field arguments read into block locals put the field load before the format address (38C98); 35DAC from address-taken one-word stack objects plus a decode fix; 3DF58 as an NM-only NCC donor; an iterator-shape scan; `(unsigned)this == 0` keeps a dead alloc fallback test; NCC accepts assignment to `this`; the jumptable-donor scan found no table-only candidate; NCC lift table of the near-exacts (none beat cfe)](#kit-liv-agent-c-run-133) -- _EXACT: game_libs_func_0003D54C, gl_func_00038C98, gl_func_00035DAC. NM: 3DF58 82.17 -> 99.06 (89 -> 90 words = target), 3DD28 67.26 -> 81.71 (35 -> 36 of 38), 4A9F0 76.48 -> 89.25 (39 -> 40 = target, frameless via an inline member), 1D17C 89.03 -> 96.06 (31 -> 33 = target, gbi-style cursor copies), 44CE8 87.49 -> 91.28 (stride decode fix), 36A48 87.86 -> 97.20 (V3 by value + member operator=)._
 - [kit LV (agent-g 2026-10-23, run 138): USO FP "D_00000000 + off" loads are SOURCE LITERALS under NCC (the donor's .rodata pool reproduces the USO RoData layout; rename + pin via `<func>_rodata`), an inner call with one FEWER argument explains a register that "survives" a jal (the cfe "a3 web" cap), cfront this-adjust `(char *)(delta + (int)p)` operand order; lit.py / sym.py / fixdef.py tools; NCC sweep of the remaining owned units](#kit-lv-agent-g-run-138) -- _EXACT: timproc_uso_b5_func_00001F14 (84.7 -> 100), timproc_uso_b5_func_00008AFC (85.9 -> 100), timproc_uso_b3_func_00001C68 (95.1 -> 100, cfe: float 0.0f arg + fl[8] reload). NM: 5F5F0 98.47 -> 98.80, b5 396C 41.8 -> 60.2, game_uso 7C1C 88.2 -> 89.3, gl 2840 89.8 -> 91.0, gui 3714 85.4 -> 88.8, game_uso B3C 91.8 -> 93.8, mgrproc 2B7C 92.9 -> 94.1, titproc 5DC 93.8 -> 94.4, b5 AC20 85.4 -> 86.4, b5 C310 90.9 -> 91.5, game_uso 8CD8 83.07 -> 83.27._
+- [kit LVI (agent-c 2026-10-23, run 134): full-unit NCC sweep (ncctry K&R lifts + fixer.py C -> C++ auto-casts) over every unmatched agent-c function; NCC gives every REFERENCED local a frame slot, so `f32 pad[12]; pad[0] = 0;` sets the frame with no code (42778); reuse a local (`len = 1.0 / len`) instead of a new one to recolour FP webs; one pointer per display-list packet (483BC); early-return vs if-block decode; a Makefile clip edit needs a purge](#kit-lvi-agent-c-run-134) -- _EXACT: gl_func_00042778 (77.0 -> 100), gl_func_000483BC (88.9 -> 100), gl_func_0003DD28 (81.7 -> 100, `if (a0) {}` after the create call). NM-only NCC donors: 488A0 81.4 -> 98.7, 46790 75.1 -> 96.6, 49DBC 96.0 -> 97.8, 23BDC 74.4 -> 84.8, 33094 71.0 -> 80.3, 48510 80.2 -> 85.4, 3B6A0 65.3 -> 70.9, 34548 73.8 -> 77.4, 4E424 88.3 -> 91.0, 4E00C 75.7 -> 86.7, 4A890 60.7 -> 68.6, 4A308 76.9 -> 77.4, bootup 63B4 76.1 -> 83.1, bootup C234 77.4 -> 79.6, 3B9C0 72.3 -> 73.7, 25C54 76.2 -> 76.8, 27804 77.6 -> 78.1, 36694 82.4 -> 82.7, 38A28 53.0 -> 61.2, 43D38 79.6 -> 80.2, 4B0A8, 3C43C, 1EF20; 1D17C 96.06 -> 96.15._
+- [kit LVII (agent-g 2026-10-23, run 139): siblings share a macro -- re-express a hand-decoded gbi packet emitter as its sibling's gbi.h gSPScisTextureRectangle body and compile it under NCC (3714 +4.8, 329C +1.9); a volatile local reproduces "store to the home before the call, reload the home after" (2840); a self-assignment `v[0] = v[0];` is the only then-arm that keeps an empty if-arm's `bc1f else; b join` shape (CEB4); compute every result before the first store when the stores can alias the loads (396C); cfe frames grow by one word per declared local and per ?: temp (F04); objdiff fuzzy ignores sp offsets](#kit-lvii-agent-g-run-139) -- _no exact. NM: b5 396C 60.2 -> 86.3, gui 3714 88.8 -> 93.5, gui 2DE0 81.7 -> 88.8, gui F04 82.2 -> 91.2, b5 B368 81.3 -> 87.5, b5 CEB4 94.4 -> 97.1, gl 2840 91.0 -> 93.1, gui 329C 86.7 -> 88.7, b5 B624 88.4 -> 88.6, arcproc 16F4 79.3 -> 83.2, titproc 116C 94.04 -> 94.13._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
@@ -35844,3 +35846,199 @@ with a `--vars` whitelist (keeps the sweep from inserting empty tests on uniniti
    game_uso 8CD8 +0.2, gui 3714 NCC donor +3.4 (four tests). No win: arcproc 125C, mgrproc 1824 / 23FC, gui 329C /
    4568, b5 32C8 / BDEC / CEB4 / D884, game_uso 1DDC. Raw-scored greedy sweeps on the 5F984 / 3714 NCC donors
    "fixed" the length while dropping fuzzy 88 -> 62 / 85 -> 76: always score donor sweeps by fuzzy.
+
+## kit LVI (agent-c 2026-10-23, run 134): the full-unit NCC sweep, referenced pad arrays set the NCC frame, reuse a local to recolour, one pointer per packet <a name="kit-lvi-agent-c-run-134"></a>
+
+Scratch: `c134/` in the session scratchpad. `ncc/ncctry.py` now lifts K&R definitions (the parameter declarations
+are folded into a prototype) and keeps only the LAST typedef of a name before the function (units redefine
+typedef names per NM block). `ncc/fixer.py IN OUT FUNC UNIT` patches the C -> C++ errors of a lifted body one per
+compile round (up to 400): int / void * -> T * assignments and initialisers (3611 / 3232) get a `(T)(...)` cast
+of the right-hand side, a mismatched return (3212) a cast to the function's return type, argument mismatches
+(3252) a cast to the parameter type, incompatible comparison operands (3135) a cast of the right operand, an
+undefined typedef (3114) the unit's last definition of it moved or inserted above the use, the auto-declared
+`extern "C" char X[];` lines that collide with a real type are dropped (3194 / 3235), duplicate typedefs (3337)
+are dropped, and `(*)()` function pointers become `(*)(...)`. `NULL` is redefined as 0. `ncc/drv.sh`,
+`drv2.sh` and `padall.sh` run it across a list; `ncc/padscan.py SRC FUNC UNIT` scores `int padq[k]; padq[0] = 0;`
+for k = 1..20 at the top or the bottom of the declarations. `ncc/mkdonor.py` swaps `#include "common.h"` for
+the standalone typedef block a donor needs (NCC_CFLAGS has no `-I include`).
+
+1. **Full-unit NCC sweep (target 1).** All 148 unmatched functions of game_libs_post, post0b < 0x50000,
+   bootup_uso, h2hproc and timproc_b1 were lifted (ncctry, then fixer on the CCFAILs). 90 compiled. Wired as
+   NM-only donors where fuzzy rose and the length stayed or moved toward the target (cfe -> NCC):
+   42778 77.0 -> 98.5, 46790 75.1 -> 96.5, 33094 71.0 -> 80.1, 23BDC 74.4 -> 84.6 (151 -> 157 of 161),
+   3B6A0 65.3 -> 70.0, 483BC 88.9 -> 92.5, 4B0A8 93.4 -> 94.4, 3C43C 93.0 -> 94.3, 1EF20 71.4 -> 71.6,
+   38A28 53.0 -> 54.8, 49DBC 96.0 -> 97.3, 48510 80.2 -> 84.6, 43D38 79.6 -> 79.8, 34548 73.8 -> 76.8,
+   488A0 81.4 -> 98.6. Lower under NCC (not wired): 1E134 (66.1 vs 65.9 but 826 words moving away from 849),
+   2E354, C234 (77.36 vs 77.39), 90CC (93.5 vs 95.6), 48AEC, 36F0C, 4C5E4, 26214, 40070, 41D40, 41820,
+   63B4 (76.0 vs 76.1), B75C, 3BE1C, 3B9C0, 25C54, 27804, 4FD00, 2B09C and most of the bootup bodies.
+   Still CCFAIL after fixer (hand C++ needed): 1CA10 (no NM body), 42938, 46050, 493AC, 3E5E0, 33BE4,
+   4BAF4, 201B8, 40304, 27E24, 23E60, 3D71C, 33EB8, 24B8, 3FC58, 415A4, 4FBA4, 4CDB0, 307A8, 34A78, 24378,
+   49B3C. Their common blockers are macro lvalues written as casts (`FW(p, o) = ...` with a non-lvalue FW),
+   `extern` objects used as structs, and typedefs nested inside other typedefs.
+2. **EXACT gl_func_00042778 (cfe 77.0 -> NCC 98.5 -> 99.88 -> 100, 112 words).** Vec3 a2 + matrix column 2 of a1,
+   normalised when longer than the 0.1 double at RoData +0x1B30, then two fixed-point coordinates
+   32*4 + (v . column k) * 32 * 2. Three steps:
+   - **operand order:** `x = a2[0] + a1[2]` (not `a1[2] + a2[0]`) gives the target load order;
+   - **reuse len for the inverse:** `len = 1.0 / len; x *= len;` instead of a separate `inv` local. With inv,
+     x / y / z / inv colour f14 / f16 / f18 / f2; reusing len gives the target's f2 / f14 / f16 and the
+     inverse in f18 (28 -> 5 raw words);
+   - **the frame:** the remaining 4 words were the a0 / a1 homes (56 / 60 against 104 / 108). x / y / z were
+     already at 36 / 32 / 28, so the target has twelve more words of locals ABOVE them. **NCC gives a slot to
+     every local that is referenced at all, even when its only store is dead**, so `f32 pad[12];` declared
+     before x / y / z with `pad[0] = 0;` (or the struct copies inside `if (0) { t0 = t1; t2 = t3; }`) adds
+     the twelve words with no code. Separately named constants (w2 / four2 / two2), named row and column
+     copies, named int results, a named f64 limit and inline helpers all changed the code instead.
+   The donor has no .rodata (the limit is read through `D_00000000 + 0x1B30`), so the plain placeholder recipe
+   (wire.py) was enough; the sqrt call goes through the existing `gl_func_00000000_42778` blank.
+3. **EXACT gl_func_000483BC (cfe 88.9 -> NCC lift 92.5 -> 100, 85 words).** A G_VTX packet for nv vertices
+   plus one G_TRI1 per index triple: the sibling of 488A0 (line packets). Ported to 488A0's struct form
+   (Obj / Ctx / DLBuf typedefs, `n = ctx->dl->count++; g = &ctx->dl->base[n];`), then two changes:
+   - **the early return** (`if (obj->nv == 0) return;`, which skips the trailing call; target `beqzl` to the
+     epilogue). The 488A0 if-block shape here was a semantic error;
+   - **one pointer per packet:** the loop packet in its own `Gfx *h` instead of reusing the first packet's g.
+     With one shared g, the loop packet colours t0 and every temp after it shifts by one register
+     (16 -> 0 raw words).
+   The cfe-era `if (obj) {}` lever had to go too (NCC 96.2 with it, 97.4 without).
+4. **The pad lever on other donors.** 3DD28 (target 2): `pad[2]` above kind and `pad2[2]` below node give the
+   target frame 56 and the kind / o / node homes 44 / 40 / 36 (81.45 -> 81.71). `new Obj` compiles to the same
+   `__ct__3ObjFv(0)` call as the decoded `gl_func_00000000(0)`, which confirms the cfront `this == 0` allocating
+   constructor. The target copies o into v1 after that call; a temp, an inline make(), `(o = new Obj)->` and a
+   separate this pointer did not reproduce it, but the parameter-only fz sweep did: **`if (a0) {}` right after
+   the create call keeps a0 live across it, which gives the `move v1,v0` copy and the filled jalr delay (36 ->
+   38 words) = EXACT gl_func_0003DD28** (81.71 -> 100, wired with wire.py over an empty placeholder). Rule: an
+   empty test on a parameter is worth a sweep on every NCC donor, including ones a word or two short. Slots go top-down in declaration order with one free word
+   at sp+24; a block-scope pad does not help. padscan on 3B6A0 (frame 64 against 128): +0.02 only. 49DBC:
+   the three 16-byte vertex records as `long long [2]` (8-aligned slots) and an extra s16 above sp88 fixed the
+   short / record homes; `if (arg2) {}` after the third build call (parameter-only fz sweep) fixed the length
+   (340 -> 339 = target, 97.25 -> 97.43). Left: sp38 at 68 (target 56); the 12 bytes below sp38 are not
+   locals (a 12-byte pad above it grows the frame instead).
+5. **Polish that did not reach exact.** 46790 96.39 -> 96.54: the cfe lever `if (1) { T **q = &dst; }` costs
+   NCC a slot for q; declaring q BEFORE dst puts dst at sp+0 as in the target. Left: the dst reload colours
+   t3 (target a2, the dead x parameter). 488A0 98.57: ctx / dl / count colour v0 / v1 / a0 (target a0 / v0 /
+   v1, with obj already moved to s0). A separate loop pointer, dropping `if (obj) {}`, block-scope ctx / dl,
+   and an obj copy (named locals get NCC homes) all scored lower. 1D17C 96.06 -> 96.15 with gbi `SH()` field
+   expressions for the 0x0C1A packet words; separate cursor pointers and a full SH() first packet were worse.
+   33094: the fz sweep's `if (o) {}` win (81.8) moves the length away from the target (101 -> 103): rejected.
+   Kept from the same parameter-only fz sweep: 48510 `if (arg0) {}` after the temp_t8 load (84.60 -> 84.98,
+   135 words), 3B6A0 `if (max) {}` after the ey difference (70.00 -> 70.88, 198 -> 199 of 200 words), 43D38
+   `if (arg0) {}` after `var_v1 += 1` (79.76 -> 80.25) and 38A28 `if (c) {}` after the key >= 40 report call
+   (54.83 -> 61.16, 87 -> 85 of 81 words). Rejected: 1EF20 `if (arg1) {}` (+1.3 but 202 -> 203, away from 202).
+   Round 2 on the winners: 48510 `if (arg4) {}` (85.28), 43D38 `if (arg0) {}` after `var_v1 = var_t2` (80.41),
+   3B6A0 `if (pt) {}` (70.93); 49DBC none. On NCC lifts not wired before: 4E424 cfe 88.33 -> 90.98 (53 -> 51 of
+   49 words, wired NM-only); no win on 28604, 2B5F4, 3AE58, 37938, 3E0F0, 3B01C, 4AFB4, 2D374. cfe
+   parameter-only raw sweeps on the cfe near-exacts 4EE44, 445AC, 35B1C, 4AFB4, 2A258, CA0, E2D0 and h2hproc
+   620: no win. 46790 96.54 -> 96.61: the pixel store through an inline `put(unsigned short *&d, v)`
+   reproduces the target's a2 reload of dst (a reference parameter makes dst address-taken like the old q).
+   **Parameter tests lift NCC lifts over cfe:** lifts that scored just BELOW cfe in the sweep crossed it with
+   one parameter empty test each, and were wired NM-only: 4E00C 75.69 -> 82.31 (`if (s0) {}`, 69 -> 70 of 75
+   words), 4A308 76.89 -> 77.35 (`if (arg3) {}`, 221), 4A890 60.66 -> 67.89 (`if (arg0) {}`, 80 -> 81 of 88),
+   bootup 63B4 76.09 -> 80.68 (`if (obj) {}`, 211 -> 219 of 224), bootup C234 77.39 -> 79.27 (`if (arg0) {}`,
+   546 -> 551 of 550). 4D468 stayed below cfe (78.48 vs 78.62). So run the parameter sweep on every NCC lift
+   within a few points of cfe, not only on the ones that already beat it. A second round on those five added another test
+   each where it helped: 63B4 82.95 (220 words), C234 79.35, 4E00C 86.31 (71 of 75), 4A890 68.45; none on 4A308 / 4E424.
+   A third batch of lifts 0.3-2 points under cfe: wired 3B9C0 72.25 -> 73.74 (`if (self) {}`, 277 -> 280 of
+   279), 36694 82.41 -> 82.75 (176), 25C54 76.23 -> 76.84 (264 -> 267 of 280), 27804 77.59 -> 78.13 (259);
+   rejected for length B75C (88.57 but 519 -> 502 of 524) and 22760 (85.66 but 207 -> 208, cfe already 207);
+   no win on 22464, 22A9C, 36F0C; 4C5E4 stayed under cfe.
+   No win on 42778 (before its exact), 46790, 23BDC, 483BC (before its exact), 4B0A8, 3C43C, 34548.
+   padscan (`int padq[k]` at the top or the bottom of the declarations, k = 1..20) on 13 donors: no gain
+   above +0.05 except where the frame was already known to be short.
+6. **Negatives.** NCC frames grow with separately named constant locals only when they are re-assigned
+   per statement; distinct names inside one statement (wA * fA ... wB * tA) let NCC share the constants (one
+   word short). An inline helper's locals (`int cvt(f32 d) { f32 w = 32, four = 4, two = 2; ... }`) DO get
+   slots (frame 104 on 42778) but are constant-propagated and CSE'd across the two calls (105 words).
+   Inline-function PARAMETERS get no slots. 38A28 (jumptable, 87 vs 81 words) needs a decode fix first.
+7. **Post0b clip:** 0x2e88c -> 0x2e8a4 (11 NM-only donors) -> 0x2e8a0 (488A0 donor, 49DBC 340 -> 339) ->
+   0x2e8a4 (42778 placeholder host) -> 0x2e890 (483BC placeholder host) -> 0x2e894 (3B6A0 198 -> 199) ->
+   0x2e8a0 (3DD28 placeholder host, 36 -> 38) -> 0x2e898 (38A28 87 -> 85) -> 0x2e890 (4E424 NM-only donor,
+   53 -> 51) -> 0x2e898 (4E00C 69 -> 70, 4A890 80 -> 81) -> 0x2e89c (4E00C 70 -> 71) -> 0x2e8a8 (3B9C0 277 -> 280, 36694). It ends at `0x2e8a8`. **A Makefile-variable change does
+   not rebuild the object:** after editing the clip, purge the post0b objects (purge-landing-objs.sh) or the
+   old clip stays in effect and objdiff shows the stale value (62F08 at 70 with a correct Makefile).
+
+## kit LVII (agent-g 2026-10-23, run 139): sibling macros under NCC, volatile homes, self-assignment then-arms, frames by declaration count <a name="kit-lvii-agent-g-run-139"></a>
+
+Scratch: `g139/` in the session scratchpad. New: `dperm.py SRC FUNC UNIT a,b,c` (moves each listed
+declaration to every other listed position, NCC-scored); `padscan.py SRC.c FUNC UNIT [decl]` (inserts a
+declaration at every position of the top-level declaration block, cfe-scored); `emptyscan.py own.txt` (NM
+functions whose target has more `cond-branch; delay; b join` empty-arm shapes than our build);
+`framescan.py own.txt` (NM functions whose `addiu sp,sp,-N` differs from the target); `castfix.py X.cpp`
+(inserts the casts NCC demands on `int -> T *` assignments, iterating on the compiler's error list).
+`own.txt` = every owned 80-99.99% NM function with its raw rdiff line.
+
+1. **gui_func_00003714 NCC donor 88.76 -> 93.54 (250 -> 256 words = target).** The run-138 donor was a
+   register-mapped hand decode. 3714 is the third sibling of 2DE0 / 329C, which were already re-decoded as the
+   stock gbi.h macros (gSPTexture, a texture-load call, gSPScisTextureRectangle with the `MAX((s16)..., 0)`
+   clamps and the nested B4 ternaries). The same macro body (only the load call's arguments and x / w differ:
+   w = arg4, `x = arg1 + (-(w / 2)) * arg5`) scores 81.3 / 260 words under cfe but 93.45 / 256 under NCC.
+   `s32 pad[5]; pad[0] = 0;` (kit LVI: a referenced array takes its slots, the dead store emits nothing) sets
+   frame 96. **Rule: when one sibling has a clean macro decode, port it to the others before any lever work,
+   and try it under BOTH compilers.** 329C's macro body under NCC: 86.7 -> 88.6 (same 284 words, NM-only donor
+   `gui_uso_ncc_329C_nm.cpp`, pad[2] for frame 88). 2DE0 under NCC is 86.5 but 297 words (cfe 298, target 303):
+   first moved away from the target length; with `pad[6]; pad[0] = 0;` (frame 104) and two parameter empty
+   tests it is 300 words / 88.75 (cfe 81.66, 298): wired as `gui_uso_ncc_2DE0_nm.cpp`. RESIDUAL in all three: the target keeps the ring context in a
+   callee-saved / arg register (s0 or a1); ours keeps it in v0 / v1.
+2. **gl_func_00002840 NCC donor 91.04 -> 93.05 (111 -> 110 words = target).** The target stores dy into its
+   stack home before the sqrt call and reloads the home afterwards, and the final `sp38 = vy` writes the same
+   slot. NCC (like cfe) instead spilled the register value to a separate spill slot. **Declaring that local
+   `volatile` reproduces "store the home, reload the home"**: every source write is a store, every read a load,
+   while the arithmetic stays on the register copy (dx / dy locals). Then sp3C / sp38 were moved after the f16 /
+   f18 locals and len / dx / dy before p, which puts both homes at 60 / 56 (NCC frame = declaration order).
+   Making sp3C volatile as well is structurally right but shifts the whole FP colouring (f16 / f18 locals ->
+   f14 / f16): 83.1. Two parameter empty tests (psweep `PARAMS_ONLY=1 SCORE=fz`): 92.45 -> 92.82 standalone.
+3. **timproc_uso_b5_func_0000CEB4 94.37 -> 97.13 (104 -> 107 words = target).** Block 1's then-arm is empty in
+   the target but still emitted as `bc1f else; nop; b join` (with the join's first instruction in the delay
+   slot). cfe folds every empty / dead then-arm into `bc1t skip`: `;`, `{}`, `do {} while (0);`, `f = ...`,
+   `a0 = a0;`, `v[0] = 1.0f;` (v[] already 1.0), `v[0] = v[1];`, the if / else written with the cond inverted.
+   **Only a self-assignment of an array element, `v[0] = v[0];` (or `v[3] = v[3];`), keeps the arm.** It
+   leaves one `swc1 $f2,64(sp)` in the `b join` delay slot (target: the join's `lw a1`). Look for this
+   shape (`emptyscan.py`) wherever the target has `bcond X; nop; b Y` with nothing between X's arm and Y.
+4. **timproc_uso_b5_func_0000396C NCC donor 60.23 -> 86.26 (46 -> 47 words = target).** The target loads all
+   three arg2 components before the first store to o: the stores go through a pointer that may alias arg2, so
+   the source must compute all three results first. `x = tv + (x - tv) * h; t = arg2[1]; cz = arg2[2]; tv = t;
+   yv = ...; z = ...;` then the three stores. RESIDUAL: colours only (tt f0 / target f18, o v1 / target v0);
+   declaration order (dperm, 72 cells) changes nothing.
+5. **gui_func_00000F04 82.17 -> 86.27 (cfe, 309 -> 315 of 313).**
+   - **The cfe frame grows by one word per declared local and per `?:` temporary**, register-allocated or not
+     (here: frame 0x130 against 0x108). Dropping 8 words of locals (cnt2-4 / cmd2-4 reusing cnt / cmd, one
+     t / v pair for the nested blocks, three single-use locals inlined) gave 0x108, and 12 words of locals
+     declared before spD4 put spD4 / spD3 at 212 / 211 (target). (In C310 / titproc 5DC, removing locals did
+     not change the frame: there the slots come from arrays / spills.)
+   - xa3 / xa0b typed int (the short type re-sign-extended them), and the three loop packets re-read the write
+     base from a3->0xC (with one shared cnt / cmd this no longer double-loads).
+   - The B4 word as the gbi.h gSPScisTextureRectangle expression (nested (s16) ternaries with MAX / MIN, dsdx
+     re-evaluated in the B3 word too): 84.7 -> 86.2. Its ?: temps cost frame words (dropped a2v / a1v / a3v / v
+     to compensate). The macro form of the two TEXRECT words LOWERS fuzzy (85.3 / 85.4).
+   - The F04 body under NCC: 85.3 (317 words), below cfe.
+5a. **PARAMS_ONLY fuzzy-scored psweep on functions never swept is still cheap money.** One to four rounds of
+   `PARAMS_ONLY=1 SCORE=fz psweep.py ... ifpos` (parameters only, so no uninitialised-local tests): gui F04
+   86.2 -> 91.2 (four tests, same length), b5 B368 81.3 -> 87.5 (three tests, 176 -> 175 of 173), b5 B624
+   +0.2, gui 2DE0 NCC +2.2 and 297 -> 300 words, 329C NCC +0.1, arcproc 16F4 79.3 -> 83.2 (five tests,
+   162 -> 166 of 170), titproc 116C +0.1. Rejected: game_uso 591C (+0.36 but 1096 -> 1097, away from 1093).
+   No win: b5 DF14, gl 690A8 / 63964 / 76F0 / 15FC / 66EEC / 64388, kernel 18F0 / 1594 / 2250, game_uso
+   97EC / BB8C NCC donors (97EC: `XZ d = a - b` / copy-init / friend operator spellings of the e temporaries
+   do not swap the edg temp homes), No win also: b5 B154, gui 4568, 3714 NCC, 396C NCC.
+   Run it after every structural fix: the F04 tests only paid off after the macro rewrite.
+6. **objdiff fuzzy ignores sp offsets.** Frame / slot fixes (F04's 0x130 -> 0x108, titproc 5DC's block-local
+   hoisting, padscan inserts) move fuzzy by < 0.05 even when tens of words change. Use raw rdiff to verify
+   them; keep them only together with a fuzzy-raising change (they are still required for an exact).
+7. **Negatives (do not repeat):**
+   - b5 32C8 (5 raw, the 0x134 constant f0 vs f2): moving the zero vector, swapping vF8 / vEC, `vF8.z =
+     vF8.x`, `0.0f` literals, store-order permutations: no gain.
+   - b5 4118 (72 raw, 1720 vs 1718): the case-0 arm reloads arg0 per store (target holds it in v0 once); a
+     named copy (`p = arg0`, any existing local) is copy-propagated away; a block-scope `char *p` adds a frame
+     slot (944 vs 936).
+   - b5 8FC8 under NCC (fixdef + castfix): 83.67 / 1602 words (cfe 84.66 / 1595, target 1624).
+   - gl 525F0 under cfe with `return obj;`: 34 words (the v0 copy is added, the reload stays v1).
+   - mgrproc 2B7C: `import_0024D108(*(int *)(held + 0xD8))` instead of `(a3 + 0x568)`: identical output.
+   - The shared-`lui at` absolute store pair (5165C, kernel 80001184, 66A50) is the same cap in three places;
+     the kernel 80001184 relocs show the target's second store carries only a LO16 (no HI16) against the
+     next symbol -- an assembler-level %hi share that IDO 7.1 -O2 does not emit.
+   - titproc 5DC: hoisting the block-scope locals of the switch cases to shared function-scope names shrinks
+     the frame (160 -> 128) but re-colours s5v (s5 -> s6); removing rr changes the code (352 words).
+   - 2840 / 396C / CEB4 / 3714 parameter-only empty-test sweeps after the fixes: no further wins.
+8. **Units with .rodata in their expected object (target 1):** b5, b3 (owned), b1 (agent-c), kernel_026,
+   mgrproc_uso_o0_19C and the game_libs ido53 units. Every owned b5 / b3 NM function with `&D + off` FP loads
+   had already been through lit.py under NCC (run 138); 8FC8 / DF14 / D884 / 4118 / 2B74 / 32C8 carry their
+   constants as literals already. Nothing new to rewrite there.
+9. **Post0b clip unchanged at `0x2e88c`** (no post0b change this run; 62F08 sentinel 100). game_uso 7538 is
+   already exact in report.json (target 4 of the brief was stale).
