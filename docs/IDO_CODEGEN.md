@@ -14481,6 +14481,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit LVII (agent-g 2026-10-23, run 139): siblings share a macro -- re-express a hand-decoded gbi packet emitter as its sibling's gbi.h gSPScisTextureRectangle body and compile it under NCC (3714 +4.8, 329C +1.9); a volatile local reproduces "store to the home before the call, reload the home after" (2840); a self-assignment `v[0] = v[0];` is the only then-arm that keeps an empty if-arm's `bc1f else; b join` shape (CEB4); compute every result before the first store when the stores can alias the loads (396C); cfe frames grow by one word per declared local and per ?: temp (F04); objdiff fuzzy ignores sp offsets](#kit-lvii-agent-g-run-139) -- _no exact. NM: b5 396C 60.2 -> 86.3, gui 3714 88.8 -> 93.5, gui 2DE0 81.7 -> 88.8, gui F04 82.2 -> 91.2, b5 B368 81.3 -> 87.5, b5 CEB4 94.4 -> 97.1, gl 2840 91.0 -> 93.1, gui 329C 86.7 -> 88.7, b5 B624 88.4 -> 88.6, arcproc 16F4 79.3 -> 83.2, titproc 116C 94.04 -> 94.13._
 - [kit LVIII (agent-g 2026-10-23, run 140): a cfe "zero vs constant $f0/$f12 swap" in a cfront vec3 constructor is the data-load spelling of the FP constants -- the unchanged body under NCC with SOURCE LITERALS takes the target colours (b5 2B74 EXACT); same-name web reuse of dead FP locals moves single FP webs (game_uso 1DDC); an assignment-operand read / a dead store inside a product reorders FP loads and colours (arcproc 125C); tier-2 0% functions are all handwritten / dead-table code](#kit-lviii-agent-g-run-140) -- _EXACT: timproc_uso_b5_func_00002B74 (99.36 -> 100, 1876 B). NM: game_uso 1DDC raw 10 -> 7, arcproc 125C raw 10 -> 6, b5 8FC8 84.28 -> 84.73, game_uso 7C1C 89.29 -> 89.69. Negatives: b5 4118 case 0, b5 32C8 under NCC, gl 5062C operator+ slot, gl 51AD8, gl 3430, gl 5F5F0, post1b 68DD4._
 - [kit LIX (agent-c 2026-10-23, run 135): a 0%-fuzzy "no C at all" function behind a 1-word alt-entry orphan is a HOISTED HEAD -- confirm with uso-sym-oracle, decode the merged body from scratch, symtab-merge expected/ (game_libs 3B1A8 EXACT, 324 B); a stack point written/read through `q = &p` keeps the alias reloads; named X/Y/Z stored late; `i++` placement schedules the strength-reduced offset add; 90CC tail vcalls through the m2c-named var_s0 / var_s1; same-symbol two-access `lui at` reuse is not reachable from cfe -O2 (308AC); negatives on 45178 / 4EE44 / 24378 / 240A0 / 445AC / 3DF58 / 32E18](#kit-lix-agent-c-run-135) -- _EXACT: game_libs_func_0003B1A8 (gl_func_0003B1AC 0 -> merged 81/81, total code -320). NM: bootup 90CC 95.64 -> 95.69 (raw 421 -> 386, 2114 -> 2112 of 2106 words). Code 70.654 -> 70.684%._
+- [kit LX (agent-c 2026-10-23, run 136): a 0% function that reads temps it never sets can have its hoisted head inside the PRECEDING BIN segment -- move the tenshoe.yaml c-segment start back over it (ROM unchanged, assets bin shrinks, other checkouts re-run `make setup`), prepend the head to expected/ .text with a metadata-only ELF edit, decode from scratch (game_libs 1C9E4 EXACT, 692 B); a register-read-before-write scanner finds these; as1 shares ONE `lui at` across accesses only for the SAME file-local (static) symbol, so a "shared lui at" cap is module-local data: NCC donor over a `static` struct with per-site C++ references (game_libs 308AC + 308C8 merged EXACT, 248 B; 34A78 EXACT with only the shared byte pair static; the old 66A50 cap family); splitting `n = x->count++` into load / store recolours count (488A0 24 -> 18)](#kit-lx-agent-c-run-136) -- _EXACT: game_libs_func_0001C9E4 (gl_func_0001CA10 0 -> 173/173 incl. the 11-word head), game_libs_func_000308AC (gl_func_000308C8 82 -> merged 62/62), gl_func_00034A78 (94.75 -> 59/59). NM: 488A0 98.57 -> 98.97. Code 70.93 -> 71.08%; post0b clip 0x2e8a8 -> 0x2e8ac._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
@@ -36202,3 +36203,95 @@ expected symbols).
    generic-placeholder name reuse noted in its comment then stops mattering (rename the real function).
 6. **Post0b clip:** no post0b length change (3B1A8 C = the 0x144 INCLUDE_ASM it replaces); 62F08 sentinel
    100 at `0x2e8a8`.
+
+## kit LX (agent-c 2026-10-23, run 136): heads hidden in a bin segment; a shared `lui at` means static data (two exacts) <a name="kit-lx-agent-c-run-136"></a>
+
+Scratch: `c136/` in the session scratchpad. New helpers: `oscan.py UNIT...` (run from the 1080 repo with the venv:
+walks bootup.uso / h2hproc.uso / timproc.uso, lists every report function whose start is neither a Sym export nor
+a raw jal target, plus exports that fall INSIDE a function), `rscan.py UNIT...` (flags unmatched functions whose
+first block reads at/v0/v1/t0-t9 before writing them -- note jal's v0 write is not modelled, so `beqz v0` after a
+call is a false positive), `elf_prepend.py IN.o OUT.o HEAD.bin OLD NEW SIZE` (metadata-only: prepend bytes to .text,
+shift every other .text symbol and .rel.text offset, rename OLD(+.NON_MATCHING) to NEW at 0; the new .text and
+.strtab are appended at the end of the file so .mdebug keeps its file offsets), `cmprom.py OBJ FUNC ROMOFF SIZE`
+(compiled words vs ROM, jal targets masked), `ncc.sh` / `cc.sh` standalone compiles.
+
+1. **EXACT game_libs_func_0001C9E4 (692 B, was gl_func_0001CA10 648 B with no C).** Its first words read t8 / t0
+   that it never set. The 11 missing words (`k * 344` record index via the sll/subu chain, `lui/addiu` table base,
+   the hoisted `lbu t8,28(t0)`) were the last 0x2C bytes of the `game_libs_text2_tail` BIN segment. Landing:
+   - tenshoe.yaml: `[0xE01AE8, c, game_libs/game_libs_post]` -> `0xE01ABC`. The ROM does not change, but
+     `assets/game_libs_text2_tail.bin` (gitignored, made by `make setup` = splat `--modes bin`) shrinks by 0x2C.
+     **Every other checkout must re-run `make setup` after this lands**, or its ROM grows by 0x2C and fails cmp;
+   - new `game_libs_func_0001C9E4.s` (173 words) replaces gl_func_0001CA10.s; TRUNCATE_TEXT 0x17a48 -> 0x17a74;
+   - expected/ post.o: the tracked baseline is a pure-INCLUDE_ASM object (almost no relocs), so a fresh build
+     cannot replace it. Used `elf_prepend.py` (head bytes from ROM; checked .text == old .text with the head in
+     front, relocs and symbols shifted by 0x2C);
+   - the old "MUST STAY INCLUDE_ASM: gl_func_0001CA10 is a generic placeholder extern" blocker goes away because
+     the real function has a new name. No matching C calls gl_func_0001CA10 (the ROM link proves it).
+   The decode is plain C (one pass): `s = &rec[k].sub` assigned BEFORE both early tests (target computes
+   `a3 = t0 + 24` after the f4 test); in the tail `e = &s->e[s->f3][j]` recomputed BEFORE `q = n / s->f4` (so e
+   is built ahead of the div-trap block); `VbElem *e` declared first (home 68(sp)); one unused `int pad[2]` for
+   frame 0x48. bootup.uso's nearby export (Sym 1229) is 0x1C9D4, the start of the 16 zero pad bytes, not the code.
+2. **Oracle scan result (agent-c units).** Non-exported, non-jal'd starts among unmatched functions: only
+   gl_func_0001CA10 (fixed) and gl_func_000308C8 (head 308AC); the other hits are the all-zero pads
+   2266C / 2D36C / 35E5C / 4230C. Exports inside matched functions (fake boundaries, ROM-neutral, already 100):
+   gl 1FC78 (+0x50), 2D710 / 2D74C / 2D788 (+0x38 each: their last word is the next function's head),
+   61040 (+0x14, agent-g range); timproc_b1 0x734 / 0x778 / 0x7BC / 0x800 / 0x19C0 / 0x2030 are named 8 bytes
+   after their real exports 0x72C / 0x770 / 0x7B4 / 0x7F8 / 0x19B8 / 0x2028 (all 100). The register-read scan
+   finds nothing else. **Agent-g units (not touched):** game_libs_func_0006A5F0 (1912 B, no C) contains SIX
+   exports (+0x4, +0x14, +0x548, +0x5FC, +0x630, +0x730) = several functions under one symbol; 6AD78 has exports
+   at +0x17C / +0x18C; pad-plus-entry pairs (entry 4-12 bytes in) at 6A09C, 6B048, 6C400, 6D94C, 6E20C, 71370,
+   73258, 74860; 5165C (post0b >= 0x50000) starts at a non-exported, non-jal'd address with no `jr ra` before it.
+3. **EXACT game_libs_func_000308AC (248 B = the 7-word head + gl_func_000308C8 82%): a shared `lui at` is the
+   signature of FILE-LOCAL data.** The kit LIX blocker (tail `lui at; lwc1 f18,20(at); ...; swc1 f18,16(at)`):
+   as1 reuses one `lui at` across accesses only when they name the SAME **static** symbol (relocs against
+   `.bss`/`.data`). Externs never share (even one extern with uopt CSE broken by a C++ reference), and two
+   different statics in one section do not share either. The block is module-local: lo16 = section offsets
+   0x0..0x1C (the 0x1868.. loads are a second block). Decode details that only fell out once everything was one
+   static `St308 A308`: the first emit's argument is `(s8)A308.f4` = `lb a1,7(a1)` (narrow load of the int's low
+   byte -- NOT a separate char global), the second emit's float arg in a1 is `lw a1,16(a1)` = A308.f10; and the
+   store-before-jal / lb-in-delay order also needs the lb on the SAME symbol (as1 then knows they do not
+   alias). The CSE problem: cfe -O2 (and plain NCC) puts &A308 in v0 for the whole function. Target CSEs only the
+   4-store head. Fix (NCC donor): head plain `A308.mode = ...`, every other access through its own block-scope
+   reference (`{ f32 &r = A308.f14; r = 0.5f; }`, tail `{ f32 &r = A308.f10; f32 &q = A308.f14; r = q; }`,
+   `{ int &r = A308.f4; gl(0x06000800, (s8)r); }`, `{ f32 &r = A308.f10; gl_f(0x01000800, r); }`); a reference
+   repeated for the same field across a call is rematerialised, not CSE'd. Landing: .s merge, expected/ symtab
+   merge (`elf-symtab-merge-orphan.py`, plus resize the head's `.NON_MATCHING` twin by hand), placeholder
+   `void game_libs_func_000308AC(int mode) {}`, `private REPLACE_FUNC_BODY +=` after the post.o `:=` line. The
+   splice renames the donor's `.bss` reloc to `game_libs_func_000308AC_bss`; pin it (and the D_308AC_k* externs)
+   to 0 in undefined_syms_auto.txt, one per line. ROM byte-identical.
+   **EXACT gl_func_00034A78 (236 B, 94.75): only the shared pair needs to be static.** Its residual was the LIFO
+   byte pair `li t4,13; li t5,2; sb t5,F7(at); sb t4,F6(at)` under one `lui at` (0x3B8F6/F7). NCC donor = the old
+   body with every other access still on its per-site extern alias, plus `static signed char sF6[2];` written
+   `{ signed char &a = sF6[0]; signed char &b = sF6[1]; a = 13; b = 2; }` (two separate blocks: same order but
+   `sb` after each `li`; plain `sF6[0] = 13; sF6[1] = 2;` CSEs a v0 base). Pin `gl_func_00034A78_bss = 0x0003B8F6`.
+   Note the target's other same-block accesses (F4 then FC, F5 then F8) each re-`lui at` with at untouched: they
+   are DIFFERENT symbols in the original, i.e. separate statics; only F6/F7 is one object. The post0b NM build
+   was 60 words vs 59 for the donor, so everything after it moved -4; gl_func_0004D688's NM symbol then absorbs
+   8 bytes of alignment pad (972 -> 980) and 62F08 lands at 0x2e85c: clip 0x2e8a8 -> 0x2e8ac, and 4D688's NM
+   fuzzy reads 74.61 -> 73.76 (alignment artifact, same instructions).
+   **Not cracked yet: 307A8 (same static block, sym1448 @0x338).** With the 34A78 recipe (only the two shared
+   pairs static: `static int sCnt[2]` for the hold/cnt zeroing via two references, `static float sAcc[2]` for
+   the down-arm acc/floor loads; all else per-site externs) the length is right (65 = target, was 68) and both
+   shared pairs come out exactly, but the up-arm / hold-arm schedule differs (target hoists `lui at` + `lui t8`
+   above `beqz v0` and loads hold into the ugen temp t8; here the hold test+decrement CSEs into v0 and the 1.0f
+   `lui at,0x3f80` hoists instead): 24 lines differ and the report fuzzy DROPS 93.3 -> 87.1 as an NM donor, so
+   it was not kept. Before that recipe: Same-field repeats inside call-free
+   stretches (acc load / store, cnt) get CSE'd even through separate references (and inline `RR(x)` reference
+   helpers behave the same). A greedy + 1500-random plain/reference mask search over 14 sites bottoms out at 46
+   words diff (all-plain 63, all-reference 53); `static volatile` is worse. cfe -O1 does reproduce the shared
+   zeroing pair (no uopt) but homes the locals. **Lever for agent-g:** the documented "shared-$at" caps
+   (66A50 / 66B64 #shared-at-absolute-store-cap-66a50, 5165C's tail pair) are likely static data too: try an
+   NCC donor with a `static` object at the pinned offset and per-site references.
+4. **NM gl_func_000488A0 (NCC donor) raw 24 -> 18, fuzzy 98.57 -> 98.97.** Splitting the post-increment
+   `n = ctx->dl->count; ctx->dl->count = n + 1;` (all three packet sites) moves count to v1 like the target.
+   ctx / dl stay swapped (target a0 / v0). Named dl, `if (ctx) {}`, `while (0)` anchors and decl reorders are all
+   worse. The same split on game_libs_func_0004CDB0's packet 3 (cfe and NCC) does not help (5 words stay).
+5. **Negatives.** NCC test (ncctry) on 25504 / 26790 / 2B5F4 / 2C7A4 / 2D374 / 40304 (hand-fixed TU: 90.6) /
+   4AFB4 (98.89 = cfe) / 4CDB0 (= cfe) / bootup CA0 / 31C0 / 76F4 / 8BD4 / E2D0 / h2hproc 620 / timproc_b1 1340:
+   none beats cfe. bootup CA0: an inline `setbox(h)` helper or a member function under NCC gives 97.26 (cfe NM
+   98.74). bootup 6204 / E9FC (`lui a0` before `sw ra`): any int parameter flips the order but adds a
+   `sw a0,24(sp)` home; float / double parameters do not flip it; seven brace / line layouts do not. 4AFB4: ten
+   more NCC spellings of the 8-byte-entry reload (v0 vs t1) did nothing. 90CC: the switch(arg2) 7/6 block as
+   structured if / else-if (target tests 7 first) goes 519 -> 746 raw; switch with inline cases = same 519.
+6. **Clips:** post0b NM clip `0x2e8a8 -> 0x2e8ac` (34A78; 62F08 NM offset 0x2e85c, sentinel 100);
+   game_libs_post TRUNCATE_TEXT 0x17a48 -> 0x17a74 (1C9E4 head; the 308AC donor is the same 0xF8 as its INCLUDE_ASM).
