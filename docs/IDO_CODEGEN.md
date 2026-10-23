@@ -14459,6 +14459,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit XXXIV (agent-c 2026-10-22, run 126): bootup 1304C EXACT -- the DL packet-pointer rotation (a1 a2 a3 a1 a2 t0 ...) is uopt block placement: an exhaustive empty-if search over packet boundaries, inside one packet macro after its slot pointer (`G2B`) and inside one `next()` between the index bump and the slot address (`nextb`), 42 -> 15 -> 6 -> 0 raw words; gl 46FA8 is C++ (inline next() + memory-homed params): `(g = ctx)->next()` pooled this + named result in next() found by a -varref sweep (3 words at N=21) then a spelling product at N=20; bootup 7D04 EXACT in cfe by giving the list pointer its own variable; 4A7C4 decode fix (the flag test falls into the final call, not a return) 16 -> 2; NCC frame forensics with -g3 (`__V<n>` names edg reference temps); what did not move: D900, h2h 1360, 49B3C frame (now exact frame, colours left), 4CDB0 / 43BEC / 470E4 under NCC; gl 45CB0 EXACT under NCC (chained byte stores through one pointer cut counted loads + two empty ifs + `k1 = 0; k2 = 0;` frame words); cfe unit sweeps (varref, empty-if K=2) found nothing else](#kit-xxxiv-agent-c-run-126) -- _EXACT: bootup 1304C (2264 B), gl 46FA8 (316 B), bootup 7D04 (332 B), gl 45CB0 (368 B) = +3280 B (62.91 -> 63.34 %). NM: gl 4A7C4 raw 16 -> 2. Tools: c126/tools/pksearch.py, variants.py, sub.py, cfeif.py, usweep.py, fr.sh._
 - [kit XXXV (agent-g 2026-10-22, run 126): uopt ends a straight-line basic block after 20 counted variable loads (`varreflimit`, no label, but a real node for `livebbs` interference) -- that boundary, not a colour tie, set the "third slot pointer one register off" residual of the gui DL emitters; diagnose by sweeping `-Wo,-varref,N` (diagnostic only); remove counted loads with spellings that leave the code unchanged (`return &dl->buf[dl->n++]`, an inline `Gfx::set()`, a reused `d = max - min`); place missing boundaries with an empty-if layout search (`if (1) {}` after a statement or inside an inline `nextb()`); timproc_b5 4118 case-0 LR split; game_uso 0B3C has a 4-entry jumptable no front end tried makes; gui 2BB0 NCC draft](#kit-xxxv-agent-g-run-126) -- _EXACT: gui 08C0, 17DC, 2334, 055C, 16A4 (NCC), gl 5721C (cfe) (+3388 B). NM: timproc_b5 4118 raw 76 -> 72. Tools: g126/vr.sh, vs/sweep.py, vs/dsweep.py, ifs/nccif.py, ifs/ifsearch.py._
 - [kit XXXVII (agent-g 2026-10-22, run 127): systematic block-cut sweep of every agent-g NM function with the new scripts/blockcut-search.py (promote-mode cfe builds, NCC donors, `--swap`, `--also`): single cuts right after a loop's `{` or between straight-line statements crack small loops (gl B958, timproc_b5 8C44); a cfe varargs function written as K&R `f(a0, va_alist) char *a0; int va_alist;` saves a1..a3 ONCE (the ANSI `int a1, ...` form re-stores the address-taken a1: gl 51ED8); frame = one word per DECLARED local in timproc_b5 m2c bodies (6E08 81 -> 23 by cutting 11 locals to 4); `-varref` is flat for almost every cfe residual; sweep table + what did not move](#kit-xxxvii-agent-g-run-127) -- _EXACT: gl 51ED8 (132 B), gl B958 (276 B), timproc_b5 8C44 (244 B) = +652 B (63.34 -> 63.43 %). NM: timproc_b5 6E08 raw 81 -> 23. Tool: projects/1080 scripts/blockcut-search.py (docs/MATCHING_WORKFLOW.md#blockcut-search-run127)._
+- [kit XXXIX (agent-g 2026-10-23, run 128): rewrites from scratch -- timproc_b5 6E08 EXACT (slot RMW through a block pointer `p = base; p += i; *p -= 1` = the target's `addiu v0,v0,976` + `sw 0(v0)`; the second loop's counter as a block-scoped variable keeps `j = 0` after the call); game_uso 7538 rewritten (VOID: an int / long long return makes uopt constrain the accumulating word away from v0; `m = t - 1` computed BEFORE a range chain is not folded to `t == 1`; reusing two named variables n / m sets the a-register colours because uopt colours whole variables in first-appearance order) 611 -> 18; game_uso BB8C NCC donor from scratch (V3 operator temporaries, by-value void operator=, ONE double for two constants, dead `if (k) {}` at the function end lowers a variable's colour priority) 287 -> 66; cfe frame = one word per declared referenced local (gui 2BB0); run-127 cuts landed on six movers; 7C1C NCC route and why the 852 pool did not reproduce; spill-slot order is colouring order (1460)](#kit-xxxix-agent-g-run-128) -- _EXACT: timproc_b5 6E08 (624 B, 63.43 -> 63.51 %). NM: 7538 611 -> 18, BB8C 287 -> 66, 5F0B8 100 -> 34, 2BB0 57 -> 34, D550 66 -> 38, E5C8 93 -> 74, 5BF0 80 -> 71, 1DDC 39 -> 36 raw words._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
@@ -34546,3 +34547,104 @@ timproc_b5 6E08 NM raw 81 -> 23. All came out of one systematic sweep with a new
    `x = obj` store out of the call argument, a comma argument, and swapping `p1 = x` / the node read
    all leave the jal-delay order.
 
+## kit XXXIX (agent-g 2026-10-23, run 128): rewrites from scratch, block-pointer RMW, void accumulators, variable-reuse colours <a name="kit-xxxix-agent-g-run-128"></a>
+
+One exact (timproc_b5 6E08, 624 B, 63.43 -> 63.51 %) and eight NM rewrites. Scratch: `g128/` (`6e`, `75`, `bb`, `7c`,
+`2b`, `5f`, `117`, `1460`, `32`); tools `g128/try.py` (swap one wrap body, promote-compile, score), `g128/par.py` /
+`parn.py` (score many wrap bodies in parallel through blockcut-search `--file`, `NMT=1` = NM-tree file for units whose
+promote build fails), `g128/parf.py` (standalone NCC drafts), `g128/sbs.sh` / `dis.sh` (side by side / relocs),
+`g128/fr.sh` (NCC `-g3` local offsets), `g128/ep.py` (episode writer).
+
+1. **timproc_b5 6E08 EXACT (run-127 NM 23 raw): a slot read-modify-write through a block pointer built in two
+   steps.** Target: `addu v0,s0,t1; lw t2,976(v0); addiu v0,v0,976; addiu t3,t2,-1; sw t3,0(v0)` -- the load folds
+   the offset, the store goes through a pointer that is incremented AFTER the load. `SLOT(i)--`, `*&SLOT(i) -= 1` and
+   every one-expression pointer (`&SLOT(i)`, `(s32 *)(a + 0x3D0) + i`, `&((s32 *)a)[i + 244]`, named index) give
+   `sw 976(v1)` or reversed addu operands. `{ s32 *p = (s32 *)(arg0 + 0x3D0); p += FW(arg0, 0x3C4); *p -= 1; }` is the
+   target (23 -> 2). Scan for the tell with `g128/scan_rmw.py` (`lw rX,K(rB)` / `addiu rB,rB,K` / `sw .,0(rB)`):
+   117C, B154, b3 1C68, arcproc 1F54, gl 3430 / 68DD4 have it; in 117C the spelling was already right (its residual is
+   b kept in s0 where the target spills a1 to the a0 home).
+2. **A block-scoped loop counter keeps `i = 0` after a call (6E08 2 -> 0).** Two identical loops shared `s32 i`; in
+   the second the `or s1,zero,zero` was hoisted above the preceding call (no cut, no statement order, `for (i = 0; 0;)`,
+   comma forms moved it). Declaring the second loop's counter in its own block (`{ s32 j; ... }`) puts it after the
+   call as in the first loop. Keep the top-level `i` declared even if the first loop could also be block-scoped: removing
+   it moved the frame words (k1.c, 2 words).
+3. **game_uso 7538 rewritten (611 -> 18 raw, same 344 words).** It was a long-long state machine with stubbed arms.
+   - It is VOID. v0 is the event-bit word (stored to `out->0x40`), v1 a local `moving` flag (the final out pointer
+     reload reuses v1). With an `int` or `long long` return the regalloc dump shows the word as
+     `assigned (constrained) 2` = v1 even with nothing else in the function: uopt keeps the return register away from
+     the variable that feeds it. Callers ignore the value; the 6A30 NCC donor already declared it void. The exact
+     caller 6CF0 needed an explicit `void game_uso_func_00007538();` (its implicit int declaration conflicts); 6CF0 stays
+     byte-identical.
+   - Dispatch = if / else-if chain of event arms writing `0x6C = m | BIT`; one empty if after the 0x10 arm's if / else
+     joins it before the merge reload (the run-127 tool found it); the 0x20 arm writes the `% 9` before the `= 60`.
+   - The 0x80 window is `t < 8 || (t >= p + 8 && t < p + 16) || t >= p + p + 16` (short-circuit = the target's three
+     compares and the second 0x4DC reload), the limit a nested ternary (inner result in a3, `or a2,a3`).
+   - `m = t - 1` written AFTER the 0x100 range chain folds into `t == 1` (`addiu at,zero,1; bne`); written BEFORE the
+     chain (another basic block) it stays `addiu a1,a2,-1 ... bnez a1` (84 -> 55). The fold is block-local.
+   - The table lookup needs an empty if right after `float *tp = (float *)((char *)&D + 0x638);` or the addend folds
+     into the `lwc1` offset instead of the `lui/addiu`.
+   - a-register colours by variable reuse (55 -> 18): uopt colours a VARIABLE (one live range for all its webs, numbered
+     by first appearance) and unconstrained ranges in number order, each taking the first free register. The target's
+     colours are explained by three reused variables: `arg` (a3) also holds the 0x20 / 0x80 arm counters, `n` (a2) is
+     the 0x50 counter at entry, the 0x100 countdown value and the 0x4DC period (`n = FW(a0, 0x4DC)` in the window test
+     and at the top of the frame body), `m` (a1) is the mask, the decremented counters and `m = n + n`. LEFT (18): the
+     two table pointers and the lim tail; every spelling that assigns `m = t + 1` there shifts the whole t-ring of the
+     function (217 words), so some candidate then lands in a t register.
+4. **game_uso BB8C NCC donor from scratch (cfe NM 287 -> 66 raw).** The cfe notes' unexplained "192 -> 204 -> 164
+   interleaved lw/sw chains" are edg operator temporaries: `world = dir * 1000.0f` = `V3 operator*(float) const {
+   return V3(...); }` (result temp -> return temp) plus a BY-VALUE `void operator=(V3 v)` (return temp -> param temp ->
+   float stores; the reference-returning version adds a hop). Kit XXXIII rules held: the probe ray / effect record must be
+   POD (P3), the dot product is an inline member (`d` moves to f2 / f26 as the target). The two double constants are ONE
+   variable (`if ((k = K90) < f20)`, later `k = K98`): the target loads both into f22. Frame 296 = the function-scope
+   scalars d, k, i, c above the edg temps (`g128/fr.sh` maps every slot). Colour order of the callee-saved FP registers
+   follows uopt priority: a dead `if (k) {}` at the very END of the function (k live, uninitialised, from the entry)
+   lowers k's priority below the f20 ramp, so f20 / f22 come out as the target (72 -> 66; it costs one epilogue nop).
+   Placements inside the live range change nothing. LEFT: the getPos this-adjust (`lwc1 160(a2); addiu a2,a2,112;
+   52(a2)`, not reproduced by a pointer bump, inline getPos, or cuts), the float zero hoisted above the K88 return
+   (spellings, nesting, cast zeros all flat), the operator= param temp 8 bytes low (operator / dot spelling products flat).
+5. **cfe frame = one word per declared and referenced local (gui 2BB0 57 -> 34).** The +8 frame (120 vs 112) was
+   field58 being the EIGHTH declared local; `-g3` (`mdebug.py`) shows every declared local at its decl-order slot and the
+   target has field58 at sp+88 = sixth. Any five locals before it give the target frame and slots. Unreferenced
+   declarations are dropped. LEFT: the target keeps `lw s6,128(sp)` + `or s1,s6` (the 5th parameter promoted, the counter
+   a copy); here the counter loads the parameter and the test uses it -- param reuse, block scoping, copy forms all flat.
+6. **Run-127 cuts landed** (NM only): 5F0B8 100 -> 34 (plus the unused `p1` dropped: zy / xz copy slots move up a word),
+   D550 66 -> 38, E5C8 93 -> 74, 5BF0 80 -> 71, 1DDC 39 -> 36. 5F0B8 LEFT: the target materialises the 0.0f store
+   constant in the divide block into callee-saved f22 (all ten caller-saved FP registers busy); ours materialises it after
+   the second cut into f12. Product orders, a named zero, early zero stores, `-zdbug:6` reading: not cracked.
+7. **game_uso 7C1C (4284 B) NCC route, not landed.** The cfe body (1086 raw) is a C++ function returning Vec3 by
+   value (a0 = hidden return pointer, 0x3B0 frame): every `p = 0; if (1) { p = &X; } if (p || (p = alloc(12)))` site
+   is edg's derived-class ctor protocol of an XZ : Vec3 (`XZ(const Vec3 &v) : Vec3(v.x, 0.0f, v.z)`, f24 = the hoisted
+   0.0f), the `* 250 * k * 0.5` chains are operator* temporaries through two pooled return temps (852 held in s1, 540 in
+   s2) exactly as a draft reproduces them. What did not reproduce: the target's "XZ temp -> pool (852) -> named Vec3"
+   two-hop copies. Lab (`g128/7c/lab`): `Vec3 d = XZ(..)` is one hop, `(Vec3)XZ(..)` two hops through a fresh temp,
+   an inline returning Vec3 or XZ three hops, `d = XZ(..)` through a by-value operator= passes the parameter in the
+   OUTGOING ARGUMENT area (sp+28) then copies again. Draft d1 (all decoded logic, frame 896 vs 944, 1026 vs 1071 words)
+   scores 1514 raw: worse than the cfe body, kept in scratch.
+8. **Spill-slot order is colouring order (timproc_b5 1460, 3 raw).** The two spills (the `arg0 + 0x10` register
+   argument at sp+40 vs target sp+32, the white float at 36) do not follow declaration order (3360 decl / pad / unnamed
+   permutations, dead-use `--ins` sweeps flat): uncoloured (`-ve save`) ranges get their slots in the order uopt
+   processes them, and the target has a third, never-accessed slot above them. A scalar `volatile int pad` shifts both
+   down a word; nothing reorders them.
+9. **Did not move:** timproc_b5 32C8 (5 raw: l134 in f0 instead of f2 -- zero / load spellings, named zero, block load
+   all flat in the NM tree), gl 5062C (1 raw, untouched), gl 68DD4 (block-scoped read cursors: 19 / 32), gui 2BB0 copy,
+   1DDC / D550 / 5BF0 / E5C8 beyond their cuts.
+10. **Table (raw `--raw --pins` words, NM tree):**
+
+    | function | bytes | before | after | how |
+    |---|---|---|---|---|
+    | timproc_b5 6E08 | 624 | 23 | **0 (EXACT)** | block-pointer RMW, block-scoped second counter |
+    | game_uso 7538 | 1376 | 611 | 18 | rewritten from scratch (void, chain, n / m / arg reuse) |
+    | game_uso BB8C | 1008 | 287 | 66 | NCC donor from scratch |
+    | game_uso 7C1C | 4284 | 1086 | 1086 | NCC draft 1514, not landed |
+    | gl 5F0B8 | 452 | 100 | 34 | run-127 cuts + drop unused local |
+    | gui 2BB0 | 560 | 57 | 34 | sixth-declared field58 + cuts |
+    | timproc_b5 D550 | 820 | 66 | 38 | cut |
+    | game_uso E5C8 | 852 | 93 | 74 | cut |
+    | timproc_b5 5BF0 | 976 | 80 | 71 | cut |
+    | game_uso 1DDC | 1528 | 39 | 36 | cut |
+
+11. **Gate / landing notes.** post0b NM clip 0x2e854 -> 0x2e834 (62F08 NM offset 0x2e7e4: 5F0B8 shrank 8 bytes and the
+    61478 NM suffix pad re-aligned another 0x18). New donor `build/src/game_uso/game_uso_ncc_BB8C.cpp.o` (NM object only).
+    Purge `build/{,non_matching/}src/{timproc_uso_b5/timproc_uso_b5,game_uso/game_uso,gui_uso/gui_uso,
+    game_libs/game_libs_post0b}.c.o` and every `*_ncc_*.cpp.o`. The 7538 prototype at the 591C NM block is now `void`;
+    a `void game_uso_func_00007538();` sits before 6CF0.
