@@ -14466,6 +14466,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit XLII (agent-g 2026-10-23, run 131): game_uso 28C0 NM donor 72 -> 4 -- the "Out" and "Body" of the camera family are ONE node type (Out px/py/pz at 0xA0 = the translation row of the M4 at 0x70), and the dead `int zz` slot in the else arm was a named `Node *o` reused for the head load AND the rotate base; that single uopt candidate takes v1 like the target while edg's pooled accessor temporary keeps v0. Routing a third site (072EE8 arg) through `o` makes o outrank the pooled temp and flips every v0 / v1. 1DDC scratch: one named `Out *o` declared after `sel` instead of three nested blocks gives frame 384 (target) and 187 -> 115 raw](#kit-xlii-agent-g-run-131) -- _no exact; 28C0 NM 98.36 -> 99.92 %._
 - [kit XLIII (agent-g 2026-10-23, run 132): what decides the 28C0 v0 / v1 pair (one uopt candidate = the pooled edg temporary holds the key-1 072EE8 argument AND the else-arm getPos `this`; the target has them in two candidates), BB8C P2 record declared first (66 -> 64), gl 62194 frame = named-local homes (22 -> 17 in scratch with no named `t0`, a named `stride` and a `volatile` product local), 7538 under NCC is byte-identical to cfe; family scan](#kit-xliii-agent-g-run-132) -- _no exact; BB8C NM 66 -> 64 committed._
 - [kit XLIV (agent-g 2026-10-23, run 133): lessons from PR #10 (txemaleon, 91 plain-cfe exacts incl. our "C++ only" 28C0 and the flat 1460 / 2BB0 / 7538 / 3800C) -- the SOURCE, not the separate TU, made them match (same flags; our 1DDC NM scores the same standalone): per-callee prototypes (`int f(void)`, unpromoted float args) instead of the shared K&R `gl_func_00000000`, one-element ARRAY locals and `union { Vec3 v; volatile Vec3 r; }` to force stack homes / reloads, `s32 padN[k]` slot placement, per-arm reloads `if (1) { m = p->f; }`, dead `while (0) { x = a + a; }` first appearances, comma copies `(t = p, p = 0, t)` for uncoalesced or-copies; applied: gl 62194 22 -> 10 with an `n[1]` home](#kit-xliv-agent-g-run-133) -- _no exact; NM gl 62194 22 -> 10 raw._
+- [kit XLV (agent-c 2026-10-23, run 128): blockcut-search hard rules (no cut in front of `else`, length-changing variants are non-wins, `--selftest`); PR #10 spellings and lever A (per-callee prototypes) probed on 4EE44 / CA0 / 6204 / h2h 620 / 49B3C -- all flat; the residuals in this band are integer-only colour ties that prototypes cannot reach; standalone TU == in-unit TU for every probe](#kit-xlv-agent-c-run-128) -- _no exact, no NM change; tool fix committed._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
@@ -35017,3 +35018,46 @@ timproc_b5 1460 (3 raw), gui 2BB0 (34), game_uso 7538 (18), game_uso 28C0 (4, "C
      body), not from our NM.
    - **timproc_b5 32C8 (5, flat):** zero literal / l134 spellings (0.0f, chained, `vF8.z = vF8.x`, scoped zero, comma
      zero, cut before) all 5-107.
+
+## kit XLV (agent-c 2026-10-23, run 128): blockcut-search rules, PR #10 spellings and lever A on agent-c units <a name="kit-xlv-agent-c-run-128"></a>
+
+**Tool fix (committed on agent-c).** scripts/blockcut-search.py now (1) never offers a cut
+position whose next token is `else` (after `}` or after a `;` of an unbraced then-arm), and
+(2) parses rdiff's `len ours vs target`: a variant of a different length prints
+`N LEN!ours/target`, ranks below every same-length variant and never prints as `improve`;
+a base with the wrong length triggers a warning. `--selftest` checks both rules without
+compiling. Doc: docs/MATCHING_WORKFLOW.md#blockcut-search-run127.
+
+**Standalone TU vs in-unit.** For every probe below, a scratch TU that includes
+src/match_imports/context_<unit>.h and the function alone scored exactly what the
+in-unit promote build scores (4EE44 2 / 2, 6204 2 / 2). So the PR's separate TU is plumbing;
+the C is what has to change (agrees with kit XLIV).
+
+**Lever A (per-callee prototypes) is flat on integer-only callees.**
+- gl 4EE44 (2 raw, `lw a1,112(s0)` vs our v0 for the loop-init `*(o+0x70)` reload):
+  distinct prototyped names for all three `gl_func_00000000` calls, no change. Also flat:
+  decl order of `src / r / result / c,k` (all 2), `src` built in the `for` init, `int`-typed
+  base, `&((float *)p)[45]`. Worse: a named `p` for the 0x70 pointer before the call (17),
+  an unused int (7: frame), a pointer-stepped row (24), `x = x + y` instead of `+=` (96).
+- bootup CA0 (17 raw: box base v1 / h a0 / -h a1 in the target, ours v0 / v1 / a0):
+  `void *alloc(unsigned)` + `void base(char *, char *)` or `char *` returns: 17.
+  Box block spellings (named `short *b`, inline `-h`, short `h`, stepped `b += 8`) all 17;
+  varref sweep flat 12..1000 (not a block-placement residual). Some candidate live across
+  the box block holds v0 in the target; nothing in the decoded statement list does.
+- bootup 6204 / E9FC (`lui a0` before `sw ra`): 24 combinations of callee prototype
+  (K&R int, `void(void *)`, `void(char *)`, `int(void *)`, `void(int)`, varargs) x data
+  declaration (`char`, `int`, `char[]`, static array): every one 2. Not a declaration effect.
+- h2hproc 620 (46 raw): the 3800C spelling (sequential `if (p == 0) { p = alloc(); if (p == 0)
+  goto X; }` chain with fallthrough labels instead of nested `||`) is 55 and one word long;
+  dropping the `volatile` on `r` is also +1 word. The nested-`||` form stays best.
+- gl 49B3C (32 raw, NCC NM donor): the cfe "condition-in-while" idea (loop rotation
+  duplicates the condition so the first and later iterator results get separate temps, as
+  the target's v0 / a0 and a1 / v0 show) is what the NCC `while (it.next())` already
+  does; in cfe it is 73-85 and changes the length. Stays NCC.
+
+**Lever A candidates left untested (next run):** a grep of agent-c NM bodies for placeholder
+calls with float arguments finds bootup lines ~3844 (`z[1] = 0.0f` comma arg), ~7915 (float
+index expression), ~8167 (`func_cce0(0, st, 2, 140.0f, ..., -350.0f)` = double promotion
+candidate) and timproc_b1 1340 (~673, `(int)(f * 255.0f)` arg). The game_libs_post hit
+(33BE4 `gl_d_33be4_28f`) is a data symbol, not a float. These are the functions where
+per-callee prototypes can change argument setup; the five probed above are integer-only.
