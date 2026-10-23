@@ -14465,6 +14465,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit XLI (agent-g 2026-10-23, run 130): game_uso 1DDC as an NCC donor -- 275 -> full length (382/382) and every integer register right, frame and FP colouring still open. Levers: a chained `acc = diff * (mag - speed) * a0->k1` (one full-expression) instead of a named `V3 t` gives the target ret-temp -> this-copy and a second ret / param temp pair (+6 insns, the ret slot stays busy for the whole expression); `if (1) {}` after `self += f()` forces the self.x / self.z reloads; `speed; diff.y; diff.z; diff.x` order; a nested `{ Out *o = c.getOut(); ... }` at each use (ref load and both 072EE8 calls) moves the accessor result to v0 and the param-temp pointer to v1 and un-shifts the t-ring. edg allocates a scope's temporaries LAST-CREATED-HIGHEST; nested named pointers cost 4-8 bytes each](#kit-xli-agent-g-run-130) -- _no exact; draft in scratch g130/1d/best_x2.cpp (non-sp diffs 85, frame 392 vs 384)._
 - [kit XLII (agent-g 2026-10-23, run 131): game_uso 28C0 NM donor 72 -> 4 -- the "Out" and "Body" of the camera family are ONE node type (Out px/py/pz at 0xA0 = the translation row of the M4 at 0x70), and the dead `int zz` slot in the else arm was a named `Node *o` reused for the head load AND the rotate base; that single uopt candidate takes v1 like the target while edg's pooled accessor temporary keeps v0. Routing a third site (072EE8 arg) through `o` makes o outrank the pooled temp and flips every v0 / v1. 1DDC scratch: one named `Out *o` declared after `sel` instead of three nested blocks gives frame 384 (target) and 187 -> 115 raw](#kit-xlii-agent-g-run-131) -- _no exact; 28C0 NM 98.36 -> 99.92 %._
 - [kit XLIII (agent-g 2026-10-23, run 132): what decides the 28C0 v0 / v1 pair (one uopt candidate = the pooled edg temporary holds the key-1 072EE8 argument AND the else-arm getPos `this`; the target has them in two candidates), BB8C P2 record declared first (66 -> 64), gl 62194 frame = named-local homes (22 -> 17 in scratch with no named `t0`, a named `stride` and a `volatile` product local), 7538 under NCC is byte-identical to cfe; family scan](#kit-xliii-agent-g-run-132) -- _no exact; BB8C NM 66 -> 64 committed._
+- [kit XLIV (agent-g 2026-10-23, run 133): lessons from PR #10 (txemaleon, 91 plain-cfe exacts incl. our "C++ only" 28C0 and the flat 1460 / 2BB0 / 7538 / 3800C) -- the SOURCE, not the separate TU, made them match (same flags; our 1DDC NM scores the same standalone): per-callee prototypes (`int f(void)`, unpromoted float args) instead of the shared K&R `gl_func_00000000`, one-element ARRAY locals and `union { Vec3 v; volatile Vec3 r; }` to force stack homes / reloads, `s32 padN[k]` slot placement, per-arm reloads `if (1) { m = p->f; }`, dead `while (0) { x = a + a; }` first appearances, comma copies `(t = p, p = 0, t)` for uncoalesced or-copies; applied: gl 62194 22 -> 10 with an `n[1]` home](#kit-xliv-agent-g-run-133) -- _no exact; NM gl 62194 22 -> 10 raw._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
@@ -34949,3 +34950,70 @@ No exact this run. One NM commit (game_uso BB8C donor 66 -> 64). Scratch: `g132/
 7. **Gate / landing notes.** Rebased on origin/main 845cdabac (timproc_b5 `private REPLACE_FUNC_BODY`). One commit on
    agent-g (BB8C NM donor). Purge `build/{,non_matching/}src/game_uso/game_uso.c.o` and every `*_ncc_*.cpp.o`. ROM cmp
    OK, verify-blocks 6/6 OK, no exact lost, sentinels 100, 63.69 % code (unchanged), post0b untouched (clip 0x2e834).
+
+## kit XLIV (agent-g 2026-10-23, run 133): lessons from PR #10 <a name="kit-xliv-agent-g-run-133"></a>
+
+PR #10 (txemaleon, merge 9a0de6a21) landed 91 exact functions as plain IDO 7.1 cfe C, one function per file in
+`src/match_imports/<fn>.c` with a context header (`src/match_imports/context_*.h`, `include/match_imports/common.h`).
+Each file builds with `$(CC) -c $(CFLAGS) -O2 $(MIPSISET)`, is linked by GNU ld with
+`scripts/match-origins-<fn>.ld` (.text at the function's offset, every extern = 0), gets its relocation symbols renamed
+by `scripts/bind-native-relocations.py` + `scripts/match-bindings-<fn>.json`, and is spliced with
+`private REPLACE_FUNC_BODY` (both trees, separate `-nm` ld / json). Several were our documented dead ends:
+timproc_b5 1460 (3 raw), gui 2BB0 (34), game_uso 7538 (18), game_uso 28C0 (4, "C++ only, NCC donor"), gl 3800C (99.3 %).
+
+1. **The separate TU is not the lever.** The flags are the host's (-O2 -mips2 -32 -G 0, same cfe), and asm-processor
+   does not touch C bodies. What the private TU buys is freedom in DECLARATIONS: each callee gets its own prototype,
+   and the function's own parameter gets a real struct type, without colliding with the host file's placeholders.
+   Every one of the five diffs below is a source difference that would compile the same way in the host TU if the
+   declarations allowed it.
+2. **Per-callee prototypes (gl 3800C, 28C0).** Our 3800C stalled on "the last call never sets a0; n is in a1". The PR
+   declares `extern int gl_3800C_get(void);` -- the call has NO arguments; the counter just happens to be coloured a1.
+   Our shared `gl_func_00000000` K&R placeholder forced every call site to pass something. 28C0 declares
+   `float game_uso_func_070238(float)` and `Vec3 *game_uso_28C0_rotate(Vec3 *, ...)`: prototyped float arguments
+   are not promoted to double (no cvt.d.s / mfc1 pair) and a pointer-returning helper followed by a by-value struct
+   copy (`dcopy = *rotate(scratch, src);`) gives the target's word copy. **Rule: when a residual sits at a call
+   boundary (arg register, cvt, return register), suspect the callee's prototype before the regalloc.**
+3. **One-element arrays and volatile unions force memory homes (1460, 28C0).** 1460's last residual was "the arg0+0x10
+   spill lands at 40, target 32" -- the PR writes the white value into `float retA[1]` (retA[0] = white after the
+   062880 call, read back for widget C's alpha) and `volatile int pad[4]`. An array local is never a uopt candidate,
+   so it gets a fixed frame slot by declaration order and stops competing with the spilled pointer. 28C0 uses
+   `GameUsoVectorOutput *out_home[1]`, `float mag[1]`, `union { Vec3 value; volatile Vec3 reload; } v2` (writes via
+   `.value`, reads via `.reload` = forced reload exactly where the target re-loads) and explicit `s32 pad1[2]`,
+   `pad2[2]`, `pad3[4]` between the Vec3 locals to set every slot offset. That reproduced what we had attributed to
+   edg's pooled temporaries (kits XL-XLIII): **28C0 is C, not C++.** Before declaring a function "NCC only", try
+   array-of-1 homes + volatile-union reloads + pad arrays in cfe.
+4. **Per-arm reloads and dead statements re-rank uopt candidates (7538).** Our 18-word residual was an a1/a2 swap of
+   the table pointers and lim tail. The PR (m2c-shaped: one temp per value, `temp_a1_2` ...) differs in: the mask is
+   re-read INSIDE each event arm (`if (1) { active_mask = arg0->field_6C; }`, one arm uses
+   `*(volatile int *)((char *)arg0 + 0x6C)`) instead of once after the chain; a dead
+   `while (0) { temp_a1_5 = temp_a2 + temp_a2; }` at the top of the 0x80 arm (first appearance of the variable --
+   uopt colours in first-appearance order, kit XXXIX, and a dead loop body still counts in cfe's numbering);
+   `if (1) { table_pair += arg0->field_58 * 8; }` after the base; `if (1) { temp_a2 = arg0->field_44; }`; the clamp
+   through an explicit `f64 temp_f0`. Literal `0.0f` instead of our shared `float zero` variable.
+5. **Comma copies keep an `or` copy uncoalesced (gui 2BB0).** Our residual: "target keeps lw s6 + or s1,s6 (rem a
+   copy)". The PR: `scratch = ((Info *)(metadata_copy = info, info = 0, metadata_copy))->field_08` -- copy into a
+   second variable and kill the first, so the copy survives; `short raw_height; int height = raw_height;` (sign-extend
+   once into an int web); `unsigned int step_x, step_y`; a block-scoped `int last_step_x`; trailing `if (src_x) {}`.
+6. **Other recurring PR idioms** (grep `src/match_imports`): `do { stmt; } while (0);` around single statements
+   (28C0 prologue: changes block structure without code), `if (a0) { }` empty conditionals on a live pointer,
+   `f = (0, mag2) * k` comma to break a CSE, and m2c-style temps kept verbatim (`temp_a1_2`, `temp_a1_3` ...: one
+   variable per value instead of reusing a named one).
+7. **Workflow to reuse the mechanism** (legal: compiled C, relocation symbols only renamed). Copy one existing set:
+   `src/match_imports/<fn>.c`, the four Makefile stanzas (compile x2, link x2, bind x2, REPLACE_FUNC_BODY x2 +
+   prerequisite lines), `scripts/match-origins-<fn>{,-nm}.ld`, `scripts/match-bindings-<fn>{,-nm}.json`. Check
+   `scripts/bind-native-relocations.py` for what the json must contain (`raw_sha256` is checked).
+8. **Applied this run (scratch `g133/`; `g133/sc.sh file.c FUNC [unit]` = standalone cfe compile + `rdiff --raw --pins`).**
+   - **The standalone TU really is neutral:** the in-tree 1DDC NM body pasted into a file that only includes
+     `context_game_uso.h` scores the same 36 raw words as in-tree.
+   - **gl 62194 22 -> 10 raw (committed, length 65 = target, clip unchanged).** The array-of-1 home `unsigned int n[1]`
+     for the stride * a3 product + a block-scoped `char *p` (computed before `n[0] = ...`) gives the target's
+     a2-product-first order with a 3-argument call (our old 4-argument trick cost +8 frame), and dropping the named
+     self->8 local gives frame 40. LEFT: self->8 CSE temp v1 (target t0); in the target the else product is a uopt
+     candidate in v1 that outranks it. Named / block / function-scope product variables and k = 2 cuts are flat.
+   - **1DDC key-3 arm (36, flat).** Target `lw t6,20(a0)` = the first out pointer is a ugen-local temp (t6), and the
+     non-3 arm's `lw t7` follows from ugen's register rotation (t6 already used in program order); ours makes it a
+     uopt candidate (v0) under every spelling tried (separate block variable, outh[0]-only reads, store order, comma
+     forms: 36 / 47 / 78 / 137-385). Untested next idea: rewrite 1DDC from the PR's 28C0 source (the same homing
+     body), not from our NM.
+   - **timproc_b5 32C8 (5, flat):** zero literal / l134 spellings (0.0f, chained, `vF8.z = vF8.x`, scoped zero, comma
+     zero, cut before) all 5-107.

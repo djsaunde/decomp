@@ -13294,6 +13294,23 @@ scripts/blockcut-search.py --unit src/game_libs/game_libs_post0b gl_func_00061B3
   12..1000: DIAGNOSTIC ONLY (it is a codegen flag). Flat = no counted-load boundary is involved.
 - `--write OUT` saves the best variant's full source; `--keep OBJ` keeps the base object;
   `--verbose` prints compiler errors.
+- **Two hard rules (agent-c run 128 fix, after run 127 produced fake wins):**
+  1. No cut is ever placed in front of `else` (after a `}` or a `;` whose next token is `else`):
+     `if (a) { x; } if (1) {} else { y; }` re-binds the else to the inserted `if (1)`, which is a
+     different program that can score better by accident.
+  2. Every variant is scored with rdiff's `len ours vs target`. A variant whose function length
+     differs from the target prints as `N LEN!ours/target`, ranks below EVERY same-length variant,
+     and never prints as `improve`. If the unmodified base already has the wrong length, the script
+     warns, and every variant reads as a non-win until the length is fixed by a decode change.
+  Self-test (no compile): `scripts/blockcut-search.py --selftest` prints
+  `selftest OK: 8 positions, none in front of else`. Example on a wrong-length base:
+  ```
+  $ scripts/blockcut-search.py --unit src/game_libs/game_libs_post gl_func_000250C8 --k 1 --top 2
+  base 82  (len 152 vs target 150)
+  WARNING: the unmodified function length differs from the target; ...
+  best (74/74 variants compiled, 74 rejected as length-changing):
+       82 LEN!152/150  (no cut)
+  ```
 - Speed: a whole game_libs_post0b promote build is ~1.4 s (asm-proc 0.3 + cc 0.6 + post 0.5), so
   ~6 variants/s with 8 jobs; NCC drafts are faster; timproc_b5 in `--nm-tree` fallback is slower.
 - Sweep result (run 127, 129 NM functions in agent-g units, k=1 everywhere, k=2 for raw <= 16):
