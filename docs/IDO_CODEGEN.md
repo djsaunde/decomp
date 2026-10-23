@@ -14452,6 +14452,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit XXVII (agent-g 2026-10-22, run 122): frame too small by N words = N unused declared locals (64588, plus per-box slot pointers); `if (1) {}` splits one block's float-literal candidates so each group reuses f0, and a two-use `1.0f` becomes a candidate only as `1.0`/`1`; a game_libs "D+off data variable" was the double literal 0.2 (bootup.uso RoData +X = ROM 0xD9FE44+X, leading marker word) -> 675A4 donor with `_rodata` pin; same-line call + brace + store fixes an as1 order (546E8); edg source-order dispatch chains as a goto ladder ending `!= last -> default` (578B4); 591C/76F0 switch-temp copy, 5062C, gui family, 148 negatives](#kit-xxvii-agent-g-run-122) -- _EXACT: gl 64588, 675A4, 546E8. Do not list a REPLACE_FUNC_BODY donor as a host prerequisite; rdiff --pins misses calls to real in-module functions (ROM cmp catches them)._
 - [kit XXVIII (agent-c 2026-10-22, run 123): bootup.uso RoData literal sweep (TextReloc symIdx 1 = RoData; only 36 agent-c NM wraps load FP from it); a literal used twice inline instead of a named f32 ratio fixes E270's "spill-slot swap" (frame word); inline list member `L::add(Pair *n)` keeps the new-expression result a separate web from the call argument (7204 exact under NCC); cfe frame accounting: a `switch` costs a temp word, unused arrays/words size the frame, dot/s as ONE variable, `if (arg3) {}` keeps an argument live; an index read into its own int before the store + a held list pointer (45178 14 -> 5); 240A0 blank imports](#kit-xxviii-agent-c-run-123) -- _EXACT: bootup E270 (pi literal donor), 7204 (NCC donor). NM: 45178 27 -> 5, 240A0 20 -> 10, E2D0 55 -> 19, 8124 40 -> 31 raw words._
 - [kit XXIX (agent-g 2026-10-22, run 123): a compare-chain dispatcher with no jumptable, or a `lw t9; lh; jalr; addu a0` virtual call, in game_libs / game_uso NM wraps is C++ -- rewrite under NCC instead of tuning the cfe goto ladder (55470 opcode dispatcher with a real cfront virtual + inline next(), 56974/56D14 combine-mode switches, game_uso 57D8 8-way switch that cfe jumptables); an m2c frame 64 bytes short = `s32 pad[16]` + multu operand swap + guard-local zeroing (53560); a donor host placeholder must keep the .s's .late_rodata (move it to the next INCLUDE_ASM .s); literal sweep and frame sweep results; NCC drops unused scalars but keeps class objects](#kit-xxix-agent-g-run-123) -- _EXACT: gl 53560, 55470, 56974, 56D14, game_uso 57D8 (+4288 B, 61.13 -> 61.69 %). Sweep scripts: vsweep (NCC fingerprints), frames (frame-size deltas), litsweep (RoData literal lookup)._
+- [kit XXX (agent-c 2026-10-22, run 124): C++-tell sweep of the agent-c units (table); the by-value array index iterator = fields in a BASE class (only then the cfront this==0 new protocol), `Arr::iter()` returning `AIter(self)` with a dead `if (0) { self = this; }`, `operator[]` inline webs (gl 4E244 exact); frame main loop with real virtuals + `for (quit = 0;;)` (gl 34EB4 exact); bootup 4948 is C++ (Vec3 without a user copy ctor, shared edg ctor-param temps recoloured by a dead statement, Node::get fills); 1304C C++ by shape but NCC frame 72 vs 96; out-of-line ctors 3800C/35B1C need a mangled-symbol rename; NM-tree alignment pad hazard](#kit-xxx-agent-c-run-124) -- _EXACT: gl 34EB4, 4E244 (+1000 B, 61.72 -> 61.85 %). NM: bootup 4948 94.05 -> 99.76 (2 words: divisor temp slot 236 vs 232)._
 - [kit XXXI (agent-g 2026-10-22, run 124): the gui sprite blitters 27A0/3B80 are C++ -- under NCC with an inline `next()`, verbatim `gSPTexture`, edg `switch` and inline accessors `width()`/`height()` they reach 4 / 10 raw words (cfe NM wraps 96.5/96.2 had ~45-70); the frame of an NCC function is set by DECLARATION ORDER of every declared scalar up to the lowest used home (budget first, 5 locals, then fn = target homes 116/92); a pre-call copy that uopt keeps (`or s3,s0`) needs the source var REDEFINED on that path (dead `h = 0;` blocks copy propagation, 19 -> 10 words); edg pools the next() `this`, the switch value and `?:` temps into ONE variable (the s0/v0/a1 'scratch' of the gui family); C++-tell sweep table](#kit-xxxi-agent-g-run-124) -- _No exacts this run. Open: 27A0 = x-copy vs y-home-store prologue order (needs x as a colour-s8 param AND a1 for the pooled temp); 3B80 = budget `li` deferred after the fn spill store in all three arms; 329C NCC first compile 137 words (pooled temp t1 vs target s0)._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
@@ -33936,6 +33937,87 @@ Four of them came from one observation: these cfe NM wraps were C++.
    a1,v0,zero` pattern (switch value in v0, the per-case argument copy in a1) did not appear with `int c`,
    `char c`, a separate `k = c`, `switch (c = *fmt++)`, or `register`. 76F0 has real jumptables (cfe).
 
+
+## kit XXX (agent-c 2026-10-22, run 124): C++-tell sweep of agent-c units, the by-value index iterator, Vec3 operator temps, out-of-line ctors <a name="kit-xxx-agent-c-run-124"></a>
+
+Two exacts (gl 34EB4 688 B, gl 4E244 312 B; 61.72 -> 61.85 %), bootup 4948 NM 94.05 -> 99.76 (2 raw words), and
+NCC drafts that show which of the big agent-c NM wraps are C++.
+
+1. **Sweep (scratch `c124/tellscan.py`, target objects of every unmatched agent-c function).** Tells counted:
+   compare chains on one register with no `jr` (>= 5 = NCC per kit XXIX), edg-order virtual calls
+   (`lw t9; lh; jalr; addu a0` in the delay), cfe-order ones (`jalr; nop` after `lh; addu`), cfront new
+   protocol (`bnez this; ...; jal; li a0,N; beqz v0`), and inline `next()` bumps (`lw; addiu 1; sw` on one
+   base). 84 of 212 functions hit at least one. What the tells were worth this run:
+
+   | function | size | tell | result |
+   |---|---|---|---|
+   | bootup 4948 | 1704 | chain19 | C++: NM donor 94.05 -> 99.76 (#4) |
+   | gl 34EB4 | 688 | nccvirt5 | EXACT (#2) |
+   | gl 4E244 | 312 | nccvirt1 + new(12) | EXACT (#3) |
+   | gl 49B3C | 640 | nccvirt2 + new(12) | same iterator; 40 raw words (frame layout differs from 4E244, #3) |
+   | gl 41D40 | 412 | new(12) | same iterator; global base held in s2 in the target, 69 words |
+   | bootup 1304C | 2264 | next27 | C++: NCC 56 shape words / 566 (cfe 459) but frame 72 vs 96; in-tree 93.39 < cfe 93.78, not wired (#5) |
+   | gl 4C928 | 908 | nccvirt4 | NCC draft 130 raw words (#7) |
+   | gl 3800C / 35B1C | 252 / 308 | new(44/16) | the function IS an out-of-line ctor (#6) |
+   | bootup 24B8 | 700 | nccvirt3 | reused C pointer var (s0 vptr) under NCC: 105 words, not pursued |
+   | gl 3E0F0 | 192 | new(4) | 7 words, unchanged (#9) |
+   | bootup D440, D900, gl 3FC58, 42938, 4D688, 1EF20, 39094, 40640, h2h 620/1360, 48AEC, 493AC, 4B620, 4B0A8 | - | chain / virt / new(12) | not attempted this run |
+   | bootup 90CC, E68, 55A0 | - | new / next | not attempted (size) |
+
+2. **gl 34EB4 (96.37 -> exact):** the frame main loop. Real virtual hooks v3/v4/v13/v15 on a 40-byte base
+   (`struct AppB : Pad40 { virtual ... }`, vptr +0x28), the one-shot callback at +0x30, the object list pump
+   and a never-set `quit` (the epilogue is unreachable but emitted). `for (quit = 0;;)` puts `li s4,0`
+   after the hoisted string addresses; `quit = 0;` before the loop schedules it first.
+3. **The by-value array index iterator (gl 4E244 exact).** `{Arr *a; int idx; int last}`, 12 bytes, built by
+   `new`-protocol code on a stack address (`addiu v1,sp,60; bnez v1; ...; jal new; li a0,12`), copied twice
+   (construct -> return temp -> `it`), stepped by `idx < last ? &a->data[++idx] : 0`, body re-reads
+   `a->data[idx]`. What it takes under NCC:
+   - edg emits cfront's `this == 0 -> new(12)` protocol only when the fields live in a BASE class whose ctor
+     runs from the derived ctor (`struct IBase { ...; IBase(Arr *) }; struct AIter : IBase { AIter(Arr *arr)
+     : IBase(arr) {} }`); a ctor on the class itself, out-of-line or not, never shows it;
+   - `inline AIter Arr::iter() { Arr *self = this; if (0) { self = this; } return AIter(self); }`: the
+     return-by-value gives the two copy ladders, the named `self` is the target's 4-byte slot between the
+     return temp and the constructed object, and the dead assignment recolours the construction block
+     (&tmp v1 / this a1 / array a2; without it v1/a1/a2 rotate);
+   - `Elem *&Arr::operator[](int)` used by next()/cur(): the array pointer and the pre-incremented index
+     become inline-parameter webs (v0/v1/a0/a1 candidates) instead of t-ring temps.
+   The same iterator is in gl 41D40, 48AEC (x3), 493AC (x2), 49B3C, 4B0A8, 4B620, but the frame differs per
+   caller: 49B3C has no self slot and a dead 12-byte block between `it` and the return temp (it/X/Y/Z =
+   116/104/92/80) and different colours; 41D40 holds the global array base in s2 across the first call.
+4. **bootup 4948 is C++ (NM 94.05 -> 99.76, donor `bootup_uso_ncc_4948.cpp`, NM tree only).**
+   - Vec3 must NOT have a user copy ctor: with one, every `return r;` gets the this==0 protocol.
+   - `Vec3 r(x, y, z); return r;` operators give the target's r -> shared return temp (sp+260) -> dest ladder.
+   - edg inlines the ctor's float params as three SHARED function-level temps (x/y/z of every vector op, one
+     uopt variable each), so their colour is global: a dead statement at the top of the ctor
+     (`if (0) { x = a; }`, any dead statement works) turns ours f2/f12/f14 into the target's f14/f2/f12.
+   - `Node::get(Vec3 &v) { v.x = pos.x; ... }` = the interleaved lwc1/swc1 fills of C and E; `switch`
+     in case order = the edg compare chain; the sqrt/trig import needs a float prototype (an `extern "C"`
+     alias pinned 0), `(...)` passes doubles.
+   - Frame slots: B before sv in the snap macro, a leading `E16 *ep;` in section 1, an inline accessor
+     returning `Vec3 &` in section A (its reference temp is the extra word).
+   - Left: the divisor-call result is stored to the first free edg float temp (sp+236 = the x param
+     temp's home) where the target uses sp+232; inline wrappers, operand orders and named temps all keep 236.
+5. **bootup 1304C is C++ (shape), not landed.** Fire-grid blur + 27 gbi commands through the context's
+   inline `next()`. Under NCC: flat `f->grid[y * 32 + x]` neighbours with a running `int i = y * 32` for
+   the centre (strength-reduced like the target, `grid[y][x]` 2D indexing is not), if/else for the
+   neighbours and k, the `?:` select for the texel, `t = f->timer = t - 1`. The same logic under cfe is 538
+   words with 459 shape diffs, so the function is C++; but the NCC frame is 72 (target 96) with one s-reg
+   fewer, and the in-tree score (93.39) is below the permuter-tuned cfe NM (93.78).
+6. **Out-of-line ctors (gl 3800C, 35B1C):** the target function is `Derived::Derived(int)` itself: this==0
+   -> new(44), nested base (24 B) and member (16 B, 4 B) protocols, members' ctors, vptr store at +0x28
+   after them, then the body. NCC compiles the class version to 63/64 words of 3800C with the store order
+   fixed (`M16() { c = 0x8000; a = -1; b = 0; }`). Blockers: the donor symbol is mangled
+   (`__ct__7DerivedFi`) and needs a rename after the compile (scripts/rename-elf-symbol.py, a symbol rename
+   the policy allows, not wired yet), and 3800C's last call sets only a1 (a0 left as is): not an
+   uninitialized int/float/register local and not an empty tag class.
+7. **gl 4C928:** the `a0->vptr` call colours the vptr s0 only as a C-style call through the reused state
+   pointer variable (`st = *(State **)(a0 + 0x28)`); the `+0x1C` read is `st = (State *)D; st->p1C`.
+   Open: frame 104 vs 120 and the saved dD4 in v1 (target) vs spilled.
+8. **NM-tree pad hazard:** the post0b NM text moved by -0xC net (34EB4/4E244 donors + placeholder hosts),
+   which moved a 16-byte alignment pad: agent-g's 61478 NM lost its trailing pad word (88.27 -> 87.05)
+   and 4D688 gained (72.50 -> 74.18). ROM and exacts unaffected; the clip rule (62F08 + 0x50) still holds.
+9. **3E0F0:** a holder object with the assignment inside the call (`gl_func(r.o = p, ...)`, an inline
+   `R2::set`) still stores s0 early (copy-propagated); 7 words, as run 123.
 
 ## kit XXXI (agent-g 2026-10-22, run 124): gui blitters under NCC, NCC frame = declaration order, copy-propagation blockers, pooled edg temps <a name="kit-xxxi-agent-g-run-124"></a>
 
