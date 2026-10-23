@@ -14468,6 +14468,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit XLIV (agent-g 2026-10-23, run 133): lessons from PR #10 (txemaleon, 91 plain-cfe exacts incl. our "C++ only" 28C0 and the flat 1460 / 2BB0 / 7538 / 3800C) -- the SOURCE, not the separate TU, made them match (same flags; our 1DDC NM scores the same standalone): per-callee prototypes (`int f(void)`, unpromoted float args) instead of the shared K&R `gl_func_00000000`, one-element ARRAY locals and `union { Vec3 v; volatile Vec3 r; }` to force stack homes / reloads, `s32 padN[k]` slot placement, per-arm reloads `if (1) { m = p->f; }`, dead `while (0) { x = a + a; }` first appearances, comma copies `(t = p, p = 0, t)` for uncoalesced or-copies; applied: gl 62194 22 -> 10 with an `n[1]` home](#kit-xliv-agent-g-run-133) -- _no exact; NM gl 62194 22 -> 10 raw._
 - [kit XLV (agent-c 2026-10-23, run 128): blockcut-search hard rules (no cut in front of `else`, length-changing variants are non-wins, `--selftest`); PR #10 spellings and lever A (per-callee prototypes) probed on 4EE44 / CA0 / 6204 / h2h 620 / 49B3C -- all flat; the residuals in this band are integer-only colour ties that prototypes cannot reach; standalone TU == in-unit TU for every probe](#kit-xlv-agent-c-run-128) -- _no exact, no NM change; tool fix committed._
 - [kit XLVI (agent-g 2026-10-23, run 134): lever-A sweep over every agent-g partial function is NEGATIVE (no float-promotion, extension or phantom-argument rows at any call boundary); new lever E = a trailing empty `if (p) {}` on a value the target keeps live to the end (game_libs 3298 EXACT: 0xFF moves v0 -> v1); 1DDC 36 -> 13 by 28C0's store-then-read one-element home (ugen t6) + scoped home read + per-role FP variables; 62194 10 -> 4 by a block-scoped re-read of self->8; 5062C / 32C8 / BB8C cfe draft / 5F0B8 / 525F0 / 533EC negatives](#kit-xlvi-agent-g-run-134) -- _EXACT: game_libs_func_00003298. NM: 1DDC 36 -> 13, gl 62194 10 -> 4 raw._
+- [kit XLVII (agent-c 2026-10-23, run 129): ugen temp-order levers on game_libs_post (dead `& 0xFF` / `& 0xFFFF` masks and statement order burn the target's skipped t-registers; a compound `+=` fixed 31 words), the target's dead entry `or a0,zero,zero` is the init of an IV-eliminated counter (bound re-read in the loop test), gbi `Gfx *_g = gp++` copy-and-bump shape, integer `0` for a float store gives its own `mtc1 zero`, dead `while (0) { g = g + 0; }` inside a loop keeps a const base in a register, unused non-volatile pad arrays are NOT free; last run's float lever-A candidates were inside exact functions (null)](#kit-xlvii-agent-c-run-129) -- _no exact; NM: 26790 64->41, 250C8 82->61, 26D64 93->61, 1DCB4 157->146, 2B5F4 197->168, 2C7A4 206->155, 24378 323->243, 32E18 17->4, bootup 8FA8 15->13 raw._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
@@ -35143,3 +35144,67 @@ lever-E sweeps, standalone and in-tree).
    `| 0` / `+ 0` / comma copies / block-scoped and `register` temps / volatile read / ternary -- the in-place
    `andi a1,a1` (67 words) or worse. mgrproc 1824 and kernel 80008030 re-read: not reachable (jtbl %lo; likely
    hand-written asm, see its header).
+
+## kit XLVII (agent-c 2026-10-23, run 129): ugen temp order, IV-eliminated counter inits, gbi copies <a name="kit-xlvii-agent-c-run-129"></a>
+
+Scratch harness: build only the NM object (`make build/non_matching/src/<seg>/<file>.c.o`, ~1.5 s for
+game_libs_post) and score with `rdiff --raw --pins`; a side-by-side printer (`render()` of both objects,
+row by row with `*` on mismatches) shows temp-number drift far better than the difflib hunks.
+
+1. **Last run's lever-A float candidates were null.** bootup ~3844 and ~8167 are inside EXACT functions
+   (6254 / CCE0, func_cce0 already has a float prototype); ~7915 is an integer index; timproc_b1 line 673
+   is inside the exact 11D0, and the NM 1340 passes only `(s32)` casts. Agrees with kit XLVI: no float
+   promotion rows left in agent-c units either.
+2. **ugen temp numbering is evaluation order, and dead ops still take a register.** When the target's
+   t-registers run 1-2 ahead of ours from some point on, the target evaluated an extra (later deleted)
+   operation there. Fixes that landed:
+   - 26D64 (93 -> 61): `CUR_A = (arg0 >> 8) & 0xFF` (u8 store drops the andi, t7 is still burned) and
+     `lo = (u8) (arg0 & 0xFF)`; plain `(u8)(arg0 >> 8)`, `/ 256`, `(s32)` forms are flat.
+   - 2C7A4 (206 -> 155): `o->hA = (o->hA - D) & 0xFFFF` (dead u16 mask, burns t1); `o->wE0 += 1` moved
+     to the front of the accumulate (target evaluates it first: t3/t4 before hA/h8); h10 countdown read
+     through the field (an `r` web sat in v1 for the whole loop). Biggest single win: case 0xC8
+     `o->hE = o->hE + (s8)f()` -> `o->hE += (s8)f()` (-31): the spelled-out add evaluates the call
+     operand first and swaps the addu operands; the compound form loads hE first.
+   - 32E18 (17 -> 4): `p[0] = (p[2] = 0x8000, -1);` evaluates the 0x8000 constant first (target
+     `ori t8` before `addiu t9,-1`) while keeping the store order 0 then 8.
+3. **A float store of integer `0` gets its own `mtc1 zero`.** 32E18's 0xFC field: the target materialises
+   a second zero into $f10 instead of reusing the shared $f0 zero. `= 0` (or `0.0`, `(f32)0`) instead of
+   `0.0f` reproduces it (+1 word, length 158 -> 159 = target). `-0.0f` is a different constant (+2).
+4. **The dead `or a0,zero,zero` at entry = an IV-eliminated loop counter init (24378, 315 -> 243).** The
+   u64 clear is `for (srci = 0; srci < *(s32 *)(B + 4) / 8; srci++) t64[srci] = 0;` with the bound in
+   the TEST: it is re-read (no trip count, no x4 unroll), uopt rewrites the loop to the pointer form and
+   leaves the counter's init behind. With a named `n` bound it unrolls (+28 words); reusing `i` (live
+   later) puts the init in s1. Also in 24378: `volatile s32 pad[16]` declared FIRST gives frame 0x80;
+   declared LAST it does not grow the frame at all. Decl order then places the two spill homes.
+5. **Display-list writes are the gbi copy-and-bump (1DCB4, length 284 -> 288 = target).** The target's
+   `or v0,s5,zero` before each pair of stores is `Gfx *_g = gp++; _g->w0 = ...; _g->w1 = ...;`. Spell it
+   as `p = gp; gp += 8; *(s32 *)(p + 0) = ...; *(s32 *)(p + 4) = ...;` reusing an existing pointer
+   local: a NEW block-scoped local takes a stack home and grew the frame 192 -> 208 (buf moved).
+6. **Dead `while (0) { g = g + 0; }` at the top of a loop body keeps a constant base in a register**
+   (26790, 64 -> 41): &D now takes a3 in every switch case as in the target. Placed after the loop's
+   first statement, at the case entry or before the `if`, it does nothing (or hurts). It did NOT help
+   2119C (the proxy-extern hold there is still needed: plain `B = gl_d` folds every access, +32 words).
+7. **Switch case ORDER is a layout lever:** 250C8's "cross-jump of cases 0 and 2" was just source order;
+   writing the cases 0, 2, 1 matches the target's body order (82 -> 66), plus unsigned sub/rem (sltu).
+8. **Named locals and frames (2B5F4, 197 -> 168).** Block-scoped locals in sibling blocks do NOT share
+   homes in IDO 7.1 (every one adds a word). Hoisting the needed names to function scope and de-naming
+   base / nv / v / v2 took the frame 96 -> 72 (target 64) and removed an ours-only `or` copy (length
+   258 -> 257; `--nosp --noreg` now differs only by the target's two extra ptr copies, so the length gap
+   is exactly those). One name is still too many.
+9. **Unused NON-volatile arrays are not always free.** 32E18's `int pad[4]` between two Vec3 locals
+   changes the homes (removing it: 4 -> 35) although `pad[4]`, `pad[5]` and `pad[6]` score the same,
+   while in 24378 a trailing unused `s32 pad[k]` is dropped entirely. Test, do not assume.
+10. **A function-scope named local's home IS its spill slot (bootup 8FA8, 15 -> 13).** `tbl` was a block
+    local spilled to sp+0x1C across the realloc call; declared at function scope between
+    `volatile int pad_t[1]` and `pad_hi[2]` the spill lands at sp+0x40 as in the target (lever B without an
+    array). 2BB7C's frame 184 vs 136 has the same cause: 14 named locals take ~12 words above `args[10]`
+    (args first moves args to the top and the names below, frame unchanged); the target fits its names in 8
+    words below args -- needs fewer names, not done.
+11. **Negatives.** Lever E (trailing `if (x) {}`) on 1DCB4 arg1 / arg0 and 26790 g / i: all worse. 26790:
+    `g` as a parameter, single top assignment (+4 words, folds), q via typed index, per-loop counters,
+    while(0) on i / q / p: flat. 250C8: rem never colours (homed at 48, "not colored, not splittable"
+    in -zdbug:6); `sub[1]` array 61 -> 71. 25504: inlining idx loses the t-ring (76 -> 91). 2A258 (6
+    raw, pure schedule of the two sh 2048 stores) and 240A0 (11): blockcut k=2 flat; any `while (0)`
+    inside a switch case explodes the jumptable layout (11 -> 173). 2C7A4 C9 / CA: h / constant spellings
+    flat. 32E18: decl order `o, b, p, q, zv, r, pad[4], v` + the comma Vec3 init puts zv at 68 as the
+    target but v moves to 36 (target 32): also 4 raw, not committed.
