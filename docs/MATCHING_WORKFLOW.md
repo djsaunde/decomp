@@ -13,6 +13,7 @@
 _76 entries. Auto-generated from per-memo notes; content may be rough on first pass — light editing welcome._
 
 - [scripts/rdiff.py (1080): branch-offset- and jal-aware per-function diff -- `--raw --pins` keeps branch targets (measured from the function's FIRST label) and jal targets and applies undefined_syms pins; the masked default view hides decode errors (agent-c run 121)](#rdiff-raw-pins-run121) -- _run it on every near-miss before trusting an old cap note; classify each residue as decode / pin / schedule / colour._
+- [scripts/blockcut-search.py (1080): parallel out-of-tree search for uopt basic-block cuts (`if (1) {}` at every 1..K-subset of statement positions, plus `--swap X=>Y` alternatives) for one function -- cfe NM wraps in PROMOTE mode (only that wrap compiled as C, matching-build pipeline, never edits src/) and NCC donors / drafts; scores rdiff --raw --pins (agent-g run 127)](#blockcut-search-run127) -- _found gl B958 (1 cut after a loop's `{`) and gl 51ED8 (cut + K&R `va_alist`); the run-126 search missed B958 because it never cut right after a `{`._
 - [Parallel agents can share ONE scratchpad directory: keep scripts in a private subdir (agent-c run 105 ran agent-g's same-named gate.sh, which cd'd into agent-g's worktree)](#shared-scratchpad-collision-run105) -- _name every scratch script with your agent letter or put it under scratchpad/<agent><run>/._
 - [game_uso NCC (C++) donor recipe: game_uso is C++ -- compile a function with IDO 7.1 NCC from a `.cpp` donor and REPLACE_FUNC_BODY-splice it into game_uso.c.o; no Yay0 / objdiff / expected/ change (D204 85.8 + 10694 71.5 -> EXACT, 2026-10-15 agent-g)](#game-uso-ncc-cplusplus-donor-recipe) — _generic `build/src/%.cpp.o` NCC rule, all symbols `extern "C"`, placeholder body in the host, `+=` per function. Tell: pointer-to-member compare (`addi` + `lw at` 2-word loop), PMF passed by value (a1/a2 + home slots)._
 - [Variant-sweep harness gotcha: restoring the source with the original bytes can leave its mtime OLDER than an object built from a variant -> make keeps the stale object -> ROM mismatch far from your edit; touch/utime the restored file (agent-g 2026-10-22)](#variant-harness-stale-object-mtime) -- _Also: an NM wrap's placeholder callee name can link to a REAL function (8E48's gl_func_00008C3C); objdiff hides it, only ROM cmp shows the jal target._
@@ -13247,3 +13248,54 @@ target's real callee) for every jal-0 in the target.
 - `scripts/refresh-report.sh` (objdiff `report generate`) is lenient. A donor at 85/250 differing
   words (86 with offsets masked) reports 98.08, so do not read the NM percentage as distance to
   exact.
+
+## scripts/blockcut-search.py: uopt block-cut placement search (agent-g 2026-10-22, run 127) <a name="blockcut-search-run127"></a>
+
+uopt decides interference per basic block, and a block ends at every label and after 20 counted
+variable loads (docs/IDO_CODEGEN.md kit XXXV). An empty `if (1) {}` emits no code but ends a block,
+so many "colour / delay-slot / reload placement" residuals are a missing boundary. The script places
+cuts by brute force for ONE function and scores each variant with `scripts/rdiff.py --raw --pins`
+(diffwords, 0 = exact). It never runs make and never edits `src/`: every variant is compiled in a
+private temp dir in parallel (`--jobs 8`).
+
+```
+scripts/blockcut-search.py --unit src/game_libs/game_libs_tail gl_func_0000B958 --k 2
+scripts/blockcut-search.py --file src/game_uso/game_uso_ncc_28C0.cpp game_uso_func_000028C0 \
+    --expected expected/src/game_uso/game_uso.c.o --k 1
+scripts/blockcut-search.py --unit src/game_uso/game_uso game_uso_func_00001DDC --k 0 --varref
+scripts/blockcut-search.py --unit src/game_libs/game_libs_post0b gl_func_00061B30 --k 1 --lines 1-2 \
+    --swap 'void gl_func_00061B30(char *fmt, ...) {=>void gl_func_00061B30(fmt, va_alist) char *fmt; int va_alist; {'
+```
+
+- **`--unit` (cfe wraps), PROMOTE mode by default:** only the target's `#ifdef NON_MATCHING` becomes
+  `#if 1`; every other wrap stays INCLUDE_ASM and the unit goes through asm-processor pass 1, cc
+  and the post-process, i.e. exactly what landing the function as plain C builds (its rodata
+  offsets included). A 0 here is landable. If that build fails (the wrap uses types that live in
+  other NM blocks, e.g. timproc_b5 `struct TimB5V3`), it falls back to `--nm-tree` (whole unit with
+  `-DNON_MATCHING`), which is the report's object. Flags come from parsing the Makefile (global
+  values + target-specific lines for that object); the Makefile is never executed (`make -n -B`
+  runs `$(MAKE)` recipe lines and rewrote NM objects in run 126).
+- **NM-only donors:** if the Makefile splices the function from a donor (`REPLACE_FUNC_BODY`), the
+  in-tree body is a placeholder; the script prints a warning naming the donor. Search the `.cpp`
+  with `--file ... --expected expected/src/<unit>.c.o`.
+- **Positions** = after every `;` at paren depth 0, after every `{` and after every `}` in the body
+  (C mode skips positions followed by a declaration). The run-126 cfe batch only cut after `;`/`}`:
+  gl B958's exact cut is directly after the `for (...) {`, which that batch never tried.
+- **Search size:** `--k K` = all 1..K-subsets (exhaustive up to `--max`, then automatically
+  `--greedy` = singles then a beam of 4). `--lines A-B` restricts positions. `--swap 'X=>Y'` offers
+  replacing each occurrence of X in the function (header included) with Y, counted towards K; an
+  empty Y deletes (drop an old adder: `--swap 'if (1) {}=>'`); use it for spelling alternatives too.
+- **`--also NAME`** adds the positions inside another function body (an inline member such as
+  `next()`); one cut there lands in every inlined copy (agent-c's 1304C `nextb`). Cuts inside a
+  macro need the draft expanded first (`gcc -E -P`). Staged search (agent-c run 126): best packet
+  cuts first (`--k 1..2`), keep them in the file, then `--also next`, then the expanded macros.
+- **`--varref`** compiles the unmodified source with `-Wo,-varref,N` (dump toolchain) for N in
+  12..1000: DIAGNOSTIC ONLY (it is a codegen flag). Flat = no counted-load boundary is involved.
+- `--write OUT` saves the best variant's full source; `--keep OBJ` keeps the base object;
+  `--verbose` prints compiler errors.
+- Speed: a whole game_libs_post0b promote build is ~1.4 s (asm-proc 0.3 + cc 0.6 + post 0.5), so
+  ~6 variants/s with 8 jobs; NCC drafts are faster; timproc_b5 in `--nm-tree` fallback is slower.
+- Sweep result (run 127, 129 NM functions in agent-g units, k=1 everywhere, k=2 for raw <= 16):
+  see docs/IDO_CODEGEN.md kit XXXVII for the table. Most cfe residuals do not react to cuts at
+  all (labels everywhere); the hits were single-cut fixes in small loops and straight-line code.
+
