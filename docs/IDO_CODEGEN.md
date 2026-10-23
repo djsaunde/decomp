@@ -14471,6 +14471,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit XLVII (agent-c 2026-10-23, run 129): ugen temp-order levers on game_libs_post (dead `& 0xFF` / `& 0xFFFF` masks and statement order burn the target's skipped t-registers; a compound `+=` fixed 31 words), the target's dead entry `or a0,zero,zero` is the init of an IV-eliminated counter (bound re-read in the loop test), gbi `Gfx *_g = gp++` copy-and-bump shape, integer `0` for a float store gives its own `mtc1 zero`, dead `while (0) { g = g + 0; }` inside a loop keeps a const base in a register, unused non-volatile pad arrays are NOT free; last run's float lever-A candidates were inside exact functions (null)](#kit-xlvii-agent-c-run-129) -- _no exact; NM: 26790 64->41, 250C8 82->61, 26D64 93->61, 1DCB4 157->146, 2B5F4 197->168, 2C7A4 206->155, 24378 323->243, 32E18 17->4, bootup 8FA8 15->13 raw._
 - [kit XLVIII (agent-g 2026-10-23, run 135): lever E generalised to ANY statement position -- an empty `if (v) {}` after an arbitrary statement (not only at the end) is a zero-instruction live-range / candidate lever; a parallel out-of-tree sweep (`if (v) {}` after every statement and brace x every scalar/param, `while (0) { v = v + 0; }`, `v[1]`, dead `while (0)` pairs, pairs of insertions) over all 30 same-length agent-g partials; gl 62194 EXACT by naming the else product, folding it (`b += q`) and testing it (`if (q) {}`) before the call (q becomes a v1 uopt candidate); 1DDC 13 -> 10 by `if (fz) {}` at function ENTRY; length-changing sweep 'wins' all lower objdiff fuzzy except 6126C](#kit-xlviii-agent-g-run-135) -- _EXACT: gl_func_00062194. NM: 1DDC 13 -> 10, kernel 2250 27 -> 22, kernel 1594 39 -> 35, gl 64388 26 -> 23, timproc_b5 1F14 676 -> 590 raw._
 - [kit XLIX (agent-c 2026-10-23, run 130): baked-jal / baked-data pin job on game_libs_post + post0b (probe build maps each placeholder call site to the target's jal word; objdiff already ignored these fields, rdiff raw drops), dead `& 0xFF` masks in place of `(s8)` casts in a uopt-unrolled copy loop (24378 240 -> 9), dead u8 mask on an increment store (26D64), u8 local reused as a call argument keeps the target's copy (26790), two statements on ONE line fix a lui/addiu interleave, any dead `while (0)` in a loop body recolours its accumulator; negatives on 32E18 / 240A0 / 250C8 / 2BB7C / 2B5F4 / 2C7A4 / 1DCB4 / E2D0 / 8FA8 / 40304](#kit-xlix-agent-c-run-130) -- _no exact; NM: 24378 240->9, 26790 41->28, 26D64 61->49, 25504 76->74 raw; pins: 2C7A4 155->120, 2BB7C 416->391, 30AF4 275->229, 2AD1C 164->145, 2E354 732->682, 21E58 / 276E4 raw 1->0._
+- [kit L (agent-g 2026-10-23, run 136): length-correcting sweeps scored by objdiff fuzzy (`SCORE=fz`), new psweep kinds (named product + empty test, comma / one-line joins, `X = (Y = K2, K1)` order rewrites, chains, comma copies), swap / compile-failure scoring bugs fixed; 5D134 76.8 -> 96.5 via named product + comma-ordered loads + empty tests; a length-mismatched neighbour's fuzzy moves with its offset (66A50)](#kit-l-agent-g-run-136) -- _no exact; NM fuzzy: 5D134 76.8 -> 96.5, 6126C 78.4 -> 83.0, 5F5F0 82.3 -> 85.0, 65494 78.3 -> 79.5, b5 1F14 84.60 -> 84.71._
+- [kit LI (agent-c 2026-10-23, run 131): two exacts by copy elimination / struct copy -- an append-with-realloc count assigned AFTER the if with the compare reading memory directly (8FA8), a final `*p1 = *p2` as a 4-byte struct copy bumps the ugen copy temp t3 -> t4 (3E9C8); new psweep mode `sc` (every `A = B;` as `*(SC4_ *)&(A) = *(SC4_ *)&(B);`, hand-filter size-mismatched hits); a call result assigned straight into the stored variable keeps v0 for the return (240A0); lever-E sweep over every owned 80-99% partial with objdiff confirmation (raw-word drops on length-fixing variants usually LOWER fuzzy); post0b clip arithmetic + a silent refresh-report failure mode](#kit-li-agent-c-run-131) -- _EXACT: func_00008FA8, gl_func_0003E9C8. NM: 240A0 10->4, 4AFB4 8->3, E2D0 19->13 (len = target), 201B8 146->69, 1DB88 / 22760 / 27E24 / 31C0 / 55A0 -> target length, 25504 74->68, 26D64 49->43, 1DCB4 141->120, h2hproc 620 46->16, CA0, 2ABC0, 28604, 488A0, 44CE8, 4B2F4._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
@@ -35318,3 +35320,136 @@ No exact this run (objdiff already scored every jal / data field the pin job fix
    2C7A4: case 0xC6's own `b` stub cannot be produced (dead statements are deleted; `break` / `if (1)` flat).
    1DCB4: target keeps arg1 in s8 and rematerialises &buf; volatile / u8 buf, hoisted q: flat or worse. E2D0
    sum / scale spellings, 8FA8 count spellings, 40304 while(0) permutations / FP statement order: flat.
+
+## kit LI (agent-c 2026-10-23, run 131): copy elimination, the struct-copy lever, sweep-at-scale lessons <a name="kit-li-agent-c-run-131"></a>
+
+Scratch: `c131/` in the session scratchpad (agent-g's `psweep.py` / `greedy.sh` / `sv.py` retargeted to agent-c, plus
+`applyv.py TREE BASE MODE FUNC UNIT VARIANT` = port one sweep variant's line edits into the tree by content, and
+`fz.py FN...` = objdiff fuzzy at origin vs the working report.json). Scoring `rdiff --raw --pins`; every kept step
+confirmed by `scripts/refresh-report.sh` fuzzy.
+
+1. **EXACT func_00008FA8 (bootup, 13 raw -> 73/73).** Append-with-realloc tail. The body was
+   `count = tbl[3]; if (count >= tbl[2]) { f(&D_8714, self); count = tbl[3]; } tbl[3] = count + 1; ...`: count
+   coloured v1, so the `&D_8714` lui could hoist above the compare. Target shape:
+   `if (tbl[3] >= tbl[2]) { f(&D_8714, self); } count = tbl[3]; tbl[3] = count + 1;` -- the compare reads memory
+   directly and count has ONE assignment after the if; count colours a0 (the arm's a0 use blocks the hoist).
+   `if ((count = tbl[3]) >= tbl[2])` gives the same exact. **Recipe: a local copied before a test and re-assigned in
+   the then-arm after a call = the decompiler's form; try testing the memory and assigning the local once after the
+   if.**
+2. **EXACT gl_func_0003E9C8 (post0b, 2 raw -> 52/52).** The last copy `*p1 = *p2;` (int) used t3, target t4. Written
+   `*(Key3E9C8 *)p1 = *(Key3E9C8 *)p2;` (Key3E9C8 = `struct { int w; }`), the copy goes through one more ugen temp.
+   Dead masks, `+ 0`, `| 0`, a block temp, `if (v) {}` anywhere: all flat. **Struct-copy lever: a same-size struct
+   assignment consumes a ugen temp the scalar copy does not.**
+3. **psweep mode `sc`** (c131 copy): rewrites each `A = B;` in the body to `*(SC4_ *)&(A) = *(SC4_ *)&(B);` with a
+   file-scope `typedef struct { int w; } SC4_;` (add it once near the top of the TU when keeping a hit). It rediscovers
+   3E9C8. **Hand-filter every hit: it is only the same program when A and B are both 4-byte objects** (int, pointer,
+   f32). The sweep happily proposes s16 / u8 / 12-byte struct / array-row sources (6808 `v4C`, B75C `temp_v0_2`, 22760
+   u8, 2A07C char store, 3B2EC `vt[i]` array decay) -- rejected. Kept: 201B8 `sub->ent[0].w0 = r[0]` 146 -> 69 (fuzzy
+   96.03 -> 97.01), 55A0 `t4.w = ...` length 599 -> 598 = target (93.77 -> 93.93), 31C0 `obj2 = obj` (both
+   address-taken) length 196 -> 202 = target (92.58 -> 93.12). Fuzzy-negative: 27E24 `d = o->def`, 36694, 3C43C,
+   3FC58, 40070.
+4. **gl_func_000240A0 10 -> 4: assign the call straight into the stored variable.** Case 0 was `h = f(); if (h == 0)
+   return h; sp34 = 5; sp44 = h;` (h in v1, `or v0,v1` on the return path). `sp44 = f(); if (sp44 == 0) return sp44;
+   sp34 = 5;` keeps v0 for the return (lw ra in the branch delay) and the home store takes the a1 copy, as the target.
+   Case 3 needs a different shape: the same spelling there is -1 word; reusing a LIVE local (sp4C / b18 / payload) as
+   the temp gives 3 but changes the program (rejected); a fresh local in any declaration slot, a block temp, `typ`
+   (dead after the switch): 4-32.
+5. **Lever E (`if (v) {}`) sweep at scale, objdiff-confirmed wins:** E2D0 `if (arg4) {}` after the normalise call
+   (len 130 -> 131 = target, 19 -> 13, fuzzy 98.05 -> 99.39: arg4 stays live, giving the lwc1 / mtc1 / nop / add.s
+   order); 4AFB4 `if (a3) {}` after the SECOND table call (8 -> 3, 93.29 -> 99.43; after the first call it is +1
+   word); 25504 74 -> 68; 26D64 49 -> 43 (two steps); 1DCB4 141 -> 120 (four steps); CA0 17 -> 15; 1DB88 len 74 -> 75 =
+   target (84.59 -> 91.37); 22760 len 205 -> 207 = target (80.56 -> 85.27); 27E24 len 314 -> 318 = target, then `if (pad0) {}`
+   after the pb byte copy, 115 -> 104 raw (97.18 -> 97.26); 2ABC0 60 -> 58; 28604 80 -> 76; 488A0 121 -> 88; 44CE8 28 -> 25; 4B2F4 38 -> 36; h2hproc 620 46 -> 16
+   (94.19 -> 94.25).
+6. **Raw words lie on length-fixing variants (confirm every one in objdiff).** Variants that reach the target length
+   with a huge raw drop but LOWER fuzzy: 2119C (1141 -> 129 raw, fuzzy 91.25 -> 77.75), 2AD1C (-> 224 = target,
+   82.16 -> 82.09; its first step alone 81.22), 24B8 (1115 -> 95, 92.01 -> 91.57), E68 (2049 -> 964, 86.96 -> 83.44),
+   8BD4, 3E0F0, 2B5F4, 2A07C, 31A74, 34890, 36A48, 3DF58, 41D40, 41820. Same-length raw drops were fuzzy-negative on
+   483BC (92 -> 72 raw, 88.86 -> 84.99) and flat on 49B3C. Kept only the steps in 5.
+7. **post0b clip arithmetic.** A length change of the post0b NM object before game_libs_func_00062F08 moves the clip
+   by the same byte count: +32 bytes -> `0x2e870` kept all sentinels at 100. +4 bytes -> `0x2e854` LOST
+   gl_func_000551E0 / 00055B10 / 0004D084 (the KEEP_ALIGN clip wants the 16-byte-aligned value; re-probe instead of
+   adding 4). Nothing landed changes the post0b length: clip stays `0x2e850`.
+8. **refresh-report.sh can fail silently** under `>/dev/null 2>&1` (its `set -e` make step) and leave the OLD
+   report.json: every function then reads "unchanged". Always print its last line
+   (`refresh-report: N/M functions ...`) and distrust an all-unchanged batch.
+9. **Negatives.** 24378 (9): every local as the clear-loop counter, u32 / s16 / u16 / u8 / register / volatile /
+   long long counters, while / `srci += 1` / reversed test / `if (srci) {}` after or inside the loop, the whole
+   single-insertion sweep (1089 + 1872): 9 or worse. 2A258 (6): `if (1) {}` at every statement (alone and as a second
+   one), the 2048 stores via `c`, chained, unsigned, array or block-pointer spellings, the -1 fill through `c = -1` /
+   `0xFF`, loop-init orders, insertion pairs over the clear cascade (3570): all 6. 32E18 (4): comma-argument zv init x
+   10 pad layouts: 8 or worse. 35B1C (2): vtable-store pointer types, copy-elimination shapes for p / q, pairs (1953):
+   2. 4EE44 (2): ten `src` spellings, naming the call result, `if (src) {}`, pairs (1431): 2. 40304 (9): kt as a
+   candidate (`if (kt) {}`, `kt = 0; kt += ...`) flat or 17. 4CDB0 (5): seven spellings of the third packet: 5.
+   445AC (6): `&D_445AC_b` base spellings, dropping `v =`: 6 or worse. 4AFB4 residual 3 (offset reload after the
+   second call t1, target v0): 12 follow-ups flat. E9FC (3): the prologue `lui a0` before `sw ra` is never emitted by
+   IDO 7.1 or 5.3 at -O1/-O2/-O3/-g3/-Olimit 1, nor by NCC. 34A78 (6, len 60 vs 59): the target shares one `lui at`
+   between the 0x3B8F7 / 0x3B8F6 byte stores (same symbol, adjacent stores); one symbol `(&gl_ref_0003B8F6)[1]` makes
+   uopt hoist the address into v0 instead (9-11). 3D54C, 307A8, 26790 (single sweep), 40070 (both sweeps): no win. Insertion pairs on 4AFB4 (105) and on 240A0's switch
+   arms (9730): flat. Lever-E steps fuzzy-negative at the same length: 2BB7C 391 -> 379 raw (95.61 -> 94.94).
+
+## kit L (agent-g 2026-10-23, run 136): length-correcting sweeps scored by objdiff fuzzy, named products, comma ordering <a name="kit-l-agent-g-run-136"></a>
+
+Scratch: `g136/` in the session scratchpad. `psweep.py` (run 135's, extended):
+- **`SCORE=fz`** scores each variant by objdiff fuzzy (`objdiff-cli diff -1 expected.o -2 variant.o -o - FUNC`, the
+  `right.symbols[].match_percent` of FUNC) instead of raw words. Standalone fuzzy tracks the report closely
+  (6126C 82.7 vs 83.0, 1F14 84.59 vs 84.60). Use it on low-ratio functions where raw words are noise.
+- Without `SCORE=fz`, a length mismatch now ranks as `1000 * |len delta| + raw` (not a flat 1000 + raw), so a
+  variant that closes part of the length gap shows up.
+- New kinds (`MODE=new`, or `allnew` = all + new):
+  `prod` = name each `A * B` in a simple statement as `{ T q_ = A * B; ...q_...; if (q_) {} }` (int / unsigned / f32,
+  with and without the test), `prodfold` = `X = Y + A*B` -> `X = Y; X += q_;`, `comma` / `oneline` = two adjacent
+  simple statements as one comma expression or on one line, `swap`, `corder` = `X = (Y = K2, K1)` (both orders),
+  `chain` = `X = Y = K` for equal right sides, `ccopy` = `x = (y, y)`.
+- **Bugs fixed on the way, check old sweep results for them:** `swap` treated `break;` as a statement and moved a store
+  after the `break` (dead code: 4118 "rose" 99.14 -> 99.21 by deleting a store; reverted). `swap` / `corder` now run only
+  when both lines are plain assignments with no calls and neither side names the other's variables. With
+  `SCORE=fz`, a compile failure used to score 99999, which is BETTER than every fuzzy score above 90%, so greedy applied
+  uncompilable variants (`if (arg2) {}` on a union). Failures are now 10**9.
+- `vfz.sh UNIT FUNC VARIANT...` prints standalone fuzzy + raw for named variants. `apply.sh UNIT FUNC VARIANT` writes one
+  in-tree, refreshes the report, prints the 62F08 probe and every fuzzy change against origin/main. tryfz.sh's
+  before/after read is unreliable (it printed 76.81 -> 76.81 for a change that really gave 90.43): read the report
+  directly.
+
+1. **Length-correcting wins (each is now the target length, all objdiff-confirmed):**
+   - gl 6126C 78.4 -> 83.0: run 135's `if (arg3) {}` after the precision read `B = *p++ - '0';`. The extra
+     instruction is a `beqz` on arg3 where the target has the copy `or v0,s2,zero`. So the length is right for the wrong
+     reason. Real residual: the target reads every `*p++` through the copy idiom (`or v0,s2; lbu v1,0(v0); addiu s2,1`,
+     fmt loaded straight into s2), keeps `one` in s7, and the flag address in s5, all set up in the loop preheader.
+     Probed with no gain: `while ((c = *p++) != 0)`, fmt used directly, `u8` / `char` c and t, `c = p[0]; p += 1`,
+     `q = p; p = q + 1; c = *q` (function or block scope). A block-scoped `q` DID hoist `one` into a callee-saved
+     register in the preheader, as the target does, but the frame grew 64 -> 96 and B spilled.
+   - gl 5D134 76.8 -> 96.5 (1030 -> 23 raw), six steps:
+     `{ f32 q_ = a * c; q[i] = q_ + t * q[0]; if (q_) {} }` (sweep `prod`; a float `if (q_) {}` costs no
+     instructions) 90.4, then `t = (a = q[i], (f32)1 * s);` (`corder`: q[i] is loaded before the scale product) 91.1,
+     then `if (j) {}` after the q[j] update 91.3, then by hand `a = (b_ = q[k], q[j]); q[j] = a * c + s * b_;` (q[k] read
+     into a named local ahead of q[j]) 92.6, then `if (i) {}` after the q[0] update 95.5 (raw went UP 21 -> 27: follow
+     fuzzy, not raw), then a second dead `while (0) { j = k + k; }` at the top 96.5. LEFT 23: &q[j] / &q[k] colour
+     a3 / a2 (target t0 / a1); operand order `q[0] * t`, `a * t`, `b_ * s`: flat or worse.
+   - gl 5F5F0 82.3 -> 85.0 (1178 -> 136): `if (yLook) {}` after `zRight = 0.0f;` in the degenerate-axis arm.
+   - gl 65494 78.3 -> 79.5 (2401 -> 393): `if (var_f20) {}` after `temp_v0 = var_s0 + 0xDC;` in the loop.
+   - timproc_b5 1F14 (same length) 84.60 -> 84.71, 590 -> 584 raw: `if (frame) {}` after the `0x4D8 = frame3` store.
+     The best fuzzy variant (`if (frame3) {}` after the 0x49C store, 84.74) adds 3 words and raises raw: rejected.
+     Pairing with the runner-up (`if (frame3) {}` at the 0x4D8 block) changes nothing.
+2. **objdiff position artefact:** after 65494 grew 8 bytes, gl 66A50 (unchanged code, 33 vs 32 words, a documented
+   shared-$at cap) dropped 91.08 -> 85.68 only because it moved +8. A length-mismatched function's fuzzy depends on its
+   offset. Check the bytes before reverting a keeper over a neighbour's drop.
+3. **Post0b clip, three moves:** 0x2e850 -> 0x2e858 (6126C +4 plus KEEP_ALIGN pad) -> 0x2e854 (5D134 -4) -> 0x2e850
+   (5F5F0 -4). If the clip is wrong, the build fails outright, or refresh shows the three clip sentinels (551E0,
+   55B10, 4D084) dropping below 100 (3009 -> 3006). Re-probe after every post0b length change.
+4. **Length-reaching variants that LOWER fuzzy (not kept):** kernel 80000598 `if (rem) {}` (79.4 -> 78.4),
+   66EEC swap (93.3 -> 92.7), 533EC (96.0 -> 87.6), b5 B624 swap (88.3 -> 85.6), B154 swap (83.0 -> 82.1),
+   C310 corder (90.7 -> 90.3), 5F0B8 (91.7 -> 89.4), 50444 corder (84.4 -> 77.5), b3 1C68 (94.7 -> 93.7),
+   mgrproc 23FC (97.2 -> 95.7), gui 329C (86.6 -> 83.8), gl 76F0 (94.6 -> 94.3), 54E78 (77.2 -> 74.4). Rule of thumb from
+   15 tries: reaching the target length raises fuzzy only when the variant also lowers raw a lot compared with the
+   other length-reaching variants (5D134 28, 5F5F0 136, 6126C 70), not when one extra instruction appears.
+5. **Negatives with the new kinds (same-length near-exacts, single insertions):** 1DDC (10), 525F0 (3), 67D50 (2),
+   51F5C (4), 8000235C (6), b5 32C8 (5): no prod / comma / corder / chain / ccopy variant improves any of them.
+   67D50 by hand: `while (q = p, n--)` (+1 word), `while (q = p, p++, n--)`, `q = p, p++;`, `if (q) {}` at either
+   position: 2 or worse.
+   `SCORE=fz` single-insertion sweeps (allnew) on same-length partials 690A8, 15FC, b5 8AFC, kernel_031b 8030: no gain.
+   61B30's best `SCORE=fz` variant (`if (h1) {}` at the end) lifts fuzzy 65.9 -> 73.8 but makes the length WRONG
+   (38 -> 39 words, raw 15 -> 20). Not kept: a keeper that leaves the target length moves the function away from exact
+   even when fuzzy rises.
+   6126C at the target length: the `SCORE=fz` sweep (allnew plus braces, 286 variants) found no fuzzy gain. 5D134 at
+   96.5: one more greedy pass (91 variants) found nothing.
