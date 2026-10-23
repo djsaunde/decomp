@@ -35580,6 +35580,10 @@ declared s8/u8/s16/u16/char/short/double and SB/SH/LB/LH macro operands). psweep
    build keeps INCLUDE_ASM): 5F5F0, 5F984, gui 3714 -- only where NCC is the SAME length as cfe (or reaches the target
    length). NCC_CFLAGS has no `-I include`: a donor must define its own typedefs (and `NULL`) instead of
    `#include "common.h"`. Name donors `*_ncc_*` so purge-landing-objs.sh clears them.
+   **Clip hazard:** a same-length NM-only donor in post0b can still move the NM clip. 533EC (NCC 97.1 vs cfe 96.1,
+   both 93 words, donor .text 0x180 with 16-byte alignment) dropped game_libs_func_00062F08 to 95 (last word clipped):
+   reverted rather than re-probing 0x2e850. 5F5F0 / 5F984 donors did not move it. Always check the 62F08 sentinel
+   after adding any post0b donor.
 7. **Pin job on agent-g units: nothing left.** `pinscan.py` over post0b >= 0x50000, every post1* / post2*, game_libs,
    game_libs_mid, tail, gui, timproc b3/b5, arcproc, titproc, mgrproc, eddproc, n64proc and game_uso: no NM jal whose
    pinned value differs from the target's (with pins applied to BOTH objects -- without that, every expected-side
