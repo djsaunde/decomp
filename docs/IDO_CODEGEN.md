@@ -14475,6 +14475,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit LI (agent-c 2026-10-23, run 131): two exacts by copy elimination / struct copy -- an append-with-realloc count assigned AFTER the if with the compare reading memory directly (8FA8), a final `*p1 = *p2` as a 4-byte struct copy bumps the ugen copy temp t3 -> t4 (3E9C8); new psweep mode `sc` (every `A = B;` as `*(SC4_ *)&(A) = *(SC4_ *)&(B);`, hand-filter size-mismatched hits); a call result assigned straight into the stored variable keeps v0 for the return (240A0); lever-E sweep over every owned 80-99% partial with objdiff confirmation (raw-word drops on length-fixing variants usually LOWER fuzzy); post0b clip arithmetic + a silent refresh-report failure mode](#kit-li-agent-c-run-131) -- _EXACT: func_00008FA8, gl_func_0003E9C8. NM: 240A0 10->4, 4AFB4 8->3, E2D0 19->13 (len = target), 201B8 146->69, 1DB88 / 22760 / 27E24 / 31C0 / 55A0 -> target length, 25504 74->68, 26D64 49->43, 1DCB4 141->120, h2hproc 620 46->16, CA0, 2ABC0, 28604, 488A0, 44CE8, 4B2F4._
 - [kit LII (agent-c 2026-10-23, run 132): gl 26D64 EXACT by MOVING dead u8 masks (from the cursor increment into the two flags read-modify-writes) and reading the compared float field RAW (`*(f32 *)((u8 *)obj + 0x2C)` flips `c.eq.s $f4,$f0` to `$f0,$f4`), landed through the 31334 jumptable-donor route; one-line joins / comma statements / `A = (C = D, B)` store-order rewrites (2A258, h2hproc 620, 34A78, 32E18); a fuzzy-scored sweep (`SCORE=fz`) with a length-toward-target guard; uninitialised-local reads and length-away steps rejected](#kit-lii-agent-c-run-132) -- _EXACT: gl_func_00026D64. NM: 2A258 6->4 (92.67->95.29), 307A8 len 68->67 (84.06->93.31), 34A78 91.36->94.75, h2hproc 620 16->15 (94.25->95.38), 1DB88 22->19, 32E18 4->3, 24B8 92.01->94.47, 31C0 93.12->93.35, 1A44 91.64->91.90, 6808 92.18->92.79, 33EB8 90.38->90.83, 31A74 86.29->90.72 (len 139->140 of 141), 2119C 91.25->91.66, 250C8 90.12->90.14._
 - [kit LIII (agent-g 2026-10-23, run 137): the NCC test -- recompile a capped cfe NM body under IDO 7.1 NCC before hand work; three exacts as NCC donors (5D134 quaternion rotate, 51F5C edg case-order switch, 67D50 memset), NCC-only levers (int-local constants defeat literal CSE, declaration-order frame, a named pointer assigned early takes the first free arg register), `ncctry.py` bulk lifter + results table, NM-only NCC comparison donors; pin scan of agent-g units found nothing left](#kit-liii-agent-g-run-137) -- _EXACT: game_libs_func_0005D134, gl_func_00051F5C, game_libs_func_00067D50. NM: 5F5F0 85.0 -> 98.5, 5F984 85.1 -> 88.2, gui 3714 83.0 -> 85.4._
+- [kit LIV (agent-c 2026-10-23, run 133): three NCC exacts: two through the C++ `{cur, nxt}` list iterator -- an inline `first() { return next(); }` gives the loop variable a separate copy of the next() temp, `int r = 0;` swaps the a0 / v1 pair (3D54C), and print field arguments read into block locals put the field load before the format address (38C98); 35DAC from address-taken one-word stack objects plus a decode fix; 3DF58 as an NM-only NCC donor; an iterator-shape scan; `(unsigned)this == 0` keeps a dead alloc fallback test; NCC accepts assignment to `this`; the jumptable-donor scan found no table-only candidate; NCC lift table of the near-exacts (none beat cfe)](#kit-liv-agent-c-run-133) -- _EXACT: game_libs_func_0003D54C, gl_func_00038C98, gl_func_00035DAC. NM: 3DF58 82.17 -> 99.06 (89 -> 90 words = target), 3DD28 67.26 -> 81.71 (35 -> 36 of 38), 4A9F0 76.48 -> 89.25 (39 -> 40 = target, frameless via an inline member), 1D17C 89.03 -> 96.06 (31 -> 33 = target, gbi-style cursor copies), 44CE8 87.49 -> 91.28 (stride decode fix), 36A48 87.86 -> 97.20 (V3 by value + member operator=)._
+- [kit LV (agent-g 2026-10-23, run 138): USO FP "D_00000000 + off" loads are SOURCE LITERALS under NCC (the donor's .rodata pool reproduces the USO RoData layout; rename + pin via `<func>_rodata`), an inner call with one FEWER argument explains a register that "survives" a jal (the cfe "a3 web" cap), cfront this-adjust `(char *)(delta + (int)p)` operand order; lit.py / sym.py / fixdef.py tools; NCC sweep of the remaining owned units](#kit-lv-agent-g-run-138) -- _EXACT: timproc_uso_b5_func_00001F14 (84.7 -> 100), timproc_uso_b5_func_00008AFC (85.9 -> 100), timproc_uso_b3_func_00001C68 (95.1 -> 100, cfe: float 0.0f arg + fl[8] reload). NM: 5F5F0 98.47 -> 98.80, b5 396C 41.8 -> 60.2, game_uso 7C1C 88.2 -> 89.3, gl 2840 89.8 -> 91.0, gui 3714 85.4 -> 88.8, game_uso B3C 91.8 -> 93.8, mgrproc 2B7C 92.9 -> 94.1, titproc 5DC 93.8 -> 94.4, b5 AC20 85.4 -> 86.4, b5 C310 90.9 -> 91.5, game_uso 8CD8 83.07 -> 83.27._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
@@ -35592,3 +35594,253 @@ declared s8/u8/s16/u16/char/short/double and SB/SH/LB/LH macro operands). psweep
    5165C (1): NCC 17 vs 16 words, the shared `lui at` tail pair is still the 66A50 cap. 6126C, 5F0B8, 533EC, b5 32C8,
    558A0 / 59E80 / 5165C / 66EEC / 690A8 under auto-NCC: lower than cfe. Post0b clip unchanged at `0x2e850` (no post0b
    length change: every donor matches its placeholder's final length).
+
+## kit LIV (agent-c 2026-10-23, run 133): the {cur, nxt} iterator under NCC, an inline first() for a separate result copy, field arguments read first, address-taken stack objects <a name="kit-liv-agent-c-run-133"></a>
+
+Scratch: `c133/` in the session scratchpad. New: `ncc/` holds agent-g's `ncctry.py` / `nt.sh` repointed at agent-c;
+`itscan.py` lists the NM functions whose TARGET has the stack-iterator advance (`beqz X; sw X,K(sp); lw Y,4(X)`);
+`jtscan.py` / `allscan.py` list the NM functions with a register `jr` (a jumptable) and the raw diff of every NM
+function in the agent-c units; `vscan.py` lists NM functions with cfront virtual calls (`lh` delta + `jalr`).
+
+1. **EXACT game_libs_func_0003D54C (cfe NM 80.2 -> 100, NCC donor).** It returns the n-th child's value (0 when the
+   list runs out) through the `{cur, nxt}` iterator of 3D48C. The target keeps next()'s `?:` result in a0 and copies it
+   into the result variable (v1) in both loop-test delay slots. Two levers were needed:
+   - **Enter the loop through an inline `first() { return next(); }`** (agent-c run 118 used this for 3DDC0). The
+     extra inline level gives first() its own edg return temp, so the loop variable becomes a separate copy. With
+     `next()` at entry, the temp and the variable coalesce (8 words). Every C spelling tried also coalesced them:
+     result variable initialised, block-scoped or a separate copy; for / do / while; pointer or unsigned value type.
+   - **`int r = 0;` initialised at its declaration** (`for (r = it.first(); r; r = it.next())`). Without the
+     initialiser the copy is there, but r and the temp swap a0 / v1 (9 words).
+2. **EXACT gl_func_00038C98 (cfe NM 60.9 -> 100, NCC donor).** A child-list debug dump with the same iterator
+   (cur at sp+40, nxt at sp+44). The only change needed was **reading each print's int argument into a block-scope
+   local first**: `{ int v = n->x0c; f(fmt, v); }`. With the field read written inside the argument list, NCC builds
+   the format address first. The field load then lands in the jal delay slot, and o needs an extra `or a2,a0` copy
+   (50 words against 49). The target loads the field first, then builds the format address. The old cfe body
+   (60.9) had the walk unrolled by hand.
+3. **gl_func_0003DF58 NM 82.2 -> 99.1 (NM-only NCC donor, 89 -> 90 words = target).** The old cfe note blamed an
+   "uninitialised iterator seed". That word is really `lw t6,0x10(a0)` (o->head), part of the function since the
+   3DF5C boundary moved to 3DF58. The function is two extremal searches over the same iterator. Pass 1 enters through
+   first() (the node is copied out of the temp) and pass 2 through next() (coalesced), matching the target.
+   LEFT (16 words): the two node webs swap v0 / a1. These had no effect: declaration order and scope, a separate
+   pass-2 variable, `= 0` initialisers on either pass, reusing the a1 parameter, if/else instead of `?:` for ref,
+   loop shapes, branch order, and psweep (ifpos with `--vars`, w0pos, w1pos, all3).
+   A 192-cell grid (entry next / first / second() = first() of first(), loop next / first, function or block
+   scope, `= 0` on either pass) found 12 raw: pass 1 written `Node *n = 0; for (n = it.next(); n; n = it.first())`,
+   pass 2 plain next / next. Pass 2 is then word-exact. Pass 1 has its entry and loop temps swapped (a1 / a0,
+   target a0 / a1), and the target hoists the loop's `move a1,zero` above the compare. But fuzzy drops to 97.3, so it
+   was not kept. A default-then-if `adv()` (`Node *r = 0; if (cur = nxt) {...} return r;`) for the hoisted zero:
+   33 or worse.
+4. **Iterator scan (`itscan.py`) over every unit:** 34890, 38C98, 3D54C, 3DF58, 454C4, 49B3C (post0b) and 65494
+   (post1b, agent-g). Results for the ones not covered above:
+   - **34890** (cfe 90.35): an NCC port of the C body scores 90.2 (82 against 84 words). Class forms with
+     assignment to `this` reached 81.5.
+   - **49B3C** (cfe 96.86): an NCC class port scores 94.25 at the right length. It uses an array iterator returned
+     by value (`AI Arr::iter()`, giving the 80 -> 92 -> 116 copy chain), real virtual calls, and the list iterator.
+     **`(unsigned)this == 0` in the iterator's constructor keeps the target's dead `bnez` / alloc(12) fallback**;
+     `this == 0` is folded away. LEFT: the frame is 112 against 128 (the target has a spare 12-byte slot between the
+     return temp and `ai`, and the list iterator sits 4 higher). Dummy arrays at five positions only reached 70 raw.
+     `AI *pai = &ai;`, with the loop going through pai, scores 95.94 / 71 raw (frame 120). Still below cfe.
+   - **454C4** (2028 bytes): not attempted.
+5. **NCC behaviour notes (from 4FBA4 / 34890 probes, no win):**
+   - NCC accepts `this = (T *)alloc(n);` in a constructor (warning 3442, "anachronism"). It emits the alloc fallback.
+     It does not emit the cfront base-conversion null guard, or a null test after the fallback alloc.
+   - Class forms reach 77.4 on 4FBA4 (cfe 77.8). The vptr stores land in the target's order once the classes really
+     have virtuals: the base vptr before its members (vptr at +0x5C after 0x5C bytes of data), the derived vptr after
+     the base constructor.
+   - The target's 4FBA4 stores the derived vptr even when the 0x90 alloc fails (`beqz v0` jumps to the store with a2
+     = 0). The `new` temp lives in a2, spilled at 48 around every call, and is copied to s0 for the loop.
+6. **Jumptable-donor scan (target 1):** no candidate whose only blocker is the table %lo. Register-`jr` NM functions
+   in the agent-c units with small raw diffs:
+   - 240A0: 4 words, one of them the table %lo; the case-3 coalescing remains.
+   - 396FC: 7 words, two of them rodata %lo; the range-check delay-slot steal remains. `-O3`, `-g3` and
+     `-Wab,-noreorder` do not change the steal.
+   - 40304: 9 words, two of them rodata %lo.
+   - 51AD8 is agent-g's.
+
+   Other jumptable functions in these units are at least 28 raw words away (26790, 2A07C, 2C7A4, 2BB7C, ...).
+   E2D0 also carries an f64 rodata %lo, so it needs a donor whenever the FP colouring is solved.
+7. **NCC lift of the near-exacts (agent-g's `ncctry.py`): nothing beats cfe.**
+
+   | function | NCC raw | NCC fuzzy | cfe fuzzy |
+   |---|---|---|---|
+   | 35B1C | 2 | 97.16 | 97.40 |
+   | 4EE44 | 7 | 99.73 | 99.94 |
+   | 4AFB4 | 3 | 98.89 | 99.43 |
+   | 445AC | 29 | 98.08 | 99.82 |
+   | 32E18 | 45 | 95.94 | 98.35 |
+   | 2A258 | 45 | 91.24 | 95.29 |
+   | 1DB88 | 19 | 91.36 | 91.59 |
+   | CA0 | 15 | 98.48 | 98.74 |
+   | E2D0 | 140 | 84.38 | 99.39 |
+   | h2hproc 620 | 59 | 91.30 | 95.38 |
+
+   **2ABC0** scores NCC 92.87 against cfe 86.44, but at 86 words against the target's 87. The 16-byte frame gap
+   comes from NCC giving every used named local a slot; dropping the locals gives frame 24 but scores 89.9. In the
+   target, the `a2` local is not coalesced with the a0 argument copy. Making it a third parameter gives 88 words.
+   Lift failures, needing hand C++: 34A78, 4CDB0, 40304, 40070, 24378, 307A8, 23E60, 201B8, 33EB8, 1E134, 26214,
+   24B8, 415A4, 48510, 469A8, 41820, 3FC58, 4C5E4. A hand port of 41820 scores 93.6 (cfe 94.7). A hand-written
+   NCC class version of the 4CDB0 packet scores 94.9 (cfe 99.6): NCC colours all four packets alike, while the
+   target varies them.
+8. **Negatives (do not repeat):**
+   - **32E18**: zv at 64 (target 68) is not reachable through declared pads before or after zv / v (75 grid cells),
+     a block-scoped zv, or comma-argument forms of the zv stores: 3 or worse.
+   - **4EE44**: the src spellings (`+ 0`, `&(...)[45]`, a named mm, `if (src) {}`, the for-init form, decl order):
+     2 or worse.
+   - **445AC**: unnaming `v = D_glob_e` fixes t7, but the address `&D_445AC_b + 0x1C` then takes t8 (target v0, not
+     a t-register). Named-pointer forms all stay t8.
+     Reading the stored value back as the next call's argument (`f(*(int *)(&D_445AC_b + 0x1C), 100, 1)`) is
+     forwarded, but the address stays a ugen temp (t8).
+   - **4AFB4 under NCC**: block locals for the h4 / h6 / D_S arguments, a named table pointer, extra empty tests:
+     8-24 raw (base 3).
+   - **timproc_b1 1340 under NCC**: 79.2 against cfe 84.2.
+   - **gl_func_00025320, decode errors found but not landed.** The last call takes NINE arguments: a3 = obj->8 (missing in
+     the NM), the byte at +2 is SIGNED (`lb`), and the string is at &D + 0x1B0C0 (`lui 2; addiu -20288`), not
+     0x2B0C0. With all three fixed the length is right (34 -> 36 = target), but fuzzy drops 75.0 -> 72.0: sz spills
+     to the frame (80 against 64) instead of living in s1, while the target spills obj + 0x20 at 60. Five sz / p20
+     arrangements under cfe gave 23 raw, and NCC gave 24 raw / 71.7. Reverted by the keep-only-fuzzy-gains rule; the
+     decode facts stand.
+   - **4E424** (53 against 49 words): the target keeps 0.0f in one register (f16, a single `mtc1 zero`) for all three
+     abs compares, and keeps dy / dz in their load registers (f0 / f2). cfe rematerialises the zero at each compare and
+     copies dy / dz (`mov.s`). Subtracting the parameters in place (`y1 -= y0`) moves them to callee-saved f22 / f24
+     (52 words, 60 raw). `float zero = 0` / `(float)0` / uninitialised / static, and NCC (0.0f literal, named zero,
+     ternary abs, int zero): no change.
+   - **24378**: srci as a parameter makes the bound take a0 and srci a1, the reverse of the target (9 words).
+     Other parameter orders: 26-27.
+   - **CA0**: greedy all / w0pos / w1pos (650 variants): no win.
+   - **E2D0**: dot-sum spellings (split, `+=`, named product, reordered terms): 13 or worse.
+   - **6204 / E9FC** (`lui a0` before `sw ra`): IDO 7.1 -O0/1/2/3, -g3, -mips1, IDO 5.3 and NCC all emit
+     `sw ra` first.
+   - **4CDB0**: g, i or p reused as the packet-3 call argument: 15-34.
+   - **Raw greedy sweeps** (all3 + w0pos + all): no win on 201B8, 25504, 4B2F4 or 2C7A4. 55A0 went 238 -> 233, but
+     one step was an empty test on `node` before its first assignment and the other a one-word join: neither kept.
+   - **`SCORE=fz` sweeps on post / post0b** took over 10 minutes per pass. The objdiff JSON for the whole unit is
+     parsed once per variant (6 GB per sweep process), so use raw scoring on large units.
+8a. **EXACT gl_func_00035DAC (cfe NM 58.9 -> 100, NCC donor).** Two fixes:
+   - **A decode fix:** the outer loop starts at `end = 0; init(&end)` (the NM ran the init once, before the loop;
+     the target's back-edge `b` lands on the jal with `sw zero,72(sp)` in its delay slot).
+   - **Every value is a one-word stack object whose address is taken.** NCC hoists the loop-invariant addresses
+     into s0-s4, and `cur = sent` becomes a copy through two of those pointers (`lw t8,0(s3); sw t8,0(s2)`). cfe
+     const-propagates the -1 instead.
+
+   Frame = declaration order: `W sent, end, cnt, x, u1, u2, cur;` with `u1.v = 0; u2.v = 0;`. Those dead stores
+   emit nothing, but each makes its local take its slot: the target's unused words at 56 / 60. Without them the
+   layout is right but every offset sits 8-20 lower (17-19 raw).
+8b. **gl_func_0003DD28 NM 67.3 -> 81.7 (NM-only NCC donor, 35 -> 36 words of 38).** The function is a factory:
+   create(0), o->0x70 = 10.0f, a real virtual call through the vptr at +0x28 (slot 5) with &kind, then a list attach.
+   The cfe body had the branch sense wrong: the target sets node->4 = 1 when node->0x14 is ALREADY nonzero. The
+   vptr has to sit at +0x28, so declare it in a base class with 0x28 bytes of data and put the rest in a derived
+   class: with one class, NCC places the vptr after all the data (+0x70). LEFT: the create() result is copied into
+   v1 (o spilled at 40, kind at 44, node at 36, frame 56 against 40). The jalr delay slot is also a nop.
+   Declaration orders combined with dummy locals: 15 raw at best.
+8c. **game_libs_func_0004A9F0 NM 76.5 -> 89.25 (NM-only NCC donor, 39 -> 40 words = target, FRAMELESS).** This
+   resolves the old cfe note's "callee-save-vs-leaf choice isn't C-steerable". Write the cell store as an **inline
+   member `Self::put(i, src)`**. self then becomes `this`, which NCC copies into a3: there are no calls, so it is a
+   leaf with no frame, matching the target. cfe promoted self to s0 with a frame. Also pass the source pointer as an
+   expression (`a1 + idx1 * 4`, a loop-invariant t0), and make the grid root a named local inside put (v0). LEFT
+   (21 raw): the inner cursor copy colours t1 (target v0), which shifts the -1 / &D registers by one, and the target
+   loads src[0] before the grid. Leaving the grid root unnamed gives 17 raw but 86.95 fuzzy.
+8d. **game_libs_func_0001D17C NM 89.0 -> 96.06 (NM-only NCC donor on game_libs_post, 31 -> 33 words = target).**
+   cfe folds every display-list cursor step into store offsets (31 words). Under NCC, gbi.h-style per-packet copies
+   (`{ Gfx *_g = p++; _g->w0 = ...; _g->w1 = ...; }`) for packets 2 and 3, with packet 1 stored through p
+   directly, give the target's chained cursors (a2 = a0 + 8, t0 = a2 + 8, return t0 + 8). LEFT: colours only --
+   record base v1 (target a3), the shared 0x0C1A0000 a3 (target t1), third cursor a0 (target t0). No change from a
+   Rec* struct, an inline op() helper, a named constant, or the record read inline.
+   **Makefile trap (as agent-g's kit LIII #4):** game_libs_post.c.o has a later `REPLACE_FUNC_BODY := ...29CCC`
+   line, and a `private +=` placed above it is silently dropped. Put new post `+=` lines after that line.
+8e. **gl_func_00044CE8 NM 87.5 -> 91.3 (cfe, same 43 words).** A decode fix: the pool at +0x378 holds 50 TWELVE-byte
+   entries (the target computes n * 12 as `sll 2; subu; sll 2`; the NM had * 6), and its count is at pool + 0x258
+   (= +0x5D0). `rec = pool + (*(int *)(pool + 0x258))++ * 12` gives frame 32 = target (40 before). LEFT (18 raw): the
+   target holds the pool pointer in v0 (`addiu v0,a3,888`; count at 600(v0)), where cfe folds it into 1488(a3).
+   An NCC inline `Pool::get() { return &e[n++]; }`: 26-28 raw.
+8f. **gl_func_00036A48 NM 87.9 -> 97.2 (NM-only NCC donor, 82 -> 85 words = target).** The function returns the index of
+   the best dot product over callback-transformed vectors. Under NCC, the callback returns `V3` BY VALUE (an edg
+   return temp at 116, then a word copy into r through s4 = sp+92). `v = r` goes through a member `operator=`
+   (float-wise lwc1 / swc1 to v at sp+164; a default struct copy is 89 words). v is declared first, plus an assigned
+   5-word pad (`int pz[5]; pz[0] = 0;`), giving frame 176. LEFT (9 words): r at 120 / the temp at 100, against the
+   target's 92 / 116. A function-scope r, `V3 r; r = ...` and pads of 0-8 words do not swap them.
+   **Scan:** the target hoists two or more stack addresses into s-registers (`addiu sN,sp,K`) only in 35DAC and
+   36A48 across the whole report: both were NCC.
+9. **Post0b clip:** 0x2e850 -> 0x2e854 (3D54C placeholder host) -> 0x2e858 (3DF58 NM-only donor, 89 -> 90) ->
+   0x2e850 (38C98 placeholder host, -8) -> 0x2e854 (3DD28 NM-only donor, 35 -> 36 words of 38) -> 0x2e858 (4A9F0 NM-only donor, 39 -> 40 =
+   target) -> 0x2e880 (35DAC placeholder host, +0x28) -> 0x2e88c (36A48 NM-only donor, 82 -> 85 = target).
+   It ends at `0x2e88c`. A placeholder host moves the NM offset even when
+   the donor and the old NM body have the same length (3D54C: +4). Re-probe after every donor.
+
+## kit LV (agent-g 2026-10-23, run 138): FP literals and short calls under NCC <a name="kit-lv-agent-g-run-138"></a>
+
+Scratch: `g138/` in the session scratchpad. New tools: `lit.py IN UNIT OUT [FUNC]` = replace every
+`*(f32|f64 *)((char *)&<any D_ symbol> + OFF)` READ (not stores) with the source literal read from
+`expected/UNIT.c.o` .rodata (shortest decimal that round-trips the bits; only units whose expected object carries
+.rodata: timproc_b5, timproc_b3); `sym.py IN OUT` = one distinct `extern char X_at_OFF[]` per address-of site
+(defeats NCC's base-address CSE); `fixdef.py IN UNIT FUNC OUT` = put back the `#define`s ncctry turned into
+`extern int NAME(...)` (multi-line aware); `rv.py BASE OUT old new ...` + `P.sh` = quick literal-replacement
+probes scored by `nt.sh`; `cfet.sh FILE.c FUNC UNIT` = the same probe under cfe; `gr.sh` = greedy psweep loop
+with a `--vars` whitelist (keeps the sweep from inserting empty tests on uninitialised locals).
+
+1. **EXACT timproc_uso_b5_func_00001F14 (551 words, cfe 84.7 / "a3 web" cap).** Two decode errors, both invisible
+   under cfe:
+   - **one fewer argument.** In each copy pair `dst = f(p38, 4, arg0, 2); p34[f(p34, 4, arg0)] ...` the INNER
+     call passes three args. The target sets a3 = 2 once at the top (it is also the `== 2` compare constant)
+     and never reloads it before the second call; the cfe body passed 2 explicitly, so the constant lost its
+     a3 preference to t0 and every call grew an `or a3,t0,zero` (+2 words per pair, and under NCC +4 total).
+     Making BOTH calls 3-arg (declared `(...)`) gave the exact length and moved fuzzy 87.9 -> 93.3. Rule: when a
+     callee-clobbered arg register is used after a jal with no reload, try dropping that argument from the
+     call, not register levers.
+   - **FP constants are literals.** `*(f32 *)((char *)&D_00000000 + 0xC8)` (0.05f) and the f64 pair
+     `1.333f + 1.3333 * t` were spelled as data loads. Under NCC the base address `&D_00000000` is CSEd into
+     a register (`lui a1; addiu a1`, +2 words per region); distinct per-offset symbols fix the length but not
+     the colours. Writing the LITERALS (values from `expected` .rodata: 0x3d4ccccd, (double)1.333f =
+     0x3ff553f7c0000000, 1.3333) gave 99.85 / instruction-identical except the %lo offsets, and NCC's pool is
+     emitted in the same order with no dedup (four separate 0.05f words, like the target). Then
+     `((s32 *)(base + 0x3D0))[call]` for the copy and `(v1 == 0) || ...` without the v1 local closed the
+     last register swaps.
+   - **ROM wiring (the 5FC0 recipe):** the donor's local-section .rodata relocs are renamed
+     `timproc_uso_b5_func_00001F14_rodata` by replace-function-body.py and pinned in undefined_syms_auto.txt to
+     the RoData offset of the first literal (0xC8); the yay0 build bakes `lui at,0 / lwc1 200(at)`. The C
+     placeholder must re-emit the .rodata LAYOUT the INCLUDE_ASM .s carried as .late_rodata (sizes and order
+     only: f32, f32, f64, f64, f32, pad, six f64, f32 with distinct values, since IDO cfe merges equal literals
+     within one function). In-unit jal targets (87A0, 1DB0) stay real names here: the USO .text is objcopied
+     unlinked, so R_MIPS_26 words stay 0 as in the ROM. objdiff (raw CLI) shows 99.9 for such functions (reloc
+     vs baked offset); the report config scores them 100 like 5FC0 / 1DB0.
+2. **EXACT timproc_uso_b5_func_00008AFC (72 words, cfe 85.9).** The cfe body under NCC with `K = 0.9f` as a
+   literal (pinned `_rodata` = 0x238) was 3 raw: two `addu` operand swaps on the cfront this-adjust. `e +
+   delta`, `&e[delta]`, `(char *)((int)e + delta)` and a vtable-entry struct all keep the wrong order;
+   `(char *)(delta + (int)e)` (int sum, delta first) gives the target's `addu a0,t0,a2`.
+3. **Where literals do NOT help.** Under cfe the literal spelling is neutral-to-worse (32C8 99.49 -> 99.43,
+   CEB4 94.2 -> 92.9 standalone): cfe never CSEs the `&D` base, so this is an NCC-only lever. Units without
+   .rodata in their expected object (gui, titproc, arcproc, mgrproc, game_uso, game_libs) would need the values
+   from the ROM data segment; not attempted. Address-of uses (`(char *)&D + 0x6E8` string tables) are data,
+   not literals: sym.py per-site symbols moved nothing (BDEC, DF14, CEB4, 2B74, 32C8).
+4. **NCC sweep of the rest of the owned units.** Fixed and recompiled the run-137 CCFAIL bodies (casts from
+   int/char *, FW / TB5_F macros restored, ld4/ld8 struct externs): 76F0 77.9, 526D0 95.5, 5534C 96.9, 23FC 97.2,
+   1C68 94.7, B154 72.1, B624 88.2, B368 81.1, D884 75.6, 4118 97.1, AC20 72.6, 65494 43.4, 3430 82.0, 15FC 89.4
+   -- all below cfe. Newly scanned: b5 396C NCC 60.2 vs cfe 41.8 (same 46 words: NM donor), game_uso 7C1C 89.3
+   vs 88.2 (1065 vs 1058 of 1071: NM donor), game_uso 3558 78.8 vs 66.2 but 231 words vs cfe 240 / target 252
+   (moves away from the target length: not wired), game_uso 1DDC / B3C / 8CD8 lower, gl 2840 90.6 -> 90.8 with
+   `if (arg2) {}` (same 111 words: NM donor). Every NM donor checked: only its own function's fuzzy moves in the
+   unit; 62F08 sentinel stays 100.
+5. **5F5F0 98.37 -> 98.69 (6 raw).** `x *= 10.0f; xLook = x;` colours x f0 and the z * 10 product f18 (target);
+   `if (z) {}` after the copy-out and after the v[] refill. RESIDUAL: z itself in f14 (target f18) and the mf
+   home store after the v[] stores instead of heading the else arm. A sweep winner put `if (y) {}` before y's
+   assignment on the else arm: rejected (uninitialised local).
+6. **Negatives.** kernel 8000235C natural struct/for form: cfe 81.7, NCC 87.7 (< 92.6). mgrproc 1824 under NCC
+   lowers the inner switch as a compare chain (target has a jumptable): 86.2. game_uso 7C1C/3558 lit: no
+   .rodata. b5 2B74 (99.36) is a cfront ctor building three V3 temporaries per child (pool -1500 / 1500 pairs at
+   RoData 0x11C..0x130): a candidate for a real-constructor NCC rewrite, not attempted. Post0b clip unchanged at
+   `0x2e850` (no post0b length change).
+7. **EXACT timproc_uso_b3_func_00001C68 (cfe, 95.1 / 43 raw).** The documented "(c) addiu-vs-or zero-arg
+   materialization" residual was a FLOAT `0.0f` third argument (`addiu a2,zero,0` = li of the float bits; an int 0
+   is always `or aN,zero,zero`, docs entry feedback-ido-knr-float-call) -- routed through the existing
+   `(int, int, float)` blank alias `gl_proto_1c94`. Then the `r > 0` counter bump: `fl = (int *)p44; fl[8] =
+   fl[8] + 1;` re-reads the field off the 0x44 pointer (target `lw t3,32(v1)`) instead of CSEing the earlier
+   load (`*(p + 0x20) += 1` forms) or materialising `addiu v0,v1,32` (`fl = p + 0x20; *fl += 1`). Two
+   `if (arg0) {}` (after the `(arg0, 1)` call and after the flag-4 RMW) fixed the arg / delay schedule. Every
+   `addiu aN,zero,0` in a target where the NM has `or aN,zero,zero` should be checked for this first (a scan
+   of the owned NM functions found no other case).
+8. **Parameter-only, fuzzy-scored lever-E sweeps (`PARAMS_ONLY=1 SCORE=fz psweep.py ... ifpos`).** Restricting the
+   empty-test variable to PARAMETERS removes the uninitialised-local hazard and runs in seconds per function;
+   winners still need a length check (591C's +0.35 moved 1096 -> 1097 away from 1093: rejected). Committed wins:
+   game_uso B3C +1.9 (two rounds), mgrproc 2B7C +1.1 (two rounds), b5 AC20 +0.95, titproc 5DC +0.5, b5 C310 +0.6,
+   game_uso 8CD8 +0.2, gui 3714 NCC donor +3.4 (four tests). No win: arcproc 125C, mgrproc 1824 / 23FC, gui 329C /
+   4568, b5 32C8 / BDEC / CEB4 / D884, game_uso 1DDC. Raw-scored greedy sweeps on the 5F984 / 3714 NCC donors
+   "fixed" the length while dropping fuzzy 88 -> 62 / 85 -> 76: always score donor sweeps by fuzzy.
