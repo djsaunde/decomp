@@ -44,4 +44,14 @@ r=json.load(open(sys.argv[2])); fz={fn['name']:fn.get('fuzzy_match_percent') for
 sent=['gl_func_000551E0','gl_func_00055B10','gl_func_0000EBC8','gl_func_0000C5B0','game_libs_func_00062F08']
 print("   sentinels:", {s:fz.get(s) for s in sent})
 PY
+# CI builds a fresh checkout of tracked files only; incremental builds above can hide
+# clean-build-only breaks (untracked donors, target-specific vars inherited by prerequisites)
+if [ "${SKIP_CLEAN_BUILD:-0}" != 1 ]; then
+  echo "== gate: clean checkout build (CI mirror)"; CL="$LOG-clean"; git worktree remove --force "$CL" 2>/dev/null
+  git worktree add -q --detach "$CL" HEAD && ln -sfn "$(readlink -f tools/ido-static-recomp)" "$CL/tools/ido-static-recomp"
+  ( cd "$CL" && make RUN_CC_CHECK=0 -j8 objects >"$LOG-clean-objs.log" 2>&1 && make RUN_CC_CHECK=0 -j8 non_matching_objects >"$LOG-clean-nm.log" 2>&1 ); crc=$?
+  git worktree remove --force "$CL"
+  if [ $crc -ne 0 ]; then echo "   !! clean build failed (CI would break); see $LOG-clean-*.log"; tail -4 "$LOG-clean-objs.log" "$LOG-clean-nm.log" 2>/dev/null; exit 8; fi
+  echo "   clean build: OK"
+fi
 echo "== done. report.json left modified in $WT for commit; NOT pushed."

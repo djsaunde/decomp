@@ -12,6 +12,7 @@
 
 _76 entries. Auto-generated from per-memo notes; content may be rough on first pass — light editing welcome._
 
+- [Clean-build-only CI break: a target-specific REPLACE_FUNC_BODY is inherited by the host object's explicit prerequisites, so a donor listed as a prerequisite runs every splice on itself in a fresh build (main CI red 2026-10-22..23, runs 118-131)](#private-replace-func-body-ci-break) -- _use `private REPLACE_FUNC_BODY +=` when the donor is also a prerequisite; the landing gate now builds a fresh worktree like CI._
 - [scripts/rdiff.py (1080): branch-offset- and jal-aware per-function diff -- `--raw --pins` keeps branch targets (measured from the function's FIRST label) and jal targets and applies undefined_syms pins; the masked default view hides decode errors (agent-c run 121)](#rdiff-raw-pins-run121) -- _run it on every near-miss before trusting an old cap note; classify each residue as decode / pin / schedule / colour._
 - [scripts/blockcut-search.py (1080): parallel out-of-tree search for uopt basic-block cuts (`if (1) {}` at every 1..K-subset of statement positions, plus `--swap X=>Y` alternatives) for one function -- cfe NM wraps in PROMOTE mode (only that wrap compiled as C, matching-build pipeline, never edits src/) and NCC donors / drafts; scores rdiff --raw --pins (agent-g run 127)](#blockcut-search-run127) -- _found gl B958 (1 cut after a loop's `{`) and gl 51ED8 (cut + K&R `va_alist`); the run-126 search missed B958 because it never cut right after a `{`._
 - [Parallel agents can share ONE scratchpad directory: keep scripts in a private subdir (agent-c run 105 ran agent-g's same-named gate.sh, which cd'd into agent-g's worktree)](#shared-scratchpad-collision-run105) -- _name every scratch script with your agent letter or put it under scratchpad/<agent><run>/._
@@ -13299,3 +13300,19 @@ scripts/blockcut-search.py --unit src/game_libs/game_libs_post0b gl_func_00061B3
   see docs/IDO_CODEGEN.md kit XXXVII for the table. Most cfe residuals do not react to cuts at
   all (labels everywhere); the hits were single-cut fixes in small loops and straight-line code.
 
+
+<a id="private-replace-func-body-ci-break"></a>
+## Clean-build-only CI break: REPLACE_FUNC_BODY inherited by a donor prerequisite (2026-10-23)
+
+GNU make target-specific variables are inherited by a target's prerequisites while make builds
+them for that target. timproc_uso_b5.c.o listed its 5FC0 donor (a .c built by the generic rule,
+whose recipe runs the REPLACE_FUNC_BODY loop) as a prerequisite. Once a second splice (1DB0) was
+added, a fresh build ran `replace-function-body.py <5FC0 donor> timproc_uso_b5_func_00001DB0 ...`
+and failed with `KeyError: symbol ... not found`. Local incremental builds already had the donor,
+so every landing gate passed and only CI (fresh checkout, `make objects`) broke, for 14 pushes.
+
+- Fix: `host.c.o: private REPLACE_FUNC_BODY += fn=$(DONOR)` whenever the donor is also an explicit
+  prerequisite of the host (main 845cdabac).
+- Gate: scripts/gate-landing-tree.sh now ends with a fresh `git worktree` build of tracked files
+  (`make objects` + `non_matching_objects`, ~20 s; exit 8 on failure). SKIP_CLEAN_BUILD=1 skips it.
+- Repro: `rm -f <donor>.c.o <host>.c.o && make <host>.c.o`.
