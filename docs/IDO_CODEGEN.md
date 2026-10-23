@@ -14463,6 +14463,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit XL (agent-g 2026-10-23, run 129): the game_uso camera family as NCC donors -- game_uso 2CC8 (768 B, from scratch) and 24BC (600 B, run-119 donor finished) EXACT. Levers: an inline accessor on the Ctx aggregate (`Out *getOut() const { return out; }`) turns each `c.out` reload into an edg temporary, which ugen puts in v0 / v1 like the target (reading `c.out` directly gives t-register loads and shifts the t-ring by one); a POD return type (P3) for a by-value call result gives a plain word copy while V3 keeps a BY-VALUE `void operator=` for the ret temp -> param temp -> float-store chain; a named `int key` costs a frame slot and pushes the first block local 4 bytes down; a tail `Out *o` in a nested block lands below the call return temp; one `if (1) {}` after `q += r` makes the caller-saved a2 reload / re-save between two calls; 28C0 / 7538 / 5F0B8 / 2BB0 / D550 / BB8C did not move](#kit-xl-agent-g-run-129) -- _EXACT: game_uso 2CC8 (768 B) + 24BC (600 B) = +1368 B (63.51 -> 63.69 %). NM: none landed._
 - [kit XLI (agent-g 2026-10-23, run 130): game_uso 1DDC as an NCC donor -- 275 -> full length (382/382) and every integer register right, frame and FP colouring still open. Levers: a chained `acc = diff * (mag - speed) * a0->k1` (one full-expression) instead of a named `V3 t` gives the target ret-temp -> this-copy and a second ret / param temp pair (+6 insns, the ret slot stays busy for the whole expression); `if (1) {}` after `self += f()` forces the self.x / self.z reloads; `speed; diff.y; diff.z; diff.x` order; a nested `{ Out *o = c.getOut(); ... }` at each use (ref load and both 072EE8 calls) moves the accessor result to v0 and the param-temp pointer to v1 and un-shifts the t-ring. edg allocates a scope's temporaries LAST-CREATED-HIGHEST; nested named pointers cost 4-8 bytes each](#kit-xli-agent-g-run-130) -- _no exact; draft in scratch g130/1d/best_x2.cpp (non-sp diffs 85, frame 392 vs 384)._
 - [kit XLII (agent-g 2026-10-23, run 131): game_uso 28C0 NM donor 72 -> 4 -- the "Out" and "Body" of the camera family are ONE node type (Out px/py/pz at 0xA0 = the translation row of the M4 at 0x70), and the dead `int zz` slot in the else arm was a named `Node *o` reused for the head load AND the rotate base; that single uopt candidate takes v1 like the target while edg's pooled accessor temporary keeps v0. Routing a third site (072EE8 arg) through `o` makes o outrank the pooled temp and flips every v0 / v1. 1DDC scratch: one named `Out *o` declared after `sel` instead of three nested blocks gives frame 384 (target) and 187 -> 115 raw](#kit-xlii-agent-g-run-131) -- _no exact; 28C0 NM 98.36 -> 99.92 %._
+- [kit XLIII (agent-g 2026-10-23, run 132): what decides the 28C0 v0 / v1 pair (one uopt candidate = the pooled edg temporary holds the key-1 072EE8 argument AND the else-arm getPos `this`; the target has them in two candidates), BB8C P2 record declared first (66 -> 64), gl 62194 frame = named-local homes (22 -> 17 in scratch with no named `t0`, a named `stride` and a `volatile` product local), 7538 under NCC is byte-identical to cfe; family scan](#kit-xliii-agent-g-run-132) -- _no exact; BB8C NM 66 -> 64 committed._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
@@ -34836,3 +34837,57 @@ through the dump toolchain, prints the per-function itab + colouring; the dir na
 8. **Gate / landing notes.** One commit on agent-g (28C0 NM donor). Purge
    `build/{,non_matching/}src/game_uso/game_uso.c.o` and every `*_ncc_*.cpp.o`. ROM cmp OK, verify-blocks 6/6 OK,
    no exact lost, sentinels 100, 63.69 % code (unchanged), post0b untouched (clip 0x2e834).
+
+## kit XLIII (agent-g 2026-10-23, run 132): the 28C0 pooled temporary, BB8C record slot, 62194 homes <a name="kit-xliii-agent-g-run-132"></a>
+
+No exact this run. One NM commit (game_uso BB8C donor 66 -> 64). Scratch: `g132/28`, `g132/bb`, `g132/75`, `g132/62`;
+`g132/csc.sh EXPECTED FUNC files...` scores standalone cfe drafts in parallel through `blockcut-search --file --k 0`.
+
+1. **28C0 (4 raw): why the last two words resist.** `-zdbug:6` (g131/dump.sh): candidate 0 is the edg pooled temporary
+   (frame -68, coloured reg 1 = v0), candidate 137 is the named `Node *o` (-128, reg 2 = v1). The pooled temporary is ONE
+   candidate spanning both arms: key-1 head + key-1 072EE8 argument + else-arm getPos `this` (`ustr -68 := obj+112`) +
+   else-arm 072EE8 argument. The target has the two 072EE8 arguments in v1 but getPos `this` in v0, so in the target
+   those are two different candidates. Giving `o` the else 072EE8 site (3 sites) makes `o` v0 and the pooled temp v1:
+   the key-1 arm then matches but the else arm flips (n_e_2, 29). So the open question is how to split getPos `this`
+   out of the pooled temp with a priority above `o`. Tried, all 4 or flipped (11-31): a char* / void* / reference /
+   non-const / second accessor (`getAcc`, `getRef`, `getOutNC`, `getOut2`), `Node::getPos` wrapper, free inline
+   `getPosF(const M4 *, V3 &)`, `getPosP(V3 *)`, non-const `getPos`, `Self::getObj()`, `const M4 &mm` binding, named
+   `Node *b` / `const M4 *b` for getPos at 6 declaration spots (frame cost or flip), `Acc::add` / `Node::addAcc` /
+   `Ctx::addAcc` wrappers (the Ctx one flips: its `this` temp joins), `{ }` blocks around each statement (blocks do not
+   start new edg temps), and `o` at function scope x 4 positions x 5 getPos spellings x 0-2 extra 072EE8 sites.
+2. **BB8C (66 -> 64, committed).** `-g3` locals (g128/fr.sh): target slots, top = 296: P2 r -164, w -188, param temp
+   -132, ctor temps -104 / -152. Declaring `P2 r;` first in the `if (obj->lo < d)` block (above `f24`) gives r -164
+   (`sw t1,136 / sw zero,132`). The by-value operator= param temp is still -140 (target -132): it is a function-scope
+   temp; it does NOT move with inline layers (extra `set` / `init` / `mk` levels, `const float &`, named results in
+   operator* / operator-), and a dead `double` at the top of the if block moves it only by growing the frame to 304.
+   Moving `double k` into the if block fixes the frame-relative r but shifts the function temps up 8 (k's function-scope
+   slot is part of the target layout even though k is never spilled there). Still open: getPos `addiu a2,a2,112` shape
+   (the pooled this temp is copy-propagated into folded offsets here), s2/s3 obj swap, the zero hoist, and the dead-if
+   spill `sdc1 f22,232`.
+3. **7538 (18) compiled as C++ (NCC) gives the same 18 words** as cfe; inline helpers for the table lookup
+   (`tbl()`, `ent(i)`, `E &entr(i)`, `look(a0, fx, fy)`) and `limOf(a0)` give 18 / 19 / 40 / 415. The a1 / a2 swap is
+   not a C-vs-C++ question.
+4. **gl 62194 (22 -> 17 in scratch, not landed).** The frame (target 40, ours 48) is the kit VIII home rule: every
+   named local takes a home. Target = one named local + the product's slot at sp+32. Best: no named `t0` (read
+   `*(char **)(self + 8)` twice), `unsigned int stride;` then `volatile unsigned int n;` (`n = stride * a3;` before the
+   third call, which takes 3 arguments, `n` passed to the fourth): frame 40, `sw/lw 32(sp)` exact (`g132/62/y/v1.c`).
+   Left: the a2 product is scheduled after the a3 product (target a2 first) and t0 vs v1 for self->8; comma placement of
+   the volatile store and k = 2 cuts do not move it. NOT landed because the draft is 64 insns (target 65): any post0b
+   NM length change moves game_libs_func_00062F08 and the 0x2e834 clip.
+5. **Family scan (game_uso / gui / timproc_b5, unmatched, < 800 B).** Raw words: game_uso 41C0 4 (jal-delay store order,
+   documented), timproc_b5 C98C 2 / BBDC 2 (documented flat), game_uso 7448 (12, documented cap), B274 23, B4B8 172,
+   timproc_b5 CEB4 / 117C / 8AFC / B154 / B624 / B368 and gui 2BB0 / 4568 (81-96 %). None of the small ones is a camera
+   family member (no getPos / Ctx shape); the family proper (2CC8, 24BC exact; 28C0, 1DDC, BB8C open) is unchanged.
+   Kernel / post0b (>= 0x50000) / post1b / tail / arcproc under 10 raw are all in the kit XXXVII "flat" list.
+6. **Table (raw `--raw --pins` words).**
+
+    | function | bytes | before | after | how |
+    |---|---|---|---|---|
+    | game_uso BB8C (NCC NM donor) | 1008 | 66 | 64 | P2 r first in the if block (committed) |
+    | game_uso 28C0 (NCC NM donor) | 1000 | 4 | 4 | ~110 variants, see #1 |
+    | game_uso 7538 | 1376 | 18 | 18 | NCC + inline helpers |
+    | gl 62194 | 260 | 22 | 22 (17 scratch) | homes + volatile product, length 64/65 |
+
+7. **Gate / landing notes.** Rebased on origin/main 845cdabac (timproc_b5 `private REPLACE_FUNC_BODY`). One commit on
+   agent-g (BB8C NM donor). Purge `build/{,non_matching/}src/game_uso/game_uso.c.o` and every `*_ncc_*.cpp.o`. ROM cmp
+   OK, verify-blocks 6/6 OK, no exact lost, sentinels 100, 63.69 % code (unchanged), post0b untouched (clip 0x2e834).
