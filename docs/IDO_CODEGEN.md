@@ -14482,6 +14482,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit LVIII (agent-g 2026-10-23, run 140): a cfe "zero vs constant $f0/$f12 swap" in a cfront vec3 constructor is the data-load spelling of the FP constants -- the unchanged body under NCC with SOURCE LITERALS takes the target colours (b5 2B74 EXACT); same-name web reuse of dead FP locals moves single FP webs (game_uso 1DDC); an assignment-operand read / a dead store inside a product reorders FP loads and colours (arcproc 125C); tier-2 0% functions are all handwritten / dead-table code](#kit-lviii-agent-g-run-140) -- _EXACT: timproc_uso_b5_func_00002B74 (99.36 -> 100, 1876 B). NM: game_uso 1DDC raw 10 -> 7, arcproc 125C raw 10 -> 6, b5 8FC8 84.28 -> 84.73, game_uso 7C1C 89.29 -> 89.69. Negatives: b5 4118 case 0, b5 32C8 under NCC, gl 5062C operator+ slot, gl 51AD8, gl 3430, gl 5F5F0, post1b 68DD4._
 - [kit LIX (agent-c 2026-10-23, run 135): a 0%-fuzzy "no C at all" function behind a 1-word alt-entry orphan is a HOISTED HEAD -- confirm with uso-sym-oracle, decode the merged body from scratch, symtab-merge expected/ (game_libs 3B1A8 EXACT, 324 B); a stack point written/read through `q = &p` keeps the alias reloads; named X/Y/Z stored late; `i++` placement schedules the strength-reduced offset add; 90CC tail vcalls through the m2c-named var_s0 / var_s1; same-symbol two-access `lui at` reuse is not reachable from cfe -O2 (308AC); negatives on 45178 / 4EE44 / 24378 / 240A0 / 445AC / 3DF58 / 32E18](#kit-lix-agent-c-run-135) -- _EXACT: game_libs_func_0003B1A8 (gl_func_0003B1AC 0 -> merged 81/81, total code -320). NM: bootup 90CC 95.64 -> 95.69 (raw 421 -> 386, 2114 -> 2112 of 2106 words). Code 70.654 -> 70.684%._
 - [kit LX (agent-c 2026-10-23, run 136): a 0% function that reads temps it never sets can have its hoisted head inside the PRECEDING BIN segment -- move the tenshoe.yaml c-segment start back over it (ROM unchanged, assets bin shrinks, other checkouts re-run `make setup`), prepend the head to expected/ .text with a metadata-only ELF edit, decode from scratch (game_libs 1C9E4 EXACT, 692 B); a register-read-before-write scanner finds these; as1 shares ONE `lui at` across accesses only for the SAME file-local (static) symbol, so a "shared lui at" cap is module-local data: NCC donor over a `static` struct with per-site C++ references (game_libs 308AC + 308C8 merged EXACT, 248 B; 34A78 EXACT with only the shared byte pair static; the old 66A50 cap family); splitting `n = x->count++` into load / store recolours count (488A0 24 -> 18)](#kit-lx-agent-c-run-136) -- _EXACT: game_libs_func_0001C9E4 (gl_func_0001CA10 0 -> 173/173 incl. the 11-word head), game_libs_func_000308AC (gl_func_000308C8 82 -> merged 62/62), gl_func_00034A78 (94.75 -> 59/59). NM: 488A0 98.57 -> 98.97. Code 70.93 -> 71.08%; post0b clip 0x2e8a8 -> 0x2e8ac._
+- [kit LXI (agent-g 2026-10-23, run 141): a cfe goto ladder whose last test the target keeps as `beq last; nop; b default` is an edg SOURCE-ORDER switch -- compile it under NCC (game_libs 66EEC EXACT); the lone nop before a dead epilogue is as1's 32-byte alignment of that block and depends on the function's offset in the compiled .text, so a donor .cpp can open with a small phase function (post1b's original TU phase = expected offset + 0x10 mod 32); the kit-LX static-object recipe closes 5165C; a full permutation sweep of a constructor's store tail is cheap (151k NCC compiles, ~10 min) and found the 15FC store order; FP literal audit + USO-oracle fake-split scan over all agent-g units came back empty](#kit-lxi-agent-g-run-141) -- _EXACT: gl_func_00066EEC (96.62 -> 100, 408 B), gl_func_0005165C (93.75 -> 100, 64 B). NM: gl_func_000015FC 90.06 -> 99.85. Code 71.08 -> 71.14%; post0b NM clip 0x2e8ac -> 0x2e8a8._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
@@ -36295,3 +36296,67 @@ shift every other .text symbol and .rel.text offset, rename OLD(+.NON_MATCHING) 
    structured if / else-if (target tests 7 first) goes 519 -> 746 raw; switch with inline cases = same 519.
 6. **Clips:** post0b NM clip `0x2e8a8 -> 0x2e8ac` (34A78; 62F08 NM offset 0x2e85c, sentinel 100);
    game_libs_post TRUNCATE_TEXT 0x17a48 -> 0x17a74 (1C9E4 head; the 308AC donor is the same 0xF8 as its INCLUDE_ASM).
+
+## kit LXI (agent-g 2026-10-23, run 141): source-order switches under NCC, dead-epilogue phase in donors, store-tail sweeps <a name="kit-lxi-agent-g-run-141"></a>
+
+Scratch: `g141/` in the session scratchpad (`audit/fpaudit.py` = per-function count of FP loads from `N(at)` in the
+expected objects; `orc/mods.py` + `orc/match3.py` = parse every USO in the ROM once and list unreferenced function
+starts per unit; `sw15/full.py` / `sw15/hill.py` = exhaustive / hill-climb statement-order sweeps under NCC).
+
+1. **EXACT gl_func_00066EEC (message pump, 408 B).** The cfe NM body was a goto ladder on the message type
+   (0 / 5 / 6 / 1 / 4 / 2) whose last test inverted to `bnel v1,at,top; b c2` (target `beq v1,at,c2; nop; b top`,
+   "the documented last-beq inversion"). That tail is exactly edg's lowering of a `switch`: a compare chain in
+   SOURCE order ending `beq last; <nop>; b default`. The same body as `switch (v) { case 0: break; case 5: ...;
+   case 6: break; case 1: ...; case 4: break; case 2: ...; }` under NCC is word-exact except one nop before the
+   unreachable epilogue. **Rule: a cfe goto ladder with a non-sorted case order in a C++ unit (game_libs, USOs) is
+   a switch under NCC; try that before any ladder spelling.**
+2. **The dead-epilogue nop is position-dependent (as1 aligns the dead epilogue block to 32 in the compiled .text,
+   MATCHING_WORKFLOW #dead-epilogue-align-across-splice-56ec).** Measured by prefixing the donor with dummy
+   functions: function at donor offset 0x10 -> 3 nops, 0x18 -> 1 nop (target), 0x20 -> 7 nops. The expected
+   object has 66EEC at post1b offset 0x3F88 (8 mod 32), so the original TU had it 0x10 further (post1b is a later
+   split); 66A50's 5-word pad gives the same +0x10 phase. Donor recipe: open the .cpp with an
+   `extern "C" void <name>_phase(int *p)` of the right size (6 stores = 0x1C, two stores + return 0 = 0x18) --
+   only the target function is spliced. Host placeholder = volatile stores sized to the exact slot (101 stores =
+   0x198 here) so nothing after it shifts at compile time.
+3. **EXACT gl_func_0005165C (64 B)** with kit LX's static-object recipe: `static int s[2]; { int &a = s[1];
+   int &b = s[0]; a = 0; b = 0; }` gives the single `lui at; sw zero,4(at); sw zero,0(at)`; renamed .bss reloc
+   pinned `gl_func_0005165C_bss = 0`. The NM tree's old 17-word body was 4 bytes longer than the 16-word
+   placeholder: post0b NM clip 0x2e8ac -> 0x2e8a8 (62F08 at 0x2e858, sentinel 100).
+4. **gl_func_00066A50 (same recipe, not landed):** with a 0x1C phase function the NCC donor is 37/37 words,
+   size 0x94, and the canary pair shares one `lui at`, but the constant 0x12345678 lands in v0 (target t8, an
+   ugen ring temp); chained / separate / reference-first / void, float and long long first-call aliases,
+   goto and parameter barriers: no move. Same v0-vs-ring-temp tie under cfe.
+5. **gl_func_000015FC 90.06 -> 99.85 (report).** The "as1 stream-interleave" residual was statement order: a
+   full 151,200-permutation NCC sweep of the ten tail stores (FP-literal order fixed) plus a hill-climb found E0
+   before E4, `D4 = arg1` before the 128 zero, the two 100 stores as one chained assignment (`CC = C8 = 100`,
+   which also gives the 204-then-200 store order) and 12C before D0. The same order gives the same words under
+   cfe, so the fix is in-place C (no donor). Left: `li v1,100` (ours v0) -- source literals under NCC, void /
+   pointer / float callee returns, a named constant local, struct members and empty tests are inert.
+6. **FP literal audit (target 1): no win.** Ranked every NM function in agent-g units by FP loads from `N(at)`.
+   Findings: b5 `import_80807FB8 + 0x23C / 0x270 / 0x3BC / 0x3FC` reads are .rodata literals (1e7f), not imports
+   -- D884 stores that constant to +0x108..0x110 where the C wrote 1.0f (decode error; fixing it is +0.5 fuzzy but
+   +2 words, not kept). CEB4's greys are three separate 0.3f entries (NCC per-use literals): under NCC + literals
+   + `pad[0] = 0` the frame and order are right but the 1.0 / 0.3 colours follow the then-arm (97.72 vs cfe 97.13,
+   not wired). 8FC8 (56 literal loads) under NCC + literals 81.7 (cfe 85.1); 64388 and 2840 literals inert; 15FC
+   literals inert (see 5). game_libs RoData (bootup.uso section 7) holds these constants, e.g. 0x20C8 = 1e-05,
+   0x20D0 = 455.0f, 0xC7C.. = n/255 colour channels.
+7. **Oracle scan (target 2): no fake splits in agent-g units.** Every NM function in gui, game_uso, b5, b3,
+   arcproc_tail1, titproc, mgrproc, eddproc, game_libs.c, game_libs_mid, post0b >= 0x50000 and post1*/post2* is
+   exported or relocated at its symbol (post0b's shift is +4 past ~0x56000). Unreferenced starts are either
+   handwritten (6A5F0 / 6AD78 exceptasm: the six exports inside 6A5F0 are the asm entry labels, still not C),
+   static leaves (5AFB0) or 100% already. `gl_func_00000000` (game_libs.c offset 0, 0%) starts mid-stream: its
+   hoisted head is the 8 words at ROM 0xDE50B8..0xDE50D7 (bootup_uso_post + game_libs_pre bins; 0xDE50B8 =
+   section 0x1464C = Sym 871, DataReloc-referenced) -- a kit-LX bin-head move, but here the c-segment START of
+   game_libs itself would move (vram 0 base), so it was not attempted.
+8. **Negatives:** mgrproc 1824 (the `li at,1` of the 2-case outer switch schedules before the `addiu t7`; goto
+   chain, `+=` / `++` / comma / same-line forms, reading 7D4 first: no move), gl 525F0 under NCC (same v1
+   reload; inline get() worse), gl 5AFD4 (`0xFF000000 - 1` fold: seven spellings), game_uso 97EC (inline ctor /
+   operator variants: the x value's f12 is not the temp order), arcproc 125C (the seq compare's `+1` temp is t1 in
+   the target, t0 here, and the two span reloads follow one ring slot behind; eight compare spellings incl.
+   assignment-operand forms move the colour but never the ring), 1DDC not retried.
+   **Open lead:** gui 329C's `if (t != 0x408) { if (t != 0x120) { if (t != 0x110) {} else goto c110; } else goto c120; }
+   else goto c408;` ladder is a source-order `switch (t)` too: under NCC the chain and arms line up (88.70 -> 88.83
+   standalone, `g141/g329b.cpp`), but the target keeps `t` in s0 (frame 88 vs 80, `lw s0,0(t3)` in the default's
+   delay slot) -- the switch value and the PKT context pointer are ONE web live across the arm calls. gui 2DE0 has
+   the same ladder.
+9. **Clip:** post0b NM clip `0x2e8a8` (from agent-c's 0x2e8ac), 62F08 NM offset 0x2e858, sentinels 100.
