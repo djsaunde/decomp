@@ -14462,6 +14462,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit XXXIX (agent-g 2026-10-23, run 128): rewrites from scratch -- timproc_b5 6E08 EXACT (slot RMW through a block pointer `p = base; p += i; *p -= 1` = the target's `addiu v0,v0,976` + `sw 0(v0)`; the second loop's counter as a block-scoped variable keeps `j = 0` after the call); game_uso 7538 rewritten (VOID: an int / long long return makes uopt constrain the accumulating word away from v0; `m = t - 1` computed BEFORE a range chain is not folded to `t == 1`; reusing two named variables n / m sets the a-register colours because uopt colours whole variables in first-appearance order) 611 -> 18; game_uso BB8C NCC donor from scratch (V3 operator temporaries, by-value void operator=, ONE double for two constants, dead `if (k) {}` at the function end lowers a variable's colour priority) 287 -> 66; cfe frame = one word per declared referenced local (gui 2BB0); run-127 cuts landed on six movers; 7C1C NCC route and why the 852 pool did not reproduce; spill-slot order is colouring order (1460)](#kit-xxxix-agent-g-run-128) -- _EXACT: timproc_b5 6E08 (624 B, 63.43 -> 63.51 %). NM: 7538 611 -> 18, BB8C 287 -> 66, 5F0B8 100 -> 34, 2BB0 57 -> 34, D550 66 -> 38, E5C8 93 -> 74, 5BF0 80 -> 71, 1DDC 39 -> 36 raw words._
 - [kit XL (agent-g 2026-10-23, run 129): the game_uso camera family as NCC donors -- game_uso 2CC8 (768 B, from scratch) and 24BC (600 B, run-119 donor finished) EXACT. Levers: an inline accessor on the Ctx aggregate (`Out *getOut() const { return out; }`) turns each `c.out` reload into an edg temporary, which ugen puts in v0 / v1 like the target (reading `c.out` directly gives t-register loads and shifts the t-ring by one); a POD return type (P3) for a by-value call result gives a plain word copy while V3 keeps a BY-VALUE `void operator=` for the ret temp -> param temp -> float-store chain; a named `int key` costs a frame slot and pushes the first block local 4 bytes down; a tail `Out *o` in a nested block lands below the call return temp; one `if (1) {}` after `q += r` makes the caller-saved a2 reload / re-save between two calls; 28C0 / 7538 / 5F0B8 / 2BB0 / D550 / BB8C did not move](#kit-xl-agent-g-run-129) -- _EXACT: game_uso 2CC8 (768 B) + 24BC (600 B) = +1368 B (63.51 -> 63.69 %). NM: none landed._
 - [kit XLI (agent-g 2026-10-23, run 130): game_uso 1DDC as an NCC donor -- 275 -> full length (382/382) and every integer register right, frame and FP colouring still open. Levers: a chained `acc = diff * (mag - speed) * a0->k1` (one full-expression) instead of a named `V3 t` gives the target ret-temp -> this-copy and a second ret / param temp pair (+6 insns, the ret slot stays busy for the whole expression); `if (1) {}` after `self += f()` forces the self.x / self.z reloads; `speed; diff.y; diff.z; diff.x` order; a nested `{ Out *o = c.getOut(); ... }` at each use (ref load and both 072EE8 calls) moves the accessor result to v0 and the param-temp pointer to v1 and un-shifts the t-ring. edg allocates a scope's temporaries LAST-CREATED-HIGHEST; nested named pointers cost 4-8 bytes each](#kit-xli-agent-g-run-130) -- _no exact; draft in scratch g130/1d/best_x2.cpp (non-sp diffs 85, frame 392 vs 384)._
+- [kit XLII (agent-g 2026-10-23, run 131): game_uso 28C0 NM donor 72 -> 4 -- the "Out" and "Body" of the camera family are ONE node type (Out px/py/pz at 0xA0 = the translation row of the M4 at 0x70), and the dead `int zz` slot in the else arm was a named `Node *o` reused for the head load AND the rotate base; that single uopt candidate takes v1 like the target while edg's pooled accessor temporary keeps v0. Routing a third site (072EE8 arg) through `o` makes o outrank the pooled temp and flips every v0 / v1. 1DDC scratch: one named `Out *o` declared after `sel` instead of three nested blocks gives frame 384 (target) and 187 -> 115 raw](#kit-xlii-agent-g-run-131) -- _no exact; 28C0 NM 98.36 -> 99.92 %._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
@@ -34788,3 +34789,50 @@ when the frame is wrong, so score shape with `--nosp --noreg`, then registers wi
     | game_uso 1DDC (NCC scratch) | 1528 | 275 (373 insns) | 382/382 insns, shape 4, non-sp 85 | not landed (cfe NM stays at 36) |
 
 8. **Gate / landing notes.** No source change was committed. Tree = origin/main 6f39c903e.
+
+## kit XLII (agent-g 2026-10-23, run 131): one node type, a named pointer in the dead slot, the pooled temporary owns v0 <a name="kit-xlii-agent-g-run-131"></a>
+
+No exact this run. game_uso 28C0 (1000 B) NM donor went 72 -> 4 raw (`--raw --pins`), committed on agent-g
+(`src/game_uso/game_uso_ncc_28C0.cpp`, NM tree only). Scratch: `g131/28` (generators `gen*.py`, best `best.cpp`),
+`g131/1d` (1DDC), helpers `g131/lst.sh OBJ FUNC` (numbered listing) and `g131/dump.sh FILE FUNC` (NCC `-Wo,-zdbug:6`
+through the dump toolchain, prints the per-function itab + colouring; the dir name is printed last).
+
+1. **Out and Body are the same class.** In the camera family `out->px/py/pz` sit at 0xA0..0xA8, which is exactly
+   `mtx.m[3][0..2]` of the M4 at 0x70 that Body has. Declaring one `struct Node { char pad[0x30]; char acc[0x30];
+   float gx, gy, gz; char pad6c[4]; M4 mtx; }` for `Self::out`, `Self::obj` and `Src::body` lets one named pointer
+   hold both the output node and the target node.
+2. **The dead `int zz; zz = 0;` slot (kit XL #4) was a named pointer.** In 28C0's else arm, replacing it with
+   `Node *o;` and writing `o = c.getOut(); p.x = o->mtx.m[3][0]; ...` for the head load and
+   `o = c.getTgt(); o->mtx.rotate(v);` for the rotate keeps the frame (232) and every slot. uopt colours `o` v1
+   (the target's `lw v1,228(sp)` hoisted into the `bne` delay slot, and `lw v1,224(sp)` as the rotate base). The bnel +
+   duplicated load disappears by itself once the head value is v1: as1 only fills a plain `bne` delay slot from the
+   target block when the register is dead on the fall-through.
+3. **Who gets v0: the pooled edg temporary vs a named pointer.** `-zdbug:6` on 28C0: the edg pooled temporary (every
+   accessor return and the inline getPos `this`, frame -68 here) and the named `o` are both coloured, in priority
+   order. When `o` has two sites (head + rotate) the pooled temp is coloured first and takes v0, `o` takes v1
+   (target). Give `o` a third site (either 072EE8 argument) and `o` is coloured first: o = v0, pooled = v1, 29-31 raw.
+   A nested `{ Node *o2 = ...; }`, a second named pointer, an inline `Node::add(V3 *)` wrapper, `c.out->acc`
+   direct, declaration position (function scope at 3 spots / else scope) and block cuts (`--k 2`, 1830 variants) all
+   stay at 4 or flip. RESIDUAL 4 words: both `lw v1,228(sp); addiu a0,v1,48` (072EE8 args) come out as the pooled
+   temp in v0.
+4. **Accessor spelling sweep (28C0, 1944 + 5000 + 2500 variants through `run2.sh`).** The per-use nested
+   `{ Out *o = c.getOut(); ... }` that fixed 1DDC moved the key-1 arm's t-ring into place (72 -> 38) but in the else
+   arm costs a slot (frame +8). `c.getOut()->getP(p)` (inline `Out::getP`) 26. Named pointer in the dead slot 12,
+   function-scope `Out *o` for the key-1 072EE8 as well 10, Node type 4.
+5. **1DDC (scratch only).** One named `Out *o;` declared after `sel` in the else scope, used at all three sites
+   (`o = c.getOut(); ...`), instead of three nested blocks: frame 392 -> 384 (target), raw 187 -> 117
+   (`g131/1d/v/v_8ooo.cpp`); keeping the ref load and the second 072EE8 as nested blocks with `o` declared too gives 115
+   (`v_8non.cpp`). Non-sp diffs unchanged at 85: the FP colouring
+   (x f12 / y f2 swapped, kit XLI #5) and the self / binding schedule (target loads self from 340.., ours 328..)
+   remain. The Node type alone does not change 1DDC. Not landed (cfe NM stays at 36).
+6. **Not attempted:** BB8C (66), 7538 (18, C++ rewrite), and the family scan: the time went into 28C0.
+7. **Table (raw `--raw --pins` words).**
+
+    | function | bytes | before | after | how |
+    |---|---|---|---|---|
+    | game_uso 28C0 (NCC NM donor) | 1000 | 72 | 4 | Node type + named pointer in the dead slot (committed) |
+    | game_uso 1DDC (NCC scratch) | 1528 | 187 (frame 392) | 115 (frame 384) | one named `Out *o` after `sel` (not landed) |
+
+8. **Gate / landing notes.** One commit on agent-g (28C0 NM donor). Purge
+   `build/{,non_matching/}src/game_uso/game_uso.c.o` and every `*_ncc_*.cpp.o`. ROM cmp OK, verify-blocks 6/6 OK,
+   no exact lost, sentinels 100, 63.69 % code (unchanged), post0b untouched (clip 0x2e834).
