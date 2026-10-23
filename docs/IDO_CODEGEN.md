@@ -34352,3 +34352,10 @@ where that boundary falls picks the colours.
    dummy scalars (`int k1, k2; k1 = 0; k2 = 0;`) for the frame of 112. Open: self is homed at entry in ours
    (the target keeps it in a0 and spills it just before the loop), the target's dead `or v0,v1` copy in the
    > 32 arm, s-register permutation (rem s1 / h s0 / t s2 in the target).
+9. **Batch and sweep notes.** The cfe empty-if batch (28 wraps, single positions) moved only gl 51ED8: 10 -> 5
+   words with one empty if after `p = ap;`. That is not landed (post0b clip churn for an NM). The 329C draft
+   with the macros expanded (`gcc -E -P`) gets the same 88 words with one empty if right after the rectangle
+   macro's `_g =` line, which is the boundary the N = 12 sweep found. Gate hazard: `make -n -B` on a unit
+   object (my sweep's way of reading compile commands) re-ran sub-makes and rebuilt four NM-tree objects
+   (post1b2c, post1c, post2b_c, post2b_d) stale. The report then lost 16 exacts until those objects were
+   deleted and rebuilt. Read compile lines from a plain `make -n` on a deleted object, or hard-code them.
