@@ -14469,6 +14469,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit XLV (agent-c 2026-10-23, run 128): blockcut-search hard rules (no cut in front of `else`, length-changing variants are non-wins, `--selftest`); PR #10 spellings and lever A (per-callee prototypes) probed on 4EE44 / CA0 / 6204 / h2h 620 / 49B3C -- all flat; the residuals in this band are integer-only colour ties that prototypes cannot reach; standalone TU == in-unit TU for every probe](#kit-xlv-agent-c-run-128) -- _no exact, no NM change; tool fix committed._
 - [kit XLVI (agent-g 2026-10-23, run 134): lever-A sweep over every agent-g partial function is NEGATIVE (no float-promotion, extension or phantom-argument rows at any call boundary); new lever E = a trailing empty `if (p) {}` on a value the target keeps live to the end (game_libs 3298 EXACT: 0xFF moves v0 -> v1); 1DDC 36 -> 13 by 28C0's store-then-read one-element home (ugen t6) + scoped home read + per-role FP variables; 62194 10 -> 4 by a block-scoped re-read of self->8; 5062C / 32C8 / BB8C cfe draft / 5F0B8 / 525F0 / 533EC negatives](#kit-xlvi-agent-g-run-134) -- _EXACT: game_libs_func_00003298. NM: 1DDC 36 -> 13, gl 62194 10 -> 4 raw._
 - [kit XLVII (agent-c 2026-10-23, run 129): ugen temp-order levers on game_libs_post (dead `& 0xFF` / `& 0xFFFF` masks and statement order burn the target's skipped t-registers; a compound `+=` fixed 31 words), the target's dead entry `or a0,zero,zero` is the init of an IV-eliminated counter (bound re-read in the loop test), gbi `Gfx *_g = gp++` copy-and-bump shape, integer `0` for a float store gives its own `mtc1 zero`, dead `while (0) { g = g + 0; }` inside a loop keeps a const base in a register, unused non-volatile pad arrays are NOT free; last run's float lever-A candidates were inside exact functions (null)](#kit-xlvii-agent-c-run-129) -- _no exact; NM: 26790 64->41, 250C8 82->61, 26D64 93->61, 1DCB4 157->146, 2B5F4 197->168, 2C7A4 206->155, 24378 323->243, 32E18 17->4, bootup 8FA8 15->13 raw._
+- [kit XLVIII (agent-g 2026-10-23, run 135): lever E generalised to ANY statement position -- an empty `if (v) {}` after an arbitrary statement (not only at the end) is a zero-instruction live-range / candidate lever; a parallel out-of-tree sweep (`if (v) {}` after every statement and brace x every scalar/param, `while (0) { v = v + 0; }`, `v[1]`, dead `while (0)` pairs, pairs of insertions) over all 30 same-length agent-g partials; gl 62194 EXACT by naming the else product, folding it (`b += q`) and testing it (`if (q) {}`) before the call (q becomes a v1 uopt candidate); 1DDC 13 -> 10 by `if (fz) {}` at function ENTRY; length-changing sweep 'wins' all lower objdiff fuzzy except 6126C](#kit-xlviii-agent-g-run-135) -- _EXACT: gl_func_00062194. NM: 1DDC 13 -> 10, kernel 2250 27 -> 22, kernel 1594 39 -> 35, gl 64388 26 -> 23, timproc_b5 1F14 676 -> 590 raw._
+- [kit XLIX (agent-c 2026-10-23, run 130): baked-jal / baked-data pin job on game_libs_post + post0b (probe build maps each placeholder call site to the target's jal word; objdiff already ignored these fields, rdiff raw drops), dead `& 0xFF` masks in place of `(s8)` casts in a uopt-unrolled copy loop (24378 240 -> 9), dead u8 mask on an increment store (26D64), u8 local reused as a call argument keeps the target's copy (26790), two statements on ONE line fix a lui/addiu interleave, any dead `while (0)` in a loop body recolours its accumulator; negatives on 32E18 / 240A0 / 250C8 / 2BB7C / 2B5F4 / 2C7A4 / 1DCB4 / E2D0 / 8FA8 / 40304](#kit-xlix-agent-c-run-130) -- _no exact; NM: 24378 240->9, 26790 41->28, 26D64 61->49, 25504 76->74 raw; pins: 2C7A4 155->120, 2BB7C 416->391, 30AF4 275->229, 2AD1C 164->145, 2E354 732->682, 21E58 / 276E4 raw 1->0._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
@@ -35208,3 +35210,111 @@ row by row with `*` on mismatches) shows temp-number drift far better than the d
     inside a switch case explodes the jumptable layout (11 -> 173). 2C7A4 C9 / CA: h / constant spellings
     flat. 32E18: decl order `o, b, p, q, zv, r, pad[4], v` + the comma Vec3 init puts zv at 68 as the
     target but v moves to 36 (target 32): also 4 raw, not committed.
+
+## kit XLVIII (agent-g 2026-10-23, run 135): `if (v) {}` anywhere, the fold-and-test candidate trick, sweep results <a name="kit-xlviii-agent-g-run-135"></a>
+
+Scratch: `g135/` in the session scratchpad. `psweep.py SRC FUNC UNIT MODE` = parallel (30 jobs) OUT-OF-TREE lever sweep
+(cfe, or NCC for `*.cpp` donors; never edits SRC; scores `rdiff --raw --pins`, length-changing variants rank as
+1000+raw). Modes: `ifpos` (`if (v) {}` after every statement x every scalar local / param; `BRACES=1` also after every
+`{` / `}`), `wpos` (`while (0) { v = v + 0; }` at the same positions), `arr` (scalar `T v;` -> `T v[1];`, uses -> `v[0]`),
+`w0` (dead `while (0) { a = b + b; }` at the first statement for every ordered pair of same-class locals), `ifend`,
+`ifpos2` (every PAIR of `if (v) {}` insertions, `--lines` to bound it), `all` / `all2`. `greedy.sh` re-sweeps from the
+best variant. `tryfz.sh unit FUNC VARIANT` writes one variant in-tree, refreshes report.json and prints objdiff fuzzy
+before/after (then restores + touches the source). Standalone scores equal in-tree scores for every agent-g unit except
+kernel_054_c (needs `-O1`) and the NCC / `-Olimit 1` donors (sweep the donor file with `--expected`).
+
+1. **EXACT gl_func_00062194 (post0b, 4 raw -> 0, episode logged).** The last 4 words: the else-path product
+   `stride * a2` was a ugen t-reg (t4) where the target has a uopt candidate in v1 (and the a3 reload one t-reg lower).
+   Fix, all three parts needed:
+   `{ char *b = *(char **)(self + 8); unsigned int q = stride * a2; b += q; if (q) {} f(b, a1, stride * a3); }`.
+   Named `q` alone is copy-propagated back into the expression (still t4); `b += q` alone or `if (q) {}` alone stays at
+   4. Folding the named product into the pointer AND giving it a second (empty) use makes it a real candidate.
+   **Recipe: when a single-use expression temp should be a v0/v1 candidate, name it, consume it by a compound
+   assignment, and test it once with an empty `if (q) {}`.** Landing needed the four USO import symbols pinned in
+   `undefined_syms_auto.txt` (`D_62194_a..d = 0`): with them undefined, `ld` SEGFAULTS (no "undefined reference"
+   message) on the unwrapped body.
+2. **Lever E at arbitrary positions (sweep wins, all objdiff-confirmed same-length gains):**
+   - game_uso 1DDC 13 -> 10: `if (fz) {}` as the FIRST statement (any position before fz's first assignment gives the
+     same 10): the pass-1 zero constant (`diff.y = fz = 0`) moves f2 -> f14 as in the target. A read of an
+     uninitialised local at entry is a legal C live-range lever. LEFT (10): fy (0x7C load) f14 vs target f2 and the
+     then-arm z product f16 vs f14; pass-2 zero f12 vs f14 against the commit-1 y product. 192-way role brute force of
+     the then-arm x/y/z variables, `= 0` integer zero (kit XLVII) for diff.x / diff.z / fz, named zero variables, the
+     full single-insertion sweep (2266 variants with braces / `while (0)`), 29403 insertion PAIRS over the pass-1 and
+     commit-1 lines, block cuts k=1: all 10 or worse.
+   - kernel 80002250 27 -> 22: `if (var_a3) {}` right after the table load inside the loop. LEFT: the loop bound
+     reload `FW(arg0, 4)` is a0 (target a1) and the `>> 4` / `+8` halfword temps are t-regs (target a0); named idx / k
+     temps, reusing temp_a1 / temp_a2 for the bound: flat or worse.
+   - kernel 80001594 39 -> 35: `if (arg1) {} if (c) {}` after the entry store `e->unk0 = c;` (two greedy steps).
+   - gl 64388 26 -> 23: `if (by) {}` after `by = pv->y - qv->y;`.
+   - timproc_b5 1F14 676 -> 590: `if (arg0) {}` after the 0x48 == 1 update call, `if (frame2) {}` after its block
+     (fuzzy 84.18 -> 84.60). Two more greedy steps reach 538 raw but LOWER fuzzy (84.37): on low-ratio functions raw
+     words are noise; confirm every step with objdiff.
+3. **Length-changing sweep "wins" are fake (the 533EC artefact again):** 80000598 (-> target length, 7 raw, fuzzy
+   79.4 -> 78.4), 66EEC (standalone same length, in-tree 103 vs 102, fuzzy 96.6 -> 92.7), CEB4 94.4 -> 90.7, 5F0B8
+   91.9 -> 89.6, 500EC 91.7 -> 88.2, mgrproc 2B7C 92.9 -> 91.2, timproc_b3 1C68 95.1 -> 94.1, timproc_b5 396C `tv[1]`
+   41.8 -> 37.7. Only exception: **gl 6126C** `if (arg3) {}` at line ~30571 reaches the target length (123) and raises
+   fuzzy 78.4 -> 83.0 (70 raw); NOT committed (the run's rule was same-length wins only) -- worth a look by hand.
+4. **Negatives (whole sweep, no win):** single insertions (`ifpos` + braces + `wpos` + `arr` + `w0` + `ifend`) on 8000235C,
+   15FC, 3430, 51AD8, 51F5C, 525F0, 5534C, 558A0, 61B30, 67D50, 68DD4, arcproc 125C, timproc_b5 2B74 / 32C8 / 8AFC,
+   kernel 80009474 (-O1), 690A8, 526D0, game_uso 8CD8 (654 raw but fuzzy 83.07 -> 82.75), NCC donors 5062C (1) /
+   97EC (38) / BB8C; insertion pairs on 2250, 525F0, 67D50, 235C, 558A0, 5534C, 61B30, 8AFC, 9474; blockcut-search k=2 on
+   the same list (k=1 on 3430, 1594, 64388, 32C8, 1DDC, 2B74): every layout flat. Hand probes:
+   - 51F5C (4): the target's compare chain is 100, 101, 0, default; IDO sorts the switch tests ascending (0 first) for
+     every case order (23 permutations, all >= 10). Moving case 0 into `default: if (cmd == 0)` gives the target's
+     100 / 101 order but loses the `beqz` / `b` pair (10); nested switch in default: 10. The target shape is still unknown.
+   - 525F0 (3): block-scoped copies, a temp taken before the call, `if (obj) {}`, typed stores: all 3.
+   - 235C (6): the copy `a3 = a1` and the counter swap a3 / v1; decl order, assignment order, `while (0)` pairs,
+     keeping the key in the param and a new local for the count: 6 or worse.
+   - 32C8 (5): named / tested `ve0+0x134` temp, named zero, `0.0f` zeros, chained stores: 5 or worse.
+   - 67D50 (2): 96 loop / statement-order shapes (`while (n--)`, `for`, `!= 0`, explicit decrement x every order of
+     `q = p`, `p++`, `*q = c`, `if (1) {}`): best 2.
+
+## kit XLIX (agent-c 2026-10-23, run 130): pin job, dead masks in unrolled loops, one-line statements <a name="kit-xlix-agent-c-run-130"></a>
+
+No exact this run (objdiff already scored every jal / data field the pin job fixed). Scoring = `rdiff --raw --pins`.
+
+1. **Pin job (baked USO jals).** Every `jal` row left in game_libs_post was a placeholder callee whose target word
+   bakes a fixed address. Three classes, all legal symbol pins / renames:
+   - named callees whose name IS the target (`gl_func_0003F010` = jal 0x3F010) and are neither defined nor linked
+     (check `build/tenshoe.map` and every `src/`): pin the name in `undefined_syms_auto.txt` (34 names, plus the
+     unique `gl_1dcb4_f1..5`, `func_3b110/3b164`);
+   - a named callee that IS a defined splat-offset symbol (`gl_func_00036A48`, `gl_func_0003B1AC`): do not pin it,
+     call a `gl_ref_<addr>` alias (same address, ROM unchanged even in exact functions);
+   - generic placeholders (`gl_func_00000000`, `game_libs_func_0003443C`) used at many sites with different
+     targets: rename per site. Mapping trick: temporarily rename the k-th occurrence in the NM body to a unique
+     `__pb_k` (declared `extern int __pb_k();`), build the NM object once, read which jal index got which probe
+     from the R_MIPS_26 relocs, pair with the target's jal list (counts were equal in every function), then write
+     `gl_ref_<target>` (or keep the placeholder where the target word is 0x0C000000). 63 sites in one build.
+   Script: scratch `probe.py UNIT FN:PLACEHOLDER ... [--apply]`. objdiff fuzzy did not change (it never counted
+   these fields); `make all` + cmp stay clean. 21E58 / 276E4 now raw-exact too (already 100 fuzzy).
+2. **Pin job (baked data offsets).** Same scan for HI16/LO16 rows whose symbol is an unpinned per-site alias and
+   whose target word is raw: `D_2C7A4_2074` = 0x2074, `D_E354_1C310` = 0x1C310 (hi 2 / lo 0xC310),
+   `gl_data_30AF4_45010`, `D_40304_k001` = 0x1AE0, `D_3B2EC_a/b` = 6, `D_00000000F` = 0x128 (= `D_33094_k`).
+   The `.rodata` rows (jumptables, literals) are NM-object data placement and stay. Binding a literal to the
+   target's reloc symbol through an extern (`*(f64 *)(alias + 0x14)` for E2D0's 0.1) is a memory load, not a
+   constant: +8 words, reverted.
+3. **Dead `& 0xFF` instead of `(s8)` in a uopt-unrolled loop (24378, 240 -> 9).** The x4-unrolled record copy
+   `SB(dst, 2) = (s8)(SH(src, 0x1A) >> 8)` ran one t-register low in every copy. Spelled
+   `SB(dst, 2) = (SH(src, 0x1A) >> 8) & 0xFF` (all four byte fields), the sb drops the andi but each mask still
+   takes a ugen temp, and the whole unrolled body plus the remainder loop line up. Only the u16 field must stay
+   unmasked (`& 0xFFFF` there: 240 -> 275). `--noreg` was already 0, so it was pure temp numbering.
+4. **Dead u8 mask on an increment (26D64, 57 -> 49):** `CUR_D = (CUR_C + 1) & 0xFF;` (u8 store). `(u8)(..)`
+   is flat, `(CUR_C & 0xFF) + 1` scores the same.
+5. **A u8 local keeps a copy the target has (26790, 41 -> 28).** The target passes `v` (v0) with `or a0,v0`
+   in the jal delay; `func_3b110(v, i)` with `int v` coalesces v into a0, with `unsigned char v` the copy stays
+   and e moves to v1. Also: the F2 / F0 loop bounds read `&D` directly instead of a `g = &D` copy (no
+   `addiu v1,a3,0`).
+6. **Two statements on one line change the lui/addiu interleave (24378):** `q = seed; e = seed + 6;` on two
+   lines gives lui q, lui e, addiu q, addiu e (or e-first variants), on ONE line the target's
+   lui q / lui e / addiu e / addiu q (11 -> 9). Not a `#line` directive, just source layout.
+7. **Any dead `while (0)` inside a loop body recolours the loop accumulator (25504, 76 -> 74):** sum a1 and
+   the pointer bound a2 as in the target; position and contents do not matter.
+8. **Negatives.** 32E18 zv/v homes: the 12-byte block above zv is fixed; comma init + pad[3]/[4] keeps 8 raw,
+   every pad / volatile / block-scope layout either keeps zv 64 or grows the frame (alignment-quantised).
+   240A0: per-case h locals, `return 0`, assignment-in-test: flat (h stays v1, target v0). 250C8: rem read before
+   the compare, separate case-1 index, volatile / array sub: all worse (case-1 and lower `sub` must share one
+   home at 36). 2BB7C frame 184 vs 136: each used named local costs a word, unused pads are dropped, `register`
+   and decl order change nothing. 2B5F4 frame 72: removing sp2C / the block local d does not shrink it.
+   2C7A4: case 0xC6's own `b` stub cannot be produced (dead statements are deleted; `break` / `if (1)` flat).
+   1DCB4: target keeps arg1 in s8 and rematerialises &buf; volatile / u8 buf, hoisted q: flat or worse. E2D0
+   sum / scale spellings, 8FA8 count spellings, 40304 while(0) permutations / FP statement order: flat.
