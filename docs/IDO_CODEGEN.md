@@ -14516,6 +14516,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit XCIV (agent-c 2026-10-24, run 151): **`x = K; if (c) { ...; x = v; }` and `if (c) {...; x = v;} else x = K;` are NOT the same to IDO -- the else-arm form hoists K above the compare and ends the then-arm with a `b` to the join (`0x10000001`, `b .+8`), the m2c pre-assign form does not; count `b .+8` words per function (target vs NM build, `b1scan.py`) to find the sites; plus the C++ inline-iterator kit (unhomed non-foldable guard pointer, list-pointer `end` read, one spelling per element read), `(f32)(u32)x` instead of m2c's spelled-out 2^32 correction, int negation temps, own-symbol context reads**](#kit-xciv-agent-c-run-151) -- _no exacts; NM (report.json, 10 functions): gl 4B620 86.21 -> 94.41, 36F0C 87.89 -> 91.26, 48AEC 81.40 -> 88.11, 2E354 84.95 -> 88.24 (length = target), 493AC 86.86 -> 90.60, 469A8 64.91 -> 67.64, 41D40 91.64 -> 92.99, 3B2EC 88.94 -> 89.45, 3BE1C 76.33 -> 76.69, 454C4 62.61 -> 62.81 (length = target); post0b NM clip 0x2e93c -> 0x2e990._
 - [kit XCV (agent-c 2026-10-24, run 152): **an edge-walk increment that the target puts in the loop's `bne` delay slot is written INSIDE the do-while condition (`while (ok && (fv++, nx != end))`), which removes the `bnel` back edge -- 3 cell-family functions; an s16 append counter must be `list[n++] = v` (the target re-extends the old value per use); NCC donors for C++-origin bodies that changed since the run-134 sweep (46050, 493AC win; 41D40 / 3BE1C / 3B2EC / 412E8 / 41820 / 454C4 / 48AEC lose); a DL macro's block-scope locals cost frame words PER EXPANSION; read a field after the call the target reads it after; re-read a stored address-taken struct through `((f32 *)&p)[i]` where the target reloads it; per-arm u8 truncation; if/else orientation = which value is hoisted**](#kit-xcv-agent-c-run-152) -- _no exacts; NM (report.json, 11 functions): gl 4A890 68.64 -> 86.41, 3B2EC 89.45 -> 91.56, 46050 82.45 -> 86.91, 493AC 90.60 -> 92.20, 3B9C0 75.15 -> 76.55, 3B6A0 70.94 -> 72.22, 2E354 88.24 -> 89.49, 454C4 62.81 -> 63.85, 3BE1C 76.69 -> 77.31, 469A8 67.64 -> 67.81, 4B620 94.41 -> 94.48; code % unchanged (78.296), fuzzy 98.050 -> 98.090; post0b NM clip 0x2e990 -> 0x2e9c4._
 - [kit XCVI (agent-c 2026-10-24, run 153): **count the argument registers the target actually sets before a call -- a `lui aN` with no `addiu` in a branch delay slot is the OTHER arm's hoisted address, so that call takes fewer args (gl 49DBC EXACT, gl 578B4 switch-2 default: +sw/+lw gone, length = target); under NCC every named scalar local takes a frame home BELOW the arrays (drop them to move an array to its spXX name); m2c spXXX names restore dropped frame homes after a phi merge (578B4 472 -> 496); one-line gbi packets, `(u32)(u16)` leaves, per-arm statement line layout and mirrored sums**](#kit-xcvi-agent-c-run-153) -- _1 exact (gl_func_00049DBC, 1356 bytes; 78.30 -> 78.47 % code); NM (report.json): gl 578B4 97.76 -> 98.27 (2421 -> 2419 words = target), gl 201B8 97.86 -> 97.94; negatives 5A2C4, 42938 (untouched), 201B8 v=1 web; post0b NM clip 0x2e9c4 -> 0x2e9bc._
+- [kit XCVII (agent-c 2026-10-24, run 154): **gl 578B4 is C++ -- the cfe NM body ported to NCC goes 98.27 -> 99.99 (report.json): edg evaluates a `|`-chain in SOURCE order (cfe pulls the last complex operand to the front), so every packet word takes its gbi macro's own operand order and every "commutative operand order" residual cfe could not reach disappears; NCC drops never-referenced locals but homes every referenced one (m2c pads kept by one dead `x = 0;` line); merging two single-store packet pointers into one variable fixes t0/t1 webs in BOTH CI8 arms; reading the width through the arm's width local flips which two-use constant (0x07000000 vs 0xF5480000) uopt holds in a register**](#kit-xcvii-agent-c-run-154) -- _no exacts; NM: gl 578B4 98.27 -> 99.99 (NCC NM-only donor game_libs_ncc_578B4_nm.cpp, 7 words left: s2_508 DL pointer t0 vs ra); negatives: NCC ports of 4EE44 / 445AC / 40304 / 201B8 / 5A2C4 all lose to cfe; s2_508 line-join / adjacent-swap sweeps (160 variants) inert; post0b NM clip unchanged 0x2e9bc._
+- [kit XCVIII (agent-g 2026-10-24, run 161): **timproc_b5 4118 EXACT (6872 bytes): an empty `case a: case b: break;` group placed FIRST in a jumptable switch stops uopt from carving a register piece for a homed parameter inside a later case (move it LAST); a piece can only take v0 when the call it follows is VOID (the real callee's prototype); a named index temp is a uopt variable (v0/v1), an inline index is a ugen t-temp; a case's last statement and its `break` on ONE source line let as1 hoist the edge reload above the store so the store fills the `b` delay slot; post-switch store order by permutation sweep; landing a cfe body with a jumptable = the 29CCC donor-splice recipe (`<fn>_rodata` pin), and every pin the donor references must have NO trailing comment (bake-data-relocs.py)**](#kit-xcviii-agent-g-run-161) -- _1 exact (timproc_uso_b5_func_00004118, 6872 bytes; 78.47 -> 79.37 % code); NM: b5 D884 95.51 -> 96.63, DF14 95.23 -> 96.23, small relocation-sweep gains on game_uso 0B3C / 591C, bootup 55A0 / B75C; negatives: D884 / DF14 EE6C flag word (bitfields, volatile in four spellings, one symbol, per-statement symbol, function-typed, do-while(0), line joins), 76F4 vf / G order, mgrproc 1824 `li at,1`, titproc 5DC under NCC (82.4); diff-region classification of the queue inside._
 - [kit LXXXVII (agent-c 2026-10-24, run 148): **alignment survey (negative) + the original-file-start map of game_libs, and three twin / NCC levers** -- no non-exact function in the ROM differs from its target only in nop count or position; units in game_libs start at gl = 4 (mod 16) (16-byte aligned in bootup.uso text), every infinite-loop epilogue sits at gl = 0x14 (mod 32), and the pad words after a final `jr ra` mark 40+ original unit ends (map inside); arcproc 125C EXACT by porting the exact mgrproc 1C90 match_imports C; gl 44CE8 under NCC (pool base rematerialised, the old count carried in the result variable to keep the frame at 32); gl 3E0F0 arg word read before `gl(tmp = o, x)`](#kit-lxxxvii-agent-c-run-148) -- _1 exact (arcproc_uso_func_0000125C, 556 bytes; 76.92 -> 77.00 % code on e5cf258f7); NM: gl 44CE8 91.28 -> 99.53 (new NCC NM donor), gl 3E0F0 93.88 -> 99.90; post0b NM clip unchanged (0x2e928)._
 - [kit LXXXIV (agent-g 2026-10-24, run 155): **colour-pairing levers -- a void alias for a discarded call plus ONE local per register pair** -- gl 68DD4 (98.71, "colours only" for months) fell when the leading discarded K&R call went through a void alias (the dead v0 def pushed every later value one register up, kit IX) AND the two cursor reads were written with two int locals that each carry two roles (A = cursor then q2, B = value then cursor2), mirroring the target's register pairs; scripts/sibling-scan.py at 0.5 plus a longest-common-block scan found no new exact templates in agent-g units; twin NM port b3 13B8 <- arcproc 16F4 (+5.0); 5F984 NM donor takes the 5EB4C/5ED54 param copy; negatives for 5A2C4, D884, C310, BDEC, 2B7C, 23FC, 1824, 5F5F0, 525F0, E2D0, B154](#kit-lxxxiv-agent-g-run-155) -- _1 exact (gl_func_00068DD4, 340 bytes; 76.74 -> 76.78 % code with main's agent-c gains); NM: b3 13B8 80.36 -> 85.41, arcproc 16F4 85.36 -> 85.41, gl 5F984 90.11 -> 92.46 (post0b clip 0x2e904 -> 0x2e90c), gl 51448 95.00 -> 95.56, bootup 24B8 94.87 -> 95.21._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
@@ -39225,6 +39227,7 @@ temp_t1_3 so it lands at sp+0x1A8. 97.73 -> 97.86.
   calls (inert); `sub->cur = 0; v = 0;` respelled as a chain / reversed / via v (all 95.98, -1.8).
 
 **6. 578B4 diff-region classification for whoever continues (98.27, 2419/2419 words, frame 496 = target).**
+_SUPERSEDED by [kit XCVII](#kit-xcvii-agent-c-run-154): the function is C++; under NCC every item below except the s2_508 ra/t0 pair is fixed. Map kept for the cfe body only._
 Structural: only two left -- 0x18e0-0x191c (s2_110 w1: the 2C `lh` scheduled one slot late + the last `or` order) and
 0x1dcc (one `or` operand order). Everything else is register colour/ring:
 - 12 `addu t,a0,tN` vs `addu t,tN,a0` / `or t,ra,tN` vs `or t,tN,ra` operand-order words in the switch-1 arms
@@ -39252,3 +39255,207 @@ lost vs origin/main 8b0b3e212, sentinels 551E0 / 55B10 / EBC8 / C5B0 / 62F08 at 
 0x2e9c4 -> 0x2e9bc (62F08 NM offset 0x2e96c). New pins: `gl_d_49dbc_t2`, `gl_d_49dbc_t3`, `gl_func_00000000_49DBCv`.
 Purge: `build/{,non_matching/}src/game_libs/game_libs_post0b.c.o`, `build/{,non_matching/}src/game_libs/game_libs_post.c.o`,
 new donor `build/src/game_libs/game_libs_ncc_49DBC.cpp.o` (the old `game_libs_ncc_49DBC_nm.cpp.o` is retired).
+
+## kit XCVII (agent-c 2026-10-24, run 154): 578B4 under NCC -- source-order `|` chains, referenced-pad homes, packet-pointer identity <a name="kit-xcvii-agent-c-run-154"></a>
+
+**Summary.** gl_func_000578B4 (9676 bytes, the gbi texture loader) was carried to 98.27 as a cfe body with dozens of
+operand-order hacks. agent-g's run-113 note said it is C++; porting the CURRENT cfe body (not agent-g's macro draft)
+to IDO 7.1 NCC took it to 99.95 one-shot / **99.9855 report.json** in about 25 minutes, with the same 2419 words. Wired as
+an NM-only donor (`src/game_libs/game_libs_ncc_578B4_nm.cpp`, `GAMELIBS_578B4_NM_DONOR`); 7 words left, so no exact.
+Code % unchanged (78.47); no exact lost; ROM byte-identical; verify-blocks 6/6; post0b NM clip unchanged 0x2e9bc.
+
+**1. Mechanical cfe -> NCC port recipe (works for any m2c-style body).**
+- Header: the s8..f32 typedefs, the `FW` macro, an `extern "C" { ... }` block with every callee as `int f(...);` and the
+  base-0 symbols, then `extern "C"` before the function line. Copy the body verbatim.
+- edg rejects int -> pointer assignment (`ptr = FW(..)`, error 3611). A 20-line script that reads the error line and
+  caret column and wraps the right-hand side in `(T)(...)` fixed all 192 sites in two passes (casts are codegen-inert).
+- Frame: NCC drops locals that are never referenced but gives a frame home to every referenced one in declaration
+  order (kit XCVI 3). The cfe body relies on unused pads/temps holding homes, so list every local referenced once
+  (only its declaration) and reference it with one dead line after the declarations (`p = 0; temp_a2 = 0; ...`). That
+  alone took the frame from 0x148 to the target 0x1F0 with every m2c `spXXX` at its own offset. Declared-but-unused
+  `volatile` pads are dropped too (they need the line as well).
+- Score raw first (here 91.5 before any spelling change, with frame and length right): the remaining diffs are the
+  front-end-specific spellings the cfe passes tuned.
+
+**2. edg evaluates a commutative `|` chain in SOURCE order.** cfe (kit 6/12 rotation notes) pulls the last complex
+operand of a flat chain to the front, so the cfe body was spelled with operands rotated. Under NCC the same spelling
+evaluates in the written order, so the fix is the gbi macro's natural order:
+- SetTile w1 FLAT: `tile | cmt | maskt | (shiftt << 10) | cms | masks | shifts` -- no `(u32)` grouping, no `(u16)` leaf
+  (the cfe "chain | leaf" final-`or` problem simply does not exist under edg). This one family took 98.5 -> 99.88.
+- TILESIZE w1 `(tile << 24) | (lrs << 12) | lrt`; LoadTile w0 `(uls << 12) | 0xF4000000 | ult`, w1
+  `0x07000000 | (lrs << 12) | lrt`; LoadBlock size `w * h` written `0x20 * 0x22` (multu operand order follows).
+- A rotate-last-complex-to-front script plus a per-statement operand-permutation sweep (161 / 328 variants, 24
+  parallel NCC builds, 35 s per sweep) got 91.5 -> 98.0; normalising each statement FAMILY to one spelling (the real
+  source is one macro) beat the greedy sweep, which oscillates between arms.
+- The cfe-only fixes (`(FW(..,4) + lh)` vs `(lh + FW(..,4))` for load order) still apply per site under NCC.
+- The integer `x | (t = const)` operand pin (timproc lever) is INERT under NCC.
+
+**3. Switch on the field, not a copied temp.** `switch (FW(arg1, 0x24)) { case ...: goto ...; default: goto ...; }`
+(edg source-order compare chain) puts the scrutinee in t1 like the target; `temp_t1 = FW(..); if (temp_t1 == ..)`
+ladder put it in v0. For switch 2 the temp spelling was already right.
+
+**4. Variable identity still matters under NCC for multi-arm webs.** temp_t1_7 (the CI8 TLUT pointer) is shared by
+the two CI8 arms; its register (t1 vs t0) in BOTH arms flipped when the two single-store packet pointers of the second
+arm (`F0` LoadTLUT and `BA` SetOtherMode) became one variable (temp_t0_26 -> temp_t0_25, the dropped name kept by the
+dead-reference line). Merging the first arm's four packet pointers instead wrecked the frame (93.3).
+
+**5. Two-use constant ties.** In s1_508 the target holds 0x07000000 in t1 and rematerialises 0xF5480000 through `at`;
+the port held 0xF5480000. Writing the LOADTILE SetTile w0 width as the arm's width local (`((temp_a0_6 + h) - temp_a0_6)`,
+the form every other arm uses) instead of `FW(sp1DC, 4)` twice flips it (7 words). Assignment-expression pins of the
+constant, packet-line joins and the |-permutation sweep were all inert.
+
+**6. One-line layout can matter under NCC.** `temp_a0_6 = FW(var_a2, 0xC); temp_t0_27 = ((temp_a0_6 * FW(var_a2, 0x10)) + 1) >> 1) - 1;`
+on ONE line loads 0x10 before 0xC like the target (two lines: 0xC first). But an adjacent-line join sweep over the
+whole CI8 arm (80 variants) and an adjacent-statement swap sweep (80) were all inert or lower -- try it per site, it is
+not a general rule.
+
+**7. Remaining 578B4 residual (7 words, s2_508 = second CI8 arm).** The DL pointer that crosses the
+gl_func_00034458 call (`sp50`, spilled at sp+0x50) is `ra` in the target and `t0` in the port; the next arg2 reload is
+`lw t0,504(sp); andi ra,t0,0x1ff` in the target (`lw ra; andi ra,ra` here and in every other arm). Inert: variable
+identity of sp50 (temp_t0_25 / temp_a0 / temp_v0_4 merges), tmem spellings (`(u32)`, `&=`, `0x1FF & arg2`, `511`,
+copy through a local, assignment inside the w0), dropping `var_a2 = sp1DC`, `volatile` arg2, line joins of the packet,
+and a non-volatile sp20 home for tmem (drops the dead `sw ra,32(sp)` and the frame -> lower). Also inert: moving the
+tmem statement before / after the call (uopt sinks it), one tmem variable for every arm or sharing another arm's,
+inline `(arg2 & 0x1FF)` everywhere (96.76), sp50 typed s32 / int * / u32 / void *, 1-3 call arguments, the s2_508 tail
+(`sp34` / `if (0)` spellings), declaration-swap sweeps of temp_ra_8 / temp_t0_25 / temp_t1_7 / temp_a1 (115 each; homes
+never read, coloring unchanged; swapping sp50 only moves its spill slot), and WHOLE-function adjacent-line join (630)
+and adjacent-statement swap (630) sweeps, distance-2 (649) and distance-3 (633) statement swaps, a block-scoped `{ char *g50 = ...; }` packet pointer (frame +8, still t0),
+and two variable-identity grids over the arm's packet pointers (F0 / BA / FD50 x 6 names = 216; the first four packets
+x 3 names = 81), the volatile tmem store at each of 52 positions, the arm's DL-struct / count temps renamed to the
+arm-1 `g` / `n`, the dxt block in the other arms' naming (temp_a0_6 = size, 99.92), and decl-swap sweeps of var_t0 /
+temp_v0_6 / temp_t1 / temp_a0_6, a volatile `sp34` instead of the `if (0) { f(&sp34); }` home (reloads a1: lower),
+tmem parameter typed u32 (inert), and reusing the BA packet pointer for any subset of the six post-call packets (63
+variants, <= 94.35) -- no variant beat 99.95. Pattern worth knowing: in the target BOTH CI8 arms give the call-crossing
+DL pointer `ra` and temp_t1_7 `t1`; every variant that moves temp_t1_7 to t0 also moves the s1_508 pointer off ra. The uopt coloring dump
+(`-Wo,-zdbug:6`) aborts in `wrapper_ecvt` on this machine (the local libc_impl ecvt patch is not applied), so the
+priority comparison is still unread.
+
+**8. Negatives: the same mechanical NCC port on other game_libs near-exacts loses** -- they are cfe (C): gl 4EE44
+99.73 (cfe 99.94), gl 445AC 98.08 (cfe 99.82), gl 40304 90.55 (cfe 99.82), gl 201B8 90.26 (cfe 97.94, matches kit
+XCVI), 5A2C4 78.2 with 408/451 words (cfe 89.34; its pad arrays are dropped -- it would need the dead-reference line
+AND a different body), gl 3D71C 95.0 (cfe 96.0; its src/dst addiu schedule is also inert to a held `src` / `dst`
+block pointer and a one-line copy). Tell for a C++ body before porting: commutative-operand-order residuals that cfe spellings
+cannot move, edg-style source-order compare chains, gbi macro packets. One port + score takes ~3 minutes.
+
+**9. gl 250C8 (cfe 99.85) side probe.** The residual `sw a0,36(sp)` (target) vs the fontId home 84 means the target
+spills fontId into the 0x24.. TEMP area, i.e. it is a uopt temp, not a named local. Inert or lower: fontId as the
+inline `ASYNC_ID(asyncLoad->retMsg)` everywhere (95.1), `ASYNC_ID(retMsg)` / `ASYNC_STATUS(retMsg)` spellings (93-97),
+and a block-scoped `u32 fontId;` in case 1 (cfe homes block locals at the BOTTOM of the local area, sp+44 here, and
+grows the frame -- it never reaches the temp area; 99.27-99.31 vs 99.39 harness base).
+
+**10. gl 51448 (95.56) side probe.** NCC port 95.07 = cfe (same 2-word-short shape: the target spills the copy `n`
+of `o` to sp+40 and `l` to sp+44 across the void link call; here n stays coalesced with o in s0). Inert: n read back
+from any of the three stores (`*(char **)(a0 + 0x28 / 0xC / 0x10)`, store-to-load forwarded), function-scope n at
+three declaration positions. Swapping the 0xFFFF / vtable stores (the target stores +0x120 first) is lower (91.2).
+
+**11. gl 35B1C (97.40) side probe.** Looks C++ (`o != 0 || (o = new)` + member placement-new test `o + 4 != 0`), but the
+NCC port is 97.16 with the SAME residual (vtable `sw t6,12(s4)` scheduled before `addiu v1 / addiu at,-4` instead of
+just before the bne); the store after `p =` is inert, after `q = p` / folded into the `if` condition is lower (94.1).
+
+**Gate.** Full make ROM byte-identical, `make verify-blocks` 6/6 OK, `make non_matching_objects` 0 errors, no exact
+lost vs origin/main 53953ff40, sentinels 551E0 / 55B10 / EBC8 / C5B0 / 62F08 at 100, 78.47 % code. post0b NM clip
+unchanged 0x2e9bc (62F08 NM offset 0x2e96c). No new pinned symbols. Purge: `build/{,non_matching/}src/game_libs/game_libs_post0b.c.o`,
+`build/{,non_matching/}src/game_libs/game_libs_post.c.o`, new donor `build/src/game_libs/game_libs_ncc_578B4_nm.cpp.o`.
+
+## kit XCVIII (agent-g 2026-10-24, run 161): 4118 exact -- switch case placement, void callee pieces, break-line delay slots <a name="kit-xcviii-agent-g-run-161"></a>
+
+**Summary.** One exact: timproc_uso_b5_func_00004118 (6872 bytes, the largest exact in timproc_b5; 78.47 -> 79.37 % code,
+report.json). The run-115 99.14 body had two residual regions, both at the end: switch case 0 reloaded the homed arg0 per
+access (target: one `lw v0,936(sp)` for four accesses) and the post-switch block's scheduling. Five source changes closed
+them; all were found by small sweeps with `sc.sh` (2 s per compile). Scratch: `/tmp/claude-1000/g161/` (`sw4118.py`,
+`w2.py`, `od.py` = objdiff one-shot diff printer, `sbs.py` side-by-side by offset).
+
+**1. An empty case group placed FIRST blocks the register piece in a later case.** The switch had
+`case 2: case 4: case 5: case 6: break;` as its first arm (m2c order). Moved below the last case, uopt gives arg0 a
+register piece inside case 0 (one load, four uses) exactly as the target does; the rest of the function is unchanged
+(6880 -> 6872 bytes = target). Placed after case 0 (fall-through), after case 1 or after case 3: identical to last.
+`default: break;` instead of the empty labels changes the table (worse). Before this, 40+ case-0 shapes (copies, block
+locals, statement orders, `if (1) {}`, labels, extra uses -- even 8 uses of arg0 in case 0 did not create a piece) were
+inert: the piece decision was blocked by the empty arm, not by the case body. **Tell:** a later case whose body reloads a
+spilled parameter per statement while the target loads it once into v0/a0 -- look for an empty case group at the top of
+the switch.
+
+**2. The piece takes v0 only after a VOID call.** With the case-0 call through the shared K&R `timproc_uso_b5_alias`
+(int return) the piece took v1 / a0. Calling the real callee `timproc_uso_b5_func_00008D90` with its `void (int *, int)`
+prototype (the target's reloc names it) gives v0. Same rule as kit "void-alias dead-$v0 exclusion": an int-returning
+jal defines v0, so a piece starting at that call cannot use it.
+
+**3. A named index temp is a uopt variable; the target's index is a ugen temp.** `temp_t0 = FW(arg0, 0x3B8); ...;
+D[temp_t0] = 1;` colours temp_t0 v0 / v1; the target computes the index in t2. Writing the index inline in the final
+statement (`((int *)(D + 0xB8))[FW(arg0, 0x3B8)] = 1;`) gives t2 and as1 still issues the index load right after the
+base load.
+
+**4. Post-switch store order by permutation.** The first five statements after the switch (0x414 = arg9, 0x3C0 = arg5,
+the temp_f0 chain, 0x4B8, 0x4B4): all 120 orders compiled; `0x3C0 = arg5` FIRST is the only family with the target's
+arg5 load before the 0x40C load and the 0.5f `lui a1` late. Line joins in that block were inert.
+
+**5. A case's last statement and its `break` on ONE source line.** Last residual: case 0 ended `sw t1,184(at); b; lw
+a2,936(sp)` (the reload for the a2 piece at the join filled the delay slot) where the target has `lw a2; b; sw t1`. The
+reload is emitted at the end of the case BB, in the line group of the `break`; as1 only hoisted it above the store when
+the store and the `break` share a line: `D[FW(arg0, 0x3B8)] = 1; break;`. Joining all case-0 statements on one line also
+works; `break; case 1:` on one line does not. In -S output the whole flag block of another function (D884) was emitted in
+source order and as1 still hoisted loads across `.loc` lines there (distinct symbols), so "line groups" are not a hard
+barrier for every pair -- but for a spill reload vs a store they decided it here.
+
+**6. Landing a cfe body that has a jumptable / literals in a USO unit (29CCC recipe, as 5FC0).** `src/timproc_uso_b5/
+timproc_uso_b5_4118.c` = the unit's first 7 lines + the NM preamble + body verbatim; Makefile: add it to the C_FILES
+filter-out list and `TIMB5_4118_DONOR` with `private REPLACE_FUNC_BODY +=` on both trees; pin
+`timproc_uso_b5_func_00004118_rodata = 0x0000014C;` (the donor .rodata = 0.45f, 0.036f x3, 0.1f x5, then the 8-entry
+table, identical in layout to RoData +0x14C..+0x18F). The unit keeps its INCLUDE_ASM + NM body (the NM object's rodata
+layout stays as before). **Gotcha:** `make` was ROM-OK but `make verify-blocks` failed with `bake-data-relocs: no value
+for symbol 'D_b5_4118_s01'`: bake-data-relocs.py does not parse `NAME = 0x0;  /* comment */`. The 31 per-site
+`D_b5_4118_sNN` and the three `timproc_uso_b5_alias_pfN` pins had trailing comments (harmless while the function was NM);
+moved to one comment line above each group. Check every symbol a new donor references:
+`objdump -r donor.o` -> each must match `^NAME = 0x...;$` exactly.
+
+**7. Negatives (time-boxed).**
+- **b5 D884 / DF14 EE6C flag word** (target: `lui; lw 4(r)` per load, `lui at; sw 4(at)` per store, every load AFTER the
+  previous store; ours hoists each load above the previous store): 1-bit bitfields (byte `lbu/sb` ops, 89.96); a plain
+  `extern volatile s32` (base CSE'd `lui/addiu`, 94.10); per-site volatile casts with +4 or +0 and per-site `volatile s32`
+  declarations (always `lui; addiu; lw 0(r)`, 89.2); one non-volatile symbol (forwarded, 91.8), with `if (1) {}` (91.9) or
+  `do { } while (0)` around each statement (93.1); load and store of each statement through ONE per-statement symbol
+  (target length 1680, base materialised, 91.9); function-typed symbols for loads, stores or both (89.2-94.4); all six
+  statements on one line (95.56, +0.05, length off, not kept) or in pairs (flat). In the -S text ugen emits them in
+  source order; the hoist is as1's (distinct symbols). The target needs the same symbol for load and store as1-side and no
+  uopt forwarding -- not found.
+- **bootup 76F4** (`lui v0` vf before `lui a2` G after the call): an early / in-block vf local with or without joining
+  the call line (99.05 / 99.82 flat); a second, function-typed symbol for the scale base gives the target's lui order but
+  colours it v1 and stops holding G in a2 (93.82).
+- **mgrproc 1824** (`li at,1` of the outer switch hoisted above the counter increment): increment / switch line joins,
+  `+= 1`, `++`, `if (1) {}`, `default` first / last, unsigned key: all 98.52; swapping the two case bodies 36.9.
+- **titproc 5DC** under NCC (all callees `(...)` in one `extern "C"` block): 82.36 (cfe 98.87 stays).
+- **4118 dead ends kept for the record:** the case-0 extra-use probe (5 / 6 / 8 arg0 stores: no piece) is what showed
+  the body was not the gate.
+
+**7b. Greedy single-line relocation inside runs of simple statements (`g161/rl.py UNIT FUNC`).** For every run of 3-14
+consecutive same-indent simple statements, move each line to each other position (8 compiles in parallel), keep the best
+same-length variant, continue with the next run. Check every kept move for a data dependency by hand (only independent
+stores / loads / declarations were kept). Gains (report.json): b5 D884 95.51 -> 96.63 and DF14 95.23 -> 96.23 (the
+`0x114 = arg8` store right after `0x110 = arg7`, `0x120` before `0x124`: as1 then issues the stack-argument loads like the
+target), game_uso 0B3C 94.93 -> 94.94, 591C 94.15 -> 94.16, bootup 55A0 94.33 -> 94.35 (a declaration), B75C 91.05 ->
+91.12. Flat: b5 CEB4, bootup E2D0. Sibling sweeps of today's levers: the break-join (item 5) over 13 NM functions / 53
+`stmt;\n break;` sites (85-100 band): no gain anywhere else; empty-case-group-last (item 1) on the only two other
+switches that start with an empty group (b5 8FC8, bootup 6808): inert. bootup 90CC's 7 / 6 dispatch as an if-goto chain,
+case order swap, unsigned key: all lower or flat (97.15). gl 3430's step load inlined into the loop (91.2), after the
+0xEC store or in the `for` init (95.4): lower.
+
+**8. Diff-region classification of the run queue (objdiff one-shot, `od.py`).**
+| function | bytes | report | rows: arg-mismatch / insert / delete / replace | classification |
+| --- | --- | --- | --- | --- |
+| timproc_b5 4118 | 6872 | 99.14 -> **100** | was 40 / 7 / 5 / 0, all in 0x1990-0x1ab0 | structural (piece + order), now exact |
+| bootup 90CC | 8424 | 97.15 | 179 / 23 / 20 / 11 (294 hunks) | structural throughout (kit LXVI list) -- multi-session |
+| timproc_b5 32C8 | 1480 | 99.93 | 5 rows | FP colour (l134 f0 vs f2), 240+ permutations documented |
+| game_uso 1DDC | 1528 | 99.10 | 59 / 0 / 0 / 0 | pure FP f0/f2 swap from the zero / fy webs (policy-clean since run 147) |
+| titproc 5DC | 1424 | 98.87 | 74 rows | pure s0/s1 swap of d / t |
+| gl 3430 | 1220 | 97.52 | 15 rows | prologue step-load placement (scheduling) |
+| b5 D884 / DF14 | 1680 / 1688 | 95.51 / 95.23 | 37 / 41 rows | EE6C load/store order (item 7), FP arg-store order, dead `addiu v0,180` |
+| game_uso 0B3C | 2824 | 94.93 | 393 / 7 / 7 / 3 | mostly register |
+| game_uso 591C | 4372 | 94.15 | 381 / 18 / 15 / 12 | structural + register |
+| bootup 55A0 | 2392 | 94.33 | 202 / 11 / 11 / 3 | structural + register |
+| gl 64388 / bootup 76F4 / gl 15FC / bootup E2D0 / mgrproc 1824 | 512 / 220 / 412 / 524 / 568 | 99.98 / 99.82 / 99.85 / 99.54 / 98.52 | 2 / 2 / 3 / 10 / 3 rows | NCC return slot, lui order, li-100 v0/v1, FP colour, `li at` placement |
+
+Gate (agent-g on 53953ff40): full make ROM byte-identical, verify-blocks 6/6, `make non_matching_objects` 0 errors, no
+exact lost, sentinels 551E0 / 55B10 / EBC8 / C5B0 / 62F08 at 100, 79.37 % code (NM gains in 7b). New pin
+`timproc_uso_b5_func_00004118_rodata`; 34 existing pins reformatted (comment moved). Purge:
+`build/{,non_matching/}src/timproc_uso_b5/timproc_uso_b5.c.o`, `build/{,non_matching/}src/game_uso/game_uso.c.o`,
+`build/{,non_matching/}src/bootup_uso/bootup_uso.c.o`, new donor `build/src/timproc_uso_b5/timproc_uso_b5_4118.c.o`.
