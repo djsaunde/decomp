@@ -14507,6 +14507,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit LXXXIII (agent-g 2026-10-24, run 154): **recognition survey + in-game SIBLING templates** -- no library code is left in the non-exact set (every 0 % kernel / game_libs-tail body is handwritten libultra asm; no libm/libc/gu fingerprints remain), but the game itself is full of copy-paste twins: `scripts/sibling-scan.py` (opcode-sequence difflib vs every .s) found an EXACT template for four functions and they all landed by porting the template's C (38B0 match_imports C -> 396C, arcproc A3C -> h2h 620, 3829C nested alloc chain -> 4CCB4, 62F08 store-run -> 4D0E4); two new levers: equal constants of different TYPE are not CSE'd (`*(u32 *)&p[k] = 1U` keeps a second `addiu tN,zero,1`), and two stores on ONE source line reorder their lui/addiu pairs (4CCB4); a placeholder prototype in a frozen match_imports context is renamed out of the way with `#define` around the `#include`](#kit-lxxxiii-agent-g-run-154) -- _4 verified exacts (1244 bytes); landed on agent-g: timproc_b5 396C 188, h2hproc 620 708 (76.57 -> 76.69 % code); gl 4CCB4 240 and gl 4D0E4 108 (verified ROM-exact, 76.74 %) plus the NM gains gl 39E24 95.00 -> 99.79 and gl 3E0F0 90.52 -> 93.88 are post0b < 0x50000 = agent-c units, reverted on agent-g and handed over as patches; NM landed: b5 DF14 82.73 -> 95.23 (D884 twin); post0b untouched (clip 0x2e8dc)._
 - [kit LXXXVI (agent-g 2026-10-24, run 156): **held results make ugen spill the inputs -- the sp+0x20/0x24 FP "juggle" is three dot products kept in registers and stored afterwards** -- gl 5F984 (NCC donor, 92.46 for weeks) fell when the rotated vector was computed into three dead locals (c / h / len, no new frame words) and stored y, x, z after all three: ugen runs out of FP temps and spills the inputs a / b / d through sp+0x20 / 0x24 exactly as in the target; a 512-cell operand-order grid then gave 736 bytes only for `rot[r][c] * var` everywhere, and a 56-cell decl grid fixed the NCC homes (one frame word per local, declaration order); scratch-only void-alias sweep over all 69 agent-g non-exact functions (2 tiny gains) and a converse v0-read scan (1 decode fix, timproc_b5 AC20)](#kit-lxxxvi-agent-g-run-156) -- _1 exact (gl_func_0005F984, 736 bytes; 76.83 -> 76.92 % code on 1f25600d8); NM (same held-results lever on the 0xDC-record head family and others): b5 AC20 91.07 -> 92.41 (length = target), B624 89.84 -> 93.72, B154 83.08 -> 92.23, B368 89.58 -> 92.71 (length = target), bootup 8BD4 83.95 -> 91.85, bootup C234 85.33 -> 89.85, game_uso 3558 69.73 -> 72.33, gl 63964 76.08 -> 77.49; void aliases gl 5A2C4 89.07 -> 89.34, bootup E68 87.00 -> 87.04; post0b NM clip 0x2e91c -> 0x2e928._
 - [kit LXXXV (agent-c 2026-10-24, run 147): **IDO puts the unreachable epilogue after an infinite loop on a 32-byte .text boundary, so such a function is exact only in its ORIGINAL translation-unit layout** -- gl 34548 had the right 79 words plus one extra nop (320 vs 316) in post0b's layout; a donor that recompiles the original unit head (the real, already-exact C of 343F4 + 34458, then 34548) gives the target's nop count; the same donor also yields the hang stub 3485C; how to find the unit start from the epilogue address mod 32; 34548's decode via the 34458 sibling recipe (poll result stored BEFORE the zero test, a symbol pinned at the big address instead of `&D + 0x3BB34`, declared register locals reserve home slots in declaration order); 334E8 ported from its non-exact twin 33BE4; .c donor prerequisites need `private` host variables](#kit-lxxxv-agent-c-run-147) -- _2 exacts: gl_func_00034548 (316 B) and game_libs_func_0003485C (32 B), 76.78 -> 76.83 % code; NM: gl 334E8 68.85 -> 73.71; game_uso 1DDC 99.93 -> 99.10 (policy: the `if (fz) {}` on an uninitialised local removed); gl 4E424 90.98 -> 93.22 (parameter-register reuse), game_libs 307A8 93.31 -> 96.38; post0b NM clip 0x2e90c -> 0x2e91c (on top of agent-g run 155)._
+- [kit LXXXVIII (agent-g 2026-10-24, run 157): **m2c "struct copy chains" are C++ return-by-value -- an inline helper returning a NAMED non-POD V gives the r -> return temp -> destination chain, the held results and the materialised argument base by itself** -- the timproc_b5 0xDC-record head (`addiu v0,a0,0xdc` + the shared pool `lui at`) and B368's three chains rewritten as inline `V relPos(const V &)` / `scaled(const V &, const f32 &)` helpers; the bootup 8BD4 "$f20 parameter" cap is a cfe-only effect (NCC keeps amt in $f20 at once); under NCC a compound assignment through a computed lvalue (`*(int *)(p + 0x938) += 1`) takes the lvalue's address first (extra `addiu`), write `x = x + 1`; NCC CSEs every float zero across calls into a callee-saved register whatever the spelling (`0.0f`, `(f32)0`, `0`), which caps NCC lifts of cfe-style targets (gl 63964, b5 B154)](#kit-lxxxviii-agent-g-run-157) -- _no exact; NM: b5 B624 93.72 -> 96.07, B368 92.71 -> 95.71, bootup 8BD4 91.85 -> 96.83 (new NM-only NCC donor; chained `if (!skip)` tests bring it to the target length 836); B624 / B368 at unchanged length; post0b untouched (clip 0x2e928)._
 - [kit LXXXVII (agent-c 2026-10-24, run 148): **alignment survey (negative) + the original-file-start map of game_libs, and three twin / NCC levers** -- no non-exact function in the ROM differs from its target only in nop count or position; units in game_libs start at gl = 4 (mod 16) (16-byte aligned in bootup.uso text), every infinite-loop epilogue sits at gl = 0x14 (mod 32), and the pad words after a final `jr ra` mark 40+ original unit ends (map inside); arcproc 125C EXACT by porting the exact mgrproc 1C90 match_imports C; gl 44CE8 under NCC (pool base rematerialised, the old count carried in the result variable to keep the frame at 32); gl 3E0F0 arg word read before `gl(tmp = o, x)`](#kit-lxxxvii-agent-c-run-148) -- _1 exact (arcproc_uso_func_0000125C, 556 bytes; 76.92 -> 77.00 % code on e5cf258f7); NM: gl 44CE8 91.28 -> 99.53 (new NCC NM donor), gl 3E0F0 93.88 -> 99.90; post0b NM clip unchanged (0x2e928)._
 - [kit LXXXIV (agent-g 2026-10-24, run 155): **colour-pairing levers -- a void alias for a discarded call plus ONE local per register pair** -- gl 68DD4 (98.71, "colours only" for months) fell when the leading discarded K&R call went through a void alias (the dead v0 def pushed every later value one register up, kit IX) AND the two cursor reads were written with two int locals that each carry two roles (A = cursor then q2, B = value then cursor2), mirroring the target's register pairs; scripts/sibling-scan.py at 0.5 plus a longest-common-block scan found no new exact templates in agent-g units; twin NM port b3 13B8 <- arcproc 16F4 (+5.0); 5F984 NM donor takes the 5EB4C/5ED54 param copy; negatives for 5A2C4, D884, C310, BDEC, 2B7C, 23FC, 1824, 5F5F0, 525F0, E2D0, B154](#kit-lxxxiv-agent-g-run-155) -- _1 exact (gl_func_00068DD4, 340 bytes; 76.74 -> 76.78 % code with main's agent-c gains); NM: b3 13B8 80.36 -> 85.41, arcproc 16F4 85.36 -> 85.41, gl 5F984 90.11 -> 92.46 (post0b clip 0x2e904 -> 0x2e90c), gl 51448 95.00 -> 95.56, bootup 24B8 94.87 -> 95.21._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
@@ -38483,3 +38484,83 @@ Gate (agent-c branch, rebased on e5cf258f7): ROM cmp OK, verify-blocks 6/6, `mak
 Purge: `build/{,non_matching/}src/arcproc_uso/arcproc_uso_tail1.c.o`,
 `build/{,non_matching/}src/game_libs/game_libs_post0b.c.o`, new donor
 `build/src/game_libs/game_libs_ncc_44CE8_nm.cpp.o`.
+
+## kit LXXXVIII (agent-g 2026-10-24, run 157): C++ copy chains, NCC $f20 params, compound assignment, NCC zero CSE <a name="kit-lxxxviii-agent-g-run-157"></a>
+
+**1. A "struct copy chain" in m2c output is a C++ return by value.** m2c shows
+`sp68 = ...; sp7C = sp68; sp8C = sp7C;` (word copies through t6 / v0 / a0) for code like
+`d = pos - pool;`. Under NCC the chain falls out of an inline helper that returns a NAMED
+local of a non-POD type:
+```c++
+struct V { f32 x, y, z; V() {} };            /* the user ctor matters: POD V loses it */
+static inline V relPos(const V &a) {
+    f32 &x = sXY[0]; f32 &y = sXY[1];          /* kit LX reference form: one lui at per object */
+    V r; f32 dx = a.x - x; f32 dy = a.y - y; f32 dz = a.z - sZ;   /* held results */
+    r.x = dx; r.y = dy; r.z = dz;
+    return r;                                  /* r -> return temp -> destination */
+}
+...
+sp8C = relPos(*(V *) (arg0 + 0xDC));
+```
+- This also gives the target's `addiu v0,a0,0xdc` + `lwc1 0/4/8(v0)` for the reference argument.
+  Plain locals, pointer locals, references, `return V(...)` (a ctor return evaluates the
+  arguments right to left, z first) and `V r(dx, dy, dz)` all fold the offset into
+  `lwc1 0xdc(s0)` instead. Declaring `V r;` AFTER dx / dy / dz also loses the base.
+- Return temps are shared: every chain in a function reuses one return slot (B368's head
+  and first scale both copy through sp+0x124). A chain that needs its own slot (B368's
+  second scale, sp+0x4C) came from taking the factor by `const f32 &`: `scaled3(s240, o->f128)`.
+  Nested calls (`w = va + n * va.y`) give two temps plus a parameter copy (gl 63964 shape).
+- The inline helper's locals take frame words under NCC (6 words in 8BD4, 3 per helper);
+  the targets have them too, but not always in the same place. Volatile scalars keep a
+  word; unused arrays (volatile or not) are dropped.
+- Decl scope decides home order: function-scope locals first (top), then the helper
+  temps of statements at that scope, then inner-scope locals. Moving the if-arm locals
+  into the arm put B624 / B368 homes in target order.
+- Score-blind trap: moving homes changes WHICH instructions differ, not how many, until
+  every home lines up. A greedy pad sweep sees nothing; compute the target layout
+  (offsets from the frame top) and place pads by hand.
+
+**2. The bootup 8BD4 "$f20 parameter" cap is cfe-only.** The cfe body spilled amt
+to its arg home around each call (documented as a toolchain cap). Recompiled under NCC
+the same body keeps amt in $f20 with `sdc1 / ldc1` like the target: 91.85 -> 92.28 at once,
+96.67 with items 1 and 3, 96.83 (length 836 = target) with the skip set written as three
+`skip = code == K;` statements behind `if (!skip)` (one sltiu + bnez per test; the `||` form
+merges two branches). Wired as an NM-only donor, bootup_uso_ncc_8BD4_nm.cpp.
+`f20scan.py` idea: compare `sdc1 $f2x` counts between expected and the NM build. In agent-g
+units only 8BD4 (fixed), BB8C (target 4, build 5) and gl 5F0B8 differ; 5F0B8 under NCC
+scores lower (90.0 vs 91.9).
+
+**3. NCC compound assignment through a computed lvalue takes its address.**
+`*(int *)(*(char **)(b + 0x170) + 0x938) += 1;` compiles under NCC to
+`addiu v1,v1,0x938; lw; addiu; sw 0(v1)` (cfe: `lw 0x938(v1) / sw 0x938(v1)`). Write
+`x = x + 1`. In 8BD4 this removed four words (848 -> 832) and gave +2.1. A scratch sweep
+(`g157/cas/sweep.py`) that rewrites every memory `op=` per site found no other gain in
+the agent-g NCC donors (few such sites).
+
+**4. NCC keeps a float zero in one register across calls; cfe re-materialises it per block.**
+B154 (identity quaternion + three axes + a zero-filled vec4 after the calls) and gl 63964 under
+NCC put 0.0f in $f20 / $f22 (`mtc1 zero, fs0` once, sdc1 in the prologue). The targets
+re-issue `mtc1 zero` in every block, which is cfe behaviour; `0.0f`, `(f32) 0`, `(f32) 0.0`,
+`0`, `0L`, `0U`, chained stores and a 401-cell site grid are all identical under NCC
+(edg folds them all into one constant). The same split shows in the 1.0f axis constant
+(target f12 per block, NCC a temp). So these targets are cfront C compiled by cfe, and an
+NCC lift tops out once the constants matter. NCC 63964 with inline operators and an
+`f32 arg1` parameter (a float after an int argument goes in a1, so `sw a1` still matches)
+scores 87.86 but at 1092 bytes (target 1120, the four missing `mtc1 zero` plus others), so
+it was not kept.
+
+**5. Notes.**
+- B624 extra: the 0x144 countdown is `if (c) c -= 1; if (c == 0)` (target t5), and passing
+  `arg0 + 0xF4` directly instead of the sp28 local shrinks the frame to the target's 0x98.
+- C234: the same inline-helper rewrite of its two scale chains scores lower (89.85 -> 89.5).
+- `__inline` works in IDO 7.1 cfe, but it leaves an 8-byte `jr ra; nop` out-of-line stub in
+  .text, so it cannot be used in a unit that must stay ROM-exact.
+- b5 4118 not retried (kit LXXXVI negative stands). game_uso 3558 as NCC with inline
+  `operator-` / matrix helper: 55.7 (cfe 72.3); gui 2DE0 / 329C / 3714 have no copy chains;
+  BB8C (NCC) has the same zero-CSE split as item 4.
+
+Gate (agent-g, rebased on 0ac1023ae): ROM cmp OK, verify-blocks 6/6, `make non_matching_objects`
+0 errors, no exact lost, sentinels 100, 77.00 % code unchanged, post0b NM clip 0x2e928 (62F08 at 0x2e8d8). Purge: `build/{,non_matching/}src/timproc_uso_b5/timproc_uso_b5.c.o`,
+`build/{,non_matching/}src/bootup_uso/bootup_uso.c.o`, changed NM donors
+`build/src/timproc_uso_b5/timproc_uso_b5_ncc_B624_nm.cpp.o` / `_ncc_B368_nm.cpp.o`, new NM donor
+`build/src/bootup_uso/bootup_uso_ncc_8BD4_nm.cpp.o`.
