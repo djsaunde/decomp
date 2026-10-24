@@ -14493,6 +14493,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit LXIX (agent-g 2026-10-23, run 145): the kernel's "absolute jump tables that point at data" are the +0x400 runtime numbering -- every kernel jtbl_8000xxxx sits in the ROM 0x400 below its absolute address, so a switch function lands as a donor whose .rodata reloc the splice renames to `<func>_rodata`, pinned to the table address (1EC8 cfe -O2, 858C = rmon __rmonGetBranchTarget); rmon code is IDO **5.3** -O1 (858C, 9474: 5.3 keeps the `andi tX,aN; or aN,tX` temp copies that 7.1 folds); an integer-cast table address forces a reload of an address-taken record field; NCC never emits jump tables; 4-entry tables (1ADC, titproc 116C, game_uso 0B3C / 8CD8) stay out of reach (flag sweep); negatives](#kit-lxix-agent-g-run-145) -- _EXACT: func_80001EC8 (48.55 -> 100, 732 B), func_8000858C (0 -> 100, 552 B), func_80009474 (99.41 -> 100, 272 B). NM: mgrproc_uso_func_00002B7C 94.069 -> 94.075 (frame homes). Code 71.35 -> 71.55%. post0b untouched._
 - [kit LXX (agent-g 2026-10-24, run 146): an edg (NCC) temp slot is moved by an EXPLICIT derived-to-base reference cast on an operator argument -- `operator+(const V3 &, const P3 &)` with every call site written `a + (P3 &)b` makes edg allocate the reference temporary AFTER the operator's return slot (an implicit conversion, `(P3, P3)` or `(V3, V3)` parameters put it before or drop it): 5062C's last word; a recursive call to the function itself must be a blank jal-0 alias in a USO donor; 97EC m2 home (locals declared before the address-taken one); kernel / game_libs-tail audit (every remaining kernel INCLUDE_ASM is handwritten, game_libs tail = libultra asm); 526D0 is an NCC copy constructor (146 / 146 words, head order right, ring +1 and frame +16 left); stale main-checkout assets break clean-worktree gates; negatives](#kit-lxx-agent-g-run-146) -- _EXACT: gl_func_0005062C (NM 100.00 -> 100, 2756 B). NM: game_uso_func_000097EC 99.143 -> 99.152. Code 72.23 -> 72.59%. post0b NM clip unchanged (0x2e88c)._
 - [kit LXXI (agent-c 2026-10-24, run 141): **the game_libs audio driver compiles from OoT source VERBATIM once three binding rules are followed** -- (1) gAudioCtx as a TYPED `extern Ctx sym;` (the `(*(Ctx *)&D)` cast form emits base-first `addu` for `notes[i]` / strength-reduced arrays and forces WrPos-first / reordered spellings), (2) keep OoT's own `volatile` (resetStatus, NoteSampleState enabled) and union types (Stereo: the 1-byte union copies give the re-reads and the held `&attrs.stereo` s-reg old NMs could not), (3) SM64-era separate globals get their own symbol (gAudioRandom, gAudioBufferParameters: through gAudioCtx the commutative operands of the random-variance products load in the other order); every switch / literal function is a cfe -O2 donor whose donor `.rodata` (literals first, then tables in source order) lands on ONE `<fn>_rodata` pin; 1080 = older driver deltas found by the jumptable map (empty `case 0x10/0x20/0x60: break;` keep IDO's table density, `goto skip` instead of `continue`, 2-arg InitSampleState, no semitone field); the old NMs' case labels were jumptable-index guesses -- decode tables with extract-uso-jumptable.py first](#kit-lxxi-agent-c-run-141) -- _EXACT: gl_func_00024378 (AudioLoad_Init, 99.87 -> 100, 1488 B), gl_func_000240A0 (AsyncLoadInner, 99.57 -> 100, 656 B), gl_func_0002119C (ResetStep, 92.61 -> 100, 764 B), gl_func_00028604 (SeqLayerDecayRelease, 93.34 -> 100, 616 B), gl_func_0002AD1C (SeqLayerProcessScriptStep2, 82.16 -> 100, 896 B), gl_func_0002B09C (Step4, 87.77 -> 100, 1368 B), gl_func_0002B5F4 (Step3, 96.67 -> 100, 1044 B), gl_func_0002C7A4 (SequencePlayerProcessSequence, 97.93 -> 100, 1980 B), gl_func_00027E24 (Audio_ProcessNotes, 97.37 -> 100, 1272 B), gl_func_00026790 (AudioThread_ProcessGlobalCmd, 97.93 -> 100, 788 B), gl_func_00022760 (DmaSampleData, 98.25 -> 100, 828 B), gl_func_0001F248 (LoadWaveSamples, 98.44 -> 100, 384 B), gl_func_00028B0C (Audio_NotePoolClear, 73.52 -> 100, 352 B). NM: gl_func_000221D8 91.21 -> 99.24, game_libs_func_0002A07C 93.87 -> 96.64. Code 72.23 -> 73.82% before 28B0C (74.22% on the rebased tip with agent-g run 146). post0b untouched (clip 0x2e88c)._
+- [kit LXXII (agent-g 2026-10-24, run 147): **a ONE-WORD STRUCT member copy takes a temp PAIR (stores the second) = a one-register t-ring advance** -- the "every t-reg one behind after a block copy" NCC copy-constructor residual; gl 526D0 is an edg ctor (`Base : Blk6`, Flags-typed 0x18, copy in an inline member with its own `if (o)`; symbols renamed by objcopy); 533EC: divide by the literal, not the counter (uopt holds 3 in a register -> div keeps traps), `idx * 8 + base` and a re-read table operand fix ring phase and addu order; 32C8 NCC rewrite reaches all text rows (inline-function locals take DESCENDING slots, edg temporaries ASCENDING)](#kit-lxxii-agent-g-run-147) -- _EXACT: gl_func_000526D0 (95.75 -> 100, 584 B), gl_func_000533EC (96.08 -> 100, 372 B). Code 74.22 -> 74.35%. post0b NM clip 0x2e88c -> 0x2e890._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
@@ -37329,3 +37330,72 @@ log-exact-episode wrapper; donor drafts `<addr>.c`). Compile/score with `c140/ct
    ProcessNote, 201B8 AllocCached (older), 29978 vibrato (SM64 form), 1DCB4.
 8. **Gate:** ROM byte-identical after purge + clean link, verify-blocks 6/6 (jal = lo16 = other = 0), no lost exacts
    (13 gained, rebased onto 4d96ab259), sentinels at 100, post0b NM clip 0x2e88c (62F08 NM offset 0x2e83c) unchanged. Code 72.23 -> 73.82%.
+
+## kit LXXII (agent-g 2026-10-24, run 147): one-word struct copies advance the t-ring, 526D0 ctor donor, 533EC constant divisor <a name="kit-lxxii-agent-g-run-147"></a>
+
+Scratch: `g147/` in the session scratchpad. `g147/fd.sh UNIT FUNC` prints the positional diff of the in-tree NM build
+against `expected/`; `g147/tdis.sh OBJ FUNC OUT` dumps one function as `x: insn` lines (the format `g145/cmp.sh` and
+the `run.py` loops read); `g147/uv.py` is the run-146 whole-unit variant loop (scratch copies only).
+
+1. **EXACT gl_func_000526D0 (post0b, 584 B, NCC copy-constructor donor).** Run 146 had all 146 words from an edg ctor
+   with every t-register from the 0x18 copy on one step behind the target, plus frame 56 vs 72. The register lag:
+   **the member at 0x18 is a one-word struct** (`Flags m18;`, same type as the 0x30 flags). The memberwise copy of a
+   one-word struct allocates a temp pair and stores the second register, so it advances the ring by one where a plain
+   `int` copy does not. (51AD8's NM notes found the same thing for its 0x58 word.) **Lever:** a copy block whose
+   t-registers are all one behind the target from a given word on -> make that word a one-member struct. The frame:
+   `struct Base : Blk6` (the derived-to-base conversion in the implicit `operator=`: +8) and the copy in an inline member
+   that does its own null test, `void copy(const Obj *o) { if (o) { int save = m1C; *this = *o; m30.v |= 0x10; m1C = save; } }`
+   called as `copy(src)` (+8 = 72). With the test outside the inline (`if (src) copy(*src)`), `&m30` is no longer CSEd
+   into v0. Probes that did not move the frame: user `operator=` on Base / Blk6 / Sub / Flags, inline wrappers around
+   the register / finish calls or the `Sub()` body, reference parameters, `this->operator=`.
+   Landing: `src/game_libs/game_libs_ncc_526D0.cpp`, REPLACE_FUNC_BODY into both post0b objects. The donor recipe renames
+   symbols with objcopy (names only, as for 4E584): `__ct__3ObjFPvT1P3Obj` -> `gl_func_000526D0`, the base ctor and
+   `__vtbl__3Obj` -> zero aliases. The callees are extern "C" `gl_func_00000000_526d0_*`; all five zero aliases are in
+   undefined_syms_auto.txt. The C side is an empty placeholder.
+2. **EXACT gl_func_000533EC (post0b, 372 B, cfe).** The run-105 body divided by the loop counter (`r / i`) to get a
+   register divisor. The target **divides by the literal 3**: uopt keeps the constant 3 in a register (t1) for the loop
+   bound and all three divisors, so ugen emits `div` with trap checks as if the divisor were a variable. Then:
+   - a cursor copy `p = tri;` indexed as `p[i + 1]` gives the target's `t0 -> a0` copy before the loop;
+   - writing the tri address index-first, `idxTab[arg1] * 8 + base`, fixes the t-ring phase of the whole body (19 -> 1);
+   - the last word was the commutative `addu` order of the colour entry. `colorTab + k`, `k + colorTab`, `&colorTab[k]`,
+     casts, shifts, decl orders and a Col struct all give the same order. **Re-reading the table from the object,
+     index first**, `p[i + 1] * 4 + *(u8 **)(arg0 + 0x50)`, puts the table first (the load is CSEd with colorTab, which
+     uopt holds in t2). **Lever:** for a one-word commutative operand-order residual where source order is inert, spell
+     the invariant operand as the memory re-read it was loaded from.
+   The NM build grew by one word (92 -> 93), so the post0b NM clip moves 0x2e88c -> 0x2e890 (62F08 NM offset 0x2e840).
+3. **timproc_b5 32C8 is an edg composite constructor (NCC draft, not landed).** `g147/t32/d.cpp`, `f.cpp`, `i.cpp`: a
+   `Panel` ctor with member objects `Hdr h` (no virtuals: a table pointer and 0), six `TextRow`, two `VecRow`, two
+   `ValRow`, all derived from `RowBase { int a, b, c; RowBase(void *, Name, int); virtual void f(); }`. RowBase's
+   out-of-line ctor is func_04A188. The vptr sits at 0xC because edg puts it after the members of the class that
+   declares the virtual. This reproduces the 0x288-word text-row prefix except for stack offsets. Two facts about
+   edg/IDO slot order: **edg temporaries for mem-initializer arguments take ASCENDING slots** (first temporary lowest),
+   while **locals of an inline function expansion and named locals take DESCENDING slots** (first highest). The
+   target's per-row name stash (292, 288, ...) is descending, and a shared inline parameter slot (164) holds the value
+   that is loaded into a2. An inline maker `Name mk(char *s) { Name n; n.v = s; return n; }` or `operator Name()` gives
+   the descending per-row slot but also adds a shared return-value slot (three stores per row instead of two). The
+   target's VecRow temporaries are descending too (V3 zero 260, b 248, c 236, then the name 232), while this NCC
+   allocates every temporary in ascending order: mem-initializer temporaries, several temporaries inside one
+   mem-initializer, and call-argument temporaries in a plain function (`g147/t32/tt5.cpp`, `tt6.cpp`). Making the
+   Panel ctor inline under an out-of-line derived ctor did not change this either. So the target's slots are not
+   these edg temporaries, and the cfe body (99.93, f0/f2 colouring only) stays the route for 32C8.
+4. **Negative / open:**
+   - gl 51448: the target's inline `setParent` spills `this` and `p` separately while o stays in s0. Base-class
+     setParent (implicit or explicit casts), a reload of o from the stored fields, reference parameters, a static inline
+     with `Obj *&`, `else o = 0`, and `init()` returning `this` are all copy-propagated or add code. `o = new Obj;` with a GLOBAL inline `operator new` (cfront protocol: no re-check) and an inline `Obj()` over an out-of-line `Base(name, 0, 0, 0)` gives the whole head (52 words, the same 23-word setParent residual). With a class-member `operator new`, edg re-checks `this == 0` and allocates again. timproc_b5 DF14 constructs the same 0x16C class the same way, and its own `new Panel` result is likewise spilled apart from s0 (r at sp+92). It is the next place to look for the separate-web spelling.
+   - gl 68DD4 (cfe 98.71): separate v / pp / q per stream read makes it worse (pp v0 / q t1 / v v1 in the target's first
+     read); ten `read()` spellings under NCC are no better than run 146's.
+   - gl 15FC as a real C++ ctor (`Obj : Base`, vptr at 0x28 like 526D0, `M2C` member, body stores): same 103 words with
+     the same `li 100` v0/v1 tie; inline setter / reference / chained / float spellings are inert.
+   - gl 525F0: the reload register after the call (target v0) does not change with chained / stored-then-reloaded /
+     copy-variable spellings.
+   - arcproc 125C: ten spellings of the `seq[2] == seq[1] + 1` compare leave the extra t-ring slot. Under NCC standalone,
+     the dead `ones[4]` stores disappear (frame 96), so cfe stays.
+   - timproc_b5 CEB4: the first block's true arm must survive as an empty basic block (the target keeps `b join` with
+     the join's first load in the delay). Any statement uopt deletes (`f = f`, a redundant store, `if (1) {}`) merges the
+     block (104 words). `pad[0] = 0` / `v[0] = v[0]` keep it but emit a store.
+5. **Library sweep:** run 146 already checked the kernel and the game_libs tail. game_libs.c (0x0-0x1D000), post0b
+   >= 0x50000, post1b and the proc USOs remaining NM functions are game C / C++ (object constructors, animation, display
+   lists). No new libultra / libc / audio hits in agent-g units.
+6. **Gate:** rebased onto d276acf28. ROM byte-identical after purging game_libs_post / game_libs_post0b / game_uso and
+   their NCC donors; verify-blocks 6/6 (jal = lo16 = other = 0); no lost exacts (2 gained); sentinels at 100; post0b NM
+   clip 0x2e890 (62F08 NM offset 0x2e840). Code 74.22 -> 74.35%.
