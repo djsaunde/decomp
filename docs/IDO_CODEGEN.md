@@ -14499,6 +14499,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit LXXV (agent-c 2026-10-24, run 143): **audio driver part 4** -- compare 1-bit bitfields as signed (`(s32)x->needsInit == 1`) so the target's shared signed constant 1 appears, OoT's `SAMPLE_SIZE = sizeof(s16)` keeps the unsigned and signed products apart, indexed members of a typed gAudioCtx extern fix register picks (258C0, 25504), no per-iteration NULL reset (25504), temp-area spills are compiler temps not declared locals (250C8)](#kit-lxxv-agent-c-run-143) -- _EXACT: gl_func_0001E134 (AudioSynth_ProcessNote, 65.94 -> 100, 3396 B), gl_func_00025504 (RelocateFontAndPreloadSamples, 97.28 -> 100, 956 B), gl_func_00021F40 (AllocTemporarySampleCacheEntry, 95.58 -> 100, 664 B), game_libs_func_000258C0 (ProcessSamplePreloads, 96.04 -> 100, 448 B). NM: 1DCB4 94.53 -> 98.61, 250C8 92.31 -> 97.68, 23BDC 98.76 -> 98.88. Code 75.38 -> 76.10%._
 - [kit LXXVI (agent-g 2026-10-24, run 149): **the jumptable rule read out of cfe** -- the front end (not uopt/ugen) picks table vs compare chain: sorted case labels form clusters while each label is within 25 of the previous one, and a cluster with fewer than 5 labels is split into equality tests (cfe.c `func_465d90`, `at = a1 < 0x5`); `xjp` range = first..last label, so every table has at least 5 entries; IDO 5.3 same, NCC never emits `xjp`; the 4-entry tables (76F0, 0B3C, 116C, 8CD8, func_80001ADC) are a different compiler -- keep the phantom `case 4: break;`; titproc 5DC levers: address-constant call arg is its own hoisted candidate, a flag store after the call fills the jal delay, one home per declared local sets the frame, 2-D index for base-first addu; negatives for 97EC, 68DD4, 32C8, 64388](#kit-lxxvi-agent-g-run-149) -- _No exacts; cap proven from the compiler binary. NM: titproc_uso_func_000005DC 94.38 -> 98.87._
 - [kit LXXVII (agent-c 2026-10-24, run 144): **control-flow spelling flips s-register pairs** (`continue` <-> nested if-block fixed 221D8 and 23BDC index/cursor swaps), comparing one of two equal constants unsigned splits the CSE (22464; objdiff 0.0 on a same-length body = alignment collapse from a one-register shift), a volatile 1-bit flag loads through the per-iteration copy (1DCB4), a pointer bump between stores fixes a delay-slot order (32E18)](#kit-lxxvii-agent-c-run-144) -- _EXACT: gl_func_00022464 (DiscardSampleCaches, 90.76 -> 100, 520 B), gl_func_0001DCB4 (synthesis update, 98.61 -> 100, 1152 B), gl_func_000221D8 (DiscardSampleCacheEntry, 99.24 -> 100, 448 B), gl_func_00023BDC (RelocateFont, 98.88 -> 100, 644 B), gl_func_00032E18 (98.36 -> 100, 636 B). NM: 201B8 97.73 -> 97.86, 250C8 97.68 -> 98.08, 4B2F4 98.15 -> 98.23._
+- [kit LXXVIII (agent-g 2026-10-24, run 150): **as1 only reorders inside one source-line (`.loc`) group** -- statements sharing a line form one scheduling group (stores in it are issued in as1's own order, e.g. a store of the later-defined `-h` before an earlier `h` store), separate lines keep source order; plus **real C++ constructors for get-or-create heads** (edg's `this==0 -> new` protocol + out-of-line base ctor + vptr in the base gave bootup 0CA0 exact; cfe's coloured h/-h wrong), a FUNCTION-typed alias stops as1 hoisting loads past stores to another base (76F4 87.3 -> 99.1), `cc -S` shows the pre-as1 ugen text with `.loc` lines (an as1 lab, not reliable for functions with jumptables)](#kit-lxxviii-agent-g-run-150) -- _bootup func_00000CA0 EXACT (244 B, NCC donor); NM: func_000076F4 87.33 -> 99.07._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
@@ -37712,3 +37713,64 @@ scores reloc-baked exacts at ~99.7 and is NOT the gate; `ep.sh` = log-exact-epis
    unused scalars / larger array / pads grow the frame), 4B2F4 (162-variant slot-increment grid, best 98.06 with more
    diff words), 4D468 (ternary / shared merge var), 488A0, 2D374, 307A8. post0b standalone compiles diverge from
    in-tree (TU-context prototypes): use in-tree `make build/non_matching/...post0b.c.o` (22 s) for post0b work.
+
+## kit LXXVIII (agent-g 2026-10-24, run 150): as1 schedules inside source-line groups; real C++ constructors <a name="kit-lxxviii-agent-g-run-150"></a>
+
+**1. as1 reorders only within one `.loc` group.** `cc -S` (or `NCC -S`) stops before as1 and prints the ugen
+text, with a `.loc 2 <line>` before each source line's code. Feeding that `.s` back through
+`cc -c -O2 x.s` reproduces the object for plain functions, so edits to the `.s` show what as1 does with a
+given input. Deleting every `.loc` let as1 regroup all the stores of bootup func_00000CA0's vertex table
+(all `-h` stores first); with the `.loc` lines it moved stores only inside one line. The C rule that follows:
+*statements on one source line form one scheduling group, statements on separate lines keep their order.*
+In 0CA0 the last corner was `box[3].set(h, nh, h);` (one line): as1 issued `sh a1,0x32` before
+`sh a0,0x30`. Writing it as three statements on three lines (`box[3].x = h;` / `box[3].y = nh;` /
+`box[3].z = h;`) gave the target order. Line breaks are ordinary formatting, not a `#line` trick. Try this
+lever whenever the only residual is two independent instructions swapped inside one statement or between
+two statements on the same line. It does NOT move a prologue `sw ra` (6204/E9FC: the `lui a0` / `sw ra` order
+did not change with or without `.loc` lines), and the `.s` round trip does not reproduce functions with
+jumptables or `div` macros exactly (51AD8, mgrproc 1824 came back longer), so check the base round trip first.
+
+**2. A get-or-create head is a real C++ constructor.** `if (o == 0) { o = alloc(N); if (o == 0) goto end; }
+base(o, &D); o->vt = &desc; ...; return o;` is edg's constructor protocol. Writing the class makes NCC emit
+it: `D::D(int a1, int a2, int a3) : B(&D_000066A8) { ... }` with `B(char *)` declared out of line (an inline
+base ctor adds its own `this == 0` test, the cascade shape seen in h2h 0620 / 90CC), the virtual declared in
+B so the vptr lands at +0x28 after B's 0x28 bytes, and `inline void *operator new(unsigned n) { return
+func_00000000(n); }`. This scheduled the vptr store and the member stores like the target, where the cfe body
+(97.2) coloured `h` / `-h` v0/a0 instead of a0/a1. Rename the mangled names with objcopy (as for 526D0):
+`__ct__1DFiN21` -> the function, `__ct__1BFPc` and `__vtbl__1D` -> blank aliases in undefined_syms. The
+objdiff report shows 99.66 until the expected baseline is refreshed (reloc names); the ROM is byte-identical.
+h2h 0620 rewritten as an L1 : L2 : L3 : L4 inline-ctor chain came out structurally right (177 vs 178 words)
+but uopt memory-homes the wrong level (L2's `this`, target L3's) -- not finished (draft in the run-150 scratchpad, g150/h2.cpp).
+
+**2b. bootup func_000031C0 is `new D` + a mode switch, and the C++ draft is 202/202 words.** The head is
+edg's protocol for `new D` where `D : B` (0xB8 / 0xB4), `B : Base0` with `Base0(void *)` out of line and the
+virtual declared in Base0 (vptr +0x28), member `M4 m` at +0x2C where `M4 : M0` and `M0() { a = 0; }` (the
+target's TWO `this == 0` tests on +0x2C are the member check plus M0's own), then `fn_fin(this)` and
+`pos = V3(0, 500, 0)` through an out-of-line set taking the stack temp. Case 1 is `new E(obj, a3v)` with
+the base ctor out of line and `f158 = 0; f154 = a; f150 = f14c;` in the inline body; the other `fn(0, ...)`
+calls are cfront out-of-line ctors and stay plain calls. Declaring `w, h, v, r2, r3, obj` in that order
+(no `e`: `h = (char *)new E(obj, a3v);`, the target copies E's new-temp straight into h) gives the target's
+slot order (w 140 ... obj 120, new-temps below), and `obj = new D; if (1) {}` fixes the obj/a3v v0/v1 swap in
+the tail. With every sp offset masked, one v0/v1 swap is left (the reload of E's `this` after the base call).
+Still open: the frame is 112, target 144. NCC drops unreferenced locals even when volatile, but a referenced
+`int pd[8]; ... (void)pd;` takes slots (it costs no code) and gives frame 144 with w..obj at the target
+offsets (34 positional diffs left); a named pad always lands with the named locals, above every edg temp,
+wherever it is declared, so the target's holes BETWEEN temps (0x70, 0x54..0x64) are not reproduced. Uopt's
+copy propagation also differs: the target reads the new-temp for the first use in each case (A1 / E's base
+call) and obj for the rest, ours reads the temp for all of case 0 and obj for case 1, so E's new-temp shares
+D's slot (target: separate, 104). The two literal-pool loads also need a donor `.rodata` pin like 2DA4. Draft:
+run-150 scratchpad g150/bootup_31C0_ncc_draft.cpp. The cfe body is 93.57.
+
+**3. A function-typed alias keeps loads after stores.** bootup func_000076F4 scales a vector at import+0xA0
+by a triple at import+0x128. With two data arrays as1 knows the bases cannot alias and hoists the three scale
+loads above the vector stores; reading the vector through `extern void bu_76f4_vf();` (`(char *)bu_76f4_vf +
+0x30`) leaves each scale load after the previous store, as in the target (87.33 -> 99.07). Left: the
+`lui v0` / `lui a2` order after the call. Round-trip tests showed the target order needs the G rematerialisation
+`la $6` emitted after `la $2, vf` inside the line-12 group, not in the call's delay; no C spelling found yet.
+
+**Negatives (this run).** 6204 / E9FC: NCC (unfilled `jr` delay reproduced), static-init `__sti__`, member
+and unused-param forms -- `sw ra` always first. 24B8: one reused var for the 0x400 flag puts it in a t-reg,
+not the target's s0 (90.75 / 93.1, reverted). 1A44: reading the DL word before NEXT moves nothing (reverted).
+E2D0: dot-sum spellings (z-first, parenthesised, `+=`) never give the target `(x + y) + z` under cfe.
+timproc_b5 4118 case 0 (target loads `this` once into v0 for four uses, ours reloads each use): a copy local
+is propagated away, the alias call's return value is one word short.
