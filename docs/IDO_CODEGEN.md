@@ -38814,7 +38814,7 @@ after an exact function. Recipe (64 bytes, 78.157 -> 78.166 % code, no length or
   objects that a C-build copy cannot replace: their `.text` differs at every baked reloc.)
 - `rm` both unit objects, `make` (ROM cmp), `make non_matching_objects`, refresh the report: the
   pad rows disappear and PRED stays 100 at the bigger size.
-Three more pads in agent-g's units were prepared the same way as patches (post1b 67ABC after
+(agent-g run 159 / kit XCII folded the agent-g-range pads independently by rebuilding the one-unit INCLUDE_ASM baseline; the metadata-only symbol delete here avoids that rebuild, which diverged for post0b after 4D084.) Three more pads in agent-g's units were prepared the same way as patches, now superseded by run 159 (post1b 67ABC after
 67AA0, post2b_f 75260 after 75254 -- the unit's last word, under TRUNCATE_TEXT 0x388 -- and
 ido_75264's `_pad` GLOBAL_ASM sidecar after 75264). Not done: post2b_f 74EDC (6 words at the unit
 START: the predecessor is in the previous unit, a cross-unit boundary move) and post1b2c 6E20C
@@ -38859,5 +38859,5 @@ In 3B01C the operand swap alone (`-r * n.x`) is flat: only the compound form gav
 - Held-results single-site sweeps (`single.py` / `single2.py`) on the 11 post0b functions that
   timed out in run 149: no gain.
 
-Gate (agent-c, on 4a626df5e): ROM cmp OK, verify-blocks 6/6, `make non_matching_objects` 0 errors, no exact lost, sentinels 100, post0b clip 0x2e93c (62F08 at 0x2e8ec), 78.157 -> 78.166 % code. Purge: `build/{,non_matching/}src/
+Gate (agent-c, rebased on 5c9f2556c): ROM cmp OK, verify-blocks 6/6, `make non_matching_objects` 0 errors, no exact lost, sentinels 100, post0b clip 0x2e93c (62F08 at 0x2e8ec), 78.157 -> 78.166 % code. Purge: `build/{,non_matching/}src/
 game_libs/game_libs_post.c.o`, `build/{,non_matching/}src/game_libs/game_libs_post0b.c.o`. No new donors.
