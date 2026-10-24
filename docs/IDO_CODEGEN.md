@@ -37,7 +37,7 @@ lambda Auto-generated from per-memo notes; content may be rough on first pass �
 - [sw a2,0x8(sp) in jal delay = 4-byte struct passed by value (only shape that homes a2); char*volatile local = save slot below homed array (plain/struct-field promotes, spills at frame top); unused scalar decls hold frame slots (bootup 13D40 52.4->88.5, 2026-07-30 agent-g)](#struct-byval-a2-home-volatile-save-13d40) — _Residual: six per-block value webs coalesce into one v0 global web (target = block-local t-cycle temps) + 3 reserved spill words + post-call temp-pair renumber; ~25 variants stable. Siblings harvested 2026-07-30: 1438C 65->87.9, 8124 69.5->94.5 (+ tail variable-reuse lever, dead-decl-pair slot placement); 84A0 62.5->93.3 (A[6]+q2 odd-parity pad; addend-no-fold on real-fn symbol); 90CC/6808 parked (grep AFA60008)._
 - [x4-unroll addendum: int-counter `i<n` do-while + conditional array store DOES unroll (contra 1FA20 `<`-suppression); s8 counter suppresses at sll/sra-0x18 cost; original suppressor unknown (1DCB4, 2026-07-23 agent-h)](#x4-unroll-int-counter-do-while-1dcb4)
 - [Named index LOCAL makes uopt sink/remat `base+idx*sizeof` into every switch arm (multu xN); RAW memory expr as index forbids remat -> single s-reg compute (26D64 61.2->88.1, 2026-07-23 agent-h)](#raw-mem-index-defeats-addr-remat-26d64) — _Converse of remove-local-recompute; typed struct alone insufficient. Also: out-of-s16-reach mid-struct byte = per-site absolute %hi/%lo deref; (f32)(s32) kills u32->f32 fixup; sltiu N before jr = widen jumptable with empty trailing cases._
-- [4-case switch = COMPARE CHAIN below IDO's 5-label jumptable threshold; empty trailing `case N: break;` forces the table; `goto`-only case arm = block placed after post-switch code (76F0 64.9->88.5, 2026-07-23 agent-h)](#empty-trailing-case-jumptable-threshold-76f0) — _sltiu N+1 + local-rodata-table words are the only residual; pairs with external-uso-jumptable-cap. 2026-10-15 run 61: exhaustive probe (IDO 7.1+5.3, -O0..-O3, every selector type/label order/outlier label) -- a 4-label switch NEVER tables; target sltiu-4 tables are an open cap. Also: m2c `func(0,X)` with target `lui/addiu a0` pair = `func(&D_00000000, X)`._
+- [4-case switch = COMPARE CHAIN below IDO's 5-label jumptable threshold; empty trailing `case N: break;` forces the table; `goto`-only case arm = block placed after post-switch code (76F0 64.9->88.5, 2026-07-23 agent-h)](#empty-trailing-case-jumptable-threshold-76f0) — _sltiu N+1 + local-rodata-table words are the only residual; pairs with external-uso-jumptable-cap. 2026-10-15 run 61: exhaustive probe (IDO 7.1+5.3, -O0..-O3, every selector type/label order/outlier label) -- a 4-label switch NEVER tables; target sltiu-4 tables are an open cap (2026-10-24 run 149: PROVEN from the cfe binary, clusters of <5 labels are split -- see kit LXXVI). Also: m2c `func(0,X)` with target `lui/addiu a0` pair = `func(&D_00000000, X)`._
 - [Duff's-device `case N:` label INSIDE a loop body SUPPRESSES uopt code motion for that loop: no preheader, compare constants stay `$at`-materialized, invariant loads stay in the loop (game_libs 29CCC 207/207 EXACT, 2026-09-05 agent-c)](#duff-case-label-inside-loop-suppresses-licm) — _A jumptable-entered loop whose target shows `addiu at,zero,K; beq` inside the loop and a reloaded invariant = the original had the case label inside the loop. `case 3: for(;;){}` (label before the loop) gets a 3-word preheader and shifts the whole temp ring; goto/do-while/tail-recursion/outer re-dispatch/volatile/-g3/-O3/5.3 all still hoist. Also from this fn: `unsigned char` switch local -> `or v0,v1,zero; andi v0,v0,0xf`; inner case bodies laid out in SOURCE order (chain always ascending)._
 - [Int-cast base arith (`int g = (int)arr;`) UNFOLDS the $at-macro absolute store into a compiler-held lui/addiu base + disp store; pair with per-site-extern %hi-CSE-kill for cross-call rematerialization (272C4 48.3->100, 2026-07-30 agent-h)](#int-cast-base-unfold-272c4) — _Also this session: (a) 3-float-param FP-home budget cap: IDO 7.1/5.3 home at most TWO float params via mtc1->f12/f14 (+mfc1 back for onward gp-reg pass); a target homing THREE (mtc1 a3,$f16) is unreachable in every probed mode (6F834 residual). fnptr-cast calls cost lui/addiu+jalr+v0-spill vs direct typed extern jal (64.2->87.7 on the swap). (b) Per-compare $at-macro big-constant materialization (4x lui at/ori at for one repeated magic) WITH -O2 scheduling is unreachable: -O1 gives the $at macros unscheduled, -O2 (any of -g3/volatile/literal-addr/5.3/7.1) value-CSEs the constant into a reg with only call-clobber rematerialization (66AF0 residual; cap class)._
 - [Two-lever combo for "chain computed once pre-branch, arms diverge" caps: MULTI-DEF anti-fold (`v0b = base+attr*K; v0b += idx*M;`) pins the address chain pre-branch; param-as-cursor reassign (`a0 = call(...); a0 += 8; return a0;`) tips the s0 promotion (1DB88 48.6->78.6, 2026-07-30 agent-h)](#multidef-prebranch-plus-param-cursor-1db88) — _Single-expression AND per-use-macro-CSE spellings both duplicate/recompute the chain per arm; separate named result var copy-props to $a0+call-home-spill (`register` inert). Frame-slot A/B: sole named local (rest macro'd) = frame+spill-slots EXACT but folds arm loads into big offsets; extra named local = arm shape exact at +8 frame — fuzzy favors shape. `*((short*)&a1+1)` per-use-reload probe REGRESSES (address-taken kills K&R short homing shape)._
@@ -14496,6 +14496,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit LXXII (agent-g 2026-10-24, run 147): **a ONE-WORD STRUCT member copy takes a temp PAIR (stores the second) = a one-register t-ring advance** -- the "every t-reg one behind after a block copy" NCC copy-constructor residual; gl 526D0 is an edg ctor (`Base : Blk6`, Flags-typed 0x18, copy in an inline member with its own `if (o)`; symbols renamed by objcopy); 533EC: divide by the literal, not the counter (uopt holds 3 in a register -> div keeps traps), `idx * 8 + base` and a re-read table operand fix ring phase and addu order; 32C8 NCC rewrite reaches all text rows (inline-function locals take DESCENDING slots, edg temporaries ASCENDING)](#kit-lxxii-agent-g-run-147) -- _EXACT: gl_func_000526D0 (95.75 -> 100, 584 B), gl_func_000533EC (96.08 -> 100, 372 B). Code 74.22 -> 74.35%. post0b NM clip 0x2e88c -> 0x2e890._
 - [kit LXXIII (agent-c 2026-10-24, run 142): **audio driver part 3** -- depth-copy stack pushes (`d = depth; stack[d] = pc; depth++;` moves the depth temp to v0), `if (x) {}` block-split sweeps (`ifsweep.py`) flip s-register vs spill choices (only with initialised x), OoT's `volatile u32 resetTimer`, indexed member writes give the multu-by-held-20 shape, held channel local for SM64 vibrato; gAudioCtx map corrections (usedSamples[0x80], thread / task offsets)](#kit-lxxiii-agent-c-run-142) -- _EXACT: gl_func_0002BB7C (SequenceChannelProcessScript, 95.61 -> 100, 3112 B), gl_func_00027804 (InitSampleState, 78.53 -> 100, 1092 B), game_libs_func_0002A07C (HandleScriptFlowControl, 96.64 -> 100, 476 B), gl_func_00029978 (vibrato freq scale, 71.84 -> 100, 500 B), gl_func_00026214 (AudioThread_UpdateImpl, 79.13 -> 100, 1404 B), gl_func_00025C54 (PreloadSamplesForFont, 77.21 -> 100, 1120 B), gl_func_00025320 (AsyncDma, 75.00 -> 100, 144 B). NM: gl_func_0001DCB4 87.66 -> 94.53. Code 74.35 -> 75.38%._
 - [kit LXXIV (agent-g 2026-10-24, run 148): **gbi-macro decode in gl 578B4** -- gDPSetTile word1 chains are ORs of u32 operands (`+` keeps order but emits addu, plain `|` lets uopt rotate the last leaf, `(u32)chain | (u32)leaf` keeps the left chain), MIN(lrs, 0x7FF) is a ternary (`b J; move t1` + hoisted 0x7FF), width read inline, the last switch-2 case falls through into default, LOADTILE stores w1 before w0; **post1b 64388 is an NCC V3 donor at 2 words** (the 5062C V3 class with `void assign(V3 v) { set(v); }`, `void operator/=(float)`, an `operator*` with a named `float k = s` local, references bound before the length test); negatives for 3430, 23FC, 2840, CEB4, BDEC, 59E80, 4118, 591C, D884, 51AD8, 15FC, 125C, 1824](#kit-lxxiv-agent-g-run-148) -- _NM: gl_func_000578B4 96.36 -> 97.06, gl_func_00064388 97.46 -> 99.98 report (NM-only NCC donor). No exacts. post0b NM clip 0x2e890 -> 0x2e89c (62F08 NM offset 0x2e84c)._
+- [kit LXXV (agent-c 2026-10-24, run 143): **audio driver part 4** -- compare 1-bit bitfields as signed (`(s32)x->needsInit == 1`) so the target's shared signed constant 1 appears, OoT's `SAMPLE_SIZE = sizeof(s16)` keeps the unsigned and signed products apart, indexed members of a typed gAudioCtx extern fix register picks (258C0, 25504), no per-iteration NULL reset (25504), temp-area spills are compiler temps not declared locals (250C8)](#kit-lxxv-agent-c-run-143) -- _EXACT: gl_func_0001E134 (AudioSynth_ProcessNote, 65.94 -> 100, 3396 B), gl_func_00025504 (RelocateFontAndPreloadSamples, 97.28 -> 100, 956 B), gl_func_00021F40 (AllocTemporarySampleCacheEntry, 95.58 -> 100, 664 B), game_libs_func_000258C0 (ProcessSamplePreloads, 96.04 -> 100, 448 B). NM: 1DCB4 94.53 -> 98.61, 250C8 92.31 -> 97.68, 23BDC 98.76 -> 98.88. Code 75.38 -> 76.10%._
+- [kit LXXVI (agent-g 2026-10-24, run 149): **the jumptable rule read out of cfe** -- the front end (not uopt/ugen) picks table vs compare chain: sorted case labels form clusters while each label is within 25 of the previous one, and a cluster with fewer than 5 labels is split into equality tests (cfe.c `func_465d90`, `at = a1 < 0x5`); `xjp` range = first..last label, so every table has at least 5 entries; IDO 5.3 same, NCC never emits `xjp`; the 4-entry tables (76F0, 0B3C, 116C, 8CD8, func_80001ADC) are a different compiler -- keep the phantom `case 4: break;`; negatives for 97EC, 68DD4, 32C8, 64388](#kit-lxxvi-agent-g-run-149) -- _No exacts; cap proven from the compiler binary._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
@@ -37520,3 +37522,114 @@ fuzzy for one function from two objects; `n64/run.py BASE.cpp FUNC VARIANTS.py` 
    frame 80 vs the target's 96 (sp30 home 52 vs 48) -- edg drops unused pads, so the next step is finding which named
    used local the original had (draft `g148/ng/base.cpp`). titproc 05DC: a function-scope `d16`, literal `one` and a
    char `done` are byte-inert (359 vs 356 words, callee-saved rotation).
+
+## kit LXXV (agent-c 2026-10-24, run 143): audio driver part 4 -- signed bitfield compares, `sizeof` SAMPLE_SIZE, indexed members fix register picks (four exacts, 4.6 KB) <a name="kit-lxxv-agent-c-run-143"></a>
+
+Scratch: `c143/` in the session scratchpad (`ex.sh FILE FUNC OUT` = NM body of any game_libs unit as a standalone .c;
+`rs.sh PREFIX N FUNC UNIT OUT` = 6-way parallel `c140/ct.sh` over scratch variants; drafts `pn*.c` 1E134, `sp0.c` 258C0,
+`fa4.c` 21F40, `rp*.c` / `r5/s_100.c` 25504, `dd*.c` / `dg/g_8.c` 1DCB4, `d0.c` 250C8).
+
+1. **gl_func_0001E134 = AudioSynth_ProcessNote, EXACT from OoT (849 words, was a 65.94 m2c NM).** OoT's body pasted with
+   own typedefs scored 96.2 (850 vs 849 words, 7 opcode chunks). Two source facts closed it:
+   - **Compare an unsigned 1-bit bitfield as signed: `(s32)sampleState->needsInit == 1`.** The target keeps ONE register
+     holding a signed 1 for the needsInit test, `flags = A_INIT` (`or t1,t2,zero`) and the `numParts == 1` test, and
+     rematerialises it for the second needsInit test after the loop. A u32 bitfield compared with 1 is an unsigned compare
+     in uopt and gets its own constant (kit LXVIII #5's "sameTunedSample must be u32" is the same rule from the other side).
+     Both needsInit tests need the cast. 1DCB4 has the same lever: `(s32)sampleState->reverbIndex == reverbIndex` /
+     `>= numSynthesisReverbs` turns `sltu` into the target's `slt`.
+   - **`#define SAMPLE_SIZE sizeof(s16)`** (OoT's own definition, unsigned) instead of `2`: OoT mixes
+     `aiBufLen * SAMPLE_SIZE` (unsigned) and `aiBufLen * (s32)SAMPLE_SIZE` (signed); with a plain 2 they become one
+     expression and the comb-filter tail gained an `or s4,s5` copy plus an s4-s7 rotation (850 -> 849 words, exact).
+   - The last 4 words were nTrailingSamplesToIgnore's home (300 vs 228): it lives inside OoT's `s32 pad2[7]` guess --
+     `s32 pad2a[3]; s32 nTrailingSamplesToIgnore; s32 pad2b[3];` with a placeholder scalar at its old position.
+   - 1080 deltas: init sets `samplePosInt = 0` (no startSamplePos), no MEDIUM_UNK / NULL-sampleData returns, the first
+     codec switch has `case CODEC_S16_INMEMORY: goto skip;` and no S16 cases, S8Dec and the comb-filter state take
+     `OS_K0_TO_PHYSICAL` pointers, the mixEnvelopeState pointer (+0x40) is passed raw. Callee map (baked jal - 0x1466C):
+     1D55C ClearBuffer, 1D594 Mix, 1D5E0 SetBuffer, 1D624 DMemMove, 1D670 InterL, 1D6D0 LoadBuffer, 1D6F8 SaveBuffer,
+     1D754 S8Dec, 1D770 HiLoGain, 1D7A4 UnkCmd19, 1D7F8 UnkCmd3, 1D834 LoadFilterBuffer, 1D858 LoadFilterSize, 1CF68
+     func_800DB2C0, 1EE78 FinalResample, 1EF20 ProcessEnvelope, 1F248 LoadWaveSamples, 1F3C8 ApplyHaasEffect; DmaSampleData
+     is a blank jal. curLoadedBook = gAudioCtx+0x10. K&R `int` callees change the code: prototyped aliases (gl_e134_*).
+2. **game_libs_func_000258C0 = ProcessSamplePreloads, EXACT** (96.04 -> 100): every preload access as an indexed member of
+   a typed gAudioCtx extern (`gAudioCtx.preloadSampleStack[i].f`, no `preload` pointer) fixed both documented residuals
+   (base in a3, and the first-section `* 20` expanding in place while the loop multiply uses the held 20). 1080 also sets
+   isFree = 1 after the first key check and returns 0 / 1.
+3. **gl_func_00021F40 = AllocTemporarySampleCacheEntry, EXACT** (95.58 -> 100): the typed extern plus OoT's own
+   `index = cache->numEntries++;`. Run 140's absolute-member spelling was only needed under the `*(Ctx *)&D_00000000` cast,
+   and kit LXXI's "typed extern: no change" on 21F40 tested the extern without going back to OoT's spelling.
+4. **gl_func_00025504 = RelocateFontAndPreloadSamples, EXACT** (97.28 -> 100; kit LXXIII #1: 25504 is the 0x39B70 callee
+   itself): OoT body with indexed preload-stack writes and an indexed final StartAsyncLoad; **no `sampleRamAddr = NULL`
+   per iteration** (the target carries it round the loop in its home -- `lw s2,92(sp)` at the loop top, `sw` at the
+   bottom; declare it third for home 92); four-argument AllocSampleCache, no disk-drive arm; `if (sample) {}` right after
+   `sample = gAudioCtx.usedSamples[i];` (the statement slot where OoT has the NULL reset) fixes the base / ramAddr s1 / s2
+   pick (33 of 288 if-split variants, all at that point or in the AllocSampleCache arms). D_8016B780 = module word 0x2B0.
+5. **Temp slots vs homes (250C8 NM 92.31 -> 97.68).** A value spilled to the temp area below the locals (the target's
+   shared sp+36 for bytesRemaining and fontId) is a compiler temp, not a declared variable: re-reading
+   `asyncLoad->bytesRemaining` at each use (no cached local) moved it from its home (+84) to +36. A declared local whose
+   value is a copy of another local (`fontId = ASYNC_ID(retMsg)` with retMsg a local) is copy-propagated and spills to the
+   temp area as well. Homes: every declared scalar gets one in declaration order (first highest), even when unused;
+   block-scope locals go below the outer ones. 45178's `g` at 36 vs 40 is the same temp-vs-home question (open).
+6. **NM gains.** 1DCB4 94.53 -> 98.61 as the SM64-era synthesis_do_one_audio_update: `updateIndex * numNotes` written
+   inline in every note loop (`for (; i < count; i++) { ... continue; }`, no `t` local: a declared temp local adds a home
+   and moves the spill temps), index-form reverb fields (a named `reverb` pointer adds an `addiu +24`; the target CSEs
+   base + k*0x158 into a spilled temp), and the declaration order `sampleState; u8 noteIndices[56]; s16 count; s16
+   reverbIndex; s32 i; s32 useReverb;` for the target frame (noteIndices 132, useReverb 120). Left (2 words): the target
+   loads `enabled` through the sampleState copy (`or v0,v1; lw t7,0(v0)`), ours through the induction pointer first.
+   23BDC 98.76 -> 98.88: the sfx section reads `fontData[1]` directly (own register v0); the s2/s3 swap is left
+   (273-variant if-split sweep: nothing at 161 words). 45178: loading the packet base into a local
+   (`L = FW(FW(p, 0xC), 0)`) and storing through `L + i * 8` with no `g` local puts the spill at the target's temp slot
+   sp+36 (point 5); with `i = FW(FW(p, 0xC), 4); FW(t, 4) = i + 1;` (no n3 copy) it is 135 = 135 words with the target's
+   instruction sequence, left: i / L / address coloured a3 / v1 / t0 (target v1 / t3 / a3) and the three literal %lo
+   (rodata donor). Draft `c143/kg2.c` (standalone fuzzy below the in-tree NM, so not landed).
+7. **Negatives.** 22464 in OoT condition form gets 130 = 130 words and the target frame / homes (decl order fontId, j,
+   numFonts, ..., ids last) but objdiff then reports 0.0 for the symbol (rdiff: 49 diff words; residual = the target
+   re-materialises 255 in at, ours hoists it into t0) -- not landed since the report would drop. 221D8, 4EE44 (decl
+   permutations, 90 if-splits), 45178 (pads / block scope / named base), 396FC, 40304, 445AC (typed member store, plain
+   arg): unchanged.
+8. **Gate:** rebased onto 2a428a107. ROM byte-identical after purging game_libs / game_libs_post / game_libs_post0b /
+   game_libs_post1b; verify-blocks 6/6 (jal = lo16 = other = 0); no lost exacts (4 gained); sentinels at 100; post0b NM
+   clip 0x2e89c (62F08 NM offset 0x2e84c) unchanged. Code 75.38 -> 76.10%.
+
+## kit LXXVI (agent-g 2026-10-24, run 149): the jumptable rule read out of cfe -- a 4-entry table is not reachable from C <a name="kit-lxxvi-agent-g-run-149"></a>
+
+The "4-entry jump table" cap (76F0 switch2/switch4, game_uso 0B3C, titproc 116C, game_uso 8CD8, kernel func_80001ADC,
+~8-10 KB) was re-opened from the compiler itself rather than by probing. Result: **negative, now proven from the
+binary.** No stock compiler we have (IDO 7.1 cfe, IDO 5.3 cfe, IDO 7.1 NCC/edgcpfe) can emit a jump table with fewer
+than 5 entries, so the target `sltiu at,x,4` tables came from a different compiler build. Keep the phantom
+`case 4: break;` (1 word + the table base words) as the best NM shape and do not grind these again.
+
+1. **Who decides: the front end, not uopt or ugen.** `cc -O2 -j t.c` keeps the ucode. A 4-case switch's ucode is
+   `lod / ldc / equ / fjp` runs (opcode bytes 0x52 0x49 0x23 0x26), a 5-case one is one `xjp` (opcode 0x8c, the
+   140th entry of uopt's `uopcode_enum_values`) followed by `clab` and the `ujp` table. uopt only passes `xjp`
+   through (`uoptinput.c` reads `lbound`/`hbound`, `uoptemit.c` ~5000 writes them back unchanged; the only
+   rewrite is a constant selector), and ugen lowers it 1:1 to `sltiu (hbound-lbound+1)` + table. So the rule lives
+   in cfe (`/usr/lib/cfe`, MIPS binary; the recompiled C is `tools/ido-static-recomp-dump/build/7.1/cfe.c`).
+2. **The rule (cfe.c `func_465d90`, the Switch_stmt code generator, recompiled-C lines ~161880-162857):** case
+   labels are kept in a list sorted by value (source order does not matter -- checked). One pass groups them into
+   clusters: the next label joins the current cluster if `value <= previous + 25` (the literal `0x19`, a signed or
+   unsigned 64-bit compare by selector type), and the cluster's label count goes up by one. When a cluster closes
+   (and for the last cluster), `if (count < 5)` (`at = a1 < 0x5`) splits it back into single labels, each of which
+   becomes an `equ`/`fjp` test; a cluster of 5 or more whose last value has a zero high word and a low word below
+   0xFFFFFFFF stays a table. `func_465654` then does a binary search over the clusters and calls `func_46508c`
+   (the only `xjp` writer, `t3 = 0x8c`) for each table cluster with `lbound` = the first label and `hbound` = the
+   last label. `default:` is not in the list. Both constants are hard-coded; no `-W` option reaches them.
+3. **Consequences, all confirmed by compiling:** a table needs at least 5 distinct labels inside one cluster, and
+   its range is first..last label, so a table always has at least 5 entries. Duplicate labels are rejected
+   (`case 3: case 3U:`, `case (char)259:`, `case 0x100000003LL:` all give "Duplicate case label"). An outlier label
+   extends the table if it is within 25 of the previous one (`case 0..3, 28` gives `sltiu 29`; `-26` splits);
+   `case -1` with an int, char or long long selector gives a 5-entry table with a bias; with an unsigned selector it
+   splits. IDO 5.3 behaves the same at -O0/-O1/-O2.
+4. **NCC never emits `xjp`**: edgcpfe writes ucode itself (`NCC -v`: edgcpfe -> uopt -> ugen, no cfe), and 4-, 16-
+   and 40-case dense switches at -O0 and -O2 all come out as compare chains. So a C++ unit with a jump table was
+   not built by our edgcpfe either (consistent with the earlier "a jumptable function is cfe C" note).
+5. **What this means for the cap list:** the target tables are 4 entries (`sltiu 4`), i.e. 4 labels in one table.
+   That needs a front end whose threshold is 4 (the old pcc rule was `n >= 4`), not any C spelling. The phantom
+   5th label stays the best shape; the residual is the `sltiu` word plus the table base words.
+
+**Also probed this run (no gain, see below for where the residuals stand):** 97EC (edg temporaries of
+`XZ e((a - b) * s->k)` homed 204/192 vs target 192/204: non-member / friend / reversed `operator*`, non-member
+`XZ::operator-`, copy-init, reference-bound and explicit `.operator*` spellings all keep the order); 68DD4 (all 7
+per-read splits of pp / q / v and 36 read1 x read2 spellings, including `*(*pp)++`, `(*pp)++`, `q++` with
+`q[-1]`, are worse than the shared-variable 19-word body); timproc b5 32C8 (all orders of the uE8 / vF8 / vEC /
+`if (1) {}` / zero block, `0.0f`, chained or copied zeros, `vF8.z = vF8.x`: l134 still takes $f0); 64388 (a dead
+third parameter or a const-reference parameter on `operator-`, `operator/=` or `operator*` does not move the
+shared return slot from sp+116).
