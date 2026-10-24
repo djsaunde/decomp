@@ -39433,7 +39433,7 @@ same-length variant, continue with the next run. Check every kept move for a dat
 stores / loads / declarations were kept). Gains (report.json): b5 D884 95.51 -> 96.63 and DF14 95.23 -> 96.23 (the
 `0x114 = arg8` store right after `0x110 = arg7`, `0x120` before `0x124`: as1 then issues the stack-argument loads like the
 target), game_uso 0B3C 94.93 -> 94.94, 591C 94.15 -> 94.16, bootup 55A0 94.33 -> 94.35 (a declaration), B75C 91.05 ->
-91.12. Flat: b5 CEB4, bootup E2D0. Sibling sweeps of today's levers: the break-join (item 5) over 13 NM functions / 53
+91.12. Flat: b5 CEB4, bootup E2D0, titproc 5DC, and a second pass over D884 / DF14 (all runs). Sibling sweeps of today's levers: the break-join (item 5) over 13 NM functions / 53
 `stmt;\n break;` sites (85-100 band): no gain anywhere else; empty-case-group-last (item 1) on the only two other
 switches that start with an empty group (b5 8FC8, bootup 6808): inert. bootup 90CC's 7 / 6 dispatch as an if-goto chain,
 case order swap, unsigned key: all lower or flat (97.15). gl 3430's step load inlined into the loop (91.2), after the
