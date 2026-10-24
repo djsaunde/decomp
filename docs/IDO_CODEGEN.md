@@ -14498,6 +14498,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit LXXIV (agent-g 2026-10-24, run 148): **gbi-macro decode in gl 578B4** -- gDPSetTile word1 chains are ORs of u32 operands (`+` keeps order but emits addu, plain `|` lets uopt rotate the last leaf, `(u32)chain | (u32)leaf` keeps the left chain), MIN(lrs, 0x7FF) is a ternary (`b J; move t1` + hoisted 0x7FF), width read inline, the last switch-2 case falls through into default, LOADTILE stores w1 before w0; **post1b 64388 is an NCC V3 donor at 2 words** (the 5062C V3 class with `void assign(V3 v) { set(v); }`, `void operator/=(float)`, an `operator*` with a named `float k = s` local, references bound before the length test); negatives for 3430, 23FC, 2840, CEB4, BDEC, 59E80, 4118, 591C, D884, 51AD8, 15FC, 125C, 1824](#kit-lxxiv-agent-g-run-148) -- _NM: gl_func_000578B4 96.36 -> 97.06, gl_func_00064388 97.46 -> 99.98 report (NM-only NCC donor). No exacts. post0b NM clip 0x2e890 -> 0x2e89c (62F08 NM offset 0x2e84c)._
 - [kit LXXV (agent-c 2026-10-24, run 143): **audio driver part 4** -- compare 1-bit bitfields as signed (`(s32)x->needsInit == 1`) so the target's shared signed constant 1 appears, OoT's `SAMPLE_SIZE = sizeof(s16)` keeps the unsigned and signed products apart, indexed members of a typed gAudioCtx extern fix register picks (258C0, 25504), no per-iteration NULL reset (25504), temp-area spills are compiler temps not declared locals (250C8)](#kit-lxxv-agent-c-run-143) -- _EXACT: gl_func_0001E134 (AudioSynth_ProcessNote, 65.94 -> 100, 3396 B), gl_func_00025504 (RelocateFontAndPreloadSamples, 97.28 -> 100, 956 B), gl_func_00021F40 (AllocTemporarySampleCacheEntry, 95.58 -> 100, 664 B), game_libs_func_000258C0 (ProcessSamplePreloads, 96.04 -> 100, 448 B). NM: 1DCB4 94.53 -> 98.61, 250C8 92.31 -> 97.68, 23BDC 98.76 -> 98.88. Code 75.38 -> 76.10%._
 - [kit LXXVI (agent-g 2026-10-24, run 149): **the jumptable rule read out of cfe** -- the front end (not uopt/ugen) picks table vs compare chain: sorted case labels form clusters while each label is within 25 of the previous one, and a cluster with fewer than 5 labels is split into equality tests (cfe.c `func_465d90`, `at = a1 < 0x5`); `xjp` range = first..last label, so every table has at least 5 entries; IDO 5.3 same, NCC never emits `xjp`; the 4-entry tables (76F0, 0B3C, 116C, 8CD8, func_80001ADC) are a different compiler -- keep the phantom `case 4: break;`; titproc 5DC levers: address-constant call arg is its own hoisted candidate, a flag store after the call fills the jal delay, one home per declared local sets the frame, 2-D index for base-first addu; negatives for 97EC, 68DD4, 32C8, 64388](#kit-lxxvi-agent-g-run-149) -- _No exacts; cap proven from the compiler binary. NM: titproc_uso_func_000005DC 94.38 -> 98.87._
+- [kit LXXVII (agent-c 2026-10-24, run 144): **control-flow spelling flips s-register pairs** (`continue` <-> nested if-block fixed 221D8 and 23BDC index/cursor swaps), comparing one of two equal constants unsigned splits the CSE (22464; objdiff 0.0 on a same-length body = alignment collapse from a one-register shift), a volatile 1-bit flag loads through the per-iteration copy (1DCB4), a pointer bump between stores fixes a delay-slot order (32E18)](#kit-lxxvii-agent-c-run-144) -- _EXACT: gl_func_00022464 (DiscardSampleCaches, 90.76 -> 100, 520 B), gl_func_0001DCB4 (synthesis update, 98.61 -> 100, 1152 B), gl_func_000221D8 (DiscardSampleCacheEntry, 99.24 -> 100, 448 B), gl_func_00023BDC (RelocateFont, 98.88 -> 100, 644 B), gl_func_00032E18 (98.36 -> 100, 636 B). NM: 201B8 97.73 -> 97.86, 250C8 97.68 -> 98.08, 4B2F4 98.15 -> 98.23._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
@@ -37655,3 +37656,59 @@ per-read splits of pp / q / v and 36 read1 x read2 spellings, including `*(*pp)+
 `if (1) {}` / zero block, `0.0f`, chained or copied zeros, `vF8.z = vF8.x`: l134 still takes $f0); 64388 (a dead
 third parameter or a const-reference parameter on `operator-`, `operator/=` or `operator*` does not move the
 shared return slot from sp+116).
+
+## kit LXXVII (agent-c 2026-10-24, run 144): control-flow spelling flips s-register pairs; unsigned compare splits a shared constant; volatile flag picks the copy as base (five exacts, 3.4 KB) <a name="kit-lxxvii-agent-c-run-144"></a>
+
+Scratch: `c144/` in the session scratchpad (`exg.sh SRC FUNC OUT "prefix"` = NM body of any unit as a standalone .c;
+`fz.sh` / `fu.sh` objdiff per function; `rp.sh FUNC...` = `make non_matching_objects` + `objdiff-cli report generate`
+into a scratch json + print the report fuzzy -- the report is the gate number, `objdiff-cli diff` on an in-tree .o
+scores reloc-baked exacts at ~99.7 and is NOT the gate; `ep.sh` = log-exact-episode wrapper).
+
+1. **`continue` vs if-block is a register-colouring lever.** Two OoT-shaped loops whose only residual was a swapped
+   s-register pair (loop index vs its strength-reduced `*20` / `*4` cursor, or a pointer param copy vs the cursor)
+   matched by re-spelling the control flow, not the declarations:
+   - gl_func_000221D8 (DiscardSampleCacheEntry, 99.24 -> 100): OoT's single `if ((id1 match) || (id2 match) || id == 0)
+     { ... }` written as `if (!(...)) { continue; } { ... }` moves fontId / fontId*20 from s4 / s5 to the target s5 / s4.
+     (The only other 0-diff form in a 80-variant `if (x) {}` sweep was an empty test on the *uninitialised* fontId --
+     illegal; the continue spelling is the legal equivalent of extending fontId's live range.)
+   - gl_func_00023BDC (RelocateFont, 98.88 -> 100): the reverse -- OoT's two `continue`s in the drum loop written as
+     nested if-blocks move fontDataStartAddr / index from s3 / s2 to s2 / s3. 273 if-split variants (run 143) and every
+     declaration / initialiser order had not moved it.
+   Recipe: enumerate {continue, nested-if} for every early-out in every loop (2^k variants, standalone in parallel).
+2. **Comparing one of two equal constants unsigned splits the CSE** (gl_func_00022464, DiscardSampleCaches, 90.76 ->
+   100): `((u32)sampleBankId1 != 0xFF) || (sampleBankId2 != 0xFF)` gives the target's two fresh `li at,255`; with both
+   signed (or both unsigned) uopt hoists one 255 into t0 at the loop head and every later t-register shifts by one.
+   That shift is also why objdiff scored the 130 = 130-word form **0.0**: its diff aligned the shifted body as 89
+   insert/delete pairs (rdiff showed 49 words). An objdiff 0.0 on a same-length body = alignment collapse, not a
+   symbol / section problem. Same entry: a non-matching cache entry **breaks** out of the entry loop (target `bnezl`
+   to the font-loop tail), not just skips it.
+3. **A volatile 1-bit flag makes the load go through the per-iteration copy** (gl_func_0001DCB4, synthesis update,
+   98.61 -> 100): `volatile u32 enabled : 1;` (OoT / SM64-EU declare the note-sub flags `vu8`) turns
+   `lw t7,0(v1); or v0,v1` into the target's `or v0,v1; lw t7,0(v0)`. No effect on 201B8's / 221D8's flags (checked).
+4. **Delay-slot order through a pointer bump** (gl_func_00032E18, 98.36 -> 100): target schedules `x store, a0 =
+   o+0x30, y, z (jal delay)`; every store permutation and a comma argument either kept `a0` in the delay or moved the
+   homes (+8 frame). `zv.x = 0; o += 0x30; zv.y = 0; zv.z = 0; f(o, &zv);` matches (o is dead afterwards).
+   The promotion needed a `gl_32e18_blank = 0` alias: `gl_func_0001CA10` is no longer defined (renamed
+   game_libs_func_0001C9E4), and the unpinned symbol made the linker segfault silently -- always full-link.
+5. **Function-scoped if-split sweep over full-TU scratch copies** (`c144/fsweep.py SRC FUNC PREFIX v1,v2` writes
+   whole-file variants with `if (v) {}` before each statement of FUNC only -- c142's ifsweep.py runs to the end of the
+   file when given a full TU; `c144/fct.sh` = asm-processor preprocess + cc + rdiff, ~0.3-1 s per game_libs_post
+   variant, `c144/frs.sh` = 6-way parallel). Full-TU compiles reproduce in-tree lengths that extracted bodies miss
+   (2D374: 170 both ways; 4D468 / 488A0 still diverge from in-tree under fct -- check the base first). Found
+   gl_func_000250C8 97.68 -> 98.08 (`if (asyncLoad) {}` after the RelocateFontAndPreloadSamples call) and
+   game_libs_func_0004B2F4 98.15 -> 98.23 (`if (ctx) {}` before the second packet). Watch for statement lines that
+   are an unbraced loop body: an insertion there changes semantics (those variants come out far shorter). 2D374's only
+   winners (53 -> 32 words) were tests on the *uninitialised* st / v at the first timer block -- illegal; the
+   initialised spellings (`v = D_2D37C_mode; if (v == 1)`) are worse.
+6. **NM gain**: gl_func_000201B8 97.73 -> 97.86 -- the `int a = st0` copy reversed the `bne` operands of the `== 3`
+   tests; comparing the u8 st0 directly gives `bne v0(3),t5`; `a` stays declared unused (its home keeps the frame).
+   Left: `v = 1` copies the held 1 (t1, from the mode switch) where the target re-materialises `addiu v0,1`; a store
+   of 1 then re-read of `sub->cur` at the tail (OoT's `side = nextSide` shape), 1U / unsigned v / unsigned cur,
+   volatile flags: none move it.
+7. **Negatives.** 250C8 (OoT FinishAsyncLoad inlined: a block-level `retMsg` copy gives the target's `or v0,a1` and
+   the fontId temp at sp+36 but is 152 vs 150 words; ID-before-status hoisting and the send reusing the first load
+   in a1 are not reproduced), 4EE44 (src expression spellings, if inversions), 445AC (`v =` removal fixes t7 but the
+   store base takes t8 not v0), 49DBC (target leaves 12 bytes unused *between* sp50 and sp38 with the same frame;
+   unused scalars / larger array / pads grow the frame), 4B2F4 (162-variant slot-increment grid, best 98.06 with more
+   diff words), 4D468 (ternary / shared merge var), 488A0, 2D374, 307A8. post0b standalone compiles diverge from
+   in-tree (TU-context prototypes): use in-tree `make build/non_matching/...post0b.c.o` (22 s) for post0b work.
