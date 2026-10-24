@@ -13333,3 +13333,7 @@ so every landing gate passed and only CI (fresh checkout, `make objects`) broke,
 - Gate: scripts/gate-landing-tree.sh now ends with a fresh `git worktree` build of tracked files
   (`make objects` + `non_matching_objects`, ~20 s; exit 8 on failure). SKIP_CLEAN_BUILD=1 skips it.
 - Repro: `rm -f <donor>.c.o <host>.c.o && make <host>.c.o`.
+- Same trap for every other host variable the generic recipe reads: SUFFIX_BYTES_FORCE,
+  NON_MATCHING_SUFFIX_BYTES_FORCE, TRUNCATE_TEXT. kernel_000.c.o's `SUFFIX_BYTES_FORCE := func_8000235C=...`
+  was inherited by the new kernel_000_1EC8 donor (KeyError: function func_8000235C not found, clean
+  build only; agent-g run 145). Make them `private` too once the host has a .c donor prerequisite (main 7bbec18eb).
