@@ -14501,6 +14501,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit LXXVII (agent-c 2026-10-24, run 144): **control-flow spelling flips s-register pairs** (`continue` <-> nested if-block fixed 221D8 and 23BDC index/cursor swaps), comparing one of two equal constants unsigned splits the CSE (22464; objdiff 0.0 on a same-length body = alignment collapse from a one-register shift), a volatile 1-bit flag loads through the per-iteration copy (1DCB4), a pointer bump between stores fixes a delay-slot order (32E18)](#kit-lxxvii-agent-c-run-144) -- _EXACT: gl_func_00022464 (DiscardSampleCaches, 90.76 -> 100, 520 B), gl_func_0001DCB4 (synthesis update, 98.61 -> 100, 1152 B), gl_func_000221D8 (DiscardSampleCacheEntry, 99.24 -> 100, 448 B), gl_func_00023BDC (RelocateFont, 98.88 -> 100, 644 B), gl_func_00032E18 (98.36 -> 100, 636 B). NM: 201B8 97.73 -> 97.86, 250C8 97.68 -> 98.08, 4B2F4 98.15 -> 98.23._
 - [kit LXXVIII (agent-g 2026-10-24, run 150): **as1 only reorders inside one source-line (`.loc`) group** -- statements sharing a line form one scheduling group (stores in it are issued in as1's own order, e.g. a store of the later-defined `-h` before an earlier `h` store), separate lines keep source order; plus **real C++ constructors for get-or-create heads** (edg's `this==0 -> new` protocol + out-of-line base ctor + vptr in the base gave bootup 0CA0 exact; cfe's coloured h/-h wrong), a FUNCTION-typed alias stops as1 hoisting loads past stores to another base (76F4 87.3 -> 99.1), `cc -S` shows the pre-as1 ugen text with `.loc` lines (an as1 lab, not reliable for functions with jumptables)](#kit-lxxviii-agent-g-run-150) -- _bootup func_00000CA0 EXACT (244 B, NCC donor); NM: func_000076F4 87.33 -> 99.07._
 - [kit LXXIX (agent-g 2026-10-24, run 151): **the line-layout sweep** (join / split adjacent statements, greedy on fuzzy) found nothing at >= 95 % except bootup 90CC; gbi w0/w1 pairs joined (a gbi macro is one line) raise gl 578B4; **score sweeps with the project build, not a bare cfe compile** (gui / timproc_b5 / game_uso 'gains' vanished in report.json); where the line rule does NOT apply: delay-slot fills cross lines (51AD8), two `at` writers never swap (CEB4), uopt puts rematerialised values right after the call (76F4) and loop-invariant constants at the end of the preheader (3430), the direct compile hoists `li at,imm` above a preceding branch where `cc -S` does not (mgrproc 1824); NCC lift of timproc_b5 / game_uso / gui / titproc / mgrproc / post0b>=0x50000 beats no cfe body](#kit-lxxix-agent-g-run-151) -- _no exacts; NM (report.json): 90CC 96.85 -> 97.15, h2h 0620 95.38 -> 96.51 (a3arg store first, then an inline-ctor level on one line), 55A0 93.93 -> 94.33, 578B4 97.10 -> 97.20, small: 0E68, gl 76F0, gui F04, game_uso 591C._
+- [kit LXXX (agent-g 2026-10-24, run 152): **m2c phi splits cost frame and colour** -- m2c names one C variable per definition (`var_f0`, `var_f0_2`, ...); merging a register family back into ONE variable shrinks the cfe frame (each named float has a home) and fixes colouring (B75C, 578B4); **decode errors in m2c-lifted NCC donors**: a `sw aN,4*N(sp)` in the target jal delay = a struct passed BY VALUE (C234), a CSE-spilled shared function-symbol base = use per-site symbols, `lui+addiu 0+lw K` vs folded `lw K(lui)` = function-typed symbol, read through a data symbol; `x - 1 == 0` keeps a loop-test constant out of an s-register (C310); a shared backup file in parallel sweep scripts clobbers sources](#kit-lxxx-agent-g-run-152) -- _no exacts; NM (report.json): bootup C234 79.55 -> 85.20, gl 578B4 97.20 -> 97.72, b5 C310 91.46 -> 93.75, bootup B75C 88.98 -> 89.48, 63B4 83.10 -> 83.21; post0b NM clip 0x2e89c -> 0x2e8c4._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
@@ -37839,3 +37840,60 @@ operand order never flips. bootup 76F4: block / pointer / second-symbol spelling
 lui order; a function-typed second alias for the scale base gives the target's `lui v0; lui v1` order but moves
 the base out of a2 (37 words). mgrproc 1824: `++` / `+=` / volatile / unsigned / cast switch values and
 if-cascade rewrites all keep the hoisted `li at,1`.
+
+## kit LXXX (agent-g 2026-10-24, run 152): m2c phi splits, by-value struct args, per-site symbols, subtract compares <a name="kit-lxxx-agent-g-run-152"></a>
+
+**1. m2c splits one C variable into one name per definition, and both compilers pay for it.** m2c names a
+variable after its register and definition (`var_f0`, `var_f0_2` ... `var_f0_5`, `temp_t0_27`). Under cfe every
+named float gets a home slot even when it lives in a register (bootup B75C frame 224, target 120), and separate
+variables get separate colours. Merging a family back into ONE variable is plain source (the defs never overlap;
+check that no merged name is still live at the next def). `g152/famsweep.py SRC UNIT FUNC` (session
+scratchpad) generates every whole-family merge (`FAMONLY=1`) plus every in-family pair merge, scores each with
+the project build and ranks them. Results (keep a merge only if the body length does not move away from the target; post1b 65494's
+`var_v0` -> `temp_v0` merge read 79.50 -> 81.97 at 335 vs 334 words and was dropped): B75C `var_f0*` + `var_f12*` 88.98 -> 89.48 (frame 224 -> 208);
+gl 578B4 the six `var_t0*` dxt phis (one per gDPLoadTextureBlock expansion) 97.20 -> 97.72 (2411 -> 2421 of
+2419 words). Merging the `temp_f2*` / `temp_f12*` families in B75C LOST fuzzy, and 90CC / 4118 gained
+nothing, so sweep instead of merging blindly. cfe declaration order did not move a single home in B75C
+(78 decl-move variants, all identical).
+
+**2. Decode errors that m2c-lifted NCC donors carry (bootup C234 79.55 -> 85.17).**
+- **`sw aN, 4*N(sp)` in a jal delay slot in the target only = a struct passed BY VALUE.** IDO copies a by-value
+  struct argument into its outgoing arg slot as well as the register. C234's lookup call takes a 4-byte
+  struct `{ s32 v; }` as arg 2: `sp8C.v = *(s32 *)(tbl + 0x38); f(D, sp8C, p, 0);` gives both target stores
+  (`sw a1,140(sp)` = the local, `sw a1,4(sp)` = the arg slot). Copying the whole struct
+  (`sp8C = *(S4 *)(tbl + 0x38)`) gives an addiu-pointer copy instead. `argscan.py` lists NM functions where the
+  target and build disagree on arg-slot stores, frame size or `addiu rX,rX,0` counts.
+- **A shared function-symbol base is CSE'd and spilled.** Five calls on `(char *)func_00008A7C + K` became one
+  `lui/addiu` spilled to sp+52 and reloaded; the target issues `lui; addiu` at every call. Per-site symbols
+  (`bu_c234_k0..k4`, blank / NM-only) give the target shape.
+- **`lui; addiu r,r,0; lw K(r)` where the target has `lui; lw K(r)`:** the base was a FUNCTION symbol
+  (`(char *)&func_00000008 + 0x2C`). Reading through a data symbol (`*(s32 *)(sym + 0x2C)`, `extern char sym[]`)
+  folds the %lo.
+- **Old-value counter tests:** `if ((p->n)++ >= 0x97)` gives the target `slti v1,151` on the OLD value; the
+  m2c form (`t = p->n; p->n = t + 1; if (t >= 0x97)`) lets uopt compare the incremented value (`slti v1,152`).
+
+**3. `x - 1 == 0` keeps a constant out of an s-register (timproc_b5 C310 91.46 -> 93.75).** With
+`if (*(s32 *)(arg1 + 0x3BC) == 1)` inside the 5-trip loop, uopt hoisted the 1 into s8 for the whole loop (one
+extra callee save, frame +8, every s-register renamed). `if (*(s32 *)(arg1 + 0x3BC) - 1 == 0)` compiles to the
+same `bne` against a fresh `li at,1` and frees s8; the target materialises the 1 inside the loop (`li t0,1`
+at the loop top, so this is not the full answer: left is t0 vs at). Moving `i = 0;` to just before the
+loop's pointer setup gives the target's late `move s1,zero` (92.48 -> 93.75). The same trick on the 8FC8
+`&= ~4` hoist (`li s1,-5`) has no spelling: `~4u`, `x = x & ~4`, a dead test all keep the hoist.
+
+**4. Smaller results.** bootup 63B4 (NCC donor): `pad[1]` instead of `pad[3]` in the frame struct gives the
+target frame 144 and A / B at the target offsets (q lands 8 high) 83.10 -> 83.21; pointer-form or member-function
+transforms (so B reloads after A's stores, as the target does) all lose 7-14 points. timproc_b5 4118: reading the
+case-0 table index inline instead of first gives 99.14 -> 99.17 but makes the body one word longer (1721, target
+1718), so it was reverted; the target's single `lw v0` of the spilled arg0 for
+four uses in case 0 (case 1 reloads per use) did not come from empty tests, one-line layout, a block copy
+local (frame +8, still reloads), or reordered stores. C234's remaining frame gap is 28 dead bytes below the
+named V3 locals (NCC slots that no instruction touches; `-S` shows no reference); moving `sp40` first lines
+up spCC / spB4 / sp8C / sp7C with the target (85.10 -> 85.17).
+
+**5. Gotcha: parallel sweeps must not share a backup file.** Two `try.sh` sweeps on different units both wrote
+`orig.bak`; one restored the other unit's source over `bootup_uso.c`. Use `mktemp` per call (fixed in
+`g152/try.sh`) and diff every touched source against HEAD before committing.
+
+**Negatives.** gl 59E80 rewritten as a clean 20-command gbi macro emitter: 3 words short of the size-exact
+permuter body and lower fuzzy (both macro forms). game_uso BB8C / 7C1C, b5 8FC8 / DF14, gui 2DE0, post1b 65494
+reviewed: constructor heads and s-register / home-slot layouts, no structural decode error found.
