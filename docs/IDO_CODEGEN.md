@@ -14500,6 +14500,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit LXXVI (agent-g 2026-10-24, run 149): **the jumptable rule read out of cfe** -- the front end (not uopt/ugen) picks table vs compare chain: sorted case labels form clusters while each label is within 25 of the previous one, and a cluster with fewer than 5 labels is split into equality tests (cfe.c `func_465d90`, `at = a1 < 0x5`); `xjp` range = first..last label, so every table has at least 5 entries; IDO 5.3 same, NCC never emits `xjp`; the 4-entry tables (76F0, 0B3C, 116C, 8CD8, func_80001ADC) are a different compiler -- keep the phantom `case 4: break;`; titproc 5DC levers: address-constant call arg is its own hoisted candidate, a flag store after the call fills the jal delay, one home per declared local sets the frame, 2-D index for base-first addu; negatives for 97EC, 68DD4, 32C8, 64388](#kit-lxxvi-agent-g-run-149) -- _No exacts; cap proven from the compiler binary. NM: titproc_uso_func_000005DC 94.38 -> 98.87._
 - [kit LXXVII (agent-c 2026-10-24, run 144): **control-flow spelling flips s-register pairs** (`continue` <-> nested if-block fixed 221D8 and 23BDC index/cursor swaps), comparing one of two equal constants unsigned splits the CSE (22464; objdiff 0.0 on a same-length body = alignment collapse from a one-register shift), a volatile 1-bit flag loads through the per-iteration copy (1DCB4), a pointer bump between stores fixes a delay-slot order (32E18)](#kit-lxxvii-agent-c-run-144) -- _EXACT: gl_func_00022464 (DiscardSampleCaches, 90.76 -> 100, 520 B), gl_func_0001DCB4 (synthesis update, 98.61 -> 100, 1152 B), gl_func_000221D8 (DiscardSampleCacheEntry, 99.24 -> 100, 448 B), gl_func_00023BDC (RelocateFont, 98.88 -> 100, 644 B), gl_func_00032E18 (98.36 -> 100, 636 B). NM: 201B8 97.73 -> 97.86, 250C8 97.68 -> 98.08, 4B2F4 98.15 -> 98.23._
 - [kit LXXVIII (agent-g 2026-10-24, run 150): **as1 only reorders inside one source-line (`.loc`) group** -- statements sharing a line form one scheduling group (stores in it are issued in as1's own order, e.g. a store of the later-defined `-h` before an earlier `h` store), separate lines keep source order; plus **real C++ constructors for get-or-create heads** (edg's `this==0 -> new` protocol + out-of-line base ctor + vptr in the base gave bootup 0CA0 exact; cfe's coloured h/-h wrong), a FUNCTION-typed alias stops as1 hoisting loads past stores to another base (76F4 87.3 -> 99.1), `cc -S` shows the pre-as1 ugen text with `.loc` lines (an as1 lab, not reliable for functions with jumptables)](#kit-lxxviii-agent-g-run-150) -- _bootup func_00000CA0 EXACT (244 B, NCC donor); NM: func_000076F4 87.33 -> 99.07._
+- [kit LXXIX (agent-g 2026-10-24, run 151): **the line-layout sweep** (join / split adjacent statements, greedy on fuzzy) found nothing at >= 95 % except bootup 90CC; gbi w0/w1 pairs joined (a gbi macro is one line) raise gl 578B4; **score sweeps with the project build, not a bare cfe compile** (gui / timproc_b5 / game_uso 'gains' vanished in report.json); where the line rule does NOT apply: delay-slot fills cross lines (51AD8), two `at` writers never swap (CEB4), uopt puts rematerialised values right after the call (76F4) and loop-invariant constants at the end of the preheader (3430), the direct compile hoists `li at,imm` above a preceding branch where `cc -S` does not (mgrproc 1824); NCC lift of timproc_b5 / game_uso / gui / titproc / mgrproc / post0b>=0x50000 beats no cfe body](#kit-lxxix-agent-g-run-151) -- _no exacts; NM (report.json): 90CC 96.85 -> 97.15, h2h 0620 95.38 -> 96.51 (a3arg store first, then an inline-ctor level on one line), 55A0 93.93 -> 94.33, 578B4 97.10 -> 97.20, small: 0E68, gl 76F0, gui F04, game_uso 591C._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
@@ -37774,3 +37775,67 @@ not the target's s0 (90.75 / 93.1, reverted). 1A44: reading the DL word before N
 E2D0: dot-sum spellings (z-first, parenthesised, `+=`) never give the target `(x + y) + z` under cfe.
 timproc_b5 4118 case 0 (target loads `this` once into v0 for four uses, ours reloads each use): a copy local
 is propagated away, the alias call's return value is one word short.
+
+## kit LXXIX (agent-g 2026-10-24, run 151): the line-layout sweep, and what source lines do NOT reorder <a name="kit-lxxix-agent-g-run-151"></a>
+
+**1. The line sweep (kit LXXVIII #1 made systematic).** `g151/lsweep.py UNIT FUNC [rounds]` (session scratchpad)
+copies the whole unit to scratch, generates every "join two adjacent simple statements onto one line" and "split a
+multi-statement line" variant inside FUNC, compiles each through asm-processor + cfe -O2 (16 threads), scores with
+objdiff fuzzy against `expected/`, and greedily keeps the best raising change per round (`JOINALL=1` also joins
+control lines, case labels and braces; `SRC=` scores another copy). Run over every NM function >= 95 % in
+bootup / h2hproc / timproc_b1 / timproc_b5 / mgrproc / post0b >= 0x50000 / post1b / game_libs.c (16 functions) and
+about 35 more in the 75-95 band. **Only bootup 90CC gained at >= 95 %** (three store pairs joined). Confirmed in
+report.json after the full NM build: 90CC 96.85 -> 97.15, bootup 55A0 93.93 -> 94.33, 6808 92.80 -> 92.81, 0E68 +0.01, gl 76F0 +0.005,
+gui F04 91.24 -> 91.31, game_uso 591C +0.003, and gl 578B4 97.10 -> 97.20 from joining all 68 gbi
+`FW(p, 0x0) = w0; FW(p, 0x4) = w1;` pairs (a gbi macro expands both command words on one source line, so that is
+the natural layout for display-list code; no single pair split back helps). Most variants compile to identical
+bytes: when the residual is a register colour or a uopt placement, line layout changes nothing.
+**Score with the project build.** The bare scratch compile (asm-processor + cfe, no Makefile post-processing)
+disagrees with the real `build/non_matching` object + objdiff project config for gui, timproc_b5 and game_uso
+(scratch base 85.8 vs report 91.8 for gui 4568): its "gains" there (gui 4568 +1.95, 2DE0, 3714, b5 B368 / B624,
+game_uso 7C1C +0.37) were zero or negative in report.json and were reverted. For bootup / h2hproc / game_libs.c /
+post0b the two agreed. Re-measure every sweep result with `make build/non_matching/src/<unit>.c.o` and
+`objdiff-cli diff -u src/<unit> <fn>` before committing.
+
+**2. Where the line rule stops.**
+- **Delay-slot filling crosses lines.** gl 51AD8 (the default arm's `lui a0,2` stolen into the bound-check
+  `beqz` delay): the whole body written on ONE line still steals it.
+- **Two instructions that both write `at` never swap**, whatever the lines: `li.s 1.0` (`lui at,0x3f80; mtc1`) and
+  a global load (`lui at,%hi; lwc1 %lo(at)`) keep ugen order (WAW on `at`). timproc_b5 CEB4's blocks 2/3 (target
+  loads D[0x398] before materialising 1.0) did not move with any join; the order is set by where uopt puts the
+  constant, not by as1.
+- **uopt puts rematerialised values right after the call** (inside the call's line group). In -S text, CEB4's
+  `li.s $f2, 1.0` and bootup 76F4's rematerialised `la $6, G` both follow the `jal` in the call's group. Joining
+  76F4's call line with the first scale line puts G and vf in one group, but as1 then issues G first
+  (`lui a2; lui v0; addiu v0; addiu a2`, target `lui v0; lui a2; addiu a2; addiu v0`): 3 -> 6 words, reverted.
+- **Loop-invariant constants go at the END of the preheader**, after the code of the statements before the loop
+  (after the for-init moves). gl 3430's target issues 1.0 / 10.625 inside the save sequence and the step load
+  after the 0xEC store. Putting the header, declarations, step load, EC store and `for` on one line puts them all
+  in one group (16 -> 13 positional words) but the step load is still issued first, and fuzzy drops
+  (97.41 -> 97.17): not kept. Reading the step global inside the loop instead makes uopt hoist its ADDRESS into s5.
+- **`beq reg, imm` in the direct compile path is not what `cc -S` shows.** mgrproc 1824's outer two-case switch
+  (target: `addiu t7; beqz v0; sw t7; addiu at,1; beq`, ours issues `addiu at,1` above the beqz): the -S + as1
+  round trip gives the target order, the direct compile never does. Micro tests (switch {0,1}, default arm,
+  if-cascades with returns, `if (x != 0) { if (x == 1) ... }`, IDO 5.3, -g3) all put `li at,1` above the first
+  branch. So the -S lab (kit LXXVIII #1) is not evidence for `li at` placement around branches.
+
+**3. h2hproc 0620 (cfe), two steps (report.json numbers below)**: the target loads `a3arg` before the 0x528 clear; writing
+`p->0x6A8 = a3arg;` BEFORE `p->0x528 = 0;` (separate lines) gives that order and keeps its sw in the jal delay
+(15 -> 13 words). Then (JOINALL sweep) **the level-4 get-or-create test and its body on ONE line** -- `if ((child != 0) || ((child = gl(0x2C)) != 0)) { gl(child, &D + 0x3C0); child->vt = &d0;` -- 95.72 -> 96.51 (objdiff -u 94.93 -> 95.72): edg expands an inline constructor into one source line, so the whole cascade level is one as1 group. Try this on every edg-shaped head written out over several lines (90CC, 31C0, 4118). Left: level-4 `child` is memory-homed in ours (target: a register, spilled only around the call),
+one-slot shift of the p+16 temp (target 36, ours 32; removing / moving the `v0` local does not help), and the
+0xF0 block's `or a0,v0` / `sw v0,48(sp)` order (`r = a3; gl(a3);` joined, `gl(r = a3)`, `gl(r)`: unchanged).
+
+**4. NCC lift of my units (c134/ncc tools, P -> agent-g).** 53 NM functions in timproc_b5 / game_uso / gui /
+titproc / mgrproc / arcproc / post1b / game_libs.c / post0b >= 0x50000; 28 compiled directly, 15 more after
+fixer. **None beats its cfe body** (NCC fuzzy from a scratch objdiff, cfe from report.json -- treat
+close pairs as ties): 4118 97.12 (cfe 99.14), 525F0 99.18 (= cfe, same v0/v1 word), CEB4 93.8
+(97.1), BDEC 91.9 (95.6), 5F5F0 93.0 (98.8), game_uso B3C 91.1 (94.9), 7C1C 89.3 (92.2), titproc 116C 86.4
+(94.1), gui 3714 85.3 (93.5), mgrproc 2B7C 93.9 (94.1), 59E80 93.9 (94.0).
+
+**5. Negatives.** gl 525F0 as C++ (inline `attach(parent, n)`, member `X::attach`, inline get-or-create getter,
+copy local in the getter): the finaliser reload stays v1 (target v0). bootup E2D0: 48 dot-sum spellings
+(operand order inside each product, `(x+y)+z`, `x+(y+z)`, two statements, `- -z`, negated forms): add.s
+operand order never flips. bootup 76F4: block / pointer / second-symbol spellings of the scale loop keep the
+lui order; a function-typed second alias for the scale base gives the target's `lui v0; lui v1` order but moves
+the base out of a2 (37 words). mgrproc 1824: `++` / `+=` / volatile / unsigned / cast switch values and
+if-cascade rewrites all keep the hoisted `li at,1`.
