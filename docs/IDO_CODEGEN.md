@@ -14507,6 +14507,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit LXXXIII (agent-g 2026-10-24, run 154): **recognition survey + in-game SIBLING templates** -- no library code is left in the non-exact set (every 0 % kernel / game_libs-tail body is handwritten libultra asm; no libm/libc/gu fingerprints remain), but the game itself is full of copy-paste twins: `scripts/sibling-scan.py` (opcode-sequence difflib vs every .s) found an EXACT template for four functions and they all landed by porting the template's C (38B0 match_imports C -> 396C, arcproc A3C -> h2h 620, 3829C nested alloc chain -> 4CCB4, 62F08 store-run -> 4D0E4); two new levers: equal constants of different TYPE are not CSE'd (`*(u32 *)&p[k] = 1U` keeps a second `addiu tN,zero,1`), and two stores on ONE source line reorder their lui/addiu pairs (4CCB4); a placeholder prototype in a frozen match_imports context is renamed out of the way with `#define` around the `#include`](#kit-lxxxiii-agent-g-run-154) -- _4 verified exacts (1244 bytes); landed on agent-g: timproc_b5 396C 188, h2hproc 620 708 (76.57 -> 76.69 % code); gl 4CCB4 240 and gl 4D0E4 108 (verified ROM-exact, 76.74 %) plus the NM gains gl 39E24 95.00 -> 99.79 and gl 3E0F0 90.52 -> 93.88 are post0b < 0x50000 = agent-c units, reverted on agent-g and handed over as patches; NM landed: b5 DF14 82.73 -> 95.23 (D884 twin); post0b untouched (clip 0x2e8dc)._
 - [kit LXXXVI (agent-g 2026-10-24, run 156): **held results make ugen spill the inputs -- the sp+0x20/0x24 FP "juggle" is three dot products kept in registers and stored afterwards** -- gl 5F984 (NCC donor, 92.46 for weeks) fell when the rotated vector was computed into three dead locals (c / h / len, no new frame words) and stored y, x, z after all three: ugen runs out of FP temps and spills the inputs a / b / d through sp+0x20 / 0x24 exactly as in the target; a 512-cell operand-order grid then gave 736 bytes only for `rot[r][c] * var` everywhere, and a 56-cell decl grid fixed the NCC homes (one frame word per local, declaration order); scratch-only void-alias sweep over all 69 agent-g non-exact functions (2 tiny gains) and a converse v0-read scan (1 decode fix, timproc_b5 AC20)](#kit-lxxxvi-agent-g-run-156) -- _1 exact (gl_func_0005F984, 736 bytes; 76.83 -> 76.92 % code on 1f25600d8); NM (same held-results lever on the 0xDC-record head family and others): b5 AC20 91.07 -> 92.41 (length = target), B624 89.84 -> 93.72, B154 83.08 -> 92.23, B368 89.58 -> 92.71 (length = target), bootup 8BD4 83.95 -> 91.85, bootup C234 85.33 -> 89.85, game_uso 3558 69.73 -> 72.33, gl 63964 76.08 -> 77.49; void aliases gl 5A2C4 89.07 -> 89.34, bootup E68 87.00 -> 87.04; post0b NM clip 0x2e91c -> 0x2e928._
 - [kit LXXXV (agent-c 2026-10-24, run 147): **IDO puts the unreachable epilogue after an infinite loop on a 32-byte .text boundary, so such a function is exact only in its ORIGINAL translation-unit layout** -- gl 34548 had the right 79 words plus one extra nop (320 vs 316) in post0b's layout; a donor that recompiles the original unit head (the real, already-exact C of 343F4 + 34458, then 34548) gives the target's nop count; the same donor also yields the hang stub 3485C; how to find the unit start from the epilogue address mod 32; 34548's decode via the 34458 sibling recipe (poll result stored BEFORE the zero test, a symbol pinned at the big address instead of `&D + 0x3BB34`, declared register locals reserve home slots in declaration order); 334E8 ported from its non-exact twin 33BE4; .c donor prerequisites need `private` host variables](#kit-lxxxv-agent-c-run-147) -- _2 exacts: gl_func_00034548 (316 B) and game_libs_func_0003485C (32 B), 76.78 -> 76.83 % code; NM: gl 334E8 68.85 -> 73.71; game_uso 1DDC 99.93 -> 99.10 (policy: the `if (fz) {}` on an uninitialised local removed); gl 4E424 90.98 -> 93.22 (parameter-register reuse), game_libs 307A8 93.31 -> 96.38; post0b NM clip 0x2e90c -> 0x2e91c (on top of agent-g run 155)._
+- [kit LXXXVII (agent-c 2026-10-24, run 148): **alignment survey (negative) + the original-file-start map of game_libs, and three twin / NCC levers** -- no non-exact function in the ROM differs from its target only in nop count or position; units in game_libs start at gl = 4 (mod 16) (16-byte aligned in bootup.uso text), every infinite-loop epilogue sits at gl = 0x14 (mod 32), and the pad words after a final `jr ra` mark 40+ original unit ends (map inside); arcproc 125C EXACT by porting the exact mgrproc 1C90 match_imports C; gl 44CE8 under NCC (pool base rematerialised, the old count carried in the result variable to keep the frame at 32); gl 3E0F0 arg word read before `gl(tmp = o, x)`](#kit-lxxxvii-agent-c-run-148) -- _1 exact (arcproc_uso_func_0000125C, 556 bytes; 76.92 -> 77.00 % code on e5cf258f7); NM: gl 44CE8 91.28 -> 99.53 (new NCC NM donor), gl 3E0F0 93.88 -> 99.90; post0b NM clip unchanged (0x2e928)._
 - [kit LXXXIV (agent-g 2026-10-24, run 155): **colour-pairing levers -- a void alias for a discarded call plus ONE local per register pair** -- gl 68DD4 (98.71, "colours only" for months) fell when the leading discarded K&R call went through a void alias (the dead v0 def pushed every later value one register up, kit IX) AND the two cursor reads were written with two int locals that each carry two roles (A = cursor then q2, B = value then cursor2), mirroring the target's register pairs; scripts/sibling-scan.py at 0.5 plus a longest-common-block scan found no new exact templates in agent-g units; twin NM port b3 13B8 <- arcproc 16F4 (+5.0); 5F984 NM donor takes the 5EB4C/5ED54 param copy; negatives for 5A2C4, D884, C310, BDEC, 2B7C, 23FC, 1824, 5F5F0, 525F0, E2D0, B154](#kit-lxxxiv-agent-g-run-155) -- _1 exact (gl_func_00068DD4, 340 bytes; 76.74 -> 76.78 % code with main's agent-c gains); NM: b3 13B8 80.36 -> 85.41, arcproc 16F4 85.36 -> 85.41, gl 5F984 90.11 -> 92.46 (post0b clip 0x2e904 -> 0x2e90c), gl 51448 95.00 -> 95.56, bootup 24B8 94.87 -> 95.21._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
@@ -38388,3 +38389,97 @@ game_libs_post0b.c.o`, `build/{,non_matching/}src/timproc_uso_b5/timproc_uso_b5.
 new donor `build/src/game_libs/game_libs_ncc_5F984.cpp.o`, retired `build/src/game_libs/game_libs_ncc_5F984_nm.cpp.o`,
 changed NM donors `build/src/timproc_uso_b5/timproc_uso_b5_ncc_B624_nm.cpp.o` / `_ncc_B368_nm.cpp.o`,
 `build/src/bootup_uso/bootup_uso_ncc_C234_nm.cpp.o`.
+
+## kit LXXXVII (agent-c 2026-10-24, run 148): alignment survey, original-file-start map, twin / NCC levers <a name="kit-lxxxvii-agent-c-run-148"></a>
+
+**1. Alignment survey (whole ROM, negative).** Scanner (scratch only): for every function in every
+objdiff unit, take the target words from `expected/` and the NM build words from `build/non_matching/`,
+mask relocated fields (HI16/LO16 low halves, jal targets), drop every zero word, renumber branch offsets
+into the stripped index space, and compare. **No non-exact function is a pure nop-count / nop-position
+difference** -- the only hits were INCLUDE_ASM handwritten asm (fuzzy None, identical by construction).
+Of the non-exact functions with a different zero-word count, all have real codegen differences
+(stripped opcode ratio 0.04-0.88). Only one non-exact function has an infinite-loop pad in the build:
+gl 4D688 (the NCC NM donor emits one pad word; the target has none because its epilogue 0x4DA14 is
+already at the aligned residue) -- its 82 % is codegen, not layout. Nothing found in agent-g's range,
+so no patches.
+
+**2. Where the original units start (game_libs).** game_libs address A = bootup.uso text offset
+A + 0x1466C, so:
+- **unit starts are 16-byte aligned in bootup text = gl A with A mod 16 = 4.** Every pad-terminated
+  function below ends at A mod 16 = 4, and 343F4 (kit LXXXV) and 42334 fit. A function start with
+  A mod 16 != 4 (e.g. 34458, the old post0b start) cannot begin a unit.
+- **every infinite-loop epilogue sits at A mod 32 = 0x14** (32-aligned in bootup text): 34548, 3485C,
+  34EB4, 61478, 66A50, 66EEC, 6DD14, 7507C (kernel: 800056EC, 80005C50, 80007FC8, 800071C0 at
+  residue 0, kernel text being 32-aligned). The unit holding such a function must start at a function
+  with A mod 32 = 0x14, and the donor for it must start there too (kit LXXXV recipe). Cross-check: the
+  units holding 61478 / 6DD14 / 7507C start right after pads at 0x61054 / 0x6DA74 / 0x74854, all
+  residue 0x14.
+- **Known unit ENDS** (zero words after the last `jr ra` delay slot, i.e. IDO's .text padding to 16;
+  the next unit starts at the address given): 0x9674 (o0 949C), 0x1F6B4, 0x22674 (pad pseudo-fn
+  2266C), 0x295C4, 0x2D374 (pad 2D36C, audio driver end), 0x35E64 (pad 35E5C), 0x3FF44 (3FC58's
+  trailing word), 0x42334 (pad 4230C: 10 words = the next unit needs 32-byte alignment), 0x4DD14,
+  0x56084, 0x5AFB4, 0x5FDC4, 0x60584, 0x61054, 0x67394, 0x67FE4, 0x69CC4, 0x69F54, 0x69F64, 0x6B0F4,
+  0x6C714, 0x6CB84, 0x6CC14, 0x6CC64, 0x6DA74, 0x6EF64, 0x6F044, 0x6F254, 0x6F2D4, 0x6F384, 0x6F3B4,
+  0x6F3E4, 0x6FBE4, 0x70034, 0x70324, 0x70854, 0x70C44, 0x70FA4, 0x73314, 0x743C4, 0x74844, 0x74854.
+  Known start without a pad: 0x343F4. A unit that ends exactly on a 16-byte boundary leaves no pad,
+  so the list is a subset. All loop functions are already exact, so this vein is closed unless a new
+  loop function is decoded; use the map to pick the donor head.
+- Note for exacts: a function whose target .s carries the unit's trailing pad (3FC58: 748 vs 744)
+  needs an all-zero pad SUFFIX when it goes exact.
+
+**3. arcproc 125C EXACT (99.78 -> 100): port the exact twin's match_imports C.** sibling-scan pairs
+it with mgrproc 1C90 (0.87), whose exact body lives in `src/match_imports/mgrproc_uso_func_00001C90.c`
+(a native port of the original source). Porting that C verbatim (125C has one threshold field 0x77C
+and its own offsets) fixed the long-standing t-ring "cap" at once; after a 48-cell grid the only extra
+steps were one more bottom `volatile int` pad and `(int)(field * (0, (float)255))` (operand order).
+What the twin's C carries that the grind never found: the whole body inside `if (flag) { ... }` (no
+early return), the field re-read at every use (no `progress` local), `while (0) { w = ...; }` before
+the span block, ONE q / w pair reused in both tails, and the volatile pad frame map
+(pt_a..pt_d / sp50[4] / pmid / sp48 / ... / pad_a..pad_d). **Before grinding a near-exact, check
+whether its twin is exact through a match_imports file -- those carry the original's statement
+shapes.**
+
+**4. gl 44CE8 under NCC (91.28 -> 99.53, NM donor `src/game_libs/game_libs_ncc_44CE8_nm.cpp`).**
+Pool record alloc `&pool->e[pool->n++]` (50 x 12-byte records at +0x378, count +0x5D0). The target
+folds the first count test to `lw 1488(a3)` but REMATERIALISES the pool base `addiu v0,a3,888` in the
+bnezl likely slot and again after the overflow call; cfe either spills a named base or folds every
+access to a3 offsets (every cfe spelling <= 91). Under NCC with `Pool *p = &o->pool` the shape is
+right at once (98.6). edg frame cost: each edg temporary takes a frame slot -- `n++` +8, a separate
+`int k` +8, an inline member call's `this` +8 -- so the target's 32-byte frame (r at 28, p at 24)
+needs the old count carried in r itself (`r = (Rec *)p->n; p->n = (int)r + 1; r = &p->e[(int)r];`,
+a role pair as in kit LXXXIV). Left: that count then colours a0 (r's argument register) instead of
+v1; the expression-only capture `r = &p->e[p->n]; p->n += 1;` colours v1 but numbers the address temp
+before the increment (t8 / t9 swap). A dead 4th parameter as the count is worse (frame 40).
+
+**5. gl 3E0F0 (93.88 -> 99.90): read the argument word first.** `{ int x = *(int *)(arg0 + 0x40);
+gl(tmp = o, x); }` with the volatile tmp moves the home store into the jal delay slot after the
+argument setup (target order); `tmp = o; gl(tmp, ...)` stores before. Left: the delay-slot store
+takes o's s0 where the target stores the a0 argument copy; copy locals, `arg0 = o`, `tmp = a = o`,
+casts and an empty test after the call are flat or worse.
+
+**6. Negatives (time-boxed).**
+- gl 45178 (99.99, one spill slot 36 vs 40): `g` (the gbi packet pointer) spills to its home; the
+  target uses the temp area. Moving g through every decl position, volatile / plain pads at every
+  position (+8 frame), dropping `hi` for the literal: flat.
+- gl 64388 (NCC donor, operator return slot 116 vs 108): member / by-value / named-result forms of
+  operator- and operator*, and 2-word pads at every decl position: flat or worse.
+- gl 4EE44 (base load v0 vs a1): void / float / pointer return for aEE44_a, `r = aEE44_a(...)`, src
+  spellings, the base through c / k / r or a new local at any decl position: flat or worse.
+- titproc 5DC is a PURE s0 / s1 swap of d and t (after renaming, only the save slots differ):
+  `if (d) {}` at top / loop / case 10 / tail, decl reorder, char* d, case-0 t -> mask: flat or worse.
+- gl 4AFB4 (offset reload t1 vs v0): 32 spellings (array / pointer / shift forms x empty tests x
+  if(1)): flat. gl 3D71C (src/dst addiu order): data / function-typed / local symbols for src and
+  dst: flat. gl 4D468 under NCC with a real `new (16) E`: worse. game_libs 4A9F0 NCC put() forms:
+  flat. gl 40304 constant / result locals (kit LXXXVI style): worse.
+- game_libs 307A8 (two `lui at` shared by stores / loads of adjacent fields): one extern symbol for
+  each pair, one-line pairs and file-local `static` structs for the pairs (kit LX's shared-at trick)
+  all CSE the base into a register (91-95 scratch vs 95.8). timproc_b5 32C8 with the kit LXXXVI
+  held-result lever (l134 through the dead `fa`, stores in the target's order, uE8 last): flat or
+  worse. sibling-scan pairs of agent-c functions with match_imports-backed exacts below 0.6
+  (35B1C / 35C6C, 4CDB0 / 68C14, 37938 / 54D04, 3E5E0 / 44144) are not twins.
+
+Gate (agent-c branch, rebased on e5cf258f7): ROM cmp OK, verify-blocks 6/6, `make non_matching_objects`
+0 errors, sentinels 100, no exact lost, 76.92 -> 77.00 % code; post0b NM clip 0x2e928 unchanged.
+Purge: `build/{,non_matching/}src/arcproc_uso/arcproc_uso_tail1.c.o`,
+`build/{,non_matching/}src/game_libs/game_libs_post0b.c.o`, new donor
+`build/src/game_libs/game_libs_ncc_44CE8_nm.cpp.o`.
