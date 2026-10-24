@@ -14487,6 +14487,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit LXIII (agent-g 2026-10-23, run 142): a stream cursor read `*(*pp)++` written as an inline MEMBER `int next()` under NCC gives the target's v1/v0 colouring where every statement spelling (cfe or NCC, named copies, free inline) puts the cursor in v0 (5534C + 558A0 EXACT); the 66A50 canary pair is a `static long long` (constant in the ugen temp t8, shared `lui at`) -- the same lever agent-c found for 4D468; int `0` (not `0.0f`) for a run of float zero stores gives one `mtc1 zero` (b5 DF14 / D884); switch / static-object audits of agent-g units (only gui 329C / 2DE0 and the b5 vec trio remain); 5062C's last slot word is the inline-expansion slot ORDER (named locals / operator spellings mapped); negatives](#kit-lxiii-agent-g-run-142) -- _EXACT: gl_func_00066A50 (85.68 -> 100, 148 B), gl_func_0005534C (97.05 -> 100, 156 B), gl_func_000558A0 (97.58 -> 100, 124 B). NM: timproc_uso_b5_func_0000DF14 78.22 -> 80.44, timproc_uso_b5_func_0000D884 93.71 -> 95.38 (int-0 zero fills: one `mtc1 zero` instead of three), timproc_uso_b5_func_0000B624 88.57 -> 89.84 (NM-only NCC donor with static head objects). Code 71.14 -> 71.20%; post0b NM clip unchanged by this run: 0x2e878 after the rebase onto agent-c run 137 (62F08 NM offset 0x2e828)._
 - [kit LXIV (agent-c 2026-10-23, run 138): per-class opcode-count scan (`cscan.py`) + frame-size scan (`frscan.py`) over every agent-c NM function; 2C7A4 = a clamp limit read ONCE (no reload after an aliasing s16 store) and a dead `if (1) {}` that duplicated an andi; volatile phantom-slot sweep (`padsweep.py`) fixes frames that are SMALLER than the target (31C0 112 -> 144, E68, 41D40, 3AE58, timproc_b1 1340) -- an unused volatile only gets a slot when the frame already holds address-taken locals/arrays; cfe `int v` index = multu with the held 12 (201B8, not kept: length); 240A0 case-3 return colour, 45178 spill slot, 4EE44 / 4AFB4 / 35B1C / 32E18 / 4B2F4 / 1F248 / 4D468 residuals re-probed: negatives; 34890 NCC class chain probes; 3C43C `z + dist` gives the add.s but loses fuzzy](#kit-lxiv-agent-c-run-138) -- _NM: gl_func_0002C7A4 96.07 -> 97.93, bootup func_000031C0 93.35 -> 93.57 (raw 120 -> 82), func_00000E68 86.96 -> 86.99, gl_func_00041D40 91.62 -> 91.64, gl_func_0003AE58 92.57 -> 92.59, timproc_uso_b1_func_00001340 84.16 -> 84.21, gl_func_00048AEC 81.39 -> 81.40, game_libs_func_00042938 69.599 -> 69.604, gl_func_0002E354 82.08 -> 82.23 (int call result), bootup func_0000B75C 88.15 -> 88.98 (int-0 float zeros). No exacts. post0b NM clip unchanged 0x2e878 (frame-only edits)._
 - [kit LXV (agent-g 2026-10-23, run 143): under cfe a float ZERO literal's spelling picks its uopt treatment: `0.0f` is one shared constant candidate (hoisted / held in f20, folds `x * 0.0f` away), while a double literal `= 0.0` / `(f32)0.0` / `(float)0` stays a per-use constant (fresh `mtc1 zero` per store, live `mul.s`) -- match the target's mtc1-zero count per site; a float call argument read through a NAMED f32 local is `lwc1 + mfc1 aN` (the field passed directly is `lw aN`); 7C1C real 3FAC prototype + stage copy-backs; inline-cursor audit (no new siblings), float-zero / mfc1 / conversion census, 4-entry jumptables (8CD8, kernel 1ADC, game_uso 0B3C) are below IDO's 5-label threshold; NCC ignores the literal spelling; `f1 = 1.0;` keeps a target `mul.s` by 1.0; a halfword re-read through the pointer FIELD (`*(s16 *)(*(char **)(o + off) + 0x20)`) is not CSE'd with the named-pointer read (b3 13B8 / arcproc 16F4 twins); an s32 count read turns `count * 6` from multu-with-held-6 into shifts (50444); constructor blocks read their float source before the 0x120 / vtable stores (51448, 8FC8, DF14); negatives](#kit-lxv-agent-g-run-143) -- _NM: game_uso_func_00007C1C 89.69 -> 92.25, game_uso_func_00003558 66.15 -> 68.18 (240 -> 247 of 252), timproc_uso_b5_func_0000AC20 86.29 -> 90.77 (329 -> 332 of 333), timproc_uso_b5_func_00008FC8 84.73 -> 85.35 (1595 -> 1600 of 1624), game_uso_func_00008CD8 83.27 -> 83.57, game_uso_func_0000591C 94.08 -> 94.13, gl_func_00063964 75.85 -> 76.08, game_uso_func_00000B3C 93.76 -> 94.92 (706 = 706), timproc_uso_b3_func_000013B8 77.62 -> 80.01, arcproc_uso_func_000016F4 82.79 -> 84.97, gl_func_00050444 84.47 -> 86.72, gl_func_00051448 63.15 -> 77.67, timproc_uso_b5_func_0000DF14 79.96 -> 82.24, timproc_uso_b5_func_0000D884 94.70 -> 94.83 objdiff (8FC8 total 84.73 -> 86.27). gl_func_000608A4 78.62 -> 84.21 (decode fix). No exacts. post0b NM clip 0x2e878 -> 0x2e890 (62F08 NM offset 0x2e840)._
+- [kit LXVI (agent-c 2026-10-23, run 139): `indel.py` net-word hunks localise a long function's extra words; a run of global->field copies landing in s0/s1 = copies through the function's register locals; a blank (no-reloc) `lui; addiu` base reused by `lw 0/8/4` = a function-typed extern (keeps %lo in an addiu, base CSEd); an m2c third call argument that only mirrors a register coincidence; an unsigned switch key stops the case compare reusing a held constant register (201B8, 23F98, 2E354); fn-typed blank bases (3D71C copy destination 85 -> 95.7, 221D8, 253C4, 2119C) and a missing third call argument (39E24) via the `blank.py` target-pair scan; `argdup.py` (arg-register copies before jals: 250C8 single read) and `uninit.py` (banned empty tests: 1DCB4, 2ABC0 fixed); 27E24 empty tests moved onto an always-initialised local; CA0 colours right only under NCC (and only without BB splits) but scheduling swaps cost fuzzy; cfe chained-assignment temps take frame slots (2BB7C `frbis.py`); 240A0 / 4CDB0 / 24378 negatives](#kit-lxvi-agent-c-run-139) -- _NM: bootup func_000090CC 95.69 -> 96.85 (2112 -> 2109 of 2106 words), gl_func_000201B8 97.01 -> 97.73 (int index + unsigned switch key), gl_func_0003D71C 85.78 -> ~95.7 (fn-typed copy base, one schedule swap from exact), gl_func_000221D8 84.84 -> ~90.8, gl_func_00039E24 93.44 -> ~94.5 (3-arg call), game_libs_func_00023F98 74.39 -> ~80.2, gl_func_0002119C, game_libs_func_000253C4, gl_func_0002E354 small, gl_func_000250C8 90.14 -> ~91.9 (single size read), gl_func_00032E18 raw 3 -> 2 (zv decl slot), gl_func_00027E24 97.26 -> 97.37 (policy fix, 318 -> 316 of 318); policy fixes (uninitialised empty tests) also in gl_func_0001DCB4 and gl_func_0002ABC0 (fuzzy down). No exacts. post0b NM clip 0x2e890 -> 0x2e88c (62F08 NM offset 0x2e83c)._
+- [kit LXVII (agent-g 2026-10-23, run 144): SIX exacts from "caps": the first game_libs function's 8-word head sat in two bins before game_libs VRAM 0 -- a new unit + its own `.game_libs_head` ld section (game_libs.c.o now at VMA 0x1CC; ld cannot wrap a section to 0xFFFFFFE0); kernel 1184's shared `lui at` = a `static int[11]` table (NCC donor, `.bss` reloc pinned to the absolute 0x80012D30); kernel 598's "dead ABI-dance ors" are NCC's post-increment temps (`while (n--) *d++ = *s++;`); kernel 235C = a cached count re-read only in the store arm + init order i, n, e; kernel 2250 = a THREE-argument error callback (passing the counter made it live into the call block and stole s0) + one index local shared by both index webs; 500EC under NCC is structurally right but not its `this`-copy colouring; 5AFD4's unfolded `C + x - 1` resists cfe and NCC](#kit-lxvii-agent-g-run-144) -- _EXACT: game_libs_func_FFFFFFE0 (was gl_func_00000000 0x1CC with no C; 492 B incl. the head), func_80001184 (94.74 -> 100), func_8000235C (92.58 -> 100), func_80000598 (79.38 -> 100), func_80002250 (97.91 -> 100), gl_func_00061B30 (65.89 -> 100). NM: gui_func_00004568 85.78 -> 91.79, gl_func_00051448 77.67 -> 94.52. Code 71.20 -> 71.35%. post0b NM clip unchanged (0x2e890)._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
@@ -36829,3 +36831,213 @@ before it writes the object (old `cfet.sh`) -- redirect to a log first.
    in other NM bodies: only real zeros remain (525F0, 68DD4, 76F0).
 15. **Clip:** 0x2e878 -> 0x2e87c (#9) -> 0x2e890 (#14; 62F08 NM offset 0x2e840), re-measured after the rebase onto
    agent-c run 138 (dc59a881e).
+
+## kit LXVI (agent-c 2026-10-23, run 139): fn-typed blank bases (3D71C, 221D8, 90CC), unsigned switch keys, duplicated / missing call arguments, uninitialised-test audit <a name="kit-lxvi-agent-c-run-139"></a>
+
+Scratch: `c139/` in the session scratchpad (helpers from `c138/` copied; new: `indel.py DIFF` lists only the
+length-changing hunks of an `rdiff --raw` output with their net word count, so the cumulative offset shows WHERE a
+long function gains/loses words; `sbs2.py OURS.o TARGET.o FUNC A B C` prints ours[A:B] beside target[C:...] with
+relocs; `nt.sh FILE.cpp FUNC UNIT` = NCC compile + raw/fuzzy score; `perm_ca0.py` = source-order permutation of a
+store block under NCC; `frbis.py` = blank each switch case in turn and print the frame size -- finds which case
+contributes frame bytes; `blank.py` / `fsweep.py` / `usw.py` / `argdup.py` / `uninit.py` -- see #6-#8; `g1dc.py` =
+per-site greedy sweep of replacement empty tests). All compile scratch copies only.
+
+1. **bootup func_000090CC 95.69 -> 96.85 (report), 2112 -> 2109 of 2106 words, raw 522 -> 446.** Three fixes found by
+   reading the `indel.py` hunks in address order:
+   - The closing 14 global->self copies load into **s0 / s1** in the target (`lui s0; lw s0,40(s0); sw s0,0x824(s2)`),
+     not the t-ring: the source routed them through the function's register locals (`var_s0 = (char *)g.f28;
+     self->x824 = (s32)var_s0;` ... with var_s1 for the d08 group). One t8 copy in the middle stays a plain expression.
+     Signature: a straight run of global loads that lands in callee-saved registers although nothing crosses a call.
+   - A `lui v0; addiu v0,v0,0` (NO reloc in expected) followed by `lw 0/8/4(v0)` is one blank base held in a register:
+     a **function-typed** extern (`extern void bu_90cc_fz();`, `*(s32 *)((char *)bu_90cc_fz + 8)`) keeps its %lo in
+     a separate addiu, so uopt CSEs the base; a data symbol folds %lo into each lw and gets a lui per load. Same for
+     the sp174 list head (`lui v1; addiu v0,v1,0; lw t5,0(v0)`). NM-only, but pinned in undefined_syms_auto.txt anyway
+     (`bu_90cc_fz` / `bu_90cc_fz2` = 0) so `rdiff --raw --pins` shows the real immediates.
+   - m2c gave a warning call a third argument (`f(&D, sp58, var_a2)`) because a2 happened to hold the counter copy:
+     the target sets a2 only by the bnez-delay `or a2,a1` (= var_a2's own colour). Two args: -26 raw, -1 word.
+   Negatives: moving `var_t1 &= ~4` above the colour arms (removes the tail-duplicated copy, 2105 words, raw 444) and
+   any BB split there lose fuzzy; giving the later `+0x70` value its own variable (var_s1 / temp_s1 / temp_s1_8 /
+   var_a2) colours var_t1 t0 (target t1) and loses 100+ raw words; source order / per-site field forms of the
+   `g.f28 + 0x70` args are canonicalised (target loads the value through `lui s0; lw v0` before `var_s0 = ...`).
+   Left: the arg2 7/6 compare order, the duplicated `&= ~4`, the `lui a0` hoist above `andi; beqz` at 0x1D84.
+2. **gl_func_00027E24 policy fix (97.26 -> 97.37 report, 318 -> 316 of 318 words):** the post-loop `if (act) {}` and
+   `if (pad0) {}` tested possibly-uninitialised locals. Replacement sweep: `act = 0` init + any test, `if (i/pb/d/o/r/
+   s/1) {}` at the pad site, trailing tests on initialised locals. The legal best is `if (act) {}` at the old pad0 site
+   inside proc (act is assigned on every path into proc), no trailing test: fuzzy UP, length 2 short.
+3. **bootup func_00000CA0 under NCC** (`nca0.cpp`): the box block colours h/-h a0/a1 exactly like the target (cfe:
+   v0/a0, every cfe spelling incl. parameter reuse, short h, pointer base, `0 - h`, `>> 1`: identical). NCC leaves 4
+   raw words = two scheduling swaps (`sw t6,40(s0)` after `lui at,0x3f80`; `sh 50` before `sh 48`), but objdiff
+   fuzzy is 96.26 < cfe 98.48 (insert/delete pairs). Any BB split in the NCC body (`if (1) {}`, `if (a1) {}`, goto
+   label) flips the colouring back to the cfe one. Store-order permutation of the 7 header stores (210 orders):
+   source order is the only 4-raw one. Not kept.
+4. **cfe temps get frame slots: gl_func_0002BB7C frame 184 vs target 136.** The args array sits at sp+96 in both, so
+   the 48 extra bytes are ABOVE it and never referenced. `frbis.py` (blank each case): only case 0xC3 (`o->h10 =
+   o->h14 = op << 5;` -- the chained assignment's temp) and case 0xD6 / inner case 0x78 drop 8 each; splitting the
+   chain gives 176 but fuzzy -0.08 (not kept). Unused extra locals do not grow it (no address-taken scalars), and
+   moving the args declaration does not move args. Open lead for the remaining 32 bytes.
+   Also 2BB7C: case 0xC8 through a fresh s32 `c = (u8)args[0]` gives the target `lbu t2,99(sp)` + copy (raw
+   391 -> 366, fuzzy +0.14) but 778 -> 777 words (away from 778): not kept.
+5. **gl_func_000201B8 97.01 -> 97.73 (449 = 449 words, raw 69 -> 62).** Kit LXIV's `int v` (multu with the held 12,
+   but one word short) plus `switch ((unsigned)sub->cur)`: with a signed key the case-1 compare reused the constant
+   1 held in t1 (`beq a0,t1`); the unsigned key makes IDO emit the target's `li at,1; beq a0,at`, restoring the
+   word. (`(s8)` / `& 0xFF` / `(u8)` / `(short)` keys and `v = 1; sub->cur = v` splits: no.) Left: `sub->cur = v = 1`
+   copies the held 1 (`or v0,t1`) where the target re-loads `li v0,1`; the tbl/cfg lui order in the mode switch
+   (statement swap / decl order: worse); prologue schedule.
+6. **Fn-typed blank bases, swept (`blank.py EXPECTED.o NM.o` lists NM functions whose TARGET has more reloc-free
+   `lui r,0; addiu r',r,0` pairs than ours; `fsweep.py UNIT` blindly converts every `T *x = (T *)&D_00000000;`
+   local init -- no gains blind: the lever is per site, read the target first).** Wins:
+   - **gl_func_0003D71C 85.42 -> 95.67 (57 -> 55 = 55 words, raw 28 -> 3):** the struct-copy destination D+0xA0 is
+     `lui v0; addiu v0,v0,160` (no reloc) and the three product stores go through 48/52/56(v0):
+     `*(blk *)gl_3d71c_dA0 = *(blk *)(D + 0xE8); *(float *)((char *)gl_3d71c_dA0 + 0x30) = D[0x128] * s0[0x30] ...`
+     with `gl_3d71c_dA0 = 0xA0` pinned. A local `d = &D+0xA0` (data) is canonicalised back to absolute addressing;
+     only the fn-typed symbol keeps the base. Left: as1 emits the src `addiu t6` before the dst `addiu v0` (source
+     order of the copy, local temps, `[0]` / `&[]` spellings, fn-typed or array src: no change). One schedule swap
+     from exact.
+   - **gl_func_000221D8 84.43 -> 90.84 (113 -> 112 = 112):** `char *g = (char *)gl_221d8_fg;` = the target's held s6
+     base; plus the outer loop as `do { ... } while (s5++, s4 += 20, s5 != count);` (the count <= 0 return already
+     guards it; `continue` still runs the increment) removes the second guard test.
+   - **game_libs_func_000253C4 70.30 -> 73.64** (v0 base) and **gl_func_0002119C 91.46 -> 92.40, 194 -> 192 of 191**
+     (s1 base; replaces the old `gl_d_2119C + (int)&proxy` sum, which cost a second lui/addiu and an addu).
+   - **gl_func_00039E24 92.98 -> 94.54 (47 -> 48 = 48):** not a base fix: the target builds the D_39E24_b base in a2
+     and copies it (`or a0,a2`) -- the vector call takes the base again as its THIRD argument
+     (`f(D_39E24_b, a0 + 0x2C, D_39E24_b)`). Mirror image of 90CC's surplus m2c argument: a reg-reg copy into an
+     argument register right before a jal means "same value passed twice".
+   Negatives: 4BAF4's camera block through a fn-typed base (91.69 -> 89.52); 41820 / 40070 / 49B3C hits are
+   colouring or NCC-donor differences, not bases.
+7. **Unsigned switch keys, swept (`usw.py UNIT` wraps each NM `switch (e)` as `switch ((unsigned)(e))`):**
+   game_libs_func_00023F98 74.33 -> 80.17 (53 -> 54 = 54 words) and gl_func_0002E354 81.92 -> 82.05 (938 -> 937),
+   plus 201B8 (#5). bootup / post0b / h2hproc / timproc_b1: no gains.
+8. **Arg-copy scan + uninitialised-test audit.** `argdup.py EXP.o NM.o` lists NM functions whose target has more
+   `or aX,aY,zero` copies within 3 insns of a jal than ours (= a value already sitting in another argument
+   register: duplicated argument, or a variable coloured to that register). Hits: 39E24 (#6), **gl_func_000250C8
+   89.68 -> 91.85**: obj->0x14 is read ONCE into a2 before the `sub < size` test and that same value feeds the
+   `(obj, rem, rem)` / 39A1C calls (the source re-read it after the early-return block); 396FC (the known
+   default-path `or a0,a3` delay-slot steal: default first / return / goto / if (1) spellings: no), 55A0 (passing
+   node twice: +0.1, not kept), 2ABC0. `uninit.py FILE.c` (heuristic: `if (x) {}` on a local with no textual
+   assignment before the test) found three more banned tests -- **gl_func_0001DCB4** (e, rec, q: 87.89 -> 87.55,
+   removed; `if (arg1) {}` in the inner loop gives 94.2 but loses 5 words) and **gl_func_0002ABC0** (n: 86.15 ->
+   83.95, every legal test / initialiser = removal). The audit is now clean for game_libs_post / post0b / bootup /
+   h2hproc / timproc_b1 (textual check only; NCC donors not audited).
+9. **gl_func_0003DF58 NCC donor**: the target colours the walk node v0 in loop 1 and a1 in loop 2, the donor the
+   reverse; function-scope / for-init / renamed / distinct per-loop nodes, while loops, explicit-if `next()` bodies,
+   `!= 0` tests, swapped if/else arms: none flip it. 4AFB4 named offset local (`o = a3 * 8`, with/without `if (o)`),
+   `a3 *= sizeof`: worse (target reloads the spilled offset into v0 = a named web).
+10. **gl_func_00032E18 (raw 3 -> 2):** kit LXIV's zv-at-68 residual is a DECLARATION-ORDER slot, not a pad size:
+   `Vec3 zv;` declared above `int *r;` puts it at sp+68 (stores 68/72/76), with plain `x, z, y` zero stores. Left: the
+   `o + 0x30` argument addiu sits between the stores in the target (ours fills the jal delay with it; temps via b / p,
+   all six store orders and comma forms: no). 45178's packet pointer spill at 36 is below every local slot (an
+   extra declared local grows the frame 104 -> 112) = an unnamed temp in the original; 4EE44 / 412E8 / 415A4 / 30AF4
+   fn-typed or reused-local spellings: canonicalised, no change.
+11. **Negatives (re-probed):** 240A0 case 3 (`sp44 = f()` / `sp44 = h = f()` / `return sp44 = h` / goto merge /
+   goto shared return / `(int)h` / `h + 0`; cases 1/2 as direct sp44 stores are neutral; NCC lift 167 words);
+   4CDB0 packet 3 (post-increment, `G &` reference, split counter pointer, struct view, NCC with an inline
+   `next()` member and every PK/PKI order: g still v1, i a0); 24378 counter variable (n/c/mode/done/r/dsti/rem),
+   `>> 3`, sizeof divisor, flipped compare: identical 9 raw.
+
+## kit LXVII (agent-g 2026-10-23, run 144): a head before VRAM 0, kernel statics, NCC post-increment temps, cached counts <a name="kit-lxvii-agent-g-run-144"></a>
+
+Scratch: `g144/` in the session scratchpad. `cmp.sh FILE.c|.cpp REF.dis` compiles (cfe or NCC by extension) and
+diffs the first function against a reference listing with branch targets / jal masked (`posdiff 1` = only the
+compiler's trailing alignment nop); `elf_drophead.py IN.o OUT.o N NAME` drops the first N bytes of a reloc-free
+`.text` (metadata-only); `ksw.py` / `qsw.py` / `nqsw.py` / `s598*.py` = declaration x init-order sweeps.
+
+1. **EXACT game_libs_func_FFFFFFE0 (492 B): the first game_libs function starts 0x20 bytes BEFORE game_libs VRAM 0.**
+   `gl_func_00000000` (0x1CC, no C, 0%) read FP regs it never set. USO oracle: bootup.uso Text export 871 at
+   section offset 0x1464C = ROM 0xDE50B8; the 8-word head (`lui/mtc1` 255 / 235 / 80, `mtc1 zero`, first `div.s`,
+   all hoisted above the prologue) was exactly the old `bootup_uso_post` (0x1C) + `game_libs_pre` (0x4) bins.
+   Decode (cfe -O2, one pass, ~10 min): colour fade toward (235, 80, 80) / 255; `base[4]` / `col[4]` are ARRAYS
+   (memory: dead `base[3]` store kept, `base[1]` / `[2]` reloaded), scalar r / g / b get homes and are reloaded
+   into `col`; frame 0x70 from decl order base, col, d255, r, g, b, t + unused `int pad[4]`; every sum written
+   `product + field` (cfe emits `add.s field, product`); the 5-argument call needs a float-prototyped alias.
+   **Landing a function that straddles VRAM 0** (the kit LX "move the yaml boundary" recipe does not work here:
+   moving game_libs.c.o's start back would shift every intra-module symbol, and `.game_libs 0xFFFFFFE0` fails --
+   ld computes the jal PC as 0x1_0000_00xx and every R_MIPS_26 "relocation truncated"):
+   - new unit `src/game_libs/game_libs_head.c` (TRUNCATE_TEXT 0x1EC), linked as its OWN output section
+     `.game_libs_head 0x00000000 : AT(...)` ahead of `.game_libs`, which now starts at `0x000001CC` (the old
+     first function's size); overlapping VMAs are fine with `--no-check-sections`, and the head's VMA is nominal
+     (no absolute intra-module refs; its jal / `lui` relocs resolve to 0);
+   - game_libs.c: INCLUDE_ASM removed, TRUNCATE_TEXT 0x8944 -> 0x8778; expected/ game_libs.c.o = metadata-only
+     drop of the first 0x1CC bytes + the gl_func_00000000(.NON_MATCHING) symbols (reloc-free object);
+   - `gl_func_00000000 = 0x00000000;` in undefined_syms_auto.txt: the INCLUDE_ASM label used to DEFINE the
+     universal blank-call placeholder at VRAM 0, so renaming the function needs the pin;
+   - tenshoe.yaml: the two bins become a `game_libs_head` code segment; game_libs starts 0xDE52A4 / vram 0x1CC;
+     `assets/game_libs_pre.bin` (tracked) removed; `splat --modes bin` accepts it and leaves tenshoe.ld alone;
+   - objdiff.json: new unit; expected/ head .o = the build object (its pre-reloc `.text` == ROM bytes).
+   Any other first-function-of-a-module with a pre-prologue FP head is the same shape (scan: last words of the
+   preceding bin decode as `lui/mtc1` and the first function reads FP regs before writing them).
+2. **EXACT func_80001184 (kernel): the shared `lui at` lever works on absolute kernel data too.** Target
+   `lui at,%hi(D_80012D30); sw zero,D30(at); sw zero,D34(at)` -- one `lui at` for two stores = the SAME
+   file-local static (kit LX). `static int sTab[11]` + the plain `do { sTab[i] = 0; } while (++i < 11)` loop is
+   19/19 words (IDO peels 3 stores and unrolls x4; the loop bound `&sTab[11]` = 0x80012D5C). cfe and NCC agree;
+   landed as a `.cpp` donor only so it stays out of `C_FILES` (a C donor must be added to the filter-out list).
+   The splice renames the donor's `.bss` reloc to `func_80001184_bss`; pin it to the ABSOLUTE address
+   (`func_80001184_bss = 0x80012D30;`). The REL HI16 / LO16 in-place addends survive the rename.
+3. **EXACT func_80000598 (kernel byte copy): "redundant / dead `or` moves" = NCC post-increment temporaries.**
+   Target: `or a3,a2` (dead count copy) before the test and per-iteration `or a0,v0; or a3,v1; or a1,a2`
+   snapshots. The plain `while (n--) *d++ = *s++;` over unsigned-char locals copied from `void *` params under
+   IDO 7.1 NCC is 16/16; cfe folds the temps (12 words with params, 15 with locals, 13-16 for every explicit
+   p/q/rem spelling -- a 288-variant sweep never placed q / rem right). **Lever:** a cfe "dead copy / redundant
+   move" residual in a loop with post-increments: try the most natural `*d++ = *s++` form under NCC first.
+4. **EXACT func_8000235C (kernel list clear): cached count re-read in the store arm.** The target reloads the
+   count ONLY in the hit arm, after the flag stores (`sb; lw count`): source = `n = o->count;` cached before the
+   loop and `n = o->count;` again at the end of the hit arm (the store-then-load order is source order); entry
+   pointer stepped at the end of the body. A 72-variant decl x init sweep: only init ORDER i, n, e (after the null
+   test) gives i = v1 / n = a1 / e = a2 / id = a3; declaration order is irrelevant. The INCLUDE_ASM `.s` carried
+   two alignment words before the 16-aligned handwritten func_800023E0: all-zero `SUFFIX_BYTES_FORCE` (+ the
+   NON_MATCHING twin).
+5. **EXACT func_80002250 (kernel, 268 B, sibling of 235C): the callee-saved register goes to whatever is live
+   INTO the call block.** Old verdict: "arg0 vs counter contest for the single saved register". The target keeps
+   o in s0 and the counter in a3 although nothing is used after the (terminal, `return -2`) callback. The m2c
+   decode passed four arguments (msg, u, l, i) because a3 happened to hold i: that makes i live into the call
+   block, and uopt gives IT s0. With the real three-argument call `field_84(&msg, u, l)` o gets s0 and i stays
+   in a3. Two more decode details: `l = u->list` cached in a local (else the link re-reads it), and ONE index
+   local `k` for both `k = e->type >> 4` (module-table index) and `k = e->idx` (link index) -- that shared web
+   takes a0 and pushes the count into a1 (two separate expressions: t-regs and count in a0). The plain
+   `for (; i < o->count; i++)` test is right: cfe's PRE places the count reload only in the two store arms.
+   **Lever:** an argument register that "happens to hold" a live value at a call is often NOT an argument --
+   drop trailing m2c arguments that just mirror register coincidences and re-check the s-register colouring.
+   **The converse (gl_func_00051448 NM 77.67 -> 94.52):** a call with NO visible argument setup whose a0 still
+   holds the parameter may really pass it -- `gl_func_00000000(a0)` makes a0 live into the call block, so a0 takes
+   s1 like the target instead of a stack home (frame 56 -> 48). A save-register-set scan (target vs build prologue
+   `sw sN` sets, `g144/sscan.py`) finds these: 51448, 5F984, gui 2DE0 / 329C, b3 13B8, kernel 1EC8 keep MORE
+   s-registers in the target; 1ADC, 65494, b5 8FC8 / C310 fewer.
+   **EXACT gl_func_00061B30 (152 B, was 65.89, "scheduling-only residual"):** the varargs printf wrapper needs
+   none of the old launderings (`int bi = (int)arr`, `int one = 1`): plain stores off the array extern, the two
+   `lh` sources read into named locals ON ONE LINE as `h0 = A; h1 = B;` (separate lines, or h1 first, swap the
+   v0 / v1 pair or the two store slots), `ap = (&fmt + 4 + 3) & ~3`, then the 0x220 / 0x21C stores. The
+   constant 8 stored twice as two plain statements (a chained `a = b = 8` moves it to t6).
+6. **Not cracked (structure right, colouring not):**
+   - gl_func_000500EC: a natural C++ rewrite (Vtx `operator==`, Tri / Self structs, k loop over the u16 index
+     pointer, cached count re-read after the callback path) reaches 88.9 / 86.4 first try (cfe NM 91.7); the
+     target's per-group `this` copies (`or v1,a1` / `or a0,a1`, none for the last group) and vb.x reloads per
+     group do not appear for any operator spelling (member, free, `this` alias, nested inline, by-value, `!=`).
+   - gl_func_0005AFD4: `(diff >> 4) + 0xFF000000 - 1` folds to `+ 0xFEFFFFFF` under cfe AND NCC for every
+     named / int / shifted-id spelling; the target keeps `lui a2,0xff00; addu; addiu -1` and reuses a2 for the
+     head store.
+   - b5 4118: case 0 of its tail switch keeps arg0 in v0 across the stores while case 1 reloads it per store;
+     a block-local copy is merged back into the home (frame +8); plus a 24-byte rodata offset delta.
+     b5 32C8: 240 statement permutations x zero spellings of the vec block: never below 5 words.
+     game_uso 97EC: seven spellings of the e-temporary order: unchanged / worse. 525F0 under NCC: same 3 words.
+     game_uso 1DDC: 108-variant zero / one spelling x store-order sweep of the `diff` unit vector: raw 7
+     unchanged. gui 4568 (gbi.h macro pair under NCC, 85.8 -> 91.8, committed NM-only).
+7. **Gate:** ROM byte-identical, verify-blocks 6/6 (jal = lo16 = other = 0), no lost exacts, sentinels at 100,
+   post0b untouched (clip 0x2e890 = 62F08 NM offset 0x2e840 + 0x50).
+8. **Next lead: kernel func_80001EC8 (732 B, NM 48.6) is decodable and its jump table is pinnable.** A fresh
+   cfe decode (`g144/e7.c`: `Rec rec` 12-byte struct at 88(sp) between `int pad1;` and `int pad2;`, `buf = 0` before the size
+   test, memset loop with init order i then p, `rec.size = sub` written back after the reloc call, a source-order
+   switch `case 12: return -27; case 9: ...; case 1: size / 12; case 2: case 3: case 4: size / 12; default:
+   size`, `while (rec.type != 11 && err == 0)`) is 182 / 183 words with only register / reload-placement diffs
+   left (type kept in a1 instead of reloaded; p copied from s1 instead of the v0 return). The "+0x400 runtime
+   jump table" blocker is the USO jumptable-donor problem in kernel form: land it as a donor whose `.rodata`
+   reloc the splice renames to `func_80001EC8_rodata`, pinned to `0x8000A64C - <table offset in the donor's
+   .rodata>` (the table words already sit in the ROM at 0xB24C; check which kernel object / bin supplies them).
+   Same for 1ADC (4-entry table: needs >= 5 case labels in the source). **gl_func_0006126C lead:** the target homes a2 / a3
+   but NOT a1 and reads fmt from 80(sp): the by-value union argument is 8-byte aligned (`union { int i; f32 f;
+   double d; }`), so a1 is alignment padding and the signature is `(char *out, FI v, u8 *fmt)` -- the old
+   `(out, int arg1, FI arg2, int arg3, fmt)` + `if (arg3) {}` decode faked that; a natural rewrite
+   (`g144/u2.c`, `while ((c = *fmt++) != 0)` if-chain) gets the homes and the 1 / 6 / 6 constant s-regs right;
+   under NCC (`g144/u3a.cpp`, `int B = 6; int A = 6;` in that order) the `*p++` temp copy (`or v0,s2` before
+   the lbu) appears too: 122 / 123 words; left: c's copy into a0 (target compares the load temp v1 once, then c in
+   a0) and `A = (u8)(c - '0')` through a v1 temp. A source-order `switch (c)` emits a beq dispatch instead (wrong). Also for agent-c: the target-has-more-`or`-moves
+   scan (`g144/mvscan.py`) lists 1F3C8 (+12 moves), 3BE1C (+8), 3B2EC / timproc_b1 1340 / 4FD00 (+6), 28B0C as
+   NCC post-increment-temp candidates.
