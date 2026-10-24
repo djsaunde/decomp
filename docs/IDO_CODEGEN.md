@@ -14514,6 +14514,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit XCII (agent-g 2026-10-24, run 159): **zero-pad pseudo-functions fold into their predecessor as an all-zero SUFFIX in BOTH trees + a one-unit INCLUDE_ASM baseline rebuild; handwritten routines with NON-zero fuzzy (bcopy 38.7, a three-entry SP control routine 12.4, its SP-halted sibling 82.8) are found by reading the function comments, not the fuzzy column; NCC gets bdec's operand order but folds the 255 numerator**](#kit-xcii-agent-g-run-159) -- _+992 code bytes exact (78.16 -> 78.29 %): 5 pad pseudo-functions retired (44 bytes moved into 100 % symbols), sqrtf (8), bcopy (772), func_80008054 (124), func_80008030 (36). Negatives: B624 / B368 1.0f in f14, mgrproc 1824 `li at,1`, CEB4 empty then-arm, 525F0 / 51448 split copy web, 5AFD4 constant fold, 4118 case-0 reload, E2D0 arg4 colour, 76F4._
 - [kit XCIII (agent-g 2026-10-24, run 160): **parameter home stores are evidence: IDO homes every UNUSED register parameter (and every parameter live across a call), so a target without the home store means that parameter is used or reassigned in the original -- an empty test on it is wrong, and an unused one was reused as a local; `q = p, p = q + 1, *q` gives the target's `or v0,s2; lbu 0(v0); addiu s2,s2,1` walk; index loops keep the count live (t-register spill around every call); cfe C that emulates C++ ported to an NCC value-class donor**](#kit-xciii-agent-g-run-160) -- _no exacts; NM (report.json): gl 6126C 83.02 -> 83.89, gui 2DE0 88.75 -> 89.83 (length 300 -> 298, away from 303: flagged), b3 13B8 and arcproc 16F4 85.41 -> 86.46, bootup B75C 90.26 -> 90.97, game_uso 3558 72.33 -> 75.62 (new NM-only NCC donor; 1004 -> 1024 bytes after the double-literal fix, away from 1008: flagged), timproc_b1 1340 85.58 -> 85.69; agent-c patches gl 3B2EC 89.80, 3BE1C 77.02, 46050 82.88; post0b clip unchanged (0x2e93c)._
 - [kit XCIV (agent-c 2026-10-24, run 151): **`x = K; if (c) { ...; x = v; }` and `if (c) {...; x = v;} else x = K;` are NOT the same to IDO -- the else-arm form hoists K above the compare and ends the then-arm with a `b` to the join (`0x10000001`, `b .+8`), the m2c pre-assign form does not; count `b .+8` words per function (target vs NM build, `b1scan.py`) to find the sites; plus the C++ inline-iterator kit (unhomed non-foldable guard pointer, list-pointer `end` read, one spelling per element read), `(f32)(u32)x` instead of m2c's spelled-out 2^32 correction, int negation temps, own-symbol context reads**](#kit-xciv-agent-c-run-151) -- _no exacts; NM (report.json, 10 functions): gl 4B620 86.21 -> 94.41, 36F0C 87.89 -> 91.26, 48AEC 81.40 -> 88.11, 2E354 84.95 -> 88.24 (length = target), 493AC 86.86 -> 90.60, 469A8 64.91 -> 67.64, 41D40 91.64 -> 92.99, 3B2EC 88.94 -> 89.45, 3BE1C 76.33 -> 76.69, 454C4 62.61 -> 62.81 (length = target); post0b NM clip 0x2e93c -> 0x2e990._
+- [kit XCV (agent-c 2026-10-24, run 152): **an edge-walk increment that the target puts in the loop's `bne` delay slot is written INSIDE the do-while condition (`while (ok && (fv++, nx != end))`), which removes the `bnel` back edge -- 3 cell-family functions; an s16 append counter must be `list[n++] = v` (the target re-extends the old value per use); NCC donors for C++-origin bodies that changed since the run-134 sweep (46050, 493AC win; 41D40 / 3BE1C / 3B2EC / 412E8 / 41820 / 454C4 / 48AEC lose); a DL macro's block-scope locals cost frame words PER EXPANSION; read a field after the call the target reads it after; re-read a stored address-taken struct through `((f32 *)&p)[i]` where the target reloads it; per-arm u8 truncation; if/else orientation = which value is hoisted**](#kit-xcv-agent-c-run-152) -- _no exacts; NM (report.json, 11 functions): gl 4A890 68.64 -> 86.41, 3B2EC 89.45 -> 91.56, 46050 82.45 -> 86.91, 493AC 90.60 -> 92.20, 3B9C0 75.15 -> 76.55, 3B6A0 70.94 -> 72.22, 2E354 88.24 -> 89.49, 454C4 62.81 -> 63.85, 3BE1C 76.69 -> 77.31, 469A8 67.64 -> 67.81, 4B620 94.41 -> 94.48; code % unchanged (78.296), fuzzy 98.050 -> 98.090; post0b NM clip 0x2e990 -> 0x2e9c4._
 - [kit LXXXVII (agent-c 2026-10-24, run 148): **alignment survey (negative) + the original-file-start map of game_libs, and three twin / NCC levers** -- no non-exact function in the ROM differs from its target only in nop count or position; units in game_libs start at gl = 4 (mod 16) (16-byte aligned in bootup.uso text), every infinite-loop epilogue sits at gl = 0x14 (mod 32), and the pad words after a final `jr ra` mark 40+ original unit ends (map inside); arcproc 125C EXACT by porting the exact mgrproc 1C90 match_imports C; gl 44CE8 under NCC (pool base rematerialised, the old count carried in the result variable to keep the frame at 32); gl 3E0F0 arg word read before `gl(tmp = o, x)`](#kit-lxxxvii-agent-c-run-148) -- _1 exact (arcproc_uso_func_0000125C, 556 bytes; 76.92 -> 77.00 % code on e5cf258f7); NM: gl 44CE8 91.28 -> 99.53 (new NCC NM donor), gl 3E0F0 93.88 -> 99.90; post0b NM clip unchanged (0x2e928)._
 - [kit LXXXIV (agent-g 2026-10-24, run 155): **colour-pairing levers -- a void alias for a discarded call plus ONE local per register pair** -- gl 68DD4 (98.71, "colours only" for months) fell when the leading discarded K&R call went through a void alias (the dead v0 def pushed every later value one register up, kit IX) AND the two cursor reads were written with two int locals that each carry two roles (A = cursor then q2, B = value then cursor2), mirroring the target's register pairs; scripts/sibling-scan.py at 0.5 plus a longest-common-block scan found no new exact templates in agent-g units; twin NM port b3 13B8 <- arcproc 16F4 (+5.0); 5F984 NM donor takes the 5EB4C/5ED54 param copy; negatives for 5A2C4, D884, C310, BDEC, 2B7C, 23FC, 1824, 5F5F0, 525F0, E2D0, B154](#kit-lxxxiv-agent-g-run-155) -- _1 exact (gl_func_00068DD4, 340 bytes; 76.74 -> 76.78 % code with main's agent-c gains); NM: b3 13B8 80.36 -> 85.41, arcproc 16F4 85.36 -> 85.41, gl 5F984 90.11 -> 92.46 (post0b clip 0x2e904 -> 0x2e90c), gl 51448 95.00 -> 95.56, bootup 24B8 94.87 -> 95.21._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
@@ -39052,3 +39053,116 @@ Gate (agent-c on origin/main 13769d233): ROM cmp OK, verify-blocks 6/6, `make no
 lost, sentinels 100, post0b clip 0x2e990 (62F08 NM offset 0x2e940), 78.296 % code. Purge:
 `build/{,non_matching/}src/game_libs/game_libs_post.c.o`, `build/{,non_matching/}src/game_libs/game_libs_post0b.c.o`.
 No new donors; new pinned symbol `D_493AC_d` (undefined_syms_auto.txt).
+
+## kit XCV (agent-c 2026-10-24, run 152): loop-condition increments, post-increment appends, NCC re-lifts <a name="kit-xcv-agent-c-run-152"></a>
+
+**Summary.** Structural pass over agent-c's mid band (post / post0b below 0x50000). Eleven NM gains confirmed in
+report.json (table in the index entry); no exact, no exact lost. Every gain below was scored by rebuilding the NM unit
+and running `objdiff-cli report generate`; the quick difflib scorer (instruction-string ratio) disagreed with the report
+in both directions several times (493AC NCC: scratch "full" lower, report +1.6; 4B620 frame moves: scratch flat), so
+only report numbers are quoted.
+
+**1. Increment in the loop condition = the `bne` delay slot.** The cell family's edge walk ends in the target with
+
+    beqz  ok, exit        ; nop
+    bne   nx, end, top    ; addiu fv, fv, 2      <- the increment sits in the back-edge delay slot
+
+while `do { ...; fv++; } while (ok && nx != end);` puts `fv++` in the `beqz` delay slot and closes the loop with a
+`bnel` whose slot is a copy of the loop's first instruction. Writing the increment inside the condition,
+`} while (ok && (fv++, nx != end));`, gives the target shape: 3B9C0 (NCC donor) 75.15 -> 76.55, 3BE1C (cfe)
+76.69 -> 77.31, 3B6A0 (NCC donor, `fp += 2`) 70.94 -> 72.22 (kit XCIV had this one flat; re-measured here in the report
+with a fresh donor .o, it pays). 3B2EC, whose walk ends in `break` instead of an `ok` flag
+(`nx++; } while (fv++, nx != end)`): flat. Count branch-likely words per function (target vs NM build) to find these:
+an extra `bnel` / `bnezl` back edge in the build is the tell.
+
+**2. `list[n++] = v` vs `list[n] = v; n = n + 1;` with an s16 counter.** The target (4A890) copies the OLD counter
+into a fresh register with its own `sll 16 / sra 16` before indexing, then increments and re-truncates the counter
+separately. Only the post-increment spelling gives that; the split statement indexes with the counter itself. Under the
+NCC donor this plus walking `arg2` itself (no `p` copy), no `cnt` copy around the overflow call and no parameter empty
+tests took 4A890 from 81 to 86 of 88 words, 68.64 -> 86.41. An `int` counter with explicit `(s16)` casts compiles like
+the split form.
+
+**3. NCC re-lifts after decode changes.** The run-134 sweep (kit LVI) chose cfe or NCC per function on the bodies of
+that day. Bodies that changed since can flip: 46050 (with item 5's then-arm fix) 84.31 cfe -> 86.48 NCC, and 493AC
+90.60 -> 92.20 under NCC with no source change. NCC colours the 46050 DL-packet temps `_q` / `_n` v0 / a1 as the target
+does (the residual the old comment blamed on cfe). Losers in the same report test (keep cfe): 41D40 92.99 -> 92.84,
+3BE1C 77.31 -> 71.34, 3B2EC 89.45 -> 83.16, 412E8 88.11 -> 85.45, 41820 94.72 flat, 454C4 63.85 -> 63.78, 48AEC
+88.11 -> 87.90, 2E354 much lower. Recipe that compiles most bodies: the NM preamble's typedefs and macros, every
+`extern f();` turned into `extern f(...);` inside one `extern "C" {}` block, `extern "C"` on the definition,
+function-pointer casts `(void (*)())` -> `(void (*)(...))`. Bodies with int <-> pointer assignments (36F0C, 469A8,
+40070, 4B620) need casts first. Beware the `(...)` prototypes when float arguments are passed (default promotion to
+double); prototype those callees exactly.
+
+**4. In NCC, a cursor copy survives.** 46050's target reads each character through a copy (`or v1,s3; lbu a1,0(v1);
+addiu s3,s3,1`). Under cfe the copy was propagated away (the old comment); under NCC `{ u8 *p = arg1; arg1 = p + 1;
+ch = *p; }` keeps it, at both the entry read and the loop-bottom read: 86.48 -> 86.91, +2 words toward the target.
+
+**5. Then-arm placement.** The target falls through into the display-list EMIT path and jumps out of line to the
+measure call; the decode had `if (flag != 0) call; else EMIT;`. Writing `if (flag == 0) { EMIT } else call;` is the
+target layout (cfe 82.45 -> 84.31, 4 bytes away from the target length, flagged; the NCC donor carries it).
+
+**6. if/else orientation = which value is hoisted.** Kit XCIV's `b .+8` tell says an if/else exists; the target also says
+which arm is the else: the else-arm value is the one hoisted above the compare. 454C4's clamp is `or v0,s2; bgtz s2,
+join; ...; b .+8; li v0,1`, so the hoisted `cnt` is the else arm: `if (cnt <= 0) n = 1; else n = cnt;` 62.81 -> 63.85
+(the reverse orientation 63.32). The pre-assign form also let uopt rewrite `cnt <= 0` as `cnt * 2 + 0x86 < 136` off a
+held packet word, which spilled across a call. FLAG: 2028 -> 2020 bytes, away from the target length. The elem advance
+of the same loop as if/else: 62.55 (lower, not kept). 334E8's chunk clamp `if (avail < rem) chunk = avail; else chunk =
+rem;` 73.71 -> 73.14 (not kept); 3B2EC's cell index as if/else 89.45 -> 85.06 (not kept, as in kit XCIV).
+
+**7. Per-arm truncation.** 2E354's switch 4 recomputes `andi a2,v0,0xff` in each arm. With every arm written as
+`rv & 0xFF` uopt reuses one CSE'd value (`or a2,a1` copies); writing the arms through the `u8` copy of `rv`
+(`var_t9 = var_v0_2;`, `var_v0_2 + 1`) gives the per-arm `andi`. With the odd-case chain as a real 4-way switch (target
+`b .+8` case-1 arm) 88.24 -> 89.28 (FLAG: 3684 -> 3696 bytes, away from the target). The odd-case switch alone was +0.55
+in kit XCIV and rejected for length; here the two together are kept and flagged.
+
+**8. Read a field after the call when the target does.** 2E354 read `arg0->0` before the 1C290 call (m2c statement
+order) and spilled it across the call (`swc1 f2,112(sp)` in the jal slot); the target loads it after the jal. Moving
+the statement below the call: 89.28 -> 89.49, -2 words toward the target. Tell: a `sw` / `swc1` in a jal delay slot
+reloaded right after the call in the build, absent in the target (a 10-line scan over both objects lists them).
+
+**9. A DL macro's block-scope locals cost frame words per expansion.** 4B620's `DL_APPEND` was a `do {} while (0)` with
+four block-scope locals, expanded 9 times: frame 264 (target 176). With all four at function scope the frame is 136;
+`_dl` / `_h` at function scope and `_n` / `_cmd` block-local put `it3` at the target's sp+164 (frame 200): 94.41 ->
+94.48. Declaring the three iterators in reverse order moves `it3` to the top of the locals (as in 41D40); scored flat.
+The remaining 4B620 gap is the target's s4.
+
+**10. One variable for two roles (469A8).** The target copies the first vcall's result into s0 (`or s0,v0`) and later
+loads the second vtable into s0: one variable in the original. Reusing `temp_s0` for both: 67.64 -> 67.81, 380 -> 392
+bytes toward 412. The held `self + 0x100` / `+ 0x78` pointers still fold into offsets.
+
+**10b. Re-read an address-taken struct where the target reloads it (3B2EC).** p is memory-resident (`if (1) { V3B2 *pp
+= &p; }`); after `p.x = x; p.z = z;` the target computes the grid cell from RELOADED copies (`lwc1 f8,140(sp)`,
+`lwc1 f18,148(sp)`) while `p.x` in C forwards the stored register. `(&p)->x` still forwards; `((f32 *)&p)[2]` reloads.
+Both reads as `((f32 *)&p)[0]` / `[2]`: 89.45 -> 91.56, 920 -> 928 bytes toward 940. The twin 3BE1C keeps p.x in a
+register in the target (no reload) -- check the target before applying.
+
+**11. Negatives.**
+- 41D40: the loop as `if (r) do { ... } while (r2)` with separate first / in-loop result variables gives the target's
+  two `b .+8` arms and non-s-register results but loses the s2-held string address: 92.99 -> 92.64 (404 bytes, away).
+- 3B6A0 frame (target 128, NCC 64): `f32 pad[16]; pad[0] = 0;` (kit LVI) does not grow the frame of a LEAF function;
+  neither does a volatile array or a referenced char array.
+- 46050 dispatch as a switch: under NCC the switch is laid out exactly as the target (tests in source order 10, 9, 48,
+  bodies out of line, `beql` for 48) but the case constants are immediates, where the target holds 48 / 9 / 10 and
+  `&margin` in s7 / s6 / s5 / s8: 85.05 vs 86.48 for the if-chain. `goto` chains are re-linearised. `margin` as
+  `register`, reference or inline symbol: identical code.
+- 46050 NCC: `_e` at function scope is far worse (19.8 scratch); dropping `if (charw) {}` or either `if (1) {}`: lower.
+- 307A8: one alias for the two zero stores (target shares one `lui at`) makes uopt hold the base (95.31); a chained
+  `a = b = 0` likewise (95.43).
+- 3D71C: a local for the copy destination, or a source-pointer local declared first: identical code (as1 order).
+- 2E354: switch-1 value through the named `sp58` gives the target's home slot but scores flat; NCC lift much lower.
+- 3B6A0 (NCC donor): the target homes all four argument registers and re-reads o / max / outd / outp from 128..140(sp);
+  forcing homes with `if (1) { T *q = &param; }` escapes scores lower (o: 70.65, max: 69.51, all four lower still).
+  Dropping either parameter empty test (`if (max) {}` 70.68, `if (pt) {}` 72.17) also loses.
+- 3B9C0 without its two `if (self) {}` tests: 71.99. 4A890 with the `cnt` copy back (80.41) or without `sz` (86.36).
+- 48AEC: a local for the held `&D_i + 0x3C8A0` 88.10; per-branch block-local packet variables (the target's two
+  branches spill gctx / cmd / disp to different homes) +0.06 with the frame 32 bytes further from the target (not kept).
+- 4E424: a new `dy` with `y0` reused for the larger value 87.51; 3BE1C list pointer as if/else 76.98 (on the new
+  baseline); 4FD00 tail as if/else 78.0; 4B620 iterator order `it2, it, it3` and 469A8 bit-test order: flat.
+- 30AF4 case-5 13 / 14 / 16 register constants and 48AEC's held `&D + 0x3C8A0` / spilled `gctx`: not attempted further.
+
+Gate (agent-c on origin/main c8cff9088): full make ROM cmp OK, verify-blocks 6/6 (needs the monorepo .venv python for
+crunch64), `make non_matching_objects` 0 errors, no exact lost, sentinels 100, post0b clip 0x2e9c4 (62F08 NM offset
+0x2e974), 78.296 % code. Purge: `build/{,non_matching/}src/game_libs/game_libs_post.c.o`,
+`build/{,non_matching/}src/game_libs/game_libs_post0b.c.o`, new donors `build/src/game_libs/game_libs_ncc_46050_nm.cpp.o`,
+`build/src/game_libs/game_libs_ncc_493AC_nm.cpp.o`, changed donors `game_libs_ncc_4A890_nm.cpp.o`,
+`game_libs_ncc_3B9C0_nm.cpp.o`, `game_libs_ncc_3B6A0_nm.cpp.o`. No new pinned symbols.
