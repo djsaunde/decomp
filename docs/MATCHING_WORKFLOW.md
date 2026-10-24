@@ -13407,7 +13407,7 @@ new `func_80003BF0.s`, expected/ refreshed from the INCLUDE_ASM baseline in a
 separate commit, then the C body) -- the plain libultra C matches at the
 unit's -O1. An alabel splat had put inside the C part (`func_80003C24`, a
 jal-target name) became an absolute pin in `undefined_syms_auto.txt`.
-game_libs_func_0006AD78 still needs the same split. No episodes for the
+game_libs_func_0006AD78 got the same fix: gl_func_0006AF0C (already an exact -O1 -g3 donor fragment with fake a2/a3 parameters) moved 8 bytes earlier and became the plain thread.c body at -O1. No episodes for the
 handwritten functions (they are not C matches); func_80003BF0 is C and has one.
 - A USO address whose lo16 half is baked in the ROM (nonzero) and whose hi16
   is a load-time reloc: pin the symbol to the module offset (e.g.
@@ -13446,7 +13446,7 @@ bc9c9460e).**
 | game_libs_func_00073258 (post2b_c) | 100 | tlbwi | game_libs/maptlbrdb.s | 100 |
 | game_libs_func_00074860 (post2b_d) | 44 | cache 0x01 | game_libs/writebackdcacheall.s | 100 |
 | game_libs_func_0006A5F0 (post1b) | 1912 | k0/k1, eret, mfc0 (exception preamble + __osException, release libultra) | game_libs/exceptasm.s (13 new gl_exc_* pins) | 100 |
-| game_libs_func_0006AD78 (post1b) | 404 | k0/k1, eret (__osDispatchThread + __osCleanupThread) | -- | INCLUDE_ASM: its last 2 words are the first 2 instructions of the compiled-C __osDequeueThread, whose rest is the exact -O1 -g3 donor fragment gl_func_0006AF0C; split by moving gl_func_0006AF0C 8 bytes earlier and compiling the plain thread.c body at -O1 (the kernel copy matches that way) |
+| game_libs_func_0006AD78 (post1b) | 404 -> 396 | k0/k1, eret (__osDispatchThread + __osCleanupThread) | game_libs/dispatchthread.s | 100 after the boundary fix: its last 2 words were the first 2 instructions of the compiled-C __osDequeueThread = gl_func_0006AF0C, which now spans the whole function (plain thread.c, -O1 donor, still exact) |
 | game_libs_func_0006E20C (post1b2c) | 16 | 2 pad words + `jr ra; sqrt.s $f0,$f12` | sqrtf is C (`__builtin_sqrtf`) | normal queue (not handwritten) |
 | game_libs_func_0002266C / 2D36C (game_libs_post, agent-c) | 8 / 8 | all-zero words | alignment padding, not code | not code |
 | game_libs_func_00035E5C / 4230C (post0b < 0x50000, agent-c) | 8 / 40 | all-zero words | alignment padding | not code |
