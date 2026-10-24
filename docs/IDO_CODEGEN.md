@@ -14491,6 +14491,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit LXVII (agent-g 2026-10-23, run 144): SIX exacts from "caps": the first game_libs function's 8-word head sat in two bins before game_libs VRAM 0 -- a new unit + its own `.game_libs_head` ld section (game_libs.c.o now at VMA 0x1CC; ld cannot wrap a section to 0xFFFFFFE0); kernel 1184's shared `lui at` = a `static int[11]` table (NCC donor, `.bss` reloc pinned to the absolute 0x80012D30); kernel 598's "dead ABI-dance ors" are NCC's post-increment temps (`while (n--) *d++ = *s++;`); kernel 235C = a cached count re-read only in the store arm + init order i, n, e; kernel 2250 = a THREE-argument error callback (passing the counter made it live into the call block and stole s0) + one index local shared by both index webs; 500EC under NCC is structurally right but not its `this`-copy colouring; 5AFD4's unfolded `C + x - 1` resists cfe and NCC](#kit-lxvii-agent-g-run-144) -- _EXACT: game_libs_func_FFFFFFE0 (was gl_func_00000000 0x1CC with no C; 492 B incl. the head), func_80001184 (94.74 -> 100), func_8000235C (92.58 -> 100), func_80000598 (79.38 -> 100), func_80002250 (97.91 -> 100), gl_func_00061B30 (65.89 -> 100). NM: gui_func_00004568 85.78 -> 91.79, gl_func_00051448 77.67 -> 94.52. Code 71.20 -> 71.35%. post0b NM clip unchanged (0x2e890)._
 - [kit LXVIII (agent-c 2026-10-23, run 140): **game_libs 0x1D000-0x2B000 is the EAD audio driver shared with OoT / SM64** -- `references/oot/src/audio/internal/{synthesis,heap,load,playback,seqplayer}.c` compiled nearly verbatim under cfe -O2 matches; TWELVE exacts in one run by identifying the counterpart (aspMain ABI macros with `cmd++` packet temps; NoteSampleState / layer bitfields as one u32 run; module data / literals as pinned externs; SM64-era spellings where 1080 is older: `gSynthesisReverbs[reverbIndex].field` index reads with no pointer local, `switch` with `case 1` / `default`, per-iteration loop bounds); m2c surplus call arguments again (291C0); OoT store order (2A258); u32 parameter to share a held unsigned constant (2ABC0); **ld segfaults (no "undefined reference") when a newly exact function references an unpinned symbol** -- pin every symbol the C names; negatives: 3D71C, 25320, 221D8 / 23BDC / 258C0 / 25504 / 1DCB4 OoT forms below the tuned NM](#kit-lxviii-agent-c-run-140) -- _EXACT: gl_func_0001F3C8 (AudioSynth_ApplyHaasEffect, 63.55 -> 100, 748 B), gl_func_0001EF20 (ProcessEnvelope, 71.65 -> 100, 808 B), gl_func_00022A9C (AudioLoad_InitSampleDmaBuffers, 79.83 -> 100, 716 B), gl_func_000291C0 (Audio_AllocNote, 84.55 -> 100, 724 B), gl_func_0001DB88 (SaveReverbSamples, 91.59 -> 100), game_libs_func_0002A258 (AudioSeq_InitSequenceChannel, 95.29 -> 100), gl_func_0002ABC0 (SeqLayerProcessScriptStep5, 84.24 -> 100), game_libs_func_0001D17C (LeakReverb, 96.21 -> 100), gl_func_00023E60 (AudioLoad_SyncDma, 74.49 -> 100), game_libs_func_00023F98 (AudioLoad_Dma, 80.22 -> 100), gl_func_000230D0 (AudioLoad_SyncLoadSample, 72.77 -> 100), game_libs_func_000253C4 (AudioLoad_RelocateSample, 73.66 -> 100). NM: gl_func_00021F40 62.22 -> 95.58, gl_func_00022760 85.27 -> 98.25, gl_func_00023BDC 84.83 -> 98.76 (RelocateFont + a 1080-only debug print), gl_func_00022464 78.90 -> 90.76, gl_func_0001F248 96.02 -> 98.44, gl_func_00028B0C 60.59 -> 73.52. Code 71.35 -> 72.03%. post0b untouched (clip 0x2e88c)._
 - [kit LXIX (agent-g 2026-10-23, run 145): the kernel's "absolute jump tables that point at data" are the +0x400 runtime numbering -- every kernel jtbl_8000xxxx sits in the ROM 0x400 below its absolute address, so a switch function lands as a donor whose .rodata reloc the splice renames to `<func>_rodata`, pinned to the table address (1EC8 cfe -O2, 858C = rmon __rmonGetBranchTarget); rmon code is IDO **5.3** -O1 (858C, 9474: 5.3 keeps the `andi tX,aN; or aN,tX` temp copies that 7.1 folds); an integer-cast table address forces a reload of an address-taken record field; NCC never emits jump tables; 4-entry tables (1ADC, titproc 116C, game_uso 0B3C / 8CD8) stay out of reach (flag sweep); negatives](#kit-lxix-agent-g-run-145) -- _EXACT: func_80001EC8 (48.55 -> 100, 732 B), func_8000858C (0 -> 100, 552 B), func_80009474 (99.41 -> 100, 272 B). NM: mgrproc_uso_func_00002B7C 94.069 -> 94.075 (frame homes). Code 71.35 -> 71.55%. post0b untouched._
+- [kit LXX (agent-g 2026-10-24, run 146): an edg (NCC) temp slot is moved by an EXPLICIT derived-to-base reference cast on an operator argument -- `operator+(const V3 &, const P3 &)` with every call site written `a + (P3 &)b` makes edg allocate the reference temporary AFTER the operator's return slot (an implicit conversion, `(P3, P3)` or `(V3, V3)` parameters put it before or drop it): 5062C's last word; a recursive call to the function itself must be a blank jal-0 alias in a USO donor; 97EC m2 home (locals declared before the address-taken one); kernel / game_libs-tail audit (every remaining kernel INCLUDE_ASM is handwritten, game_libs tail = libultra asm); 526D0 is an NCC copy constructor (146 / 146 words, head order right, ring +1 and frame +16 left); stale main-checkout assets break clean-worktree gates; negatives](#kit-lxx-agent-g-run-146) -- _EXACT: gl_func_0005062C (NM 100.00 -> 100, 2756 B). NM: game_uso_func_000097EC 99.143 -> 99.152. Code 72.23 -> 72.59%. post0b NM clip unchanged (0x2e88c)._
+- [kit LXXI (agent-c 2026-10-24, run 141): **the game_libs audio driver compiles from OoT source VERBATIM once three binding rules are followed** -- (1) gAudioCtx as a TYPED `extern Ctx sym;` (the `(*(Ctx *)&D)` cast form emits base-first `addu` for `notes[i]` / strength-reduced arrays and forces WrPos-first / reordered spellings), (2) keep OoT's own `volatile` (resetStatus, NoteSampleState enabled) and union types (Stereo: the 1-byte union copies give the re-reads and the held `&attrs.stereo` s-reg old NMs could not), (3) SM64-era separate globals get their own symbol (gAudioRandom, gAudioBufferParameters: through gAudioCtx the commutative operands of the random-variance products load in the other order); every switch / literal function is a cfe -O2 donor whose donor `.rodata` (literals first, then tables in source order) lands on ONE `<fn>_rodata` pin; 1080 = older driver deltas found by the jumptable map (empty `case 0x10/0x20/0x60: break;` keep IDO's table density, `goto skip` instead of `continue`, 2-arg InitSampleState, no semitone field); the old NMs' case labels were jumptable-index guesses -- decode tables with extract-uso-jumptable.py first](#kit-lxxi-agent-c-run-141) -- _EXACT: gl_func_00024378 (AudioLoad_Init, 99.87 -> 100, 1488 B), gl_func_000240A0 (AsyncLoadInner, 99.57 -> 100, 656 B), gl_func_0002119C (ResetStep, 92.61 -> 100, 764 B), gl_func_00028604 (SeqLayerDecayRelease, 93.34 -> 100, 616 B), gl_func_0002AD1C (SeqLayerProcessScriptStep2, 82.16 -> 100, 896 B), gl_func_0002B09C (Step4, 87.77 -> 100, 1368 B), gl_func_0002B5F4 (Step3, 96.67 -> 100, 1044 B), gl_func_0002C7A4 (SequencePlayerProcessSequence, 97.93 -> 100, 1980 B), gl_func_00027E24 (Audio_ProcessNotes, 97.37 -> 100, 1272 B), gl_func_00026790 (AudioThread_ProcessGlobalCmd, 97.93 -> 100, 788 B), gl_func_00022760 (DmaSampleData, 98.25 -> 100, 828 B), gl_func_0001F248 (LoadWaveSamples, 98.44 -> 100, 384 B). NM: gl_func_000221D8 91.21 -> 99.24, game_libs_func_0002A07C 93.87 -> 96.64. Code 72.23 -> 73.82%. post0b untouched (clip 0x2e88c)._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
@@ -37197,3 +37199,130 @@ asm_processor, any IDO version / opt level, `SRC=` override for an edited scratc
      a t-register (90.4). Kept only the frame-home part (64-byte buffer, 94.069 -> 94.075).
 5. **Gate:** ROM byte-identical, verify-blocks 6/6 (jal = lo16 = other = 0), no lost exacts, sentinels at 100,
    post0b untouched.
+
+## kit LXX (agent-g 2026-10-24, run 146): explicit base-reference casts move edg temps (5062C exact), audits <a name="kit-lxx-agent-g-run-146"></a>
+
+Scratch: `g146/` in the session scratchpad. `uv.py UNIT_SRC FUNC VARIANTS.py` compiles SCRATCH copies of a whole unit
+(asm-processor + cfe, NON_MATCHING, `-I` of the unit directory) for every `V = {name: [(old, new), ...]}` variant and
+prints length / positional diffs against `expected/` (`SHOW=name` lists them); `spscan.py` lists every NM function with
+raw / sp-masked / register-masked diff counts (pure frame-layout residuals show regmask 0); `n526/run.py` is the same
+loop for an NCC `.cpp` base file.
+
+1. **EXACT gl_func_0005062C (post0b, 2756 B, was NM 100.00 with ONE word left).** The NCC donor (kit runs 114-115) had
+   every instruction right except the first `operator+` return slot (sp+348, target sp+356). The fix is the parameter
+   types plus explicit casts at the call sites: `inline V3 operator+(const V3 &a, const P3 &b)` and
+   `(s1 = v0 + (P3 &)v1) / 2.0f` in all six statements. With the cast, edg allocates the derived-to-base reference
+   temporary AFTER the return slot, which supplies the 8 bytes the target has between the ctor temp (336) and the return
+   slot (356). Probes that did not: member `operator+` (fixes the return slot but moves the ctor temp to 340), `(V3, V3)` /
+   `(P3, V3)` / `(V3, P3)` parameters without casts, a named return local, `static` / `const` return / template / friend /
+   forward-declared forms, casts on only the first statement (changes the frame), `operator/` as a member or with a
+   `const float &` divisor. **Lever:** an NCC residual where a return slot or binding temp sits a few words off ->
+   try base-class reference parameters with explicit `(Base &)` casts on the argument.
+   Landing: the donor is now spliced into BOTH post0b objects (`private REPLACE_FUNC_BODY +=`), the C side is an empty
+   placeholder, and the four recursive calls go through a zero-valued alias `gl_func_00000000_5062c_rec` -- the ROM's
+   recursion is a blank USO import (`jal 0`); calling the function by name links a real `jal 0x...` (12 bytes differed).
+2. **game_uso 97EC (NCC NM donor) 99.143 -> 99.152:** declaring `cr, t, *pm` BEFORE `m2` (whose address is taken) puts
+   m2's home at the target's sp+32 (was sp+44). Still open: the e-statement binding temp (target 204) and the f-statement
+   return slot (target 180) are swapped; casts on `(a - b)`, on `b`, `Vec3(...)` functional casts, by-value XZ ctor,
+   free `operator*`, member orders and named temps do not swap them.
+3. **gl 526D0 is an NCC copy constructor.** `struct Base { Blk6 m0; int m18, m1C, m20, m24; Base(void *); virtual void f(); };
+   struct Obj : Base { ... Sub m84; ... Obj(void *, void *, Obj *src); }` with
+   `if (src) { int save = m1C; *this = *src; m30.v |= 0x10; m1C = save; }` reproduces all 146 words: the external base
+   ctor call, the vptr store at 0x28 (`lui; addiu` scheduled as in the target, which cfe could not get), the inline
+   `Sub()` member ctor with the edg alloc-fallback, and the implicit memberwise `operator=` that skips the vptr (a Blk6
+   block copy, word copies, the Flags member through `addiu v0,s0,48`). Left: frame 56 vs 72 and every temp register one
+   step behind the target from the 0x18 copy on (the target consumes one more t-register after the Blk6 copy). `Base :
+   Blk6` gives frame 64 (each derived-to-base conversion in the implicit `operator=` costs 8); a `Mid` layer gives 72 but
+   an extra alloc check. `Base : Blk6` plus the copy moved into an inline member (`void copy(const Obj &o) { ... *this = o; ... }`,
+   or any inline wrapper around `*this = *src`) gives the target's frame 72, but then `&m30` is no longer CSEd into v0
+   (the Flags word is stored through s0) and `save` takes v0; the t-register lag is unchanged in every variant. Not landed
+   (cfe NM 95.75 stays); drafts `g146/n526/base526.cpp` (146 words, frame 56) and `cpb.cpp` (frame 72).
+4. **Audits (negative):**
+   - kernel: every remaining INCLUDE_ASM (800031F0, 2E78, 23E0, 2CD0, 5000, 4F50, 2DF0, 99F0, 62B0, 62D0, 4DB8, 9AA0,
+     2DB0, 0000, __osProbeTLB, __osSetFpcCsr) is handwritten (CP0 / TLB / cache ops, `add` traps, code after `jr`);
+     1594 / 18F0 / 1ADC are game USO-loader C. No more rmon / libultra C in the kernel.
+   - game_libs tail (post1b..post2b_f): the remaining INCLUDE_ASM functions are libultra assembly (exceptasm, bcopy,
+     setintmask, maptlbrdb, cache ops); post1b's NM functions are game C++. No audio code in agent-g units (the OoT driver
+     is 0x1C9E4-0x343F4, game_libs_post).
+   - whole-unit 7.1 -O1 / 5.3 -O1 / 5.3 -O2 / -g3 sweep of agent-g units: nothing closer than the current flags.
+   - gl 51448 under NCC (`g146/n514/`): `o = (Obj *)alloc(0x16C); if (o) o->init();` with an inline `init()` gets the
+     whole head (vtable before 0xFFFF, k read first); the tail is an inline `setParent(char *p) { add(p + 0x10, this); if
+     (parent) dirty = 1; parent = p; }` whose `this` / `p` the target spills to 40 / 44 while o stays in s0. A plain call
+     copy-propagates `this` back to s0 (19 raw); `new Obj` (inline ctor) or an explicit phi `n` reproduces the spill pair
+     but adds the ctor's `this == 0` re-check or two phi moves (27+). Open: a non-propagated copy of o without a phi.
+   - gl 68DD4 under NCC (`g146/n68/c.cpp`): an inline stream reader `int read() { int *q = (*pp)++; return last = *q; }`
+     plus the goto-mid `p = o + 0x30` gives the target length and t-ring (20 raw vs the cfe 19); left: pp / q / x colours
+     (target pp v0, q t1, x t0) and one `addu` operand order. Not landed.
+   - 5F5F0 (NCC): the mf spill heads the else arm in the target; v[] store orders, pointer / array spellings and z
+     placements leave 6 words. 525F0: NCC getter / attach inlines keep the v1 reload. 32C8: zero spellings / vF8 orders
+     neutral. 1DDC: lever E (`if (v) {}` after every statement x 9 variables, 612 builds) never below 7 raw; zero
+     spellings neutral. 4118 case 0: reusing an existing pointer local (`temp_v0_36 = arg0`) is not copy-propagated but
+     merges into s0; `p = arg0` and `if (arg0) {}` are copy-propagated away. 125C: compare spellings / named temps keep
+     the t-ring one behind. 18F0: `if (found)` spellings all normalise to the same code. mgrproc 1824: no new spelling.
+5. **Clean-worktree gate trap:** `scripts/agent-setups/1080.sh` copies `assets/*.bin` from the MAIN checkout
+   (`projects/1080-decomp`), whose `game_libs_text2_tail.bin` is stale (5180 B, from before the 0xE01AE8 -> 0xE01ABC
+   boundary move; current 5136 B). A clean worktree of origin/main then fails cmp at ROM 0xE01AE8 with everything after
+   shifted by 0x2C. Copy assets from an up-to-date agent worktree (or re-run `make setup` in the main checkout) first;
+   with fresh assets the run-146 tip builds ROM-identical from a clean tree.
+6. **Gate:** ROM byte-identical (in place and from a clean worktree), verify-blocks 6/6 (jal = lo16 = other = 0), no lost
+   exacts, sentinels at 100, post0b NM clip 0x2e88c (62F08 NM offset 0x2e83c).
+
+## kit LXXI (agent-c 2026-10-24, run 141): game_libs audio driver from OoT source verbatim (twelve exacts, 12.1 KB) <a name="kit-lxxi-agent-c-run-141"></a>
+
+Scratch: `c141/` in the session scratchpad (`dis.sh FUNC [obj]` = no-alias objdump with relocs; `ep.sh FUNC SRC NOTES` =
+log-exact-episode wrapper; donor drafts `<addr>.c`). Compile/score with `c140/ct.sh FILE.c FUNC game_libs/game_libs_post`.
+
+1. **Audio function map (continued from kit LXVIII).** load.c: 22760 DmaSampleData, 240A0 AsyncLoadInner (older: no
+   GetRealTableIndex, no MEDIUM_UNK), 24378 AudioLoad_Init (older: no heap / size parameters, u64 heap clear over
+   gAudioHeap first, two cart handles 0x1644 / 0x1648, InitSoundFont written inline as member stores). heap.c: 201B8
+   AllocCached (NM; older state-4 / state-2 checks), 2119C ResetStep. thread.c: 26214 = AudioThread_UpdateImpl (NM, not
+   attempted), 26790 ProcessGlobalCmd. playback.c: 27E24 ProcessNotes, 28604 SeqLayerDecayRelease, 28B0C (NM),
+   29978 = Audio_GetVibratoFreqScale (SM64 curve-table form, needs the 0x200 rodata curve; NM). effects: 29CCC AdsrUpdate
+   (exact earlier). seqplayer.c: 2A014 GetScriptControlFlowArgument (exact earlier), 2A07C HandleScriptFlowControl
+   (OoT verbatim = 96.58, one depth temp colours t1 vs v0; jtbl +0x1020), 2A258 InitSequenceChannel, 2ABC0 Step5,
+   2AD1C Step2, 2B09C Step4, 2B5F4 Step3, 2BB7C SequenceChannelProcessScript (NM 95.61, next), 2C7A4
+   SequencePlayerProcessSequence, 2D224 / 2D2F4 seq-player init / per-frame reset. 2D374 is game code (countdown
+   timers + audio command calls), not driver. More gAudioCtx offsets: aiBuffers 0x2140, aiBufLengths 0x214C,
+   maxAiBufferLength 0x203C, ticksPerUpdate (s16) 0x2040, numSequencePlayers (s16) 0x2048, resampleRate 0x204C,
+   ticksPerUpdateInv 0x2050, unk_2870 0x205C, tempo bound (s16) 0x2074 (used for both the tempo clamp and the tempo
+   accumulator), refreshRate 0x213C / maxTempoTvTypeFactors 0x2138, audioRandom 0x2154, resetStatus 0x2CF0 /
+   specId 0x2CF1, audioResetFadeOutFramesLeft 0x2CF4, adsrDecayTable 0x2CF8, seqPlayers 0x2D00 (stride 0x160),
+   threadCmdChannelMask 0x53BC, taskStartQueueP 0x53C8. Layer: +4 is portamentoTargetNote (no semitone field), pan +5.
+2. **Typed extern beats the cast.** `#define gAudioCtx (*(Ctx *)&D_00000000)` and `extern Ctx sym; #define gAudioCtx sym`
+   compile differently: the typed extern gives the SR-cursor-first `addu` on `gAudioCtx.notes[i]` (27E24 / 26790 last
+   word) and let 22760 go back to OoT's RdPos-first empty tests (run 140 had to flip them to WrPos-first under the
+   cast; 206 -> 207 words, exact). Same lever as #typed-global-member-sr-cursor-first-addu-1cc98, now confirmed on
+   whole OoT functions; 1F248 likewise (`AudioSynth_LoadBuffer(cmd++, ...)` verbatim once gWaveSamples is a typed
+   extern array: the `(s16 **)&D` cast form lost the `or a0,s0` cursor copy). Tried on 23BDC / 21F40 / 22464 NMs: no
+   change (their residuals are elsewhere). 221D8 = DiscardSampleCacheEntry with UnapplySampleCacheForFont inline
+   (instrument + drum loops) under a typed extern: 112 = 112 words, 99.24, only the fontId / fontId*20 s-reg pair
+   swapped (decl-order sweep of all 48 orders: no).
+3. **Keep OoT's qualifiers and unions.** 2119C needed `volatile u8 resetStatus` (OoT's own declaration; without it every
+   case reuses the switch value). 28604 / 27E24 needed the Stereo union for layer / channel / attrs stereo (the 1-byte
+   union copy re-reads `layer->stereo` where the old NM faked a volatile read, and gives the held `&attrs.stereo` in
+   s7 that kit run 63 called unsolvable). NoteSampleState: `volatile u8 enabled` bitfields where only stores occur
+   (28604); one u32 bitfield run (bitField0 + bitField1) where the code tests bits with lw (27E24 finished / bookOffset).
+4. **Separate SM64-era globals.** When the only residual is a swapped operand on a product of two loads (multu / mul.s)
+   and one operand is a gAudioCtx member, give that member its own symbol (pinned 0, same offsets): 2B5F4 audioRandom
+   (`r % variance` products), 2B09C ticksPerUpdate (`portamentoTime * ticksPerUpdate`). SM64 had gAudioRandom and
+   gAudioBufferParameters as separate globals; 1080 predates OoT's merge. Operand swaps in the source do nothing.
+5. **Donor `.rodata` layout = ROM layout.** IDO puts the float literal pool first, then the jump tables in source
+   order, so one pin covers all of them: 2AD1C (SQ(127.0f) at +0, 15-entry table at +4 -> pin 0x1058), 2C7A4 (two
+   tables, +0 and +0xB4 -> 0x13E0), 26790 (+0 / +0x30 -> 0xEE0), 2B5F4 (literal only -> 0x10AC). lui-able literals
+   (1.0f, 100.0f, 127.0f, 256.0f) need no rodata, so 28604 / 27E24 / 24378 (rodata floats via a pinned base) stayed
+   in-unit.
+6. **1080 deltas found from the tables.** Decode every switch with `scripts/extract-uso-jumptable.py FUNC --module
+   0xD9FE28 --shim 0x1466C --vaddr ADDR --size SIZE` (target = value - 0x1466C - ADDR) before writing cases: the old NM
+   case labels were renumbered guesses (2119C "state - 1", 2C7A4 / 2AD1C labels shifted). 2C7A4 has OoT's values
+   exactly (0xC5..0xF1, no RUNSEQ / EF) plus empty `case 0x10: case 0x20: case 0x60: break;` in the low-nibble switch
+   -- the empty 0x60 (stubbed LDRES) is what keeps 0x40..0xB0 in ONE 113-entry table (without it IDO splits 0x40 /
+   0x50 off as compares). 27E24: the two disabling arms inside `out:` end with `goto skip` (shared loop tail), not
+   `continue` (each continue duplicated the bound recompute). 2119C drops DiscardSampleBanks; 2B09C has no
+   `layer->delay != 0` guard and no zero-delay clamp / speed2 block, and loads channel / seqPlayer before instOrWave.
+7. **Negatives / next.** 2A07C OoT verbatim 96.58 (depth temp t1 vs v0 in CALL / LOOP; split `depth++`, SM64 comma form
+   worse). 23BDC decl-order sweep (i / fontData) no change. Permuter (uv python; manual scratch per TOOLING_DECOMP)
+   ran 4 min on 2B5F4 before the separate-symbol fix made it moot. Next: 2BB7C (OoT
+   AudioSeq_SequenceChannelProcessScript, 3112 B, decode its two tables first), 26214 AudioThread_UpdateImpl, 1E134
+   ProcessNote, 201B8 AllocCached (older), 29978 vibrato (SM64 form), 1DCB4.
+8. **Gate:** ROM byte-identical after purge + clean link, verify-blocks 6/6 (jal = lo16 = other = 0), no lost exacts
+   (12 gained), sentinels at 100, post0b NM clip 0x2e88c (62F08 NM offset 0x2e83c) unchanged. Code 72.23 -> 73.82%.
