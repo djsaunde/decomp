@@ -12,6 +12,7 @@
 
 _76 entries. Auto-generated from per-memo notes; content may be rough on first pass — light editing welcome._
 
+- [Handwritten assembly sources (1080, agent-g run 158): libultra/handwritten `.s` routines are real assembly source under `src/libultra/` + `src/handwritten/`, GLOBAL_ASM'd into their host unit with no splat `nonmatching` marker, so objdiff scores them from source -- one block per splat symbol; classification of the 48 zero-fuzzy functions](#handwritten-assembly-sources) -- _evidence rule: cache/CP0/TLB/FPU-control ops, k0/k1/eret, addi/add/sub, or byte-identity with a reference libultra .s. No episodes (not C matches)._
 - [Clean-build-only CI break: a target-specific REPLACE_FUNC_BODY is inherited by the host object's explicit prerequisites, so a donor listed as a prerequisite runs every splice on itself in a fresh build (main CI red 2026-10-22..23, runs 118-131)](#private-replace-func-body-ci-break) -- _use `private REPLACE_FUNC_BODY +=` when the donor is also a prerequisite; the landing gate now builds a fresh worktree like CI._
 - [scripts/rdiff.py (1080): branch-offset- and jal-aware per-function diff -- `--raw --pins` keeps branch targets (measured from the function's FIRST label) and jal targets and applies undefined_syms pins; the masked default view hides decode errors (agent-c run 121)](#rdiff-raw-pins-run121) -- _run it on every near-miss before trusting an old cap note; classify each residue as decode / pin / schedule / colour._
 - [scripts/blockcut-search.py (1080): parallel out-of-tree search for uopt basic-block cuts (`if (1) {}` at every 1..K-subset of statement positions, plus `--swap X=>Y` alternatives) for one function -- cfe NM wraps in PROMOTE mode (only that wrap compiled as C, matching-build pipeline, never edits src/) and NCC donors / drafts; scores rdiff --raw --pins (agent-g run 127)](#blockcut-search-run127) -- _found gl B958 (1 cut after a loop's `{`) and gl 51ED8 (cut + K&R `va_alist`); the run-126 search missed B958 because it never cut right after a `{`._
@@ -13337,3 +13338,123 @@ so every landing gate passed and only CI (fresh checkout, `make objects`) broke,
   NON_MATCHING_SUFFIX_BYTES_FORCE, TRUNCATE_TEXT. kernel_000.c.o's `SUFFIX_BYTES_FORCE := func_8000235C=...`
   was inherited by the new kernel_000_1EC8 donor (KeyError: function func_8000235C not found, clean
   build only; agent-g run 145). Make them `private` too once the host has a .c donor prerequisite (main 7bbec18eb).
+
+## Handwritten assembly sources (1080, agent-g run 158) <a name="handwritten-assembly-sources"></a>
+
+**What.** Functions that libultra (or the game) wrote in assembly are kept as
+real `.s` source, the way the OoT decomp keeps `src/libultra/os/*.s`. In 1080
+they live in:
+
+- `src/libultra/os/`, `src/libultra/libc/` -- kernel copies of libultra `.s`
+  routines (adapted from `references/oot/src/libultra/...` /
+  `references/libreultra/src/...`);
+- `src/libultra/game_libs/` -- the game_libs (USO) copies (libultra is linked
+  twice; the code is byte-identical, only splat symbol boundaries differ);
+- `src/handwritten/` -- hand-coded routines that are not libultra files
+  (boot entry stub, Yay0 decoder).
+
+**Mechanism.** The host `.c` unit replaces `INCLUDE_ASM(..., fn);` with
+`GLOBAL_ASM("src/libultra/os/foo.s")`. asm-processor assembles it in place
+(same object, same address, relocations as written), so the ROM is
+unchanged. The splat `.s` files start with `nonmatching fn, size`, which
+emits a `fn.NON_MATCHING` symbol that objdiff uses to score INCLUDE_ASM
+functions as unmatched; the real sources do not use that macro, so objdiff
+scores the assembled bytes (100% when they equal the target). No linker
+script, yaml or objdiff.json change is needed. The Makefile makes every host
+object depend on all `src/libultra` + `src/handwritten` `.s` files
+(`HANDWRITTEN_S_FILES` / `HANDWRITTEN_HOSTS`, found by grepping the hosts for
+`GLOBAL_ASM("src/libultra|handwritten/`), so editing a `.s` rebuilds both
+trees. Nothing else changes: the non_matching tree assembles the same source.
+
+**Writing the source (asm-processor constraints).**
+
+- The asm-processor prelude is `.set noreorder` / `.set noat` / `.set gp=64`:
+  write every delay slot explicitly (indent it one extra space).
+- No cpp and no directives other than data/alignment ones (`.set`, `.equ`,
+  `.include`, `.macro` all fail): spell CP0/FPU registers by number with a
+  comment (`mfc0 $t0, $10  # C0_ENTRYHI`), and write macro expansions as the
+  real instructions (`and t2, a0, TLBHI_VPN2MASK` is `addiu $at, $zero,
+  -0x2000; and $t2, $a0, $at`) -- asm-processor counts one word per
+  instruction line, so a multi-word pseudo-op corrupts its size bookkeeping.
+- `glabel`/`endlabel`/`alabel` come from the prelude (= LEAF/END). Use named
+  `.L` labels unique within the host unit; all GLOBAL_ASM blocks of a unit
+  are assembled as one file, so a label can be referenced across blocks.
+- **One GLOBAL_ASM block per splat symbol.** asm-processor sets the size of
+  a block's FIRST glabel to the whole block (later glabels keep their
+  `.size`), so a two-symbol file gives the first symbol the wrong size and
+  objdiff scores it ~74%. When splat split one routine into two symbols
+  (e.g. `__osProbeTLB` + `func_80004DB8`), write two files
+  (`probetlb.s`, `probetlb_2.s`). The block size includes any trailing pad
+  words after `endlabel`, exactly as the INCLUDE_ASM block did.
+- Pad words splat put inside a symbol (leading zero words of the previous
+  object, trailing delay-slot nop in the next block) stay where they are,
+  written as commented `nop`s; existing pad sidecar blocks are untouched.
+- game_libs (USO) copies: load-time relocation fields are zero in the ROM.
+  Reference those addresses through symbols pinned to 0 in
+  `undefined_syms_auto.txt` (e.g. `D_00000000_gim` = `__OSGlobalIntMask`,
+  `D_00000000_rcpim` = `__osRcpImTable`), as the game_libs C code does.
+- If the host had the function inside an `#ifdef NON_MATCHING` wrap with a
+  C/comment body, remove the wrap: the source is the real thing in both trees.
+
+**Evidence rule (do not use this for C).** A function qualifies only with
+hard evidence: instructions IDO cannot emit for C (cache, mtc0/mfc0,
+tlbp/tlbr/tlbwi, ctc1/cfc1, eret, k0/k1 conventions, trapping
+`addi`/`add`/`sub`), or byte-identity with an assembled reference libultra
+`.s`. Compiled C inside a handwritten symbol must come from C:
+`func_800031F0` (the `__osException` core) ended with the compiled-C
+`__osDequeueThread` (thread.c): run 158 split it (asm/nonmatchings `.s` cut,
+new `func_80003BF0.s`, expected/ refreshed from the INCLUDE_ASM baseline in a
+separate commit, then the C body) -- the plain libultra C matches at the
+unit's -O1. An alabel splat had put inside the C part (`func_80003C24`, a
+jal-target name) became an absolute pin in `undefined_syms_auto.txt`.
+game_libs_func_0006AD78 still needs the same split. No episodes for the
+handwritten functions (they are not C matches); func_80003BF0 is C and has one.
+- A USO address whose lo16 half is baked in the ROM (nonzero) and whose hi16
+  is a load-time reloc: pin the symbol to the module offset (e.g.
+  `gl_exc_inttable = 0x00002380`) and write `%hi`/`%lo` normally -- a lone
+  HI16 with a literal lo makes ld warn "can't find matching LO16 reloc".
+
+**Classification of the 48 zero-fuzzy functions (2026-10-24, report at
+bc9c9460e).**
+
+| function | bytes | evidence | source / reference | status |
+|---|---|---|---|---|
+| __osSetFpcCsr (kernel_022_h) | 16 | cfc1/ctc1 | os/setfpccsr.s (oot, libreultra) | 100 |
+| __osProbeTLB + func_80004DB8 (kernel_002) | 152 + 40 | tlbp/tlbr/mfc0 | os/probetlb.s + probetlb_2.s | 100 |
+| func_80002CD0 (kernel_000_b) | 224 | lone swl, unrolled loops = reference | libc/bzero.s | 100 |
+| func_80002DB0 | 48 | mtc0 SR (8 lead pad words) | os/setsr.s | 100 |
+| func_80002DE0 | 16 | mfc0 SR | os/getsr.s | 100 |
+| func_80002DF0 | 128 | cache 0x19/0x01 | os/writebackdcache.s | 100 |
+| func_80004F50 (kernel_004) | 128 | cache 0x10/0x00 | os/invalicache.s | 100 |
+| func_80005000 (kernel_004_b) | 192 | cache 0x15/0x11/0x01 | os/invaldcache.s | 100 |
+| func_800062B0 (kernel_013_b) | 32 | mfc0/mtc0 SR | os/disableint.s (libreultra interrupt.s) | 100 |
+| func_800062D0 (kernel_014) | 32 | mfc0/mtc0 SR | os/restoreint.s (libreultra interrupt.s) | 100 |
+| func_800099F0 (kernel_022_i) | 96 | tlbwi | os/maptlbrdb.s | 100 |
+| func_80009AA0 (kernel_023_b) | 16 | mfc0 Cause | os/getcause.s | 100 |
+| func_80009CE0 (kernel_025_b) | 48 | cache 0x01 | os/writebackdcacheall.s | 100 |
+| func_80000000 (kernel_000_entry) | 96 | addi, sp setup, jr to boot main | handwritten/kernel/entry.s | 100 |
+| func_800023E0 (kernel_000) | 336 | addi/add/sub (Yay0 decoder) + mfc0/mtc0 (osSetIntMask) | handwritten/kernel/decode_yay0_setintmask.s (papermario decode_yay0.s, libreultra setintmask.s) | 100 |
+| func_80002E70 / func_80002E78 / func_800031D0 / func_800031E0 (kernel_000_b) | 8 / 856 / 16 / 16 | k0/k1, eret, mfc0, sd/ld | os/exceptasm_preamble.s, exceptasm_rdb.s, _2, _3 (rdb/KMC variant, no public reference) | 100 |
+| func_800031F0 (kernel_000_b) | 2624 -> 2560 | k0/k1, eret, ctc1 (__osException core) | os/exceptasm.s (libreultra exceptasm.s labels) | 100 after the boundary split below |
+| func_80003BF0 (new symbol, kernel_000_b) | 64 | compiled C (`addiu sp,-8` empty frame, -O1) | __osDequeueThread, libultra thread.c, in C | EXACT (C), episode logged |
+| game_libs_func_00071370 (post2) | 20 | cfc1/ctc1 (+1 lead pad) | game_libs/setfpccsr.s | 100 |
+| game_libs_func_0006A09C (post1b) | 168 | mfc0/mtc0 (+2 lead pad), USO relocs | game_libs/setintmask.s | 100 |
+| game_libs_func_0006AD68 (post1b) | 16 | byte-identical to exceptasm.s __osPopThread, inside the exceptasm object | game_libs/popthread.s | 100 |
+| game_libs_func_0006B048 (post1b) | 172 | = kernel bzero | game_libs/bzero.s (NM wrap removed) | 100 |
+| game_libs_func_0006C400 / 6C9D4 / 6C9E4 / 6D894 / 6D94C / 6F254 / 6F2D4 (post1b2c) | 120 / 16 / 8 / 184 / 16 / 128 / 176 | cache / mtc0 / mfc0 / tlbp / mfc0 Count | game_libs/writebackdcache, setsr, getsr, probetlb, getcount, invalicache, invaldcache | 100 |
+| game_libs_func_00070314 / 70AC0 / 70AE4 (post1c) | 16 / 36 / 24 | mtc0 Compare / SR | game_libs/setcompare, disableint, restoreint | 100 |
+| game_libs_func_00073258 (post2b_c) | 100 | tlbwi | game_libs/maptlbrdb.s | 100 |
+| game_libs_func_00074860 (post2b_d) | 44 | cache 0x01 | game_libs/writebackdcacheall.s | 100 |
+| game_libs_func_0006A5F0 (post1b) | 1912 | k0/k1, eret, mfc0 (exception preamble + __osException, release libultra) | game_libs/exceptasm.s (13 new gl_exc_* pins) | 100 |
+| game_libs_func_0006AD78 (post1b) | 404 | k0/k1, eret (__osDispatchThread + __osCleanupThread) | -- | INCLUDE_ASM: its last 2 words are the first 2 instructions of the compiled-C __osDequeueThread, whose rest is the exact -O1 -g3 donor fragment gl_func_0006AF0C; split by moving gl_func_0006AF0C 8 bytes earlier and compiling the plain thread.c body at -O1 (the kernel copy matches that way) |
+| game_libs_func_0006E20C (post1b2c) | 16 | 2 pad words + `jr ra; sqrt.s $f0,$f12` | sqrtf is C (`__builtin_sqrtf`) | normal queue (not handwritten) |
+| game_libs_func_0002266C / 2D36C (game_libs_post, agent-c) | 8 / 8 | all-zero words | alignment padding, not code | not code |
+| game_libs_func_00035E5C / 4230C (post0b < 0x50000, agent-c) | 8 / 40 | all-zero words | alignment padding | not code |
+| game_libs_func_00067ABC (post1b), 00075264_pad (ido_75264), 00074EDC / 00075260 (post2b_f) | 8 / 8 / 24 / 4 | all-zero words | alignment padding | not code |
+
+**Gotcha found on the way.** Kernel code runs 0x400 above its link address,
+so `jal func_80003C24` in the exception code means "runtime 0x80003C24" =
+link 0x80003824 (`send_mesg`); the alabel splat put at link 0x80003C24 (in
+the middle of `__osDequeueThread`) only exists to satisfy those relocations.
+Old notes calling func_80004DB8 a `__osException` jal target read the same
+offset wrong.
