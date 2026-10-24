@@ -14510,6 +14510,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit LXXXVIII (agent-g 2026-10-24, run 157): **m2c "struct copy chains" are C++ return-by-value -- an inline helper returning a NAMED non-POD V gives the r -> return temp -> destination chain, the held results and the materialised argument base by itself** -- the timproc_b5 0xDC-record head (`addiu v0,a0,0xdc` + the shared pool `lui at`) and B368's three chains rewritten as inline `V relPos(const V &)` / `scaled(const V &, const f32 &)` helpers; the bootup 8BD4 "$f20 parameter" cap is a cfe-only effect (NCC keeps amt in $f20 at once); under NCC a compound assignment through a computed lvalue (`*(int *)(p + 0x938) += 1`) takes the lvalue's address first (extra `addiu`), write `x = x + 1`; NCC CSEs every float zero across calls into a callee-saved register whatever the spelling (`0.0f`, `(f32)0`, `0`), which caps NCC lifts of cfe-style targets (gl 63964, b5 B154)](#kit-lxxxviii-agent-g-run-157) -- _no exact; NM: b5 B624 93.72 -> 96.07, B368 92.71 -> 95.71, bootup 8BD4 91.85 -> 96.83 (new NM-only NCC donor; chained `if (!skip)` tests bring it to the target length 836); B624 / B368 at unchanged length; post0b untouched (clip 0x2e928)._
 - [kit LXXXIX (agent-c 2026-10-24, run 149): **a slot allocation `i = p->n; p->n = i + 1;` colours the old count into the result's register; a separate `p->n++;` (or `p->n += 1;`) statement gives the target's v1 -- and the held-results lever finds FP gains in post0b / post where the target holds a triple the build stores at once** -- gl 44CE8 EXACT (NCC donor, the run-148 one-colour residual); same lever on gl 454C4's display-list slots (+0.93, length toward target); held triples in 4F2DC (vec70, +5.85), 37540 (+4.08), NCC donors 33094 (+4.39) / 36694 (+0.64); scratch sweeps (hold6 greedy, single-site parallel, NCC re-lift of cfe bodies, increment sweep) and negatives](#kit-lxxxix-agent-c-run-149) -- _1 exact (gl_func_00044CE8, 172 bytes; 77.00 -> 77.02 % code); NM: 4F2DC 82.71 -> 88.56, 33094 80.26 -> 84.65, 250C8 98.08 -> 99.85 (one retMsg web), 415A4 76.35 -> 84.34 and 3B01C 98.21 -> 98.32 (store order read from the target), 37540 71.85 -> 75.93, 454C4 61.68 -> 62.61, 36694 82.80 -> 83.44; post0b NM clip 0x2e928 -> 0x2e93c._
 - [kit XC (agent-g 2026-10-24, run 158): **telling IDO output from handwritten assembly in libultra copies** -- IDO never emits `addi`/`add`/`sub` (always addiu/addu/subu), CP0 hazard nops or a lone `swl`; libultra `.s` keeps the hazard nops and trapping forms, so these are hard evidence; `jr ra; sqrt.s $f0,$f12` and `lw v0; lw t9; jr ra; sw t9` are ALSO what IDO emits (sqrtf via `__builtin_sqrtf`, a pop-queue helper), so for those only location / byte-identity with a reference `.s` decides; an `addiu sp,sp,-8` frame with no saves at the end of a handwritten symbol is compiled C (__osDequeueThread, thread.c) glued on by splat](#kit-xc-agent-g-run-158) -- _run 158 moved 39 handwritten functions to real `.s` source (docs/MATCHING_WORKFLOW.md#handwritten-assembly-sources) and landed func_80003BF0 = __osDequeueThread in C (plain thread.c at -O1)._
+- [kit XCI (agent-c 2026-10-24, run 150): **an all-zero pad symbol after an exact function is folded into it as zero SUFFIX words + a metadata-only expected/ symbol delete (new `scripts/elf-symtab-delete.py`); `L = L op R` vs `L op= R` and the operand order of one commutative operator are NOT equivalent for floats -- per-site sweeps (`casweep.py`, `opswap.py`) found NM gains**](#kit-xci-agent-c-run-150) -- _4 pads folded (2266C, 2D36C, 35E5C, 4230C; +64 bytes, 78.157 -> 78.166 % code), 3 more prepared as agent-g patches; NM: 3B01C 98.32 -> 98.63, 36F0C 87.07 -> 87.89, 4FD00 76.16 -> 79.50, 37540 75.93 -> 77.45, 42938 69.60 -> 69.98, 4F2DC +0.04, 2E354 +0.005; no exact._
+- [kit XCII (agent-g 2026-10-24, run 159): **zero-pad pseudo-functions fold into their predecessor as an all-zero SUFFIX in BOTH trees + a one-unit INCLUDE_ASM baseline rebuild; handwritten routines with NON-zero fuzzy (bcopy 38.7, a three-entry SP control routine 12.4, its SP-halted sibling 82.8) are found by reading the function comments, not the fuzzy column; NCC gets bdec's operand order but folds the 255 numerator**](#kit-xcii-agent-g-run-159) -- _+992 code bytes exact (78.16 -> 78.29 %): 5 pad pseudo-functions retired (44 bytes moved into 100 % symbols), sqrtf (8), bcopy (772), func_80008054 (124), func_80008030 (36). Negatives: B624 / B368 1.0f in f14, mgrproc 1824 `li at,1`, CEB4 empty then-arm, 525F0 / 51448 split copy web, 5AFD4 constant fold, 4118 case-0 reload, E2D0 arg4 colour, 76F4._
 - [kit LXXXVII (agent-c 2026-10-24, run 148): **alignment survey (negative) + the original-file-start map of game_libs, and three twin / NCC levers** -- no non-exact function in the ROM differs from its target only in nop count or position; units in game_libs start at gl = 4 (mod 16) (16-byte aligned in bootup.uso text), every infinite-loop epilogue sits at gl = 0x14 (mod 32), and the pad words after a final `jr ra` mark 40+ original unit ends (map inside); arcproc 125C EXACT by porting the exact mgrproc 1C90 match_imports C; gl 44CE8 under NCC (pool base rematerialised, the old count carried in the result variable to keep the frame at 32); gl 3E0F0 arg word read before `gl(tmp = o, x)`](#kit-lxxxvii-agent-c-run-148) -- _1 exact (arcproc_uso_func_0000125C, 556 bytes; 76.92 -> 77.00 % code on e5cf258f7); NM: gl 44CE8 91.28 -> 99.53 (new NCC NM donor), gl 3E0F0 93.88 -> 99.90; post0b NM clip unchanged (0x2e928)._
 - [kit LXXXIV (agent-g 2026-10-24, run 155): **colour-pairing levers -- a void alias for a discarded call plus ONE local per register pair** -- gl 68DD4 (98.71, "colours only" for months) fell when the leading discarded K&R call went through a void alias (the dead v0 def pushed every later value one register up, kit IX) AND the two cursor reads were written with two int locals that each carry two roles (A = cursor then q2, B = value then cursor2), mirroring the target's register pairs; scripts/sibling-scan.py at 0.5 plus a longest-common-block scan found no new exact templates in agent-g units; twin NM port b3 13B8 <- arcproc 16F4 (+5.0); 5F984 NM donor takes the 5EB4C/5ED54 param copy; negatives for 5A2C4, D884, C310, BDEC, 2B7C, 23FC, 1824, 5F5F0, 525F0, E2D0, B154](#kit-lxxxiv-agent-g-run-155) -- _1 exact (gl_func_00068DD4, 340 bytes; 76.74 -> 76.78 % code with main's agent-c gains); NM: b3 13B8 80.36 -> 85.41, arcproc 16F4 85.36 -> 85.41, gl 5F984 90.11 -> 92.46 (post0b clip 0x2e904 -> 0x2e90c), gl 51448 95.00 -> 95.56, bootup 24B8 94.87 -> 95.21._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
@@ -38699,3 +38701,163 @@ to tell the two apart:
   of the wrong boundary).
 - Old-libultra `__osDisableInt` / `__osRestoreInt` (no __OSGlobalIntMask
   logic) are the libreultra interrupt.s forms, not OoT's.
+
+## kit XCII (agent-g 2026-10-24, run 159): zero-pad pseudo-functions, more handwritten routines, NCC operand order <a name="kit-xcii-agent-g-run-159"></a>
+
+**1. Zero-pad pseudo-functions: fold into the predecessor, rebuild one unit's baseline.** A splat
+symbol made only of zero words (fuzzy `None` in report.json, still counted in total_code) is the
+alignment pad of the previous object or function. Five were retired: game_libs 67ABC (2 words after
+67AA0), 74EDC (6 words at the head of post2b_f = the tail pad of the 74DB4 IDO 5.3 object, which
+lives in another unit), 75260 (after 75254), 75264_pad (the 75264 unit's tail sidecar) and the two
+pad words at the head of 6E20C (after 6E1A4). Recipe, per unit:
+- `SUFFIX_BYTES_FORCE := <pred>=0x00000000,...` on `build/src/...` **and**
+  `NON_MATCHING_SUFFIX_BYTES_FORCE` on `build/non_matching/...` (both trees, or objdiff sees a
+  symbol-size mismatch). Remove the INCLUDE_ASM / GLOBAL_ASM pad line and `git rm` its `.s`.
+- A pad that crosses a unit boundary moves the TRUNCATE values: 74DB4 0x128 -> 0x140 (the suffix
+  grows the symbol; IDO's own .text padding is then truncated away), post2b_f 0x388 -> 0x370.
+- Rebuild only that unit's expected/ object from the INCLUDE_ASM baseline: import
+  `strip_decomp_in_file` / `func_map` from scripts/refresh-expected-baseline.py, strip the one
+  source, `make RUN_CC_CHECK=0 EXPECTED_BASELINE=1 build/src/<unit>.c.o`, restore the source. Keep
+  REPLACE_FUNC_BODY **active** (do not pass `REPLACE_FUNC_BODY=`): the tracked expected/ objects of
+  post2b_f / 74DB4 / 75264 were byte-identical that way, post1b / post1b2c differed only at
+  relocation offsets (checked with `objdump -r`), while the donor-less build differed in real
+  words. Then compare the new baseline's .text with the real build (reloc-blind identical) and
+  install. The rebuilt baseline carries `.NON_MATCHING` marker symbols for every stripped function
+  (the old one had fewer); report.json was unchanged for every other function.
+- Result: the pad bytes move into a 100 % symbol (+44 bytes matched), ROM byte-identical.
+- Still open, agent-c's units: game_libs_func_0004230C (10 words), 35E5C, 2D36C, 2266C (2 each).
+  35E5C's predecessor gl_func_00035DAC is now an exact NCC donor splice, so the "predecessor is an
+  NM wrap" reason in its comment no longer holds. Tried here (ROM cmp OK with the suffix on 35DAC in
+  both trees), but the one-unit baseline helper above does NOT work for post0b: with donors kept the
+  rebuilt baseline drifts from the real build at 0x18c5c (right after gl_func_0004D084, whose pad
+  suffix is a `private ... +=` line), 15678 non-reloc words. post0b needs its own documented
+  baseline recipe (MATCHING_WORKFLOW: strip + `EXPECTED_BASELINE=1`, see the 5FDC4 row); reverted,
+  left for agent-c.
+
+**2. Handwritten routines with non-zero fuzzy.** Run 158 classified the zero-fuzzy functions; three
+more had partial C scores and were still handwritten:
+- game_libs 70324 = libultra bcopy (38.67 -> 100, 772 bytes). The identity (libc/bcopy.s, trapping
+  `add`, interior `jr ra`, the `.weakext` double export) was already proven in its comment; the C
+  body was a memmove for the NM path. `src/libultra/game_libs/bcopy.s` is written from the target
+  disassembly the way the IRIX assembler emitted it: macro expansions (`blt` = `slt` + `bnez`,
+  `and v0,a0,3` = `andi`) and the reorganizer's fills (branch-likely target copies such as
+  `bnezl at, L; slti at,a2,16`) are spelled as the real instructions, labels follow the reference
+  source. A script turned `objdump -M no-aliases` output into labelled source (`beqz zero` -> `b`,
+  `sll zero,zero,0` -> `nop`, `$` register prefixes, delay slots indented).
+- kernel func_80008054 (12.35 -> 100): one splat symbol with three entry points; the second entry
+  `b`s into the first entry's wait loop, which no C function can do. Addresses are `li`
+  expansions (`lui a0,0xA404; ori a0,a0,0x10` then a 0 offset) and the poll loops have nop delays.
+- kernel func_80008030 (82.78 -> 100): its 9-word sibling. t0 as the first temp, `move v0,zero`
+  plus an unfolded `ori v0,v0,1`, and a nop in the bnez delay; the probe battery in kernel_031b.c
+  showed no IDO configuration emits that trio.
+- game_libs 6E214 = sqrtf (gu/sqrtf.s, `jr ra; sqrt.s $f0,$f12`): IDO emits the same two words
+  from `__builtin_sqrtf` (kit XC), so the decision rests on location: its own 16-byte aligned
+  object in the libultra tail, byte-identical to the assembled reference.
+- Search that found them: grep the comments of non-exact functions for "handwritten" / `.s`
+  references, and scan the target words of every non-exact function for trapping add/sub/addi,
+  CP0/cache/TLB, ctc1/cfc1 and k0/k1. The second scan now only hits `break` (division checks)
+  and `cfc1/ctc1` (float-to-int conversions), i.e. compiled C. Nothing handwritten is left in the
+  non-exact list.
+
+**3. NCC gets bdec's commutative operand order (timproc_b5 BDEC).** The target emits
+`mul.s ft1, fs0, ft0` (denom first) and `addu a2, s2, t8` (s2 first); cfe puts the named web second
+whatever the source order. The same body under NCC puts both first, like the target, and the head
+matches word for word, but edg folds the `(float)255` numerator into the register that already holds
+255.0f (`div.s fv1, fs0, fs0`), so the CSE break that cfe allows is lost (92.27, 588 bytes vs 604).
+Moving the denom declaration (5 positions), `register`, and late assignment are flat under cfe.
+
+**4. Negatives (time-boxed).**
+- timproc_b5 B624 / B368: the target keeps the axis 1.0f in f14 in all three rotate blocks; ours uses
+  f14 only in the first (where it is used twice) and ring temps after. A shared `one` local (block or
+  function scope), a static const, all 36 orders of the block-2/3 assignments and the 6 orders of
+  block 1 are flat or worse.
+- mgrproc 1824: target emits `li at,1` after the outer `beqz` (in the case-1 compare block), ours
+  hoists it above. `default: break;`, a switch-value local, `+= 1` / `++` spellings, if/else-if and
+  goto chains (the goto chain still hoists it) are all flat or worse.
+- timproc_b5 CEB4: the then-arm of block 1 is truly empty in the target (`b join` with the join's
+  `lw a1` in the delay). Dropping the pre-initialisation and storing 1.0f in the arm, or doing both,
+  makes it worse (85.9 / 94.4); the D-load-before-1.0f order in blocks 2/3 does not follow the source.
+- game_libs 525F0: a BB boundary between the call and the reload of obj (do-while, switch(0),
+  goto label, `if (call) {}`, named result, while/break) does not change ugen's v1 choice.
+- game_libs 51448: an NCC lift with the list link as an inline helper still coalesces n with o.
+- game_libs 5AFD4: `x + 0xFF000000 - 1` folds to one constant in every spelling (decrement
+  statement, pointer arithmetic, `- 1` first, `0xFF << 24`, `/ 16`, negative form) and with IDO 5.3.
+- timproc_b5 4118: one-line, comma, chained and reordered case-0 stores, a block pointer and a
+  trailing `if (1) {}` leave the per-store reloads; writing the table store last gives 99.17 but
+  6884 bytes (target 6872, current 6880), so it was not kept.
+- bootup E2D0: nine more arg4 spellings (no keep-live, `arg4 + 1.0f`, temp `k`, volatile read,
+  `*&arg4`, early keep-live, address taken) are flat or worse.
+- bootup 6204 / E9FC (`lui a0` before `sw ra`): NCC and the flag matrix (7.1 / 5.3 at -O1, -O2,
+  -O2 -g3, -O3, -mips1) all give the cfe order.
+
+Gate (agent-g, on 4a626df5e, main unmoved): ROM cmp OK, verify-blocks 6/6, `make non_matching_objects` 0 errors, no exact lost, sentinels 100, post0b NM clip unchanged (0x2e93c), 78.16 -> 78.29 % code (596048 -> 597040 bytes), 3137 -> 3141 functions matched of 3292 (5 pad pseudo-functions retired). Purge: `build/{,non_matching/}src/game_libs/
+game_libs_post1b.c.o`, `..._post1b2c.c.o`, `..._post1c.c.o`, `..._post2b_f.c.o`,
+`..._ido53_74DB4.c.o`, `..._ido_75264.c.o`, `build/{,non_matching/}src/kernel/kernel_020_b.c.o`,
+`build/{,non_matching/}src/kernel/kernel_031b.c.o`. No new donors.
+
+## kit XCI (agent-c 2026-10-24, run 150): zero-pad symbols folded into predecessors, compound-assign and operand-order sweeps <a name="kit-xci-agent-c-run-150"></a>
+
+**1. An all-zero pad symbol counts as an unmatched function; fold it into the exact predecessor.**
+The four zero-only symbols in agent-c's range (game_libs_func_0002266C / 0002D36C, 2 words each,
+game_libs_post; game_libs_func_00035E5C 2 words / 0004230C 10 words, game_libs_post0b) each sat
+after an exact function. Recipe (64 bytes, 78.157 -> 78.166 % code, no length or layout change):
+- delete the pad's `INCLUDE_ASM` line (leave a comment) and `git rm` its `.s`;
+- append `PRED=0x00000000,...` (one word per pad word) to the unit's existing
+  `SUFFIX_BYTES_FORCE` and `NON_MATCHING_SUFFIX_BYTES_FORCE` lines (both builds, so the NM object
+  length and the post0b clip do not move: 62F08 stays at 0x2e8ec, clip 0x2e93c);
+- edit the tracked `expected/` object metadata-only with the new
+  `scripts/elf-symtab-delete.py <in.o> <out.o> PAD:PRED ...` -- it deletes PAD (and
+  PAD.NON_MATCHING) from `.symtab`, grows PRED by PAD's size, renumbers relocation symbol indices
+  and `sh_info`, and refuses if a relocation references the deleted symbol. Check
+  `objcopy --only-section=.text` and `objdump -r` are unchanged before installing.
+  (`elf-symtab-edit.py` can only resize, and the expected objects of these units are raw-byte
+  objects that a C-build copy cannot replace: their `.text` differs at every baked reloc.)
+- `rm` both unit objects, `make` (ROM cmp), `make non_matching_objects`, refresh the report: the
+  pad rows disappear and PRED stays 100 at the bigger size.
+Three more pads in agent-g's units were prepared the same way as patches (post1b 67ABC after
+67AA0, post2b_f 75260 after 75254 -- the unit's last word, under TRUNCATE_TEXT 0x388 -- and
+ido_75264's `_pad` GLOBAL_ASM sidecar after 75264). Not done: post2b_f 74EDC (6 words at the unit
+START: the predecessor is in the previous unit, a cross-unit boundary move) and post1b2c 6E20C
+(2 pad words + handwritten sqrtf).
+
+**2. Compound assignment vs expanded form changes FP operand order and colouring.** `c150/casweep.py
+SRC UNIT FUNC [ncc]` tries every `L = L op R;` as `L op= R;` and every `L op= R;` as
+`L = L op R;`, one site at a time (8 compiles in parallel). Results over 71 non-exact functions:
+- gl 3B01C 98.32 -> 98.63: `n.x = n.x * -r` emits `mul.s fd, -r, n.x`; `n.x *= -r` emits the
+  target's `mul.s fd, n.x, -r` (all three products).
+- gl 36F0C 87.07 -> 87.89: the opposite direction -- `w[1] = w[1] + x` instead of `w[1] += x`.
+- 4FD00 76.16 -> 79.39: greedy over 12 `sum[k] += rec[k]` statements (expand sum[0] on all four
+  lines and sum[2] on one); two further expansions reach 80.0 but shorten 972 -> 968 (target
+  1004), so they were not kept.
+- 4F2DC +0.04 (two of three `*=`), 2E354 +0.005 (`sp78 = sp78 * x`).
+- 37540: `*=` on two lines scores 76.97 but shortens 760 -> 756 (target 764): not kept.
+So the two spellings are not equivalent in cfe/uopt for floats: try both per site.
+
+**3. Operand order of a single commutative operator (`c150/opswap.py`).** Swapping `A * B` /
+`A + B` in a `L = A op B;` statement, one site at a time:
+- gl 37540 75.93 -> 77.45: `b = K * F(v, 0)` (the scale constant first) plus `z = z + y`.
+- 42938 69.60 -> 69.98: `h = two * 240.0f`.
+- Tiny or none elsewhere (201B8 +0.004, 2E354 +0.005, NCC 36694 +0.03, not kept).
+In 3B01C the operand swap alone (`-r * n.x`) is flat: only the compound form gave the order.
+
+**4. Negatives (time-boxed).**
+- gl 250C8 (99.85): fontId's spill shares the temp slot 0x24 in the target; IDO 7.1 -O3 with
+  OoT's separate static `AudioLoad_FinishAsyncLoad` (inlined) scores 90.4 (still homes fontId);
+  reusing one variable for bytesRemaining and fontId 97.7; ASYNC_ID(...) expressions in place of
+  fontId 94.5-96.5.
+- gl 45178 (99.99, g's spill 0x24 vs its home 0x28): every named / block-scoped / unnamed /
+  padded spelling either keeps 0x28 or grows the frame (an unused int takes a home here).
+- gl 4EE44 (a1 vs v0 for the loop base): src spellings, loop-var order, `+=` form: flat.
+- gl 39E24 (lui order): a `static` vector gives the target's lui order but lets the scale loads
+  hoist above the stores (85.5); a same-object static CSEs the base (63); alias externs worse.
+- gl 64388 / game_uso 97EC (NCC return-slot / temp order): member operators, named-return
+  helpers, `const float &` factors, explicit temporaries: flat or worse.
+- 4D468 (NCC, a3 merge register): real `new (16) E` / out-of-line ctor / shared ternary
+  variable: flat or worse.
+- 3B01C as an NCC donor with a kit LXXXVIII `sub()` helper: 96.7 at once (chain and bases right,
+  frame 0x80 vs 0xC0, pa base not hoisted); cfe stays higher.
+- Held-results single-site sweeps (`single.py` / `single2.py`) on the 11 post0b functions that
+  timed out in run 149: no gain.
+
+Gate (agent-c, on 4a626df5e): ROM cmp OK, verify-blocks 6/6, `make non_matching_objects` 0 errors, no exact lost, sentinels 100, post0b clip 0x2e93c (62F08 at 0x2e8ec), 78.157 -> 78.166 % code. Purge: `build/{,non_matching/}src/
+game_libs/game_libs_post.c.o`, `build/{,non_matching/}src/game_libs/game_libs_post0b.c.o`. No new donors.
