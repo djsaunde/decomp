@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# After a passing scripts/land-agent.sh gate: commit report.json in agent-d, push HEAD:main,
+# reset the agent worktree, and commit any docs/ changes in the monorepo.
+# usage: scripts/finish-landing.sh <letter> "<report.json commit subject>" ["<docs commit subject>"]
+set -uo pipefail
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+L="$1"; MSG="$2"; DOCMSG="${3:-}"
+TRAILER=$'\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\nClaude-Session: https://claude.ai/code/session_01DbfSRBWaw6Jqe5SgVrtjU5'
+D="$ROOT/projects/1080-agent-d"
+git -C "$D" fetch -q
+if [ "$(git -C "$D" rev-parse origin/main)" != "$(git -C "$D" merge-base HEAD origin/main)" ]; then
+  echo "!! origin/main moved since the gate; re-run land-agent.sh"; exit 1
+fi
+git -C "$D" add report.json
+git -C "$D" commit -q -m "$MSG$TRAILER" || { echo "!! commit failed"; exit 1; }
+git -C "$D" push -q origin HEAD:main || { echo "!! push failed"; exit 1; }
+echo "pushed: $(git -C "$D" log --oneline -1 | cut -c1-120)"
+cd "$ROOT" && bash scripts/reset-agent-worktree.sh "$L" 2>&1 | tail -1
+if [ -n "$DOCMSG" ] && [ -n "$(git -C "$ROOT" status --porcelain docs)" ]; then
+  echo "docs: $(git -C "$ROOT" diff --shortstat docs)"
+  git -C "$ROOT" add docs && git -C "$ROOT" commit -q -m "$DOCMSG$TRAILER" && echo "docs committed: $(git -C "$ROOT" log --oneline -1)"
+fi
