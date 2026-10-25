@@ -40034,7 +40034,7 @@ homes between z and the set() temp, more at the bottom) and the 0x104 element st
 - 30AF4 / 2E354 diff rows are dominated by switch-arm register / reload differences (repeated `lw t9,0x3c(sp)`
   reloads in ours); no single decode error found in the time box.
 
-Gate (agent-c, rebased onto origin/main a75d4398e): full make ROM byte-identical, verify-blocks 6/6, `make
+Gate (agent-c, rebased onto origin/main a8edb54eb, HEAD f0f1749e2): full make ROM byte-identical, verify-blocks 6/6, `make
 non_matching_objects` 0 errors, no exact lost, sentinels 551E0 / 55B10 / EBC8 / C5B0 / 62F08 at 100, 79.64 % code.
 post0b NM clip 0x2e9bc -> 0x2e9ac (62F08 NM offset 0x2e95c). New pins `gl_func_00000000_4b620_base`,
 `D_4BAF4_flags`, `D_3E5E0_vk`, `D_3E5E0_v1`, `D_3E5E0_v2`, `gl_func_00000000_40070_base`. Purge: `build/non_matching/src/game_libs/game_libs_post0b.c.o`,
