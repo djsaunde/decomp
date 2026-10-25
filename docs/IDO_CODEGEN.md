@@ -14526,6 +14526,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CIV (agent-g 2026-10-24, run 164): **a cfe body that BUILDS objects (`obj = alloc(0xB8); if (obj) { p = obj; if (p == 0) p = alloc(0xB4); ...}`, calls whose first argument is 0, an `obj2 = obj` copy at the join) is C++ `new`: `obj = new Obj2` where Obj2 adds 4 bytes to the 0xB4 Obj (the inlined BASE ctor keeps its this==0 fallback at sizeof(Obj), the new-expression allocates sizeof(Obj2)); with the GLOBAL inline operator new edg keeps the new-temp and copies it at the join (placement / class operator new give the `: 0` form + an extra slot); 0-first-argument calls are out-of-line ctors called by `new X(args)` (cfront ctor(0, args)); bootup 31C0 93.61 -> 99.61 NM, 202/202 words; edg home rules measured with the dump itab (`ustr{M-N} {src}` decode): a derived-to-base pointer conversion of a new result makes its own temp R, which a later new-temp of the same type REUSES from the pool; an inline-body temporary is homed when its inline LEVEL is expanded (moving the V3 temp one inline deeper puts it below the member-ctor this homes); a tail block `{ }` puts its V3 temp at the bottom; `if (1) {}` between two copy runs splits a live unit and fixes a v0 / v1 pair; frame layout of 31C0 still open**](#kit-civ-agent-g-run-164) -- _no exacts; NM (report.json): bootup 31C0 93.61 -> 99.61 (NCC NM donor); negatives: b5 32C8 under NCC (zero handling differs, cfe 99.93 stays), b5 32C8 cfe zero placements (16 variants), game_uso 97EC temp order (`mk(e, f, fv, ev)` argument temps, nested blocks, earlier Vec3 temps: no pool reuse for class temps), 31C0 frame (named t / node copies, placement new, explicit lowering 90.3, Obj2 / KB ctor shapes, `if (0)` parameter keeps)._
 - [kit CV (agent-g 2026-10-24, run 165): **gui DL emitters written as cfe PKT macros are C++: every append is the context's inline `Ctx::next()` passed as the `pkt` of the STOCK 2.0I gbi.h gSPTexture / gSPScisTextureRectangle macros (their gImmp1 re-evaluation of pkt IS the RDPHALF_1 / RDPHALF_2 appends); `int n = dl->n; dl->n = n + 1; return &dl->buf[n];` vs `dl->n++` decides the dl / n colours; a callee-saved register holding ctx + switch value + MAX temps = ONE edg pool variable, and it only becomes $s0 when the pool var appears in the call blocks (calls through an inline `Ctx::load()` whose `this` is the pool temp); declaration order of the named locals sets the home slots (w / h after x / y / fw / fh); in F04 the x computation before the glyph call and named u / v / w glyph reads reproduce the target order; 31C0: a V3 ctor forwarding to inline set() + the Obj ctor V3 temp in inline pos() fix every home from the V3 temp down; cfe struct-copy staging (`t = d; n = t;` / `u = r; w = u; out.x = w.x`) is inline by-value Vec3 operators plus a BY-VALUE element-wise `operator=(V3)` (gl 63964)**](#kit-cv-agent-g-run-165) -- _no exacts; NM (report.json): gui 329C 88.70 -> 98.62 (length = target), F04 91.58 -> 97.25 (new NM donor), 3714 93.54 -> 95.36, 2DE0 89.83 -> 94.54, gl 63964 77.49 -> 88.74 (new NM donor; a ctor-constructed local at the zeroing point = the cfe `if (1) {}` BB split), bootup 31C0 99.61 -> 99.63; negatives: 329C switch-compare / phantom-t1 (named t, casts, refs, ctx copies, Spr methods), 2DE0 load()/t combos (length away), 4568 next() forms, 31C0 fresh KB slot (decl-bound / `if (0)` this keeps), 97EC bound-temp order (copy-init, casts, by-value ctor), E68 as a real ctor (inline B1 base keeps an extra this==0 alloc), 65494 / E68 / 6808 ports not started (edg by-value return chains)._
 - [kit CVI (agent-c 2026-10-24, run 158): **copy + kill inside the call argument: `gl(l + 0x10, (n = o, o = 0, n))` (the cfront inline-expansion comma form) gives the list-add parameter n its own home and the target's post-call reload into the argument register (gl 51448 95.56 -> 99.78; a block-scoped `n = o` copy is copy-propagated away); an FP-zero constant is rematerialised after every call of a member protocol only when its WHOLE live range is coloured -- the split trigger (totalsave <= cheapest register cost) fires as soon as one use (the int member store) is missing, so a float member store is what keeps the remats (40070 `sw zero` stays open); 40070's 0xCC..0xD8 block is a Q4 rotation copied by `Q4::set(const Q4 &)`; NCC never makes a jumptable even with default-hole labels (40304 is cfe); the three `new` temps of 3E5E0 are ONE pooled void* operator-new temp**](#kit-cvi-agent-c-run-158) -- _no exacts; NM (report.json): gl 51448 95.56 -> 99.78, 3E5E0 91.78 -> 94.32 (length away, flagged), 40070 99.28 -> 99.35, 4BAF4 95.58 -> 95.70; negatives: 40070 int / punned / volatile / ctor-parameter element stores, zero chains; 578B4 per-packet inline nx() helpers and the varref sweep; 4B620 `if (1) {}` between appends (22 positions, inert); 3E5E0 per-new variables / helpers / member form; 4D468 as a real ctor; 4E424 under NCC; 250C8 fontId as an expression; 525F0 / 41820 copy + kill; 41820 cfront / edg virtual-call spellings._
+- [kit CVII (agent-g 2026-10-24, run 166): **timproc_b5 AC20 (1332 bytes, cfe 92.41 with a volatile-pad ladder) and its sibling B368 (692 bytes, NM 95.71) EXACT as NCC C++ donors: the quaternion `ap` the target spills to sp+44 and reloads before every call is edg's POOLED `this` temporary of `o->q.rot(...)` (an inline member called on an lvalue member expression), which uopt leaves in memory; a named `mul = f11C * t120` took a uopt colour (the target's product is a ring temp) -- write the sum out; edg evaluates commutative operands as written (copy the target's operand order into the source, 2.0f as a literal); the head offset is B624's file-local x / y pair + z read through an inline's POINTER parameter with an `if (0)` use (keeps the a / g parameter temps = the target's v0 = &o->pos and one more frame home; an extern symbol defeats as1's lui sharing); the donor's .bss relocs become `<func>_bss` (pinned 0); the same family recipe took B624 96.10 -> 99.92 (a `while (0) { dy = 0.0f; }` anchor flips the x / y difference colours), B368 95.71 -> 100 EXACT (V3 with NO user operator= and both scaled vectors in one expression: implicit word copies plus a second return temp; homes via inline-body named locals: an inline's named local is homed right BELOW that inline's return temp, a reference parameter's temp ABOVE it) and B154 92.29 -> 98.90 (new NM donor); gui 329C switch operand re-read through arg0**](#kit-cvii-agent-g-run-166) -- _2 exacts (79.64 -> 79.91 % code); NM (report.json): b5 B624 96.10 -> 99.92, B154 92.29 -> 98.90, gui 329C 98.62 -> 98.69; negatives: 329C second MAX pool temp colour, F04 next() spellings, 3714 frame pads, 31C0 member-ctor homes, 97EC bound-temp order (statement-level forms), B624 home-free anchors._
+- [kit CVIII (agent-c 2026-10-24, run 159): **gl 51448 EXACT (216 bytes, cfe): a store the target issues BEFORE another although it materialises that other store's value FIRST is the inner assignment of a comma operand inside the first store's value -- `o->m120 = (o->vt = &vt, 0xFFFF)` (ugen evaluates the vtable address into t6, then 0xFFFF into t7, and the stores issue 0x120 first); C++ rewrites of the two big post0b iterator functions: 493AC as `int Mgr::run()` (92.20 -> 96.52, length = target, every sp offset = target) and 48AEC as `void Obj::draw()` (88.11 -> 93.43, new NM-only donor); edg home-count recipes: `b8 = b4 = b0 = 0` chained = two pooled temps, a named count inside an inline adds a home per expansion, the m38 test as an inline method makes `this` the pool temp, `if (...) return ...; return 0;` next() puts the result in v0; a class that introduces virtuals puts its vptr AFTER all its own data (vptr at 0x5C needs a 0x5C-byte base)**](#kit-cviii-agent-c-run-159) -- _1 exact (79.64 -> 79.67 % code); NM (report.json): gl 493AC 92.20 -> 96.52, 48AEC 88.11 -> 93.43; negatives: 35B1C vptr-store comma forms (scheduler, not ugen order), 39E24 base-materialisation order (distinct symbols / locals / operand order inert), 40070 `sw zero` (int / union / pun element stores) and frame (chained float / zero temps give 2 of the 4 missing homes), 493AC s1 / s2 pool-vs-e colour order._
 - [kit LXXXVII (agent-c 2026-10-24, run 148): **alignment survey (negative) + the original-file-start map of game_libs, and three twin / NCC levers** -- no non-exact function in the ROM differs from its target only in nop count or position; units in game_libs start at gl = 4 (mod 16) (16-byte aligned in bootup.uso text), every infinite-loop epilogue sits at gl = 0x14 (mod 32), and the pad words after a final `jr ra` mark 40+ original unit ends (map inside); arcproc 125C EXACT by porting the exact mgrproc 1C90 match_imports C; gl 44CE8 under NCC (pool base rematerialised, the old count carried in the result variable to keep the frame at 32); gl 3E0F0 arg word read before `gl(tmp = o, x)`](#kit-lxxxvii-agent-c-run-148) -- _1 exact (arcproc_uso_func_0000125C, 556 bytes; 76.92 -> 77.00 % code on e5cf258f7); NM: gl 44CE8 91.28 -> 99.53 (new NCC NM donor), gl 3E0F0 93.88 -> 99.90; post0b NM clip unchanged (0x2e928)._
 - [kit LXXXIV (agent-g 2026-10-24, run 155): **colour-pairing levers -- a void alias for a discarded call plus ONE local per register pair** -- gl 68DD4 (98.71, "colours only" for months) fell when the leading discarded K&R call went through a void alias (the dead v0 def pushed every later value one register up, kit IX) AND the two cursor reads were written with two int locals that each carry two roles (A = cursor then q2, B = value then cursor2), mirroring the target's register pairs; scripts/sibling-scan.py at 0.5 plus a longest-common-block scan found no new exact templates in agent-g units; twin NM port b3 13B8 <- arcproc 16F4 (+5.0); 5F984 NM donor takes the 5EB4C/5ED54 param copy; negatives for 5A2C4, D884, C310, BDEC, 2B7C, 23FC, 1824, 5F5F0, 525F0, E2D0, B154](#kit-lxxxiv-agent-g-run-155) -- _1 exact (gl_func_00068DD4, 340 bytes; 76.74 -> 76.78 % code with main's agent-c gains); NM: b3 13B8 80.36 -> 85.41, arcproc 16F4 85.36 -> 85.41, gl 5F984 90.11 -> 92.46 (post0b clip 0x2e904 -> 0x2e90c), gl 51448 95.00 -> 95.56, bootup 24B8 94.87 -> 95.21._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
@@ -40389,3 +40391,178 @@ post0b NM clip 0x2e9ac -> 0x2e9b4 (51448) -> 0x2e9b0 (3E5E0; 62F08 NM offset 0x2
 `build/{,non_matching/}src/game_libs/game_libs_post0b.c.o` (NM body + comment), changed NM donors
 `build/src/game_libs/game_libs_ncc_40070_nm.cpp.o`, `build/src/game_libs/game_libs_ncc_4BAF4_nm.cpp.o`,
 `build/src/game_libs/game_libs_ncc_3E5E0_nm.cpp.o`.
+
+## kit CVII (agent-g 2026-10-24, run 166): timproc_b5 AC20 + B368 exact as C++, the pooled `this` temp in memory, the B624 / B154 family <a name="kit-cvii-agent-g-run-166"></a>
+
+**Summary.** Two exacts: timproc_uso_b5_func_0000AC20 (1332 bytes, cfe NM 92.41 -> 100), new NCC donor
+`src/timproc_uso_b5/timproc_uso_b5_ncc_AC20.cpp` spliced into both trees (Makefile `TIMB5_AC20_DONOR`), and
+timproc_uso_b5_func_0000B368 (692 bytes, NM 95.71 -> 100; NM-only donor `..._ncc_B368_nm.cpp` renamed
+`..._ncc_B368.cpp`, Makefile `TIMB5_B368_DONOR`, both trees). Code 79.64 -> 79.91 %. NM gains (report.json): b5
+B624 96.10 -> 99.92 (NM donor rewritten),
+B154 92.29 -> 98.90 (new NM-only donor `timproc_uso_b5_ncc_B154_nm.cpp`), gui 329C 98.62 -> 98.69. Scratch:
+`/tmp/claude-1000/g166/` (`nccg.sh SRC UNIT FUNC [ABS.o]` = NCC compile + objdiff score; `run.py BASE VARIANTS UNIT
+FUNC` = parallel variant scorer; `sd2.py OBJ UNIT FUNC` = difflib side-by-side that keeps sp offsets (the g165
+`sd.py` normalises 3-digit decimals away, so it hides `208(sp)` vs `212(sp)`); `lr.py` = per-LR bit / colour /
+adjsave / live-BB table from the last `zdn.py` dump; `-g3` NCC compile + `g164/py/md.py` = named-local frame homes).
+
+**1. AC20 as C++: the recipe, in the order the score moved (82.3 -> 100, length 1332 throughout).**
+- the quaternion pointer that the target stores once (`sw a0,44(sp)`) and reloads before every call
+  (`lw a0,44(sp)`) is NOT a named local: a named `Quat *ap = &o->q` is copy-propagated into the expression
+  `o + 244`, which uopt colours (s0, so `o` lands in s1). Calling the inline member on the lvalue,
+  `o->q.rot(&a, ang)` with `void rot(V3 *axis, f32 ang) { f071AE0(this, axis, ang); }`, makes edg bind the
+  object expression to ONE pooled `this` temp for all eight calls; uopt does not colour it (it is the last
+  frame home, below every nested-block local) and the code is the target's store-once / load-per-call. 83.3 -> 85.8.
+- `f32 mul = o->f11C * t120; o->sE8 = sc + mul; ...` -- the named product became a uopt LR (f2) and shifted
+  every FP colour after it; written out (`sc + o->f11C * t120` three times, CSE'd to one product, a ring temp)
+  -> 96.2. Tell: target ring temps up to $f18 where yours stop at $f10, plus `mov.s` colour differences.
+- edg emits commutative operands AS WRITTEN (cfe reorders): the axis rows are `(q.x * q.z * 2) + (q.w * q.y * 2)`,
+  `(q.y * q.z * 2) - (q.w * q.x * 2)`, `(q.x * q.z * 2) - (q.w * q.y * 2)` in the target's load order, and
+  `f10C + w` not `w + f10C`; 2.0f as a literal (a named `two` costs a frame home). 96.2 -> 96.35.
+- the head: `V3 d = o->pos - G` with G one object CSE'd `&G` into v0 and folded `o->pos` into `220(a0)`. The
+  target has v0 = `&o->pos` and G read through `lui at` per pair (x / y share one lui, z gets its own) -- the
+  B624 file-local statics: `static float sXY[2]; static float sZ;` read through an inline whose reference /
+  pointer parameters are kept as temps: `inline V3 rel(const V3 &a, f32 *g) { f32 &x = g[0]; f32 &y = g[1];
+  if (0) { x = a.x; } return V3(a.x - x, a.y - y, a.z - sZ); }` called `rel(o->pos, &sXY[0])`. Without the
+  `if (0)` the `a` parameter is substituted (no v0 pointer); without the `g` parameter the frame is one word
+  short. Declaring the statics `extern` (pinned symbols) instead gives every x / y load its own `lui`: as1
+  shares the lui of a LOCAL section symbol (.bss + 0 / + 4) only. The donor's .bss relocs are renamed
+  `timproc_uso_b5_func_0000AC20_bss` by replace-function-body.py and pinned to 0 (the USO bakes 0 / 4 / 8).
+  -> 99.39 / 99.99.
+- frame homes (all from the `-g3` named-local dump vs the target sp offsets): the scalars wrap / sc / t120 /
+  two homed in the if arm before / between m7C, m6C and ax (2 above m7C, 1 between m6C and ax: the 6
+  permutations of {sc, t120, wrap} with two as a literal are all exact), the 0727A4 buffer as `s32 m7C[13]`,
+  and the three angle blocks as `{ f32 ang = f114; V3 a(1,0,0); rot } { f32 ang = f110; { V3 a(0,0,1); rot }
+  ang = f118; { V3 a(0,1,0); rot } }` (angle homes above a1 and a2 only, none between a2 and a3). 100.
+- Gate: ROM build `replace-body-skip: ... already matches donor` (INCLUDE_ASM bytes == donor bytes), raw .text of
+  the donor == expected/ for all 333 words, verify-blocks 6/6. New pins `timproc_uso_b5_func_0000AC20_bss`,
+  `D_timb5_AC20_w0..w3` (all 0); threshold / root use the existing `timproc_uso_b5_D_807FF358` /
+  `import_80087DA8` (the target's two HI16 reloc names).
+
+**2. The same family (B624, B368, B154: `d = rel(pos)`, normalise, three axis-angle rotations, tail).**
+- B624 (99.92, NM): the recipe gives 99.86 at the target frame; the x / y differences are coloured f0 / f2
+  where the target has f2 / f0. They are the V3 ctor's pooled float parameter temps, coloured in bit
+  (first-appearance) order. `f32 dy; f32 dx; while (0) { dy = 0.0f; } dx = ...; dy = ...;` puts dy first
+  (kit-style while (0) anchor) -> correct colours, but the two named locals add two frame homes (160 vs 152).
+  Home-free anchors (expression anchors in while (0) / if (0), `register`, block-scoped dy, a defaulted
+  parameter, a float-pool-priming inline call in while (0), a dead V3 construction) keep x-first: open.
+- B368 (EXACT; 95.71 -> 99.16 -> 99.76 -> 100): `V3 s240; ... s240 = pool(...)` assigned through the by-value operator= gives a float
+  element tail; COPY-INITIALISED at the use (`V3 s240 = pool(...); V3 s224 = s240 * o->f128;`) gives the
+  target's result -> shared temp -> local word copies (91.6, length = target); `pool(f32 *g, const f32 &s) {
+  if (0) { g[0] = s; } ... }` with the same pointer-parameter keep replaces a CSE'd v0 base of sXY by `lui at`
+  pairs (99.16, 688 bytes: the target has one more `addiu v0,sp,76`). That word is a SECOND return-copy temp:
+  the target evaluates both scales in one expression while the first result temp is still in use. With the
+  by-value `operator=(V3)` removed from V3 (implicit memberwise assignment = the target's lw / sw word copies)
+  `V3 s240; V3 s224; s224 = (s240 = pool(&sXY[0], gscale)) * o->f128;` gives every instruction, 692 bytes
+  (99.73); an arm-level `f32 ang` declared between s240 and s224, rel()'s z through a third pointer parameter and
+  the 0727A4 buffer as 15 words fix more homes (99.76, frame 304 vs 320). Then EXACT: the buffer as 16 words
+  (one more word above it), rel()'s x through a named reference `f32 &x = g[0];` instead of a z parameter (an
+  inline body's named local is homed right below that inline's return temp; a reference parameter's temp sits
+  above it), `V3 &operator+=` (its pooled reference return adds the bottom pair) and operator*'s factor copied
+  into a named local (`f32 k = s;` -- the const-ref parameter temp sat above the scale's return temp, the named
+  local goes below it). ROM build `replace-body-skip` (bytes equal), verify-blocks 6/6. New pins
+  `timproc_uso_b5_func_0000B368_bss`, `timb5_B368_gscale` (0). A merged angle block with `a` first gives a `beqzl` head (91.8). Tell for the lever: a target with
+  two distinct copy-chain temps (`addiu v0,sp,N` for each) where your build reuses one -- the second operator
+  call happens inside the first one's full expression.
+- B154 (98.90, new NM donor; cfe 92.29): the 05B750 vector is a `V4` declared FIRST (frame top, target sp+152)
+  filled by an inline `set(0, 0, 0, f120)`; `(f128 - f12C) * f11C` operand order; the 0x140 counter written
+  `o->i140 = o->i140 + 1; if (o->i140 == o->i13C)` (a `++o->i140` result was a uopt v0 LR; the target keeps it in
+  ugen t-registers); `while (0) { dx = 0.0f; }` anchor + named dx / dy for the head colours and the two homes the
+  target has (98.87); then only dx named (anchor) and z through a third pointer parameter: head exact (98.90).
+  Left: dx's home between the head temp and the axis vectors (target: one word lower, between a3 and the pooled
+  this temp), V4 w in f12 (target f0).
+
+**3. gui 329C (98.62 -> 98.69).** `switch (arg0->spr->fmt)` (re-read through arg0, CSE'd with spr) keeps the
+named `t` out of the compares: they read the pool variable s0 as in the target and t stays a phantom in t1.
+Left: the second MAX pool temp (zdbug:5 bit 102, home M-56) is coloured v1 with only v0 / s0 forbidden (it is
+unconstrained, bit order, ahead of the TEXRECT / RDPHALF packet LRs t0 / t1 that would push it to t2).
+
+**4. Negatives (time-boxed).**
+- gui F04: ten `Ctx::next()` spellings (`dl->n++`, `DL *d` copies, references, `g` first): 88-97.25, none better.
+- gui 3714: the target frame is 96 with h the lowest home; five `volatile` pads after the named locals give
+  every sp offset (95.36 -> 95.42) but were not kept (pads in a natural C++ donor); an inline `load()` for the
+  call is lower (88.1). Its pool variable is a1 in the target (forbidden a0-a3 in ours: incoming-argument LRs).
+- bootup 31C0: KB members with empty inline ctors emit this==0 protocol code (lower); no new idea for the
+  fresh KB slot.
+- game_uso 97EC bound-temp order: `XZ(XZ(pos) - XZ(pos))`, `Vec3` copies, reference-bound `const Vec3 &d`,
+  single declarations of e and f, copy-init: 65.9-99.97, none moves the e / f bound temps.
+- B624 / B154 home-free colour anchors: see item 2.
+
+Gate (agent-g, rebased onto origin/main 623d99005): full make ROM byte-identical (cmp), verify-blocks 6/6, `make
+non_matching_objects` 0 errors, no exact lost, sentinels 551E0 / 55B10 / EBC8 / C5B0 / 62F08 at 100, 79.91 % code.
+post0b NM clip unchanged (0x2e9b0). New pins: `timproc_uso_b5_func_0000AC20_bss`, `D_timb5_AC20_w0`,
+`D_timb5_AC20_w1`, `D_timb5_AC20_w2`, `D_timb5_AC20_w3`, `timproc_uso_b5_func_0000B368_bss`, `timb5_B368_gscale`
+(all 0). Purge: `build/{,non_matching/}src/timproc_uso_b5/
+timproc_uso_b5.c.o`, new donor `build/src/timproc_uso_b5/timproc_uso_b5_ncc_AC20.cpp.o`, new NM donor
+`build/src/timproc_uso_b5/timproc_uso_b5_ncc_B154_nm.cpp.o`, changed NM donor
+`build/src/timproc_uso_b5/timproc_uso_b5_ncc_B624_nm.cpp.o`, retired NM donor
+`build/src/timproc_uso_b5/timproc_uso_b5_ncc_B368_nm.cpp.o`, new donor `build/src/timproc_uso_b5/timproc_uso_b5_ncc_B368.cpp.o`;
+`build/non_matching/src/gui_uso/gui_uso.c.o`, changed NM donor `build/src/gui_uso/gui_uso_ncc_329C_nm.cpp.o`.
+
+## kit CVIII (agent-c 2026-10-24, run 159): comma-operand store order (51448 exact), 493AC / 48AEC as real C++ <a name="kit-cviii-agent-c-run-159"></a>
+
+**Summary.** One exact: gl_func_00051448 99.78 -> 100 (216 bytes, cfe body, NM wrap removed; new pins
+`gl_func_00000000f3`, `D_51448_vt`), code 79.64 -> 79.67 %. NM gains (report.json): gl_func_000493AC 92.20 -> 96.52
+(1936 bytes; the NCC donor is now a real C++ member function, length 1928 -> 1936 = target) and gl_func_00048AEC
+88.11 -> 93.43 (2076 bytes; new NM-only NCC donor replacing the cfe body, length 2052 -> 2056). Scratch:
+`/tmp/claude-1000/c159/` (`cc.sh X.c [ctx]` = cfe compile + objdiff rows for 51448; `r/rn.sh` / `s/rn.sh X.cpp [ctx]` =
+NCC compile + rename `run__3Mgr` / `draw__3Obj` + rows; `r/ho.py`, `s/map.py DIFF` = target-to-ours home map relative to
+the frame top; `s/ofs.py` = our top-relative offsets).
+
+**1. Value materialised first, stored second = comma operand inside the OTHER store's value (51448 exact).** The
+target computed the vtable address into t6, then 0xFFFF into t7, but stored +0x120 before the vptr. ugen numbers its
+ring in evaluation order, and every statement order / temp / volatile form tried in run 158 gave vt-first stores
+or 0xFFFF in t6. `*(int *)(o + 0x120) = (*(int **)(o + 0x28) = &D_51448_vt, 0xFFFF);` evaluates the vptr store's
+value first and issues it after the 0x120 store: word for word the target (a doubled `o->m120 = 0xFFFF;` around
+the vptr store also matches, the first store is dead-store eliminated; the comma form is cfront's own shape and is
+the one landed). Tell: two independent stores whose registers are numbered in the opposite order of the stores.
+- Does NOT fix scheduler-placed stores: 35B1C's vptr `sw` sits after `addiu v1; addiu at` (just before the bne) in
+  the target; the comma inside p / q / the protocol test / the a3 store value: flat (97.40) or 92-94.
+- 39E24 (99.79): the order of the two held-base `lui`s after the call (target vf then G) is not moved by distinct
+  symbols for the call argument / the scale triple, named locals in either order, or operand order (inert).
+
+**2. 493AC as `int Mgr::run()` (92.20 -> 96.52).** Classes: BB (0x28 data bytes, 12 virtuals: the per-hit callback
+is slot 12, edg entry {d, f} at 0x60 / 0x64 of the vtable, `this->hit(0, &rec, j, o)`), the 4B620 AIter / IBase,
+`Rec` = 0x598 data bytes then its own vptr (declared `Rec rec;` exactly where the target stores the vtable address),
+`Ctx::count()` / `noop()` appends on `o->ctx6C`, `o->rows7C[k]` in a `for (k = 0; ...)` loop (uopt's strength-reduced
+offset is the target's sp+0x48 temp with its `sw zero` init; an explicit rowOff local lands in the wrong place).
+Home layout recipe (all sp offsets now = target, frame 0x6B8), measured with the top-relative map:
+- named function-scope locals first in declaration order (`it`, `total`, `buf`, `rec`), then function-scope temps;
+  the target has 10 words above `it` (4 are still `pad` words in the donor);
+- `b8 = b4 = b0 = 0;` (chained) adds the two pooled temps the target has between `rec` and the iterator return
+  temp (separate statements: none);
+- inline bodies: a named count in `next()` adds a home per expansion; `&head->buf[head->count++]` adds none;
+- `hit` declared after `rowStart` in the do-body, `c` / `e` / `j` / `m` in their blocks.
+Register shape: the m38 test through an inline `Elem::test(int)` (its `this` = the edg pool temp, the target's s2;
+a named `Elem *x` or a reference spelling is 94-96), the m34 argument through an inline `p34()`, and
+`Elem **next() { if (idx < last) return &(*a)[++idx]; return 0; }` (result in v0 like the target; the `?:` form
+puts it in a1, 96.24 -> 96.50). Residual (189 rows): s1 / s2 swapped (our pool temp outranks `e`: adjsave 2390 vs
+2040 in the zdbug:5 listing; e declared at other scopes / unsigned / separate `e++`: flat or lower), the IBase this
+and the first-loop temps one register off (v1 / a2), `flags30 |= 0x80` through `addiu v0,s6,0x30` in the target
+(reference / pointer / inline helper forms all fold the address).
+
+**3. 48AEC as `void Obj::draw()` (cfe 88.11 -> 93.43, new NM-only donor `game_libs_ncc_48AEC_nm.cpp`).** The cfe
+iterator blocks become three block-scoped `AIter it = arr.iter();` loops (the return temp is pooled across the
+arms, the target's shared sp+196 copy), the matrix / DL appends are `Ctx::mtx()` / `next()` with a NAMED count
+(`int n = dl->count; dl->count = n + 1; return &dl->buf[n];`: the dl pointer in a caller-saved register and re-read
+for buf, as the target), `load(m)` / `prim(hi, lo)` / `dlcall(p)` inline helpers, and the per-element call is
+`it.cur()->draw(this)` on a vptr at +0x5C.
+- **vptr placement:** a class that introduces virtuals gets its vptr AFTER all of its own data members, not after
+  the members declared before the first virtual. A vptr at 0x5C followed by members at 0x6C / 0x8A needs
+  `struct EBase { char pad[0x5C]; virtual ... };` and `struct Elem : EBase { ... }` (one class put ctx6C at 0x68).
+- declaration order gctx, A, B, mtx, i, j, k, `Mtx *mt`, cmd gives the target's gctx / mtx / cmd homes.
+- Residual: the mt address is rematerialised (target holds it in s0 across the call), gctx not spilled, the arm-1
+  region has 4 homes more than the target (dlcall / named-local variants of the per-node body all leave it), frame
+  0x168 vs 0x160.
+
+**4. Negatives (time-boxed).**
+- 40070 `sw zero` (kit CVI): union / `*(int *)&a = 0` / int element stores lose the FP-zero remats exactly like
+  the int element (96.54); the frame: chained float constants or `z[2] = z[1] = z[0] = 0.0f` add 2 of the 4 missing
+  homes between z and the V3 temp (same pooled pair, frame 0x58); Q4::set / set3 / setf inline helpers with or
+  without `if (0)` parameter keeps add none.
+- 45178 / 4EE44 / 525F0 / 4D468 are single-colour residuals (documented caps); 45178 also needs a RoData donor.
+
+Gate (agent-c, HEAD see report): full make ROM byte-identical, verify-blocks 6/6, `make non_matching_objects`
+0 errors, no exact lost, sentinels 551E0 / 55B10 / EBC8 / C5B0 / 62F08 at 100, 79.67 % code. post0b NM clip
+0x2e9b0 -> 0x2e9bc (62F08 NM offset 0x2e96c). New pins `gl_func_00000000f3`, `D_51448_vt`. Purge:
+`build/{,non_matching/}src/game_libs/game_libs_post0b.c.o`, changed donor
+`build/src/game_libs/game_libs_ncc_493AC_nm.cpp.o`, new donor `build/src/game_libs/game_libs_ncc_48AEC_nm.cpp.o`.
