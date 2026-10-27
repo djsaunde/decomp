@@ -44,6 +44,11 @@ def parse(text):
             markers.append({'name': name, 'alts': alts, 'kind': 'alt', 'label': name or f'alt{len(markers)}'})
         pos = m.end()
     chunks.append(text[pos:])
+    for mk in markers:
+        if any('@{' in s or '@[' in s or '}@' in s or ']@' in s for s in mk['alts']):
+            sys.exit(f'nested marker inside {mk["label"]}: markers cannot nest; use named groups @{{=NAME ..}}@ instead')
+    if any('@{' in c or '@[' in c or '@|' in c or '@;' in c for c in chunks):
+        sys.exit('unbalanced marker: a stray @{ @[ @| or @; is outside any complete marker')
     return chunks, markers
 
 
