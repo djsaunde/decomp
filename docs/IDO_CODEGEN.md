@@ -14544,6 +14544,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CXXIII (agent-g 2026-10-27, run 176): **porting a frame-tuned cfe NM body to NCC mechanically (bootup 90CC, 8424 B): what edg changes and how to put it back -- unreferenced locals are DROPPED (keep their slot with `T x = 0;`), a pointer do-while store loop UNROLLS (write it as an index loop), `(f32)255` / `0.0f` literals fold into a neighbour's constant (route through the kit CXIX int inline parameter), the filler/temp roles of the m2c body are wrong (a parameter is the flag candidate: `arg8 |= 1`, not `t = arg8 | 1`; one m2c variable that spans two live ranges must be split), plus per-site aliases and a fn-typed reload base; an `-O2 -g3` NCC build + mdebug local dump shows edg's real frame layout**](#kit-cxxiii-agent-g-run-176) -- _0 exacts (81.29 % code); NM (report.json): func_000090CC 97.15 -> 98.52 and func_000055A0 94.35 -> 95.32 (new NCC NM donors bootup_uso_ncc_90CC_nm.cpp / bootup_uso_ncc_55A0_nm.cpp); new pins bu_90cc_vt548_b, D_55A0_k1, D_55A0_k2; 591C mechanical port negative (90.60 vs cfe 94.16)._
 - [kit CXXIV (agent-c 2026-10-27, run 178): **NCC de-naming lever: every named single-use local is an edg variable with a home and a colour -- de-naming ia/ib/ic, vt, qa/qb, sg (macros) in the 3BE1C `Obj::query()` port took the frame to the target's 0xF0 with s0..s7; `*p++` reads through an s-register copy under NCC (split into `*p; p++;`); `continue` in a `while ((i = *p++) != -1)` duplicates the loop test (nest instead); cfe 5F0B8: dropping a BB break + naming xs/ys just before use puts c / 0.0f in the target's fs0 / fs1; negatives for 39E24 (data vs function alias: lui order vs scale-load hoist), 4EE44 / 525F0 / 35B1C as NCC (same residuals), 307A8 / 33EB8 / 3B9C0 under NCC**](#kit-cxxiv-agent-c-run-178) -- _1 exact: game_libs_func_0005F0B8 (452 B, 81.29 -> 81.35 % code; a store-then-reload-per-use FP local is a `volatile` local, homes fixed by declaration order, z*s named for the ring order); NM (report.json): 3BE1C 77.31 -> 88.64 (new NCC NM donor; `face(i + 0)` rvalue argument lever), 4A308 77.58 -> 94.47 (one de-named local + dropped parameter empty test), 3B6A0 73.62 -> 74.53 (`triAt(const int &)`), 4E424 93.22 -> 95.37 (volatile stack param z0, length = target); post0b NM clip 0x2ea68 -> 0x2ea7c; new pin D_3BE1C_c._
 - [kit CXXV (agent-g 2026-10-27, run 178): **`NCC -S` (ugen output before as1) separates uopt / ugen / as1 decisions; bootup 90CC: the "t-ring one behind" was the recomputed `arg0 + 0x808` CSE temp (ugen spills it through t6, as1 folds the copy into the target's `sw s0, 0x40(sp)`); the hoisted case-7 `li 25` is as1 filling a load delay slot from a successor block once `if (1) { *fq &= ~2; }` moves uopt's `li 7` below the store (uopt places a constant's li at the START of its LR's first BB; an empty `if (1) {}` makes no BB); structural fixes that lower objdiff fuzzy alone (alignment flips) must be scored in batches**](#kit-cxxv-agent-g-run-178) -- _0 exacts (81.29 % code); NM (report.json): func_000090CC 98.525 -> 98.829 (objdiff real rows 249 -> 68), func_000055A0 95.32 -> 97.24 (matrix through `float *mm = m` keeps the redundant G store, z0 / iterator placement, 1.0 row order, a call on its own source line); new pin bu_90cc_d148_18; negatives 31C0 slots, de-naming on 55A0 / 90CC._
+- [kit CXXVI (agent-c 2026-10-27, run 179): **automatic lever sweeps over every NM body of game_libs_post / post0b -- de-naming (once-assigned local -> macro, check side effects), `volatile` per local (469A8 `sp48` = the target's sp+72 home, +6.3), adjacent independent-statement swaps (IDO keeps store order; 2D374 count store after the next FP load 98.22 -> 99.56); score an in-file cfe body in ~1 s by compiling a scratch copy of the whole unit (asm_processor + cc, no post-process) against the expected .o; keep only steps whose length moves toward the target**](#kit-cxxvi-agent-c-run-179) -- _0 exacts (81.35 % code); 26 NM raises (report.json; also `if (1) {}` after each statement as a fourth sweep), e.g. 2D374 96.69 -> 99.59 (676 B = target length), 415A4 84.34 -> 93.38, 469A8 67.81 -> 74.14, 4A890 88.70 -> 93.47, 4C5E4 76.96 -> 79.69, 2E354 89.49 -> 91.02; post0b NM clip 0x2ea7c -> 0x2ea98; 2D374 volatile-i finding, colour residual and 99 %+ near-exact negatives listed._
 - [kit LXXXVII (agent-c 2026-10-24, run 148): **alignment survey (negative) + the original-file-start map of game_libs, and three twin / NCC levers** -- no non-exact function in the ROM differs from its target only in nop count or position; units in game_libs start at gl = 4 (mod 16) (16-byte aligned in bootup.uso text), every infinite-loop epilogue sits at gl = 0x14 (mod 32), and the pad words after a final `jr ra` mark 40+ original unit ends (map inside); arcproc 125C EXACT by porting the exact mgrproc 1C90 match_imports C; gl 44CE8 under NCC (pool base rematerialised, the old count carried in the result variable to keep the frame at 32); gl 3E0F0 arg word read before `gl(tmp = o, x)`](#kit-lxxxvii-agent-c-run-148) -- _1 exact (arcproc_uso_func_0000125C, 556 bytes; 76.92 -> 77.00 % code on e5cf258f7); NM: gl 44CE8 91.28 -> 99.53 (new NCC NM donor), gl 3E0F0 93.88 -> 99.90; post0b NM clip unchanged (0x2e928)._
 - [kit LXXXIV (agent-g 2026-10-24, run 155): **colour-pairing levers -- a void alias for a discarded call plus ONE local per register pair** -- gl 68DD4 (98.71, "colours only" for months) fell when the leading discarded K&R call went through a void alias (the dead v0 def pushed every later value one register up, kit IX) AND the two cursor reads were written with two int locals that each carry two roles (A = cursor then q2, B = value then cursor2), mirroring the target's register pairs; scripts/sibling-scan.py at 0.5 plus a longest-common-block scan found no new exact templates in agent-g units; twin NM port b3 13B8 <- arcproc 16F4 (+5.0); 5F984 NM donor takes the 5EB4C/5ED54 param copy; negatives for 5A2C4, D884, C310, BDEC, 2B7C, 23FC, 1824, 5F5F0, 525F0, E2D0, B154](#kit-lxxxiv-agent-g-run-155) -- _1 exact (gl_func_00068DD4, 340 bytes; 76.74 -> 76.78 % code with main's agent-c gains); NM: b3 13B8 80.36 -> 85.41, arcproc 16F4 85.36 -> 85.41, gl 5F984 90.11 -> 92.46 (post0b clip 0x2e904 -> 0x2e90c), gl 51448 95.00 -> 95.56, bootup 24B8 94.87 -> 95.21._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
@@ -42343,3 +42344,115 @@ and score them together.
   own line instead of after `D_55A0_G.a = 0;` on the same line moved the `sw zero, G` before the argument `addiu`s
   as in the target (96.90 -> 97.24). The `.loc` line records in the `.s` seem to bound as1's reordering. An automatic
   split-every-multi-statement-line grid (`split.py`) found no other gain on 55A0 or 90CC. Final 55A0: 97.24.
+
+## kit CXXVI (agent-c 2026-10-27, run 179): automatic lever sweeps over every NM body of two units -- de-naming (once-assigned local -> macro), `volatile` per local, adjacent independent-statement swaps, each kept only when report.json rises and the length moves toward the target; the in-file cfe body can be scored in ~1 s by compiling a scratch copy of the whole .c <a name="kit-cxxvi-agent-c-run-179"></a>
+
+**Summary.** No exacts (81.35 % code unchanged). Twenty-one NM functions of game_libs_post / game_libs_post0b raised
+(table in item 5). The run turned the kit CXXIV levers into scripts and ran them over every NM body of the two units:
+the NCC donors and the in-file cfe bodies alike.
+
+**1. Scoring an in-file cfe NM body without touching src/.** Copy the whole unit to a scratch file, edit the copy and
+run `python3 tools/asm-processor/asm_processor.py -O2 copy.c > copy_pp.c` (cwd = the project, so the `-I include`
+paths resolve), then the project's `cc -c -G 0 -non_shared -Xcpluscomm -Wab,-r4300_mul -O2 -mips2 -32 -I include -I src
+-DNON_MATCHING -o copy.o copy_pp.c`, then `objdiff-cli diff -1 build/src/game_libs/<unit>.c.o -2 copy.o -o - <fn>` and
+read `match_percent`. Skip asm-processor's post-process step: only the C function is scored, and objdiff matches it by
+symbol. A 28k-line unit takes well under a second per variant, so a 40-variant sweep of one function takes about a
+minute. The numbers follow report.json closely (2D374: local 98.92 = report 99.59; the offset is constant).
+Run parallel sweeps in separate work directories: two sweeps writing the same temp file names clobber each other.
+
+**2. The three sweeps (scripts in the run's scratch area, easy to rewrite).**
+- *De-naming*: for every local assigned exactly once by a whole-line `x = expr;` (or declared `T x = expr;`) that has
+  other uses, replace the assignment with `#define x (expr)` (and `#undef x` after the function), drop the
+  declaration, and score. Check every kept hit by hand: the macro re-evaluates `expr` at each use, so a call or a
+  side effect in expr changes the semantics. Rewrite kept hits as plain source (the expression inline at each use).
+- *Volatile*: prefix each local declaration with `volatile`, one at a time.
+- *Adjacent swap*: swap each pair of adjacent single-statement lines at the same indentation. Keep a swap only when
+  neither statement's left-hand side appears in the other one, and never swap two display-list packet emits (that
+  changes the output). A greedy loop applies the best kept swap and sweeps again until nothing rises.
+- Length rule: a candidate that changes the function length counts only when the new length is closer to the target.
+  That rule threw out the biggest raw hits: 3BE1C de-naming `v1` / `ey` 88.6 -> 91.3 but 1560 -> 1544 bytes (target
+  1568); 3B6A0 de-naming `ax` 74.5 -> 78.0 at +4 bytes away; 4D688 volatile `var_s4` at -4 bytes away.
+
+**3. What each lever found.**
+- De-naming (NCC and cfe): 4A308 `t2` (the entry+6 index, re-read at both uses) 94.47 -> 95.66; 2D374 the decrement
+  `n = c - 1` written at the store, which also brings 680 -> 676 bytes = target (96.69 -> 98.22); 4F2DC
+  `dists[i]` re-read three times; 4C5E4 the 0x148 pointer re-read; 6126C the format character tested inline;
+  3B6A0 `a` / `lim`; 36F0C the accel copy (`n = accel + 1; if (accel < 100) accel = n; k = accel / 10.0f;`).
+- Volatile: **469A8 `volatile s32 sp48` +6.3** (the run-151 note had already named a target "sp+72 home of the
+  0x148 -> 0xF0 word": m2c's `sp48` IS that home; a target store + reload of a local = a volatile local, kit
+  CXXIV); 54E78 `volatile f32 w` +1.5; 4A890 `volatile s32 sz` +2.5 (the target keeps sz in s1 across the call:
+  ours spills it with or without the volatile, the volatile only lines up the reload); 36694 `v48` +0.5.
+- Adjacent swaps (statement order is not free under IDO even for independent stores):
+  2D374 the count store after the following FP load (`d = f35C; TW(0xC) = c - 1;` -- the target has
+  `lwc1 d` then `sw t0,0xC(a2)`) 98.22 -> 99.56; 4A890 `ids++` after the run terminator store +2.3; 4C5E4 the two
+  s16 stores +1.3; 2E354 four store pairs +1.2; 37540 the three v9C loads as z, y, x +1.8; 4FD00 three pairs +0.8;
+  5A2C4 the packet's w1 store before w0 at two sites; 493AC `hit = 1` after the hit() call.
+- Nothing: 578B4, 40070, 4B620, 4BAF4, 454C4, 48AEC (de-naming `mt` +0.06 only), 59E80, 50444, 3E5E0, 41D40, 4B0A8,
+  49B3C, 3AE58, 46790, 3DF58, 34890, 5F5F0, 4E424, 525F0, 39E24, 4EE44, 30AF4, 31A74, 33EB8, 201B8, 396FC, 51AD8,
+  35B1C, 40304, 250C8, 307A8. The 99 %+ near-exacts in these units do not respond to any of the three levers.
+
+**4. Negatives probed by hand.**
+- 2D374 (99.59, 676 B, the closest new exact candidate): left are the colours of z / fr (f12 / f0, target f0 / f2), of
+  half / c - 1 (t0 / t1, target a0 / t0) and the post-call i reload (a3, target t2). Inert or worse: dead
+  `while (0) { x = 0; }` itab-bit probes (cfe drops them; also tried as an NCC port: 97.38), every declaration-order
+  transposition (36), merging d into z or reloading f358 into fr, `int i[1]`, i assigned inside the call argument,
+  volatile i (+8 bytes), `if (half) {}` in seven positions, writing the zero store as a literal (the constant then
+  materialises at the store; the target's early `mtc1 zero, f0` needs z to be a variable).
+- 39E24: the target materialises the vector base before the rematerialised G after the second call; dead references
+  to the vector alias are dropped by cfe; a second G alias for the scale loads costs a word.
+- 525F0: a `volatile` copy of obj across the call (the store lands before the call like the target) still reloads
+  into v1.
+- 40070: int-punned / union / int-typed element stores all lose the post-call FP-zero remats (kit CVI holds).
+- 578B4 (9676 B at 99.99): de-naming / declaration moves of sp50 / temp_ra_8 are inert or worse; the ra / t0 pair stays.
+
+**5. report.json before -> after (bytes).** 2D374 96.69 -> 99.59 (676), 469A8 67.81 -> 74.14 (412), 4A890 88.70 ->
+93.47 (352), 37540 77.45 -> 79.28 (764), 4C5E4 76.96 -> 78.61 (836), 54E78 77.54 -> 79.09 (552), 4A308 94.47 -> 95.66
+(872), 2E354 89.49 -> 90.67 (3684), 4FD00 79.50 -> 80.29 (1004), 4F2DC 88.60 -> 89.09 (1064), 36694 83.44 -> 84.01
+(712), 493AC 96.63 -> 96.90 (1936), 3B9C0 76.54 -> 76.72 (1116), 6126C 83.89 -> 84.05 (492), 334E8 73.71 -> 73.82
+(708), 33BE4 80.59 -> 80.70 (724), 3B6A0 74.53 -> 74.59 (800), 4D688 82.20 -> 82.25 (952), 42938 97.24 -> 97.28
+(1556), 36F0C 93.21 -> 93.22 (968).
+
+**6. Rules.**
+- Before hand-grinding an NM body, run the three sweeps over it; they cost minutes and find the cheap points.
+- A target that stores a local to the frame and reloads it is a `volatile` local (now confirmed on cfe bodies too:
+  469A8, 54E78); m2c's `spXX` name tells you which local.
+- Independent statements are not free to reorder: IDO keeps source order for stores, and a store placed after a
+  following load moves the load up. Sweep adjacent swaps, keep only swaps of independent statements.
+- Check every de-naming hit for side effects before keeping it.
+
+Gate (agent-c, not rebased by request): see the run report. post0b NM clip 0x2ea7c -> 0x2ea94 (469A8 +8, 54E78 +16;
+62F08 NM offset 0x2ea44). No new pins. Purge: `build/non_matching/src/game_libs/game_libs_post0b.c.o`,
+`build/non_matching/src/game_libs/game_libs_post.c.o`, changed NM donors `build/src/game_libs/game_libs_ncc_{36F0C,
+3B6A0,4A308,4A890,36694,493AC,3B9C0,42938,4D688}_nm.cpp.o`.
+
+**7. Addendum (same run).**
+- **2D374: the post-call `lw t2, 0x1c(sp)` of the target is a volatile local assigned inside the call argument.**
+  `volatile int i;` + `gl_func(0x4E010000, i = (int)d);` stores i in the jal delay slot, passes the converted value
+  straight in a1 and re-reads i from its home after the call into a fresh ugen temp, exactly the target's shape (the
+  `if (0) { f(&i); }` escape form reloads into a coloured a3 instead). With `if (half) {}` kept, the c - 1 temp then
+  also lands in the target's t0. Local score is equal to the committed form (98.917), so it is not committed; what is
+  left is c / half (a3 / v1, target v1 / a0) and z / fr (f12 / f0, target f0 / f2), i.e. two colouring-order ties.
+- A third and fourth sweep: moving a statement 2..4 lines up or down past independent statements (5A2C4 packet
+  w1-before-w0 at two sites +0.87, 2E354 +0.35, 54E78 +0.35), and inserting `if (1) {}` after each statement.
+- Fourth lever, `if (1) {}` after each statement (BB split; kit run 111): **415A4 84.34 -> 93.38** (after the f1C
+  store; 448 -> 452 bytes = target), 4F2DC +1.2 (after the vecA0[0] load; 1060 -> 1064 = target), 3B9C0 +1.0 (two
+  splits; 1120 -> 1116 = target), 334E8 +0.7, 37540 +0.5, 454C4 / 41D40 / 42938 / 49B3C / 59E80 / 493AC +0.03..0.2.
+  415A4 residual: the target's `| 6 | 0x400` is two separate `ori`s on a v0 value that starts as 0x406 next to a
+  second 0x406 for the first store (cfe folds `6 | 0x400` in every single-expression spelling; `|= 6; |= 0x400;`
+  gives the two oris but keeps the middle store, +8 bytes), plus aC / a8 constant registers and the v[] store order.
+
+**8. Final report.json (agent-c branch, gate passed: ROM cmp identical, verify-blocks 6/6, non_matching_objects 0
+errors, no exact lost vs local origin/main, sentinels 100; 81.35 % code, overall fuzzy 98.714 -> 98.754).**
+2E354 89.49 -> 91.02 (3684 B), 415A4 84.34 -> 93.38 (452), 469A8 67.81 -> 74.14 (412), 4C5E4 76.96 -> 79.69 (836),
+4F2DC 88.60 -> 90.45 (1064), 2D374 96.69 -> 99.59 (676), 37540 77.45 -> 79.80 (764), 4A890 88.70 -> 93.47 (352),
+5A2C4 89.34 -> 90.21 (1804), 3B9C0 76.54 -> 77.75 (1116), 54E78 77.54 -> 79.67 (552), 4A308 94.47 -> 95.66 (872),
+4FD00 79.50 -> 80.29 (1004), 493AC 96.63 -> 96.93 (1936), 334E8 73.71 -> 74.48 (708), 454C4 91.48 -> 91.71 (2028),
+36694 83.44 -> 84.01 (712), 42938 97.24 -> 97.36 (1556), 33BE4 80.59 -> 80.70 (724), 6126C 83.89 -> 84.05 (492),
+59E80 97.75 -> 97.80 (1092), 49B3C 99.31 -> 99.40 (640), 41D40 99.37 -> 99.51 (412), 4D688 82.20 -> 82.25 (952),
+3B6A0 74.53 -> 74.58 (800), 36F0C 93.21 -> 93.22 (968). Final post0b NM clip **0x2ea98** (62F08 NM offset 0x2ea48;
+469A8 +8, 54E78 +16, 4F2DC +4, 3B9C0 -4, 415A4 +4). Changed NM donors (purge): game_libs_ncc_{36F0C,3B6A0,4A308,
+4A890,36694,493AC,3B9C0,42938,4D688,454C4,41D40,59E80}_nm.cpp.o and game_libs_ncc_49B3C.cpp.o. No new pins.
+- Late addendum: 54E78 (quaternion -> matrix, cfe) kept responding to order sweeps: the zero stores after their row
+  neighbours (`m[0x134]` before `m[0x138] = d`, 0x144 before 0x148) 79.67 -> 82.57, then the 0x164 translation store
+  above 0x15C / 0x160 82.57 -> 85.33 with 556 -> 552 bytes = target. Final 54E78 77.54 -> 85.33 (552 B). Final post0b
+  NM clip **0x2ea94** (62F08 NM offset 0x2ea44); this supersedes the 0x2ea98 above. Overall fuzzy 98.714 -> 98.759.
