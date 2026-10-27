@@ -181,7 +181,8 @@ def probe(job):
                                ['-I', 'include', '-I', 'src', '-DNON_MATCHING', '-o', o, pp],
                                capture_output=True, text=True, cwd=c['wt'])
         else:
-            r = subprocess.run([c['cc'], '-c'] + c['flags'].split() + ['-o', o, p],
+            r = subprocess.run([c['cc'], '-c'] + c['flags'].split() +
+                               ['-I', os.path.join(c['wt'], 'include'), '-I', os.path.join(c['wt'], 'src'), '-o', o, p],
                                capture_output=True, text=True, cwd=os.path.dirname(c['src']))
         if r.returncode or not os.path.exists(o):
             return tag, None
