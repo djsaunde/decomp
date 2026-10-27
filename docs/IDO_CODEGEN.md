@@ -14539,6 +14539,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CXVII (agent-g 2026-10-25, run 172): **which increments feed a shared slot / count variable decides its colours: grid the spelling per site (`_n = c++` vs explicit `_n = c; c = _n + 1` vs `buf[c++]`) -- closed bootup 1A44's last 12 words (NCC DL emitter, exact); NCC keeps source operand order, so flip cfe-tuned products; an NCC `for (i < n)` with `x + i * 13` is the target's strength-reduced glyph loop (23FC); timproc_b5 32C8's pool words are literals (2-word cfe form, mtc1 placement left); port / sweep / greedy scripts**](#kit-cxvii-agent-g-run-172) -- _1 exact (1A44, 460 B); NM (report.json): 23FC 97.25 -> 98.70, E68 88.98 -> 90.53 (u32 vidx), 329C 98.69 -> 98.85, F04 97.25 -> 97.35; timer-HUD NCC donors b3 13B8 / arcproc 16F4 86.46 -> 89.18, b1 1340 85.69 -> 86.48, gui 3714 95.36 -> 95.41._
 - [kit CXVIII (agent-c 2026-10-25, run 173): **37348 EXACT (the second vector's zeros through an int inline parameter, kit CXIX, + jal-0 / pool-alias binding for the ROM tree) and 41820 EXACT as `Self::init()`: a member call on `this` allocates a hidden pooled `this` temp (route the attach through a FREE inline with the kept q FIRST so q shares the freed slot), a trailing `if (s) {}` and a kept call result `int r = gl(...); ... if (r) {}` set two this-reload colours (v0 live forces v1); AIter next() as `int n = idx + 1; idx = n; return &(*a)[n];` (41D40 / 4B0A8 gain, 4B620 loses: per-function); per-site keep grid on inline DL appends moves one 4B620 packet; negatives with diagnoses for 37348's single 0.0 candidate (call-region BBs not in the LR, no split from C++), 3E5E0 spill slot, 46790 ring grid, 4EE44, 525F0 link() member, 307A8, 33EB8 under NCC, 5F5F0 z colour; lead: 250C8's fontId shares the bytesRemaining CSE temp's home at sp+0x24**](#kit-cxviii-agent-c-run-173) -- _2 exacts (game_libs_func_00041820 588 B, gl_func_00037348 504 B; 80.88 -> 81.02 % code); NM (report.json): 3AE58 98.37 -> 99.26 (ternary into a kept inline parameter), 49B3C 97.375 -> 99.31 (free iter(), list next() spelling, callback through a kept inline parameter), 48AEC 96.57 -> 96.69, 41D40 99.32 -> 99.37, 4B0A8 99.22 -> 99.32, 4B620 99.00 -> 99.22; post0b NM clip 0x2ea28 -> 0x2ea2c._
 - [kit CXIX (agent-g 2026-10-25, run 173): **the same FP constant used far away (value children's `= 0.0f` at the function tail) joins an earlier candidate's LR, which uopt then splits at a call -- route the far use through an int-typed inline parameter (`setv(c, 0)`: cvt folded after candidate selection, local mtc1); timproc_b5 32C8 under NCC 160 -> 2 words (not landed: literal-pool relocs score below the cfe body); uopt emits a constant candidate's li.s at its first use in the LR's first BB; 31C0's extra slot is the new-expression result temp allocated before T; negatives for 76F4, 97EC, 1DDC (return-slot temps = Ctx::getOut + set), 329C, CEB4 / E2D0 under NCC**](#kit-cxix-agent-g-run-173) -- _0 exacts (80.88 % code); NM (report.json): gui F04 97.35 -> 97.44 and gui 3714 95.41 -> 96.09 via a fifth append spelling `n = dl->n; dl->n++` (item 5)._
+- [kit CXX (agent-c 2026-10-25, run 175): **cfe bodies that were never C++ land EXACT as natural NCC members on the first or second draft: 54264 `Mesh::sample()` (inline V3(const S3 &) ctor, by-value set(V3) = the one copy temp; a named pointer kept past the p stores with `if (cs) {}` takes p's reload off v0, a second `if (t) {}` restores the colour order), 608A4 `TextWin::draw()` (inline size() / pos() members = the target's s0 / v0 store values), 500EC `Mesh::paint()` (S3 inline int operator==, candidate on the LEFT); Mesh layout; negatives for 4FD00 (intermediate stores), 415A4 (edg folds `| 6 | 0x400`; inline-ctor `new`), 4B2F4, 40070, 41D40 / 4B0A8, 31A74, 4A890, 4A9F0**](#kit-cxx-agent-c-run-175) -- _3 exacts (gl_func_00054264 856 B, gl_func_000608A4 464 B, gl_func_000500EC 696 B; 81.02 -> 81.29 % code); NM: 50444 86.72 -> 91.94 (length = target); post0b NM clip 0x2ea2c -> 0x2ea44; new pin D_500EC_cnt._
 - [kit LXXXVII (agent-c 2026-10-24, run 148): **alignment survey (negative) + the original-file-start map of game_libs, and three twin / NCC levers** -- no non-exact function in the ROM differs from its target only in nop count or position; units in game_libs start at gl = 4 (mod 16) (16-byte aligned in bootup.uso text), every infinite-loop epilogue sits at gl = 0x14 (mod 32), and the pad words after a final `jr ra` mark 40+ original unit ends (map inside); arcproc 125C EXACT by porting the exact mgrproc 1C90 match_imports C; gl 44CE8 under NCC (pool base rematerialised, the old count carried in the result variable to keep the frame at 32); gl 3E0F0 arg word read before `gl(tmp = o, x)`](#kit-lxxxvii-agent-c-run-148) -- _1 exact (arcproc_uso_func_0000125C, 556 bytes; 76.92 -> 77.00 % code on e5cf258f7); NM: gl 44CE8 91.28 -> 99.53 (new NCC NM donor), gl 3E0F0 93.88 -> 99.90; post0b NM clip unchanged (0x2e928)._
 - [kit LXXXIV (agent-g 2026-10-24, run 155): **colour-pairing levers -- a void alias for a discarded call plus ONE local per register pair** -- gl 68DD4 (98.71, "colours only" for months) fell when the leading discarded K&R call went through a void alias (the dead v0 def pushed every later value one register up, kit IX) AND the two cursor reads were written with two int locals that each carry two roles (A = cursor then q2, B = value then cursor2), mirroring the target's register pairs; scripts/sibling-scan.py at 0.5 plus a longest-common-block scan found no new exact templates in agent-g units; twin NM port b3 13B8 <- arcproc 16F4 (+5.0); 5F984 NM donor takes the 5EB4C/5ED54 param copy; negatives for 5A2C4, D884, C310, BDEC, 2B7C, 23FC, 1824, 5F5F0, 525F0, E2D0, B154](#kit-lxxxiv-agent-g-run-155) -- _1 exact (gl_func_00068DD4, 340 bytes; 76.74 -> 76.78 % code with main's agent-c gains); NM: b3 13B8 80.36 -> 85.41, arcproc 16F4 85.36 -> 85.41, gl 5F984 90.11 -> 92.46 (post0b clip 0x2e904 -> 0x2e90c), gl 51448 95.00 -> 95.56, bootup 24B8 94.87 -> 95.21._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
@@ -41832,3 +41833,102 @@ gSPTexture packet: 97.35 -> 97.44 (report.json); a greedy over gui 3714's append
 95.41 -> 96.09. Inert on gui 4568, worse on 329C (cmp ratio 86 vs 91.6), and on 2DE0 it moves the length away from the
 target (302 -> 297; not kept). Scratch `ngreedy.py SRCREL FUNC ASMREL` (per-site greedy over `->next()` with the four
 extra spellings injected next to the class's next(); scores the standalone cmp ratio -- confirm in-tree with objdiff).
+
+## kit CXX (agent-c 2026-10-25, run 175): three cfe bodies that were never C++ land EXACT as plain NCC members (54264 Mesh::sample, 608A4 TextWin::draw, 500EC Mesh::paint); a dead test on a kept pointer moves a parameter reload off v0, a second dead test restores the colour order; inline-member parameters are the target's odd s0 / v0 store values <a name="kit-cxx-agent-c-run-175"></a>
+
+**Summary.** Three exacts in game_libs_post0b, each a cfe NM body (85.12 / 84.27 / 91.72) that had never been tried
+as natural C++: gl_func_00054264 (856 B, `src/game_libs/game_libs_ncc_54264.cpp`), gl_func_000608A4 (464 B,
+`game_libs_ncc_608A4.cpp`), gl_func_000500EC (696 B, `game_libs_ncc_500EC.cpp`); 81.02 -> 81.29 % code. NM gain:
+gl_func_00050444 86.72 -> 91.94 (`game_libs_ncc_50444_nm.cpp`, length = target). The lesson is the method, not a
+lever: a cfe body full of volatile Vec3 locals, per-site aliases, `mult` variables and goto layouts is usually a short
+C++ member over the same data, and the first natural NCC draft scores 86-97 at the target length. All three were
+first drafts plus 2-6 spelling probes (minutes each). The Mesh object used by 54264 / 500EC / 50444 / 4FD00 / 4A308:
++0x44 triangle count, +0x54 planes (12 B), +0x58 normals (V3), +0x60 positions (S3 = 3 x s16), +0x68 triangles (8 B:
+s16, then u16 i[3]), +0x78 colour bytes.
+
+**0. 54264 = `void Mesh::sample(V3 &p, V3 &n, int t)`, a uniform random point in a triangle (85.12 -> EXACT).**
+`u = rnd(); v = rnd(); if (u + v > 1.0f) { u = 1 - u; v = 1 - v; }`, the three positions through an inline
+`V3(const S3 &)` ctor (the `* 6` index stays a multu with the 6 in a register -- no `mult` variable needed), w = 1 - u
+- v, p = a*w + b*u + c*v per component, then the normals copied in through a BY-VALUE `void set(V3 v)` (the target's
+int-word copy into ONE temp at sp+0x24, then float copy-out; plain struct assignment drops the temp, 792 B) and n
+blended the same way. First draft 86.5; set() 97.9 at the target length; three function-scope volatiles before `V3 a`
+= frame 0x78 and every home (98.11). The last residual was p's reload in v0 (target a1), so as1 hoisted the 12 constant
+into a1 instead of p and could not raise the &tmp addiu above the p stores. zdbug:5 showed p's coloured piece alone in
+the basic block after c's ctor (inline CTORS end a basic block; non-ctor inline members do not) with nothing in v0 live
+there. **Fix: name c's S3 pointer and keep it past the p stores** (`cs = &verts[...]; V3 c(*cs); ... p stores ...;
+if (cs) {}`, cs declared in place of one volatile so the homes stay): p leaves v0 and the hoists happen (99.02). The
+dead test's extra blocks flipped two colour priorities (t*8 / the 6, 12 constants / p: v1 <-> a1, and u / v: fv1 <->
+fa0); **a second dead test `if (t) {}` right after it restores both** (99.86), and the fold order `u = 1 - u` first
+closes the last two words. ROM: the two rnd() calls go to gl_func_00000000 (baked jal 0); no relocs in the target.
+Rule: when a parameter's reload takes v0 where the target has its arg register and nothing interferes, keep a v0-coloured
+value (a named pointer from the previous statement) live across that block with a trailing dead test; if the extra
+blocks reshuffle other colours, a second dead test on an unrelated live value can shift the priorities back.
+
+**1. 608A4 = `void TextWin::draw(int big)` (84.27 -> EXACT, first draft 86.94).** Optional big-font switch (cw = ch =
+8), a by-address `Pt p(0, 0x408)` for the frame call, the right edge clipped to 290, the title call, then one text call
+per visible row whose length exceeds the horizontal scroll (`for (i = top; i < top + vis; i++, yy += ch)`, the bound
+re-read after each call). The global draw context (&D_00000000, held in s4) was set with plain member stores in the
+draft (86.9); **through inline members `size(w, h) { cw = w; ch = h; }` / `pos(px, py) { x = px; y = py; }` it is
+EXACT**: the parameters of the inline are the target's otherwise-unexplained s0 / v0 values computed before the store
+pair. Calls bound to gl_func_00000000 for the ROM tree (a donor calling gl_func_00034458 links a real address).
+Rule: a pair of stores whose values sit in an odd register (s0 with no call between) is an inline member's
+parameters.
+
+**2. 500EC = `int Mesh::paint(unsigned t)`, a triangle graph-colouring step (91.72 -> EXACT, first draft 92.66).** For
+each other triangle i sharing a vertex position with t, if `adj(i, t)` (out-of-line, renamed to the blank jal 0) give i
+a colour from a wrapping counter (new pin D_500EC_cnt = 0) when it has none, reject if an adjacent triangle already has
+it, else copy it to t. The cfe body's two constant-6 carriers, hand-spelt `((x<<2)-x)<<1`, goto layout and
+retry block all fall out of `for (k = 0; k < 3; k++)` + an S3 inline `int operator==` (its result is the target's
+xor / sltiu v0 and its `this` binding the target's `or v1,a1` / `or a0,a1` copies). Steps: the vertex written
+inline at each comparison instead of a named `S3 &v` (96.91, length = target: the named reference had removed the
+per-comparison this copies), `col[j] == col[i]` in the conflict scan (96.97), and **the candidate on the LEFT of
+`==`** (`pos[tris[i].i[n]] == pos[tris[t].i[k]]`): 99.93 = relocations only. Rule: for an inline comparison operator
+the operand order decides which side is `this` (copied) and which loads first -- grid both sides before anything else.
+
+**3. 50444 (NM, 86.72 -> 91.94, length 484 -> 488 = target).** `unsigned intern(int start, Mesh *m, float *pos,
+float *uv, unsigned max)` with the same S3 (and S2) inline `int operator==`; the position key through an inline
+`S3(float, float, float)` ctor gives the target's loads-first order (member-wise stores interleave), the uv key
+member-wise (the target interleaves those), member-wise inline `operator=` for the appends (struct assignment gives
+lwl/lwr), and **`int start`** (signed) -- an unsigned start was 4 bytes long (a copy of the reloaded start into the
+loop register). Residual: pos stays a register candidate (target: memory home stored at entry, base reloaded into t7),
+shifting the t-ring by one. Tried, flat or worse: `const V3 &v = *pos`, `pos->x`, an `S3(const V3 &)` ctor,
+`if (0) gl(&pos)` (homes every parameter, frame 0x28), the loop on `start` itself (s-register), element-left
+comparisons, `o.x == x` inside the operator.
+
+**4. Negatives (time-boxed).**
+- 4FD00 (Mesh edge-midpoint test, 79.5 cfe): a natural draft with S3 `operator+=` sums, `V3(const S3 &)`, by-value
+  `operator=` and `+= / -= / /=` members scores 44: the target stores every intermediate member value (array-like
+  memory), NCC promotes the fields; `struct V3 { float v[3]; }` and `V3 v[5]` drafts 44 / 48. Needs the cfe array trick
+  in C++ form first.
+- 415A4 (module init, 84.34 cfe): best NCC 87.87 but 440 B (cfe NM 448, target 452; away, not kept). Open: the target
+  stores the +0x28 mode word twice (`li 1030; sw` then a SEPARATE `li 1030; ori 6; ori 0x400; sw`) -- edg folds
+  `x | 6 | 0x400` to `| 0x406` in every spelling (parenthesised, inline `orf()`, inline parameter, local m: uopt folds
+  that one), and separate `|=` statements keep three stores. `new O128(1)` needs an INLINE ctor calling the blank
+  function to give the target's alloc / test / ctor-call shape (an out-of-line ctor moves the alloc inside the callee).
+  `(g1 = this)->pC` materialises &g1 (C++ lvalue assignment); a separate `g1 = this;` puts this in s0.
+- 4B2F4 (98.37): flags `| 2` written into a new temp in the target (`ori t5,a2,2`) while flags itself is an a2
+  candidate spilled around the pack call: a new variable / inline parameter / `(flags | 2)` operand makes flags a
+  memory variable (90.5); keeps on flags lose. Not reached.
+- 40070: `M4f() { a = 0; }` (int literal into the float member) and an int inline parameter both keep `swc1`; the int
+  route gives a separate `mtc1 zero, ft0` + swc1, never `sw zero` (kit CXIX's route does not reach a store).
+- 41D40 / 4B0A8 (AIter next()): for / do-while / named-result next() spellings are identical or lower; the two loop
+  copies of next() share one pooled result temp in every form.
+- 31A74 under NCC: 86.66 at 552 B (cfe 90.72 at 564); prototyped char arguments and dropping the named locals do not
+  recover it. 4A890: a variable reused for the ids copy and the list base gives the target length (352) at 82.6; a
+  trailing `if (sz) {}` is 90.49 but 340 B (away). 4A9F0: put() spellings and a shared cursor helper flat or longer.
+- 4F2DC (screen-point raycast picker, cfe 88.56) as `int Picker::pick(int x, int y, V3 &out)` with V3 operators
+  (lead, 72.79 at 1104 B vs 1064): the target's lw/sw triple copies are BY-VALUE V3 parameters of a V3 WITHOUT a
+  user copy ctor (a user `V3(const V3 &)` turns every by-value copy into lwc1/swc1 and drops the word copies: 46.9 ->
+  65.5 when removed), `operator=(V3)` by value gives the copy-into-temp + float copy-out, `V3 x = a * b` (no
+  separate assignment) writes the product straight into x's home like the target's vecE0, and the hit array must be
+  `float hits[8][3]` (a `V3 hits[8]` with a user default ctor calls __vec_new). Open: the two extra word copies of
+  `end` (112 -> 132 -> 84) and the camera-position float copy; start from `/tmp/claude-1000/c175/pk3b.cpp`.
+
+Gate (agent-c, worktree on 6cf90d003; origin/main moved to 744f9119c with a gui-only change, not rebased by request):
+full make ROM byte-identical (cmp), verify-blocks 6/6, `make non_matching_objects` 0 errors, no exact lost, sentinels
+551E0 / 55B10 / EBC8 / C5B0 / 62F08 at 100, 81.29 % code. post0b NM clip 0x2ea2c -> 0x2ea44 (54264 -4, 608A4 +8, 50444
++4, 500EC +16; 62F08 NM offset 0x2e9f4). New pin `D_500EC_cnt = 0x00000000`. Purge:
+`build/src/game_libs/game_libs_post0b.c.o`, `build/non_matching/src/game_libs/game_libs_post0b.c.o`, new exact donors
+`build/src/game_libs/game_libs_ncc_54264.cpp.o`, `build/src/game_libs/game_libs_ncc_608A4.cpp.o`,
+`build/src/game_libs/game_libs_ncc_500EC.cpp.o`, new NM donor `build/src/game_libs/game_libs_ncc_50444_nm.cpp.o`
+(retired: `build/src/game_libs/game_libs_ncc_54264_nm.cpp.o`).
