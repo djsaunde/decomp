@@ -14547,7 +14547,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CXXVI (agent-c 2026-10-27, run 179): **automatic lever sweeps over every NM body of game_libs_post / post0b -- de-naming (once-assigned local -> macro, check side effects), `volatile` per local (469A8 `sp48` = the target's sp+72 home, +6.3), adjacent independent-statement swaps (IDO keeps store order; 2D374 count store after the next FP load 98.22 -> 99.56); score an in-file cfe body in ~1 s by compiling a scratch copy of the whole unit (asm_processor + cc, no post-process) against the expected .o; keep only steps whose length moves toward the target**](#kit-cxxvi-agent-c-run-179) -- _0 exacts (81.35 % code); 26 NM raises (report.json; also `if (1) {}` after each statement as a fourth sweep), e.g. 2D374 96.69 -> 99.59 (676 B = target length), 415A4 84.34 -> 93.38, 469A8 67.81 -> 74.14, 4A890 88.70 -> 93.47, 4C5E4 76.96 -> 79.69, 2E354 89.49 -> 91.02; post0b NM clip 0x2ea7c -> 0x2ea98; 2D374 volatile-i finding, colour residual and 99 %+ near-exact negatives listed._
 - [kit CXXVII (agent-g 2026-10-27, run 179): **titproc 5DC EXACT as a cfe jumptable donor under the evidence-backed uninitialised-local exception (target reads s5v's never-written home; unit keeps `#ifdef NON_MATCHING #include` of the donor, since a bare INCLUDE_ASM in the NM tree scores 0); 90CC: `if (1) { store; }` at the 0xA58 store stops as1 copying a 2-word join block into a predecessor (length = target); spelling-grid negatives**](#kit-cxxvii-agent-g-run-179) -- _EXACT titproc_uso_func_000005DC (1424 B, 81.35 -> 81.53 % code); NM func_000090CC 98.83 -> 99.25, game_uso_func_00001DDC 99.77 -> 99.96 (spelling-grid: const M4 & reads); pin titproc_uso_func_000005DC_rodata; D_55A0_k1/k2 retired._
 - [kit CXXVIII (agent-c 2026-10-27, run 180): **two cfe "colour caps" were C++: 525F0 = cfront `new Foo(cfg, this)` through an out-of-line ctor (a cfe call with a literal-0 first argument is the tell) and 39E24 = inline `Cam::mul(G &)` on a member of the same global block through a local reference (lui order + may-alias load order); spelling-grid.py / lever-sweep.py field report**](#kit-cxxviii-agent-c-run-180) -- _EXACT gl_func_000525F0 (132 B) + gl_func_00039E24 (192 B), 81.35 -> 81.39 % code; NM 2D374 99.59 -> 99.64 (de-named raw); bootup twin func_000076F4 should take the 39E24 shape; negatives 578B4 / 41D40 / 49B3C / 4EE44 / 5F5F0 / 40070 / 35B1C (NCC) / 307A8 (NCC) / 250C8 / 415A4._
-- [kit CXXIX (agent-g 2026-10-27, run 180): **NCC frame layout is ONE top-down sequence (arm locals + their inline temps, then nested-block locals and temps of both arms in source order); the pooled V3 return slot lands right under the last earlier local; 1DDC residue = a v1 matrix pointer that is a coloured variable with no home before the call; 3558 node pointer through the Ctx accessor**](#kit-cxxix-agent-g-run-180) -- _NM game_uso_func_00003558 75.62 -> 76.41; 1DDC layout-exact (10 words, v0/v1) and register-exact (9 words, slot -8) variants mapped, neither beats 99.97 in objdiff; negatives 97EC / 32C8 / 8FC8 / 7C1C._
+- [kit CXXIX (agent-g 2026-10-27, run 180): **NCC frame layout is ONE top-down sequence (arm locals + their inline temps, then nested-block locals and temps of both arms in source order); the pooled V3 return slot lands right under the last earlier local; 1DDC residue = a v1 matrix pointer that is a coloured variable with no home before the call; 3558 node pointer through the Ctx accessor**](#kit-cxxix-agent-g-run-180) -- _EXACT func_000076F4 (bootup 220 B, the gl 39E24 shape; lay structs out by ROM immediates, not expected/ addends), 81.53 -> 81.56 % code; NM gl_func_00063964 88.86 -> 94.81 (V3 ctor forwarding to set(); flagged, length 1112 -> 1108 vs 1120), game_uso_func_00003558 75.62 -> 77.39, BB8C 93.31 -> 95.66 (named `Sub *sb` gives the matrix this-adjust addiu), 0B3C 94.94 -> 95.09 (base pointer advanced in place); 1DDC layout-exact (10 words, v0/v1) and register-exact (9 words, slot -8) variants mapped, neither beats 99.97 in objdiff; negatives 65494 NCC port (77.45 < cfe 79.53, dual-zero), 97EC / 32C8 / 6808 / 8FC8 / 7C1C._
+- [kit CXXX (agent-c 2026-10-27, run 181): **gl_func_000201B8 = OoT AudioHeap_AllocCached (older revision): transcribing the reference source with its own types and control flow beat a 97.94 typed-view rewrite in one step (99.11; IDO turns the CACHE_EITHER self tail call into the branch to the top), then `x = 0; if (c) {} else { x = v; }` (hoisted constant + kept empty then-arm) fixed the last delay-slot swap; -O3 / literal-0 `new` / ternary-hoist negatives**](#kit-cxxx-agent-c-run-181) -- _EXACT gl_func_000201B8 (1796 B) + gl_func_0004E00C (300 B, NCC: a five-trip loop's peeled iteration = the kept `li v1,1` IV), 81.57 -> 81.85 % code; new pins D_345c0_201B8, gl_func_00000000_201B8v; post0b NM clip 0x2ea94 -> 0x2ea9c._
 - [kit LXXXVII (agent-c 2026-10-24, run 148): **alignment survey (negative) + the original-file-start map of game_libs, and three twin / NCC levers** -- no non-exact function in the ROM differs from its target only in nop count or position; units in game_libs start at gl = 4 (mod 16) (16-byte aligned in bootup.uso text), every infinite-loop epilogue sits at gl = 0x14 (mod 32), and the pad words after a final `jr ra` mark 40+ original unit ends (map inside); arcproc 125C EXACT by porting the exact mgrproc 1C90 match_imports C; gl 44CE8 under NCC (pool base rematerialised, the old count carried in the result variable to keep the frame at 32); gl 3E0F0 arg word read before `gl(tmp = o, x)`](#kit-lxxxvii-agent-c-run-148) -- _1 exact (arcproc_uso_func_0000125C, 556 bytes; 76.92 -> 77.00 % code on e5cf258f7); NM: gl 44CE8 91.28 -> 99.53 (new NCC NM donor), gl 3E0F0 93.88 -> 99.90; post0b NM clip unchanged (0x2e928)._
 - [kit LXXXIV (agent-g 2026-10-24, run 155): **colour-pairing levers -- a void alias for a discarded call plus ONE local per register pair** -- gl 68DD4 (98.71, "colours only" for months) fell when the leading discarded K&R call went through a void alias (the dead v0 def pushed every later value one register up, kit IX) AND the two cursor reads were written with two int locals that each carry two roles (A = cursor then q2, B = value then cursor2), mirroring the target's register pairs; scripts/sibling-scan.py at 0.5 plus a longest-common-block scan found no new exact templates in agent-g units; twin NM port b3 13B8 <- arcproc 16F4 (+5.0); 5F984 NM donor takes the 5EB4C/5ED54 param copy; negatives for 5A2C4, D884, C310, BDEC, 2B7C, 23FC, 1824, 5F5F0, 525F0, E2D0, B154](#kit-lxxxiv-agent-g-run-155) -- _1 exact (gl_func_00068DD4, 340 bytes; 76.74 -> 76.78 % code with main's agent-c gains); NM: b3 13B8 80.36 -> 85.41, arcproc 16F4 85.36 -> 85.41, gl 5F984 90.11 -> 92.46 (post0b clip 0x2e904 -> 0x2e90c), gl 51448 95.00 -> 95.56, bootup 24B8 94.87 -> 95.21._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
@@ -42707,3 +42708,121 @@ statement-order permutations of the vF8 / vEC / v104 fills do not move the f0/f2
 - (same run) 5F5F0: degenerate-axis statement perms, copy-out perms, the `x *= 10` block perm, `d2 = 100`
   spellings, v[] refill perm, three `len` spellings, cross-product operand order, slen association and the
   translation sum spelling (~80 probes) were all flat or lower.
+
+**kit CXXIX addendum (same run): the matrix "this-adjust" shape is a cheap scan target.** The pattern
+`lw rA,K(obj); lwc1 f,160(rA); addiu rB,rA,112; lwc1 f,52(rB); lwc1 f,56(rB)` (M4 at +0x70, translation row at
++0x30 of it: first field folded into the base, then `this` materialised for the other two) is what a matrix
+`getPos` through a POINTER VARIABLE emits; a direct member chain (`obj->sub->mtx.getPos(v)`) folds all three loads
+(160/164/168) and loses the addiu. Two wins from scanning every non-exact function for a target `addiu rX,rY,112|48`
+that ours lacks (one python loop over objdump of expected vs build/non_matching):
+- game_uso BB8C (NCC): `Sub *sb;` as a function-scope named local (after `norm`) + `sb = obj->sub; sb->mtx.getPos(q.pos);`
+  = 93.31 -> 95.66, frame unchanged. A block-scope `{ Sub *sb = ...; }` gets the same instructions but pushes the frame
+  8 bytes (95.44); an inline `Sub::pos(P3 &v) const { mtx.getPos(v); }` without any named local is 95.56. The target
+  keeps the pointer in ONE register (a2, rd == rs); ours still splits it v1 -> v0.
+- game_uso 0B3C (cfe): advance the base pointer in place, `bv += 0x70;` (and later `tv += 0x30;` for a store run) =
+  rd == rs exactly as the target, 94.94 -> 95.09. The second one adds a word (707 vs 706): the target really has that
+  addiu, so the old body was length-equal by accident; the remaining extra word is a dead `addiu v1,v1,2648` after the
+  first 0xA58 RMW block that survives deleting its `tv += 0xA58;` and an `if (1) { store; }` wrapper (not the 90CC
+  as1 join copy then), and the target's jumptable has 5 entries (`sltiu at,t9,5`) where ours has 4 (`case 4: break;`
+  is folded into the default; adding `default: break;` or `case 4: ;` does not bring it back).
+- bootup 6808 `*(int *)(p + 0x30) |= 0x40` (target `addiu v0,s1,48; lw/ori/sw 0(v0)`): pointer temporaries and
+  `if (1) { f += 0x30; }` all score lower. Not every materialised offset is this lever.
+
+**Negative: gl_func_00065494 as NCC (79.53 cfe).** A full C++ port (Iter over a `{data, next}` list held at
+sp+384, V3 by-value operators + by-value operator=, hit struct with a POD normal, a virtual `react(f32, V3 *, f32)` at
+vtable +0x60 through `struct VB { char pad[0x28]; virtual ... }` so the vptr lands at +0x28, the ten function-scope
+scalars that give the target's 40-byte home block) reaches the exact length and frame but only 77.45: NCC folds all
+zero literals into ONE register where the target keeps two (f24 for the comparisons / initial zeroing, f22 for the
+normal's x/z) and CSEs the virtual call's 1.0f argument with the normal's 1.0f (`mfc1 a3,f24` vs the target's
+`lui a3,0x3f80`). Gotchas met on the way: a variadic prototype promotes the 400.0f argument to double (`lui 0x4079`
+pair) -- give the callee a real prototype; a struct whose member has a user-declared ctor gets an implicit ctor
+with the cfront `this == 0 -> __nw__FUi(12)` protocol that NCC does NOT fold for a loop-body local (use a POD member
+and a reference accessor).
+
+**kit CXXIX addendum 2: func_000076F4 EXACT (bootup, 220 B) as the 39E24 twin.** Same C++ as gl_func_00039E24:
+`struct G { char pad[0xA0]; Cam cam; ... V3 scale /* +0x128 */; ... void *root /* +0x254 */; }`,
+`Cam &c = g.cam; c.mul(g); c.v.y += s0->0x6C;` (inline `Cam::mul(G &)`), plus `0x80 * 0x70` for the stack-arg
+product (NCC evaluates the right operand's load first; the cfe body wanted `0x70 * 0x80`). Trap: the bootup expected
+object prints these HI/LO16 sites as `D_00000000` with in-instruction addends 0x18 (root) and 0x20 (vector), so a
+first G with root at +0x18 and cam at +0x20 is rdiff-exact against expected/ but the ROM cmp fails on exactly those
+two immediates (the ROM holds 0x254 and 0xA0). Lay the struct out by the ROM values: then the ROM is byte-identical AND
+report.json still scores 100.0 (objdiff does not compare the relocated immediate). No single pin can serve both views
+(root and vector would need different bases), so when the expected .o and the ROM disagree on a relocated immediate,
+the ROM decides. Also: a function-typed alias for the vector (`(char *)func_00000080 + 0x20`, the cfe trick that keeps
+may-alias ordering) drops the +0x20 from the materialised address under NCC; a data alias brings back the hoisting.
+
+**kit CXXIX addendum 3:** 3558 +0.3 (76.41 -> 76.71) from `float len2() const { float r = x*x + y*y + z*z; return r; }`
+(named result in the inline) at the same length; the same rewrite of BB8C's `dot()` (95.6 -> 85.3) and 97EC's
+`dot()` (99.97 -> 97.2) is strongly negative, so it is a per-function probe, not a rule. 3558's operator- through
+`return Vec3(...)` / a constructed named `r` scores 78.0 but grows the donor 20 bytes away from the target length (not
+taken). 0B3C: the target's case-0 call passes the `one` variable (`or a1,t0,zero`) where cfe const-propagates `one`
+into `addiu a1,zero,1`; removing the dead `tv += 0xA58;` moves the extra addiu into the switch cases instead of
+deleting it (same score and length).
+**Taken, FLAGGED (length away):** gl_func_00063964's NCC donor with `V3(f32 a, f32 b, f32 c) { set(a, b, c); }` (ctor
+forwarding to an inline set(), the 5062C rule) plus two (not four) trailing volatile ints: report 88.86 -> 94.78, diff
+rows 149 -> 118, but the body is 1108 bytes vs the target's 1120 (was 1112). Three words still missing; find them
+next. The same ctor-forwarding switch is negative on timproc 8FC8 (89.84 -> 89.13) and neutral on 1DDC / 3558.
+
+## kit CXXX (agent-c 2026-10-27, run 181): gl_func_000201B8 is OoT AudioHeap_AllocCached -- transcribe the reference source with its own types and control flow, then a hoisted constant with a kept EMPTY then-arm (`x = 0; if (c) {} else { x = v; }`) fixes the last delay-slot swap <a name="kit-cxxx-agent-c-run-181"></a>
+
+**Exact (report.json 100, ROM byte-identical, 81.57 -> 81.81 % code).** gl_func_000201B8 (1796 B, 449 words, game_libs_post.c,
+C body on the build path, no donor).
+
+**1. Look for the reference source before grinding colours.** 201B8 sat at 97.94 as a "typed view" rewrite (decl-order
+homes, goto ladder, six documented residuals). It is OoT `AudioHeap_AllocCached` (`references/oot/src/audio/internal/heap.c`),
+an OLDER revision: no `if (temporaryPool->size < size) return NULL;` and no `AudioHeap_DiscardSampleBank` calls (the
+discard after `loadStatus[id] = 0` is font-only). Mapping: tableType 0/1/2 = seq/font/sample caches at D+0x21F8 + 0x110 * k
+with load-status tables at +0x2C70 / +0x2C40 / +0x2C10 (seq / font / sample); AudioCache = {persistent {numEntries, pool
+(start, cur, size, numEntries), entries[16] {ramAddr, size, s16 tableType, s16 id}}, temporary {nextSide, pool, entries[2]},
+16 pad bytes}; notes = recs (stride 0xD0, fontId +0x33, enabled = top bit of +0xB0), numNotes = +0x2070; seqPlayers = objs
+(stride 0x160, enabled = top bit of +0, seqId +4), count = s16 +0x2048; DiscardSequence = the baked `jal 0x34238`.
+Transcribing OoT's body as-is (else-if side chain, `goto done`, `if (0) { fail: return NULL; }`, `switch (nextSide)` read
+through the cache with no `side` local, the persistent tail with `switch (cache) { case 2: return AllocCached(tableType, size,
+0, id); case 0: case 1: return NULL; }`) gave 99.11 in one step: every old residual (multu by the held 12, the `v = 1`
+webs, the r colour, constant-first compares, hA-before-w4) disappeared. **IDO -O2 turns the self tail call into the
+branch back to the top** (uopt tail-recursion elimination), which is why the old decode had `op = 0; goto top;`. Adding
+a `side` local (OoT's later revision) is -20 B.
+
+**2. The last two rows: hoisted constant with a kept empty then-arm.** Target:
+`lh t6,242(a3); li at,-1; or t3,zero,zero; bne t6,at,L+4; addiu a2,a3,212; b J; addiu a2,a3,212; L+4: lh t7,30(a2)` --
+the 0 is materialised BEFORE the branch, and as1 then fills the bne slot with a copy of the else arm's first instruction.
+The ternary `e0 = (tc->e[0].id == -1) ? 0 : ls[tc->e[0].id];` puts the 0 in the then block (as1 moves it into the delay
+slot instead: `addiu a2; bne; or t3`). `e0 = 0; if (id != -1) e0 = ls[..];` hoists the 0 but drops the then block (-8 B,
+the branch flips). **`e0 = 0; if (tc->e[0].id == -1) {} else { e0 = ls[tc->e[0].id]; }` = both: the 0 hoisted and the empty
+then block kept (it still carries the `addiu a2` join copy)** -> 100. Only entry0 needs it; entry1 stays a ternary. Not an
+uninitialised-local test: the tested value is a loaded field. Candidate shape elsewhere: a ternary / if-else whose
+constant arm's `li`/`or rd,zero` sits in the delay slot where the target has it before the branch.
+
+**3. Negatives / notes.**
+- -O3 (umerge inlining) is not the audio file's flag: 201B8 at -O3 is 78 % (+84 B). 250C8 (ProcessAsyncLoad with
+  FinishAsyncLoad inline) as OoT's two functions at -O3 inlines to 596 B / 93.6, below the in-tree 99.85.
+- 250C8 retMsg-local vs re-read x fontId named / macro (8 probes): the committed body stays best.
+- 2D374: z and the post-call 358 read through the same locals as d / fr (IDO colours per variable, so this was the
+  "same register" hypothesis), 35C-before-358 store order: flat.
+- 578B4 (7 words): `temp_ra_8` placement x the DL pointer in a block-scope local x the call result through a named temp: flat.
+- 4B0A8 / 4B620: their literal-0 calls written as `new DL(name, ...)` through an out-of-line ctor are byte-identical to
+  the `(0, ...)` calls (the 525F0 gain came from the result reload, which these members do not have).
+- 40070 element store: `volatile float`, init-list, `*(volatile float *)&a = 0.0f`, double: all still `swc1` (flat).
+- 35B1C vptr store: `if (1) { store; }`, store after `q = p`, four spellings of the q alloc test incl. empty arms: flat.
+- 41D40 next() with a hoisted `r = 0` and an empty arm: -6 (the iterator returns must stay returns).
+
+**Tool feedback.** lever-sweep.py standalone `.c` mode does not pass `-I include` (every probe of a donor that includes
+common.h fails with "base does not compile/score"); workaround `--flags "... -I<wt>/include"`. spelling-grid.py: the
+real-rows column made the 201B8 win obvious (48 -> 44 rows = the 2 real rows plus their 2 relocs); the "nested marker"
+error now fires on named groups inside a named group's alternative too, so do placeholder substitutions before inserting
+the outer group. `cc -S` writes `<name>.s` into the current directory regardless of `-o`.
+3558 lead: writing the tail as `e.x = e.x * k + w.x; ...` (no operator*= / operator+=) gives the exact target length
+(1008 B, 240 rows vs 241) but objdiff 74.68 vs 76.73 -- not taken; probably the right shape once the frame and the
+$f20 zero are solved.
+
+**kit CXXX addendum (same run): second exact, gl_func_0004E00C (300 B, NCC donor, 96.33 -> 100).** The residual was
+"the target keeps the unrolled 4-trip loop's IV (`li v1,1; sll t6,v1,2; addu v0,a0,t6`) with ascending stores where ours
+folds it". That shape is **uopt's unroll of a loop whose trip count is not a multiple of 4: (n mod 4) iterations are
+peeled AHEAD of the unrolled body and the IV value after the peel survives as a register** (`li v1,K`). Target:
+`sw zero,0(a0)` (peeled w[0]), then `li v1,1` + four ascending stores (k = 1..4), then `sw zero,20(a0)` (w[5]) = a FIVE-trip
+loop followed by the last element: `zero(0); w[5] = 0;` with `void zero(int k) { for (; k < 5; k++) w[k] = 0; }`.
+A 6-trip loop peels two (`li a0,2`), a 4-trip loop from 1 folds the IV to `addiu v0,a0,4`. The inline parameter `k`
+(not a for-scope `int k`) keeps the 0xE8 spill temp at the target's sp+32 (the for-scope variant is 1 slot off).
+**Rule: `li rX,K; sll; addu` before an unrolled run means K = trips mod 4 were peeled; set the trip count so the peel
+matches.** The donor was renamed from `_nm`, the cfe body replaced by an empty placeholder, both trees splice it; post0b
+NM clip 0x2ea94 -> 0x2ea9c (the NM donor was 0x124 bytes).
