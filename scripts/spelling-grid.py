@@ -12,6 +12,9 @@ Template markers (no nesting):
   @[ stmt1 @; stmt2 @; stmt3 ]@  try every order of the items (<= 7 items)
   @{=NAME altA @| altB }@        named group: every marker with the same NAME takes the same index
 
+Output columns: objdiff match %, rows objdiff marks as differing, size vs target. `--render "alt0=1 perm3=2"`
+scores and writes just that combination. Under NCC, K&R `()` externs fail to compile: declare them `(...)`.
+
 Search: exhaustive when the product is <= --max-full, otherwise greedy coordinate descent
 (one marker at a time, repeated until a full round brings no gain), then a pairwise pass over the
 most sensitive markers. Score = objdiff match_percent for --fn; ties prefer size closer to target.
@@ -96,7 +99,7 @@ def probe(job):
     except subprocess.TimeoutExpired:
         return choice, -1.0, 0, 'compile timeout'
     if r.returncode or not os.path.exists(obj):
-        return choice, -1.0, 0, (r.stdout + r.stderr).strip().splitlines()[-1:] or ['compile failed']
+        return choice, -1.0, 0, '\n'.join((r.stdout + r.stderr).strip().splitlines()[-12:]) or 'compile failed'
     fn = CTX['fn']
     nm = subprocess.run(['mips-linux-gnu-nm', obj], capture_output=True, text=True).stdout.split('\n')
     T = [l.split()[2] for l in nm if len(l.split()) == 3 and l.split()[1] in 'Tt']
@@ -112,7 +115,8 @@ def probe(job):
         L = [s for s in dj['left']['symbols'] if s['name'] == fn][0]
         R = [s for s in dj['right']['symbols'] if s['name'] == fn]
         size = int(R[0]['size']) if R else 0
-        return choice, float(L.get('match_percent', 0) or 0), size, None
+        rows = sum(1 for ins in L.get('instructions', []) if ins.get('diff_kind'))
+        return choice, float(L.get('match_percent', 0) or 0), size, (None, rows)
     except Exception as e:
         return choice, -1.0, 0, f'score failed: {e}'
     finally:
@@ -132,6 +136,8 @@ def main():
     ap.add_argument('--rounds', type=int, default=6, help='max coordinate-descent rounds')
     ap.add_argument('--top', type=int, default=10)
     ap.add_argument('--out', default='', help='write the best rendered source here (outside src/)')
+    ap.add_argument('--render', default=None, metavar='"alt0=1 perm3=2"',
+                    help='score and write ONLY this combination (labels as printed; unnamed = 0) to --out')
     a = ap.parse_args()
 
     wt = os.path.abspath(a.wt)
@@ -154,30 +160,45 @@ def main():
     tmp = tempfile.mkdtemp(prefix='spelling-grid-', dir='/tmp/claude-1000' if os.path.isdir('/tmp/claude-1000') else None)
     ctx = dict(cc=cc, flags=flags, wt=wt, fn=a.fn, sym=a.sym, target=target, ext=ext, tmp=tmp)
     print(f'{len(dims)} choice dimensions {sizes} -> {total} combinations; jobs={a.jobs}', flush=True)
+    want = None
+    if a.render is not None:
+        lab = {d[0]: i for i, d in enumerate(dims)}
+        want = [0] * len(dims)
+        for tok in a.render.split():
+            k, _, v = tok.partition('=')
+            if k not in lab or not v.isdigit() or int(v) >= dims[lab[k]][1]: sys.exit(f'bad --render item {tok}')
+            want[lab[k]] = int(v)
+        want = tuple(want)
 
     seen = {}
 
     def run(choices, pool):
         jobs = [(c, render(chunks, markers, dims, c)) for c in choices if c not in seen]
-        for c, s, z, err in pool.map(probe, jobs):
-            seen[c] = (s, z, err)
+        for c, s, z, res in pool.map(probe, jobs):
+            if isinstance(res, tuple): seen[c] = (s, z, None, res[1])
+            else: seen[c] = (s, z, res, -1)
         return [(c, seen[c]) for c in choices]
 
     def key(item):
-        c, (s, z, err) = item
-        return (s, -abs(z - tsize) if tsize else 0)
+        c, (s, z, err, rows) = item
+        return (s, -abs(z - tsize) if tsize else 0, -rows)
 
     with ProcessPoolExecutor(max_workers=a.jobs, initializer=init, initargs=(ctx,)) as pool:
-        base = tuple([0] * len(dims))
+        base = want if want is not None else tuple([0] * len(dims))
         run([base], pool)
-        s0, z0, e0 = seen[base]
-        if e0: print('baseline failed:', e0); shutil.rmtree(tmp, ignore_errors=True); sys.exit(1)
+        s0, z0, e0, r0 = seen[base]
+        if e0:
+            print('baseline (all first alternatives) failed to compile/score; compiler output:')
+            print(e0); shutil.rmtree(tmp, ignore_errors=True); sys.exit(1)
         dj = json.loads(subprocess.run(['objdiff-cli', 'diff', '-1', target, '-2', target, '-o', '-', a.fn],
                                        capture_output=True, text=True).stdout or '{}')
         tsize = next((int(s['size']) for s in dj.get('left', {}).get('symbols', []) if s['name'] == a.fn), 0)
-        print(f'baseline (first alternatives): {s0:.4f}  size {z0} (target {tsize})', flush=True)
+        tag = '--render' if want else 'first alternatives'
+        print(f'baseline ({tag}): {s0:.4f}  {r0} diff rows  size {z0} (target {tsize})', flush=True)
 
-        if total <= a.max_full:
+        if a.render is not None:
+            pass
+        elif total <= a.max_full:
             run(list(itertools.product(*[range(n) for n in sizes])), pool)
         else:
             best = base
@@ -209,9 +230,13 @@ def main():
     fails = len(seen) - len(ok)
     ok.sort(key=key, reverse=True)
     print(f'\n{len(seen)} probes, {fails} failed to compile/score. Top {a.top}:')
-    for c, (s, z, _) in ok[:a.top]:
+    for c, (s, z, _, rows) in ok[:a.top]:
         desc = ' '.join(f'{d[0]}={k}' for d, k in zip(dims, c) if k)
-        print(f'  {s:8.4f}  size {z}{"" if z == tsize else f" ({z - tsize:+d})"}  {desc or "(all first)"}')
+        print(f'  {s:8.4f}  {rows:4d} rows  size {z}{"" if z == tsize else f" ({z - tsize:+d})"}  {desc or "(all first)"}')
+    if fails:
+        c, v = next((c, v) for c, v in seen.items() if v[2])
+        print('first compile/score failure:', ' '.join(f'{d[0]}={k}' for d, k in zip(dims, c) if k) or '(all first)')
+        print('  ' + str(v[2]).replace('\n', '\n  '))
     if ok and a.out:
         out = os.path.abspath(a.out)
         if os.path.commonpath([out, os.path.join(wt, 'src')]) == os.path.join(wt, 'src'):
