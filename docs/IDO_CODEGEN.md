@@ -14545,6 +14545,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CXXIV (agent-c 2026-10-27, run 178): **NCC de-naming lever: every named single-use local is an edg variable with a home and a colour -- de-naming ia/ib/ic, vt, qa/qb, sg (macros) in the 3BE1C `Obj::query()` port took the frame to the target's 0xF0 with s0..s7; `*p++` reads through an s-register copy under NCC (split into `*p; p++;`); `continue` in a `while ((i = *p++) != -1)` duplicates the loop test (nest instead); cfe 5F0B8: dropping a BB break + naming xs/ys just before use puts c / 0.0f in the target's fs0 / fs1; negatives for 39E24 (data vs function alias: lui order vs scale-load hoist), 4EE44 / 525F0 / 35B1C as NCC (same residuals), 307A8 / 33EB8 / 3B9C0 under NCC**](#kit-cxxiv-agent-c-run-178) -- _1 exact: game_libs_func_0005F0B8 (452 B, 81.29 -> 81.35 % code; a store-then-reload-per-use FP local is a `volatile` local, homes fixed by declaration order, z*s named for the ring order); NM (report.json): 3BE1C 77.31 -> 88.64 (new NCC NM donor; `face(i + 0)` rvalue argument lever), 4A308 77.58 -> 94.47 (one de-named local + dropped parameter empty test), 3B6A0 73.62 -> 74.53 (`triAt(const int &)`), 4E424 93.22 -> 95.37 (volatile stack param z0, length = target); post0b NM clip 0x2ea68 -> 0x2ea7c; new pin D_3BE1C_c._
 - [kit CXXV (agent-g 2026-10-27, run 178): **`NCC -S` (ugen output before as1) separates uopt / ugen / as1 decisions; bootup 90CC: the "t-ring one behind" was the recomputed `arg0 + 0x808` CSE temp (ugen spills it through t6, as1 folds the copy into the target's `sw s0, 0x40(sp)`); the hoisted case-7 `li 25` is as1 filling a load delay slot from a successor block once `if (1) { *fq &= ~2; }` moves uopt's `li 7` below the store (uopt places a constant's li at the START of its LR's first BB; an empty `if (1) {}` makes no BB); structural fixes that lower objdiff fuzzy alone (alignment flips) must be scored in batches**](#kit-cxxv-agent-g-run-178) -- _0 exacts (81.29 % code); NM (report.json): func_000090CC 98.525 -> 98.829 (objdiff real rows 249 -> 68), func_000055A0 95.32 -> 97.24 (matrix through `float *mm = m` keeps the redundant G store, z0 / iterator placement, 1.0 row order, a call on its own source line); new pin bu_90cc_d148_18; negatives 31C0 slots, de-naming on 55A0 / 90CC._
 - [kit CXXVI (agent-c 2026-10-27, run 179): **automatic lever sweeps over every NM body of game_libs_post / post0b -- de-naming (once-assigned local -> macro, check side effects), `volatile` per local (469A8 `sp48` = the target's sp+72 home, +6.3), adjacent independent-statement swaps (IDO keeps store order; 2D374 count store after the next FP load 98.22 -> 99.56); score an in-file cfe body in ~1 s by compiling a scratch copy of the whole unit (asm_processor + cc, no post-process) against the expected .o; keep only steps whose length moves toward the target**](#kit-cxxvi-agent-c-run-179) -- _0 exacts (81.35 % code); 26 NM raises (report.json; also `if (1) {}` after each statement as a fourth sweep), e.g. 2D374 96.69 -> 99.59 (676 B = target length), 415A4 84.34 -> 93.38, 469A8 67.81 -> 74.14, 4A890 88.70 -> 93.47, 4C5E4 76.96 -> 79.69, 2E354 89.49 -> 91.02; post0b NM clip 0x2ea7c -> 0x2ea98; 2D374 volatile-i finding, colour residual and 99 %+ near-exact negatives listed._
+- [kit CXXVII (agent-g 2026-10-27, run 179): **titproc 5DC EXACT as a cfe jumptable donor under the evidence-backed uninitialised-local exception (target reads s5v's never-written home; unit keeps `#ifdef NON_MATCHING #include` of the donor, since a bare INCLUDE_ASM in the NM tree scores 0); 90CC: `if (1) { store; }` at the 0xA58 store stops as1 copying a 2-word join block into a predecessor (length = target); spelling-grid negatives**](#kit-cxxvii-agent-g-run-179) -- _EXACT titproc_uso_func_000005DC (1424 B, 81.35 -> 81.53 % code); NM func_000090CC 98.83 -> 99.25, game_uso_func_00001DDC 99.77 -> 99.96 (spelling-grid: const M4 & reads); pin titproc_uso_func_000005DC_rodata; D_55A0_k1/k2 retired._
 - [kit LXXXVII (agent-c 2026-10-24, run 148): **alignment survey (negative) + the original-file-start map of game_libs, and three twin / NCC levers** -- no non-exact function in the ROM differs from its target only in nop count or position; units in game_libs start at gl = 4 (mod 16) (16-byte aligned in bootup.uso text), every infinite-loop epilogue sits at gl = 0x14 (mod 32), and the pad words after a final `jr ra` mark 40+ original unit ends (map inside); arcproc 125C EXACT by porting the exact mgrproc 1C90 match_imports C; gl 44CE8 under NCC (pool base rematerialised, the old count carried in the result variable to keep the frame at 32); gl 3E0F0 arg word read before `gl(tmp = o, x)`](#kit-lxxxvii-agent-c-run-148) -- _1 exact (arcproc_uso_func_0000125C, 556 bytes; 76.92 -> 77.00 % code on e5cf258f7); NM: gl 44CE8 91.28 -> 99.53 (new NCC NM donor), gl 3E0F0 93.88 -> 99.90; post0b NM clip unchanged (0x2e928)._
 - [kit LXXXIV (agent-g 2026-10-24, run 155): **colour-pairing levers -- a void alias for a discarded call plus ONE local per register pair** -- gl 68DD4 (98.71, "colours only" for months) fell when the leading discarded K&R call went through a void alias (the dead v0 def pushed every later value one register up, kit IX) AND the two cursor reads were written with two int locals that each carry two roles (A = cursor then q2, B = value then cursor2), mirroring the target's register pairs; scripts/sibling-scan.py at 0.5 plus a longest-common-block scan found no new exact templates in agent-g units; twin NM port b3 13B8 <- arcproc 16F4 (+5.0); 5F984 NM donor takes the 5EB4C/5ED54 param copy; negatives for 5A2C4, D884, C310, BDEC, 2B7C, 23FC, 1824, 5F5F0, 525F0, E2D0, B154](#kit-lxxxiv-agent-g-run-155) -- _1 exact (gl_func_00068DD4, 340 bytes; 76.74 -> 76.78 % code with main's agent-c gains); NM: b3 13B8 80.36 -> 85.41, arcproc 16F4 85.36 -> 85.41, gl 5F984 90.11 -> 92.46 (post0b clip 0x2e904 -> 0x2e90c), gl 51448 95.00 -> 95.56, bootup 24B8 94.87 -> 95.21._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
@@ -42456,3 +42457,76 @@ errors, no exact lost vs local origin/main, sentinels 100; 81.35 % code, overall
   neighbours (`m[0x134]` before `m[0x138] = d`, 0x144 before 0x148) 79.67 -> 82.57, then the 0x164 translation store
   above 0x15C / 0x160 82.57 -> 85.33 with 556 -> 552 bytes = target. Final 54E78 77.54 -> 85.33 (552 B). Final post0b
   NM clip **0x2ea94** (62F08 NM offset 0x2ea44); this supersedes the 0x2ea98 above. Overall fuzzy 98.714 -> 98.759.
+
+## kit CXXVII (agent-g 2026-10-27, run 179): titproc 5DC lands as a cfe jumptable donor under the evidence-backed uninitialised-local exception; a BB boundary at one store stops as1's join-block copy (90CC 98.83 -> 99.25); spelling-grid negatives <a name="kit-cxxvii-agent-g-run-179"></a>
+
+**1. titproc_uso_func_000005DC EXACT (1424 B, 98.87 -> 100.0, code 81.35 -> 81.53 %).** The run-149 body plus the
+trailing `if (t) {}` after the do-while (t then lives around the whole loop and the `&import_00020098` address
+constant outranks it: d = s0, t = s1). t is unset on the case-1 exit path, so this lands only under the new
+MATCHING_WORKFLOW rule (#uninitialised-local-exception): the target prologue itself reads s5v from its never-written
+home (`lw s5,0x5C(sp)`, `0x8FB5005C` at 0x620), and the source cites that in a comment above the test.
+Landing mechanics (the 29CCC / b5 4118 recipe): the body lives in `src/titproc_uso/titproc_uso_5DC.c` (filtered out of
+C_FILES, cfe -O2), spliced by `private REPLACE_FUNC_BODY += titproc_uso_func_000005DC=$(TITPROC_5DC_DONOR)` into both
+trees; the switch's donor-local `.rodata` reloc is renamed `titproc_uso_func_000005DC_rodata` and pinned to 0x0 (the
+target's `%lo(import_00263E00)` = titproc RoData +0x0; 116C's 4-entry table is +0x30). The unit keeps
+`#ifdef NON_MATCHING #include "titproc_uso_5DC.c" #else INCLUDE_ASM #endif`: a bare INCLUDE_ASM in the
+NON_MATCHING tree emits the `.NON_MATCHING` marker symbol and objdiff scored the function 0 even with the donor
+spliced. In the build tree the splice reports "already matches donor" (donor bytes == target bytes).
+
+**2. bootup 90CC: a BB boundary at one store decides an as1 join copy (98.829 -> 99.247, length 8436 -> 8424 =
+target).** ugen ends the case-6 rgb30 arm with `b $136`, where `$136: and $9,$9,-5; b $139` is the `arg8 &= ~4` join.
+as1 copied that join into the arm (two extra words); the target branches to it. An `if (1) { stmt }` wrap sweep over
+all 572 statement lines (`wrap.py`, 0.4 s per NCC compile, 8 in parallel) found only four lines that change anything,
+all at the post-if/else tail: wrapping the `0xA58` store (`if (1) { arg0->0xA58 = temp_v0_51; }`) removes the copy and
+also puts arg2 in the target t3 (98.83 -> 99.25 report.json; objdiff real rows 68 -> 75). Wrapping the following
+p4f call instead removes the copy too but recolours arg1 / arg2 / arg8 (99.11, real 88). The empty `if (1) {}`
+before / after each line (no BB) changed nothing anywhere. Left in that region: a five-register permutation
+(arg1 a3, the constant 6 a2, sp174 t2, &D t4, arg7 t0 in the target; ours t4 / a3 / t0 / t2 / a2) plus the arg1 /
+arg2 load order.
+- 90CC draw-call sites: ugen already emits `lw $2, bu_90cc_d08_01+44` BEFORE `lw $16, 40($13)` at site 3; the target's
+  `lui s0, %hi(g); lw v0, %lo(g)(s0)` is as1 renaming the macro's scratch to the dying s0 while ours keeps v0 and
+  then schedules the 32.0f constant above it. The global's statement position, `if (1) { }` around it, the variable
+  holding it (var_v1 / temp_v0_51) and the `ptr + delta` vs `delta + ptr` spelling of the this-adjust are all inert
+  (edg canonicalises `int + ptr`; an integer-cast form fixes the addu order but adds a second sp164 load).
+
+**3. spelling-grid.py (coordinator tool) first use.** Three 90CC templates (store orders and compare operand order in
+the sp174 block, sp174's type, the d148 loop forms, gcfg variable choice, draw-site statement order / variable /
+`if (1)` wrapping, 48-192 probes each) and two others (97EC: four e / f / a / b initialiser spellings; 31C0: all 720
+orders of the six top-level pointer declarations) found nothing above the current donors. The tool ran cleanly
+(~1 s per probe, parallel); note that markers cannot nest (an `@{..}@` inside `@[..]@` fails every compile) and a
+named group (`@{=NAME ..}@`) is the way to keep a variable choice consistent between its definition and its use.
+
+**4. Negatives.** 97EC: the e-bound / f-bound temp homes; nesting f's block puts it below every outer local (frame
++8); named `Vec3 d` / `g` initialisers elide a temp (frame -8) or append after e; `const XZ &` binding 90.3.
+gcfg v0 / v1 in 90CC: every variable choice gives v1. `while (0)` reference boosts are deleted by edg (inert under
+NCC). 2B7C also reads an uninitialised home (`lw s3,0xA0(sp)` before the glyph loop) but stays blocked by its
+HI16-pair reloc form.
+
+**Gate:** full make ROM byte-identical, verify-blocks 6/6, `make non_matching_objects` 0 errors, no exact lost
+against local origin/main, sentinels 100, 81.53 % code. New pin `titproc_uso_func_000005DC_rodata = 0x00000000`;
+retired `D_55A0_k1`, `D_55A0_k2`. New donor `build/src/titproc_uso/titproc_uso_5DC.c.o`; changed NM donor
+`build/src/bootup_uso/bootup_uso_ncc_90CC_nm.cpp.o`. post0b clip untouched.
+
+**kit CXXVII addendum (same run): game_uso 1DDC 99.77 -> 99.92 via spelling-grid.py.** The NCC donor's two matrix
+reads written through a block-scoped `const M4 &mm = a0->src->mtx; mm.getPos(m);` (and the same for `a0->obj`) plus
+the key-3 pos copy as `c.getOut()->pos.set(m)` fix every register (the `lw v1, 0x3c(a0)` / `lw v0, 0x170(sp)` rows);
+found in a 144-probe grid. Left: the two reference homes make the frame 0x188 (target 0x180). Inert / worse while
+trying to give the 8 bytes back: member / static accessors returning `const M4 &` (99.70, registers regress), a
+function-scope `const M4 *pm` (99.75 or equal with the same frame), removing `V3 r` / `V3 e` (the call's return temp
+takes r's home), the reference declared at the top of its block (all 5040 orders with the other block decls: 98.79
+max), de-naming the goal block's `Out *o`, `const float speed`, a volatile filler. Gate unchanged (81.53 % code).
+- (same run) The `if (1) { stmt }` / trailing `if (1) {}` statement sweep (`wrap.py`, NCC donors scored standalone)
+  is inert on the other NCC near-exacts: 31C0, mgrproc 23FC, gui 329C, 55A0, 1DDC (every line flat or lower) and
+  97EC (one line lower). On 90CC only the four tail lines named above and line 976 (`var_s0 = sp160->0x28`; +0.01
+  standalone but objdiff real rows 75 -> 94, not kept) move anything.
+- (same run) An adjacent-statement swap sweep (`swap.py`, every pair of neighbouring simple statements) over the same
+  NCC donors found nothing on 90CC / 31C0 / 23FC / 1DDC / 329C. Its one 55A0 "winner" (`p1.w = t4.w;` after the 0x48
+  alloc call, +0.06 standalone) scored 97.24 -> 96.36 in report.json and p1 / t4 are address-taken (the `if (1) { ..
+  *q4 = &t4 .. }` escape), so the swap is not even semantics-preserving -- reverted. Standalone scores only rank;
+  report.json decides, and a swap sweep must skip address-taken locals across calls.
+- (same run, later) 1DDC frame given back: `V3 e` dropped (the last `diff * sel` product goes through the dead `acc`)
+  and an unused `int e = 0;` 4-byte filler declared in its place -> frame 0x180 = target, report.json 99.92 -> 99.96.
+  Dropping e alone takes 16 bytes (0x178). Left: acc at 0xf4 (target 0xfc), the 0x14c block (target 0x154) and the
+  final product's temp at 0x120 (target 0x148, e's old home). All 720 orders of the else-block declarations and the
+  filler at function / key-3 scope are flat or lower.
+- (same run, last) 1DDC `self += r;` written as three component `+=` statements: 99.958 -> 99.969 (report.json).

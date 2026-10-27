@@ -13,6 +13,7 @@
 _76 entries. Auto-generated from per-memo notes; content may be rough on first pass — light editing welcome._
 
 - [scripts/spelling-grid.py (monorepo): parallel search over explicit, semantics-preserving source alternatives in a template copy of a standalone donor -- `@{a @| b}@` choose-one, `@[s1 @; s2]@` every order, `@{=NAME ..}@` linked choices; exhaustive or coordinate descent + pairwise; objdiff score per probe (~1 s)](#spelling-grid-search) -- _the hand-written grids of kits CXII-CXXV (increment spelling, operand order, inline routing, decl/statement order, line layout) as one tool; not the permuter: it only tries what you wrote._
+- [scripts/lever-sweep.py (monorepo): one-lever-at-a-time sweeps -- denaming / volatile / order / bbsplit / all -- on an in-tree NM body or a standalone donor, scratch copies, parallel objdiff scoring](#lever-sweep-monorepo) -- _finds which lever moves a function; then combine with spelling-grid._
 - [Handwritten assembly sources (1080, agent-g run 158): libultra/handwritten `.s` routines are real assembly source under `src/libultra/` + `src/handwritten/`, GLOBAL_ASM'd into their host unit with no splat `nonmatching` marker, so objdiff scores them from source -- one block per splat symbol; classification of the 48 zero-fuzzy functions](#handwritten-assembly-sources) -- _evidence rule: cache/CP0/TLB/FPU-control ops, k0/k1/eret, addi/add/sub, or byte-identity with a reference libultra .s. No episodes (not C matches)._
 - [Clean-build-only CI break: a target-specific REPLACE_FUNC_BODY is inherited by the host object's explicit prerequisites, so a donor listed as a prerequisite runs every splice on itself in a fresh build (main CI red 2026-10-22..23, runs 118-131)](#private-replace-func-body-ci-break) -- _use `private REPLACE_FUNC_BODY +=` when the donor is also a prerequisite; the landing gate now builds a fresh worktree like CI._
 - [scripts/rdiff.py (1080): branch-offset- and jal-aware per-function diff -- `--raw --pins` keeps branch targets (measured from the function's FIRST label) and jal targets and applies undefined_syms pins; the masked default view hides decode errors (agent-c run 121)](#rdiff-raw-pins-run121) -- _run it on every near-miss before trusting an old cap note; classify each residue as decode / pin / schedule / colour._
@@ -13510,3 +13511,19 @@ report.json reads 99.32 for the same source. Gains carry over; absolute values d
 
 It is not the permuter (user preference: permuter only as a last resort): it never invents or mutates code,
 it only enumerates the alternatives you wrote.
+
+## scripts/lever-sweep.py: one-lever-at-a-time sweeps (2026-10-27) <a name="lever-sweep-monorepo"></a>
+
+`scripts/lever-sweep.py` (monorepo; not the older per-project `projects/1080/scripts/lever-sweep.py`, which is
+a different tool) applies ONE mechanical lever at a time to one function and scores every variant with objdiff,
+in parallel, from scratch copies (never writes `src/`). Subcommands: `denaming` (a once-assigned local becomes a
+`#define` of its expression, kit CXXIV), `volatile` (one local declaration at a time), `order` (adjacent
+independent-statement swaps + moving one plain assignment 2-4 lines past statements that don't mention it; the
+dependency test is textual, so check every hit by hand), `bbsplit` (`if (1) {}` after one statement), `all`.
+`--src` is either an in-tree `src/**/*.c` (the named function's last definition, i.e. the NM body, is edited in a
+copy of the whole unit, compiled through asm-processor + IDO cc with -DNON_MATCHING) or a standalone donor (.cpp
+→ NCC, .c → cc; the whole file is the function). Example:
+`python3 scripts/lever-sweep.py all --src projects/1080-agent-c/src/game_libs/game_libs_post.c --fn
+game_libs_func_0002D374 --target build/src/game_libs/game_libs_post.c.o --jobs 8` (~65 variants in under a
+minute; its `denaming raw` hit took 2D374 99.59 -> 99.64). Use it first to find which lever moves a function,
+then spelling-grid to combine alternatives. Scores rank variants; confirm with `scripts/refresh-report.sh`.
