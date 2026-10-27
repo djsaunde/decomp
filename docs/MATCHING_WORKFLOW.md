@@ -12,6 +12,7 @@
 
 _76 entries. Auto-generated from per-memo notes; content may be rough on first pass — light editing welcome._
 
+- [scripts/spelling-grid.py (monorepo): parallel search over explicit, semantics-preserving source alternatives in a template copy of a standalone donor -- `@{a @| b}@` choose-one, `@[s1 @; s2]@` every order, `@{=NAME ..}@` linked choices; exhaustive or coordinate descent + pairwise; objdiff score per probe (~1 s)](#spelling-grid-search) -- _the hand-written grids of kits CXII-CXXV (increment spelling, operand order, inline routing, decl/statement order, line layout) as one tool; not the permuter: it only tries what you wrote._
 - [Handwritten assembly sources (1080, agent-g run 158): libultra/handwritten `.s` routines are real assembly source under `src/libultra/` + `src/handwritten/`, GLOBAL_ASM'd into their host unit with no splat `nonmatching` marker, so objdiff scores them from source -- one block per splat symbol; classification of the 48 zero-fuzzy functions](#handwritten-assembly-sources) -- _evidence rule: cache/CP0/TLB/FPU-control ops, k0/k1/eret, addi/add/sub, or byte-identity with a reference libultra .s. No episodes (not C matches)._
 - [Clean-build-only CI break: a target-specific REPLACE_FUNC_BODY is inherited by the host object's explicit prerequisites, so a donor listed as a prerequisite runs every splice on itself in a fresh build (main CI red 2026-10-22..23, runs 118-131)](#private-replace-func-body-ci-break) -- _use `private REPLACE_FUNC_BODY +=` when the donor is also a prerequisite; the landing gate now builds a fresh worktree like CI._
 - [scripts/rdiff.py (1080): branch-offset- and jal-aware per-function diff -- `--raw --pins` keeps branch targets (measured from the function's FIRST label) and jal targets and applies undefined_syms pins; the masked default view hides decode errors (agent-c run 121)](#rdiff-raw-pins-run121) -- _run it on every near-miss before trusting an old cap note; classify each residue as decode / pin / schedule / colour._
@@ -298,6 +299,7 @@ explicit shared blocks (goto a common label), not regeneration.
 - [Kernel libultra "handwritten region" / "alt-entry shared body, no honest C" notes can be ONE C function split across .s files or even across UNITS: jal'd mid-body addresses stay as absolute undefined_syms entries, so merge the .s, port the game_libs twin, regenerate expected/ for both units. __osLeoInterrupt+__osLeoAbnormalResume (3D40/43E4, 1932 B) and osEPiRawStartDma (52F0+5350 across kernel_005_b/006) EXACT; KEY: every kernel jal target sits 0x400 ABOVE our symbol numbering (the kernel runs at 0x80000400), so "jal'd alt entries" func_X are really calls to func_(X-0x400). 5 more split fns EXACT this way (4B8, 79F4 __rmonStopThread, 8430 __rmonClearBreak) + 9EC NM 99.94 (agent-g 2026-10-20, run 111)](#kernel-split-libultra-run111)
 - [Kernel run 112: most kernel_000 / rmon "coloring caps" were HAND TRANSCRIPTIONS of IDO's own output (manual 4x unrolls, peeled "singleton" checks, pointer walks with `register` invariants, fn-ptr casts to "shared stubs"). Write the loop IDO started from: plain `for (i = 0; i < N; i++)` over the table (typed struct array or char arithmetic), direct calls to the +0x400 absolute names, then re-symbolize the .s (literal lui/addiu -> %hi/%lo(sym+off), branches to absolute func_ names -> local labels) and regenerate expected/ by swapping the new C back to INCLUDE_ASM. 17 kernel exacts (agent-g 2026-10-20, run 112)](#kernel-plain-loops-run112) -- _Tells: a "three singleton slot checks then a 4-way walk" body = one loop over 135 slots (135 % 4 = 3 peeled); an odd-iteration peel + x2 body = one loop; `jalr` through a cast where the target has `jal` = the cast is wrong. Frame holes: an unused local array of the hole's size. `return G = K;` = address in v1 + value in v0 on an early-error return._
 - [Standalone NCC probe loop and NM-only donor size (agent-g run 119): compile a .cpp draft with NCC straight into scratch and diff it against expected/ (relocs stripped, stack offsets optionally masked) -- ~1 s per variant, no tree build; an NM-only REPLACE_FUNC_BODY donor may differ in word count from the target (24BC: 152 vs 150) and still splices into the NON_MATCHING object, which grows/shrinks the NM .o only](#ncc-standalone-probe-loop-run119)
+- [Uninitialised-local exception (2026-10-27, coordinator + user): empty tests on uninitialised locals stay BANNED unless the target shows the same function reading an uninitialised local elsewhere; the source must cite that evidence in a comment (first use: titproc_uso_func_000005DC, s5v read at 0x5C(sp))](#uninitialised-local-exception)
 
 
 ---
@@ -13458,3 +13460,53 @@ link 0x80003824 (`send_mesg`); the alabel splat put at link 0x80003C24 (in
 the middle of `__osDequeueThread`) only exists to satisfy those relocations.
 Old notes calling func_80004DB8 a `__osException` jal target read the same
 offset wrong.
+
+## Uninitialised-local exception <a name="uninitialised-local-exception"></a>
+
+(2026-10-27, coordinator decision with the user's go-ahead.) An empty test such as `if (t) {}` on a local that is
+uninitialised on some path remains **banned** as a matching lever: it encodes behaviour the original source cannot be
+shown to have. The one exception: the **target itself** shows the same function reading an uninitialised local
+somewhere else (e.g. a prologue load from a stack home that no path ever writes). Then the original source demonstrably
+relied on uninitialised locals in that function, and an empty test on another such local is allowed. Conditions:
+
+1. The evidence must be in the target bytes of the same function (not a sibling, not "this compiler allows it").
+2. The source must carry a comment directly above the test citing the evidence: the variable, the instruction and
+   its offset (e.g. `lw s5,0x5C(sp)` at 0x620).
+3. Everything else in the match policy still applies (the C compiles to the target bytes; no patching).
+
+First use: titproc_uso_func_000005DC (1424 B, agent-g run 178). Its prologue reads s5v from the never-written home
+0x5C(sp) (`0x8FB5005C` at 0x620; s5v is assigned only in cases 3/6/8 and read in 4/5/7/9 of later iterations), so the
+trailing `if (t) {}` after the do-while (t unset on the case-1 exit path) that keeps t live around the loop and gives
+the target's d = s0 / t = s1 colouring landed as an exact.
+
+## scripts/spelling-grid.py: explicit spelling-grid search (2026-10-27) <a name="spelling-grid-search"></a>
+
+Agents were hand-running the same grids over and over (kits CXII-CXXV): increment spellings around a shared
+counter, operand order, routing through inline members or free inlines, declaration order, the order of
+independent stores, line splits/joins. `scripts/spelling-grid.py` (monorepo) does this in parallel.
+
+1. Copy the standalone donor (`src/<seg>/<unit>_ncc_<fn>[_nm].cpp`, or a cfe `.c` donor) to your scratch dir.
+   The tool refuses templates or outputs inside `src/`.
+2. Mark the alternatives in the copy (no nesting):
+   - `@{ altA @| altB @| altC }@` choose one (an alternative may be empty);
+   - `@[ stmt1 @; stmt2 @; stmt3 ]@` every order of the items (max 7);
+   - `@{=NAME altA @| altB }@` every marker named NAME takes the same index (for spellings that must
+     change together, e.g. the same inline used at three sites).
+   Every alternative must mean the same thing as the others. The tool does not check this: check data
+   dependencies by hand for any statement order you mark.
+3. Run from the monorepo:
+   `python3 scripts/spelling-grid.py --wt projects/1080-agent-X --src /tmp/claude-1000/x/t.cpp --fn <symbol>
+   --target build/src/<seg>/<unit>.c.o --jobs 8 --out /tmp/claude-1000/x/best.cpp`
+   (`--flags` overrides the default -O2 NCC/cfe flags for units built differently; `--sym` names the donor
+   symbol to rename when it isn't the first mangled one.)
+4. It searches exhaustively up to `--max-full` combinations (default 3000), otherwise coordinate descent
+   until a round brings no gain, then a pairwise pass over the six most sensitive markers. It prints the top
+   results with sizes against the target and writes the best rendering to `--out`.
+5. Copy the winner into the real donor by hand and confirm with `bash scripts/refresh-report.sh`.
+
+Scores are a ranking, not the report number. The probe compares the standalone donor object with the target,
+so relocations name different symbols than in the spliced unit. On 4B0A8 the probe read 98.91 while
+report.json reads 99.32 for the same source. Gains carry over; absolute values don't.
+
+It is not the permuter (user preference: permuter only as a last resort): it never invents or mutates code,
+it only enumerates the alternatives you wrote.
