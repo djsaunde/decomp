@@ -14542,6 +14542,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CXX (agent-c 2026-10-25, run 175): **cfe bodies that were never C++ land EXACT as natural NCC members on the first or second draft: 54264 `Mesh::sample()` (inline V3(const S3 &) ctor, by-value set(V3) = the one copy temp; a named pointer kept past the p stores with `if (cs) {}` takes p's reload off v0, a second `if (t) {}` restores the colour order), 608A4 `TextWin::draw()` (inline size() / pos() members = the target's s0 / v0 store values), 500EC `Mesh::paint()` (S3 inline int operator==, candidate on the LEFT); Mesh layout; negatives for 4FD00 (intermediate stores), 415A4 (edg folds `| 6 | 0x400`; inline-ctor `new`), 4B2F4, 40070, 41D40 / 4B0A8, 31A74, 4A890, 4A9F0**](#kit-cxx-agent-c-run-175) -- _3 exacts (gl_func_00054264 856 B, gl_func_000608A4 464 B, gl_func_000500EC 696 B; 81.02 -> 81.29 % code); NM: 50444 86.72 -> 91.94 (length = target); post0b NM clip 0x2ea2c -> 0x2ea44; new pin D_500EC_cnt._
 - [kit CXXII (agent-c 2026-10-27, run 177): **two more cfe bodies are C++ and beat their capped cfe forms as NCC NM donors: 3B2EC `Obj::height()` (inline members with REFERENCE parameters `toCell(const V3 &, int &, int &)` = the target's memory p / cx / cz homes and per-statement self->col reloads; Col::face() with a local remap pointer; face call before the verts load; counted k loop LFTR'd to the pointer walks; residual post-loop end constant copied instead of rematerialised), 36F0C `FreeCam::update()` (`Cam *volatile c` + inline Cam::xform reads it once; V3 `operator+=` as `x = x + o.x`; sub-object reference for the `addiu v1,48` base; NCC gives every scalar local a frame slot in declaration order); 3C43C C-lift limit constant through a block-scope copy + dist[best] read before the h10 store; edg never inlines a member containing a loop; objdiff-cli two-object scoring loop**](#kit-cxxii-agent-c-run-177) -- _0 exacts (81.29 % code); NM (report.json): 3B2EC 91.56 -> 95.62, 36F0C 91.26 -> 93.21, 3C43C 94.28 -> 96.08; post0b NM clip 0x2ea44 -> 0x2ea68; new pin D_3B2EC_c._
 - [kit CXXIII (agent-g 2026-10-27, run 176): **porting a frame-tuned cfe NM body to NCC mechanically (bootup 90CC, 8424 B): what edg changes and how to put it back -- unreferenced locals are DROPPED (keep their slot with `T x = 0;`), a pointer do-while store loop UNROLLS (write it as an index loop), `(f32)255` / `0.0f` literals fold into a neighbour's constant (route through the kit CXIX int inline parameter), the filler/temp roles of the m2c body are wrong (a parameter is the flag candidate: `arg8 |= 1`, not `t = arg8 | 1`; one m2c variable that spans two live ranges must be split), plus per-site aliases and a fn-typed reload base; an `-O2 -g3` NCC build + mdebug local dump shows edg's real frame layout**](#kit-cxxiii-agent-g-run-176) -- _0 exacts (81.29 % code); NM (report.json): func_000090CC 97.15 -> 98.52 and func_000055A0 94.35 -> 95.32 (new NCC NM donors bootup_uso_ncc_90CC_nm.cpp / bootup_uso_ncc_55A0_nm.cpp); new pins bu_90cc_vt548_b, D_55A0_k1, D_55A0_k2; 591C mechanical port negative (90.60 vs cfe 94.16)._
+- [kit CXXIV (agent-c 2026-10-27, run 178): **NCC de-naming lever: every named single-use local is an edg variable with a home and a colour -- de-naming ia/ib/ic, vt, qa/qb, sg (macros) in the 3BE1C `Obj::query()` port took the frame to the target's 0xF0 with s0..s7; `*p++` reads through an s-register copy under NCC (split into `*p; p++;`); `continue` in a `while ((i = *p++) != -1)` duplicates the loop test (nest instead); cfe 5F0B8: dropping a BB break + naming xs/ys just before use puts c / 0.0f in the target's fs0 / fs1; negatives for 39E24 (data vs function alias: lui order vs scale-load hoist), 4EE44 / 525F0 / 35B1C as NCC (same residuals), 307A8 / 33EB8 / 3B9C0 under NCC**](#kit-cxxiv-agent-c-run-178) -- _1 exact: game_libs_func_0005F0B8 (452 B, 81.29 -> 81.35 % code; a store-then-reload-per-use FP local is a `volatile` local, homes fixed by declaration order, z*s named for the ring order); NM (report.json): 3BE1C 77.31 -> 88.64 (new NCC NM donor; `face(i + 0)` rvalue argument lever), 4A308 77.58 -> 94.47 (one de-named local + dropped parameter empty test), 3B6A0 73.62 -> 74.53 (`triAt(const int &)`), 4E424 93.22 -> 95.37 (volatile stack param z0, length = target); post0b NM clip 0x2ea68 -> 0x2ea7c; new pin D_3BE1C_c._
+- [kit CXXV (agent-g 2026-10-27, run 178): **`NCC -S` (ugen output before as1) separates uopt / ugen / as1 decisions; bootup 90CC: the "t-ring one behind" was the recomputed `arg0 + 0x808` CSE temp (ugen spills it through t6, as1 folds the copy into the target's `sw s0, 0x40(sp)`); the hoisted case-7 `li 25` is as1 filling a load delay slot from a successor block once `if (1) { *fq &= ~2; }` moves uopt's `li 7` below the store (uopt places a constant's li at the START of its LR's first BB; an empty `if (1) {}` makes no BB); structural fixes that lower objdiff fuzzy alone (alignment flips) must be scored in batches**](#kit-cxxv-agent-g-run-178) -- _0 exacts (81.29 % code); NM (report.json): func_000090CC 98.525 -> 98.829 (objdiff real rows 249 -> 68); new pin bu_90cc_d148_18; negatives 31C0 slots, 55A0 &G base / li.s order._
 - [kit LXXXVII (agent-c 2026-10-24, run 148): **alignment survey (negative) + the original-file-start map of game_libs, and three twin / NCC levers** -- no non-exact function in the ROM differs from its target only in nop count or position; units in game_libs start at gl = 4 (mod 16) (16-byte aligned in bootup.uso text), every infinite-loop epilogue sits at gl = 0x14 (mod 32), and the pad words after a final `jr ra` mark 40+ original unit ends (map inside); arcproc 125C EXACT by porting the exact mgrproc 1C90 match_imports C; gl 44CE8 under NCC (pool base rematerialised, the old count carried in the result variable to keep the frame at 32); gl 3E0F0 arg word read before `gl(tmp = o, x)`](#kit-lxxxvii-agent-c-run-148) -- _1 exact (arcproc_uso_func_0000125C, 556 bytes; 76.92 -> 77.00 % code on e5cf258f7); NM: gl 44CE8 91.28 -> 99.53 (new NCC NM donor), gl 3E0F0 93.88 -> 99.90; post0b NM clip unchanged (0x2e928)._
 - [kit LXXXIV (agent-g 2026-10-24, run 155): **colour-pairing levers -- a void alias for a discarded call plus ONE local per register pair** -- gl 68DD4 (98.71, "colours only" for months) fell when the leading discarded K&R call went through a void alias (the dead v0 def pushed every later value one register up, kit IX) AND the two cursor reads were written with two int locals that each carry two roles (A = cursor then q2, B = value then cursor2), mirroring the target's register pairs; scripts/sibling-scan.py at 0.5 plus a longest-common-block scan found no new exact templates in agent-g units; twin NM port b3 13B8 <- arcproc 16F4 (+5.0); 5F984 NM donor takes the 5EB4C/5ED54 param copy; negatives for 5A2C4, D884, C310, BDEC, 2B7C, 23FC, 1824, 5F5F0, 525F0, E2D0, B154](#kit-lxxxiv-agent-g-run-155) -- _1 exact (gl_func_00068DD4, 340 bytes; 76.74 -> 76.78 % code with main's agent-c gains); NM: b3 13B8 80.36 -> 85.41, arcproc 16F4 85.36 -> 85.41, gl 5F984 90.11 -> 92.46 (post0b clip 0x2e904 -> 0x2e90c), gl 51448 95.00 -> 95.56, bootup 24B8 94.87 -> 95.21._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
@@ -42119,3 +42121,201 @@ errors, no exact lost vs local origin/main (cdf5045d5), sentinels 551E0 / 55B10 
 81.29 % code. New pins `bu_90cc_vt548_b`, `D_55A0_k1`, `D_55A0_k2` (= 0x00000000). Purge:
 `build/non_matching/src/bootup_uso/bootup_uso.c.o`, new NM donors `build/src/bootup_uso/bootup_uso_ncc_90CC_nm.cpp.o` and
 `build/src/bootup_uso/bootup_uso_ncc_55A0_nm.cpp.o`. post0b clip unchanged.
+
+## kit CXXIV (agent-c 2026-10-27, run 178): NCC de-naming lever (every named single-use local costs an edg home and a colour; de-naming them in the 3BE1C port reached the target frame), `*p++` reads through an s-register copy under NCC, a cfe BB break + named xs/ys put a rotation's constants in the target's callee-saved FP registers, and a page of negatives <a name="kit-cxxiv-agent-c-run-178"></a>
+
+**Summary.** No exacts (81.29 % code). NM gains in game_libs_post0b (local probe scores; report.json numbers are
+in the run report): gl_func_0003BE1C 77.27 -> 87.55 (new NCC NM donor `game_libs_ncc_3BE1C_nm.cpp`, `int
+Obj::query()`, 1528 -> 1560 bytes, target 1568), game_libs_func_0005F0B8 91.73 -> 92.39 (cfe body, length
+unchanged), gl_func_0003B6A0 73.61 -> 74.51 (NCC donor edit, length = target).
+
+**1. 3BE1C = `int Obj::query(int max, f32 *dist, Tri **out, V3 p)` (vertical ray, sibling of 3B2EC / 3B9C0).**
+Ported from the cfe body onto the 3B2EC donor's types and its inline `toCell(const V3 &, int &, int &)` /
+`cellOf()` / `list()` members (the cell-index homes and per-statement self->col reloads came for free). In fuzzy
+order: the K triple through its own symbol `D_3BE1C_128` (held base, `addiu v0,v0,0x128`; 74.8 -> 80.6), off
+computed BEFORE the grp test (the target tests `tris + off`), the material call through a `Col *cc` copy of
+self->col (off then spills around the call like the target), the 0x100 test as a NESTED block instead of
+`continue` (edg's `continue` in a `while ((i = *list++) != -1)` duplicates the loop test, +8 bytes), t->a / t->b
+read before the 0x200 branch, the cfe edge do-while with `fv++` inside the condition, then:
+- **`*nx++` -> `*nx` + `nx++;` as its own statement** (83.38 from 82.57): under NCC a post-increment read is a
+  read through a COPY of the old pointer, and that copy took an s-register (`or s0,a2; lh t8,0(s0)`); the split
+  form reads `lh t9,0(a2); addiu a2,a2,2` like the target.
+- **De-naming single-use locals** (83.38 -> 87.55): `ia / ib / ic` (the dropped-axis vertex coordinates), `vt`,
+  `qa / qb` and `sg` written as macros instead of named locals, and self->col held in a function-scope
+  `Col *cc` (the target's s1). Every named scalar is an edg variable with its own frame home and a colour; with
+  them gone the frame went 0x108 -> 0xF0 (= target) and the saves s0..s8 -> s0..s7 (= target). `n`, `a / b`,
+  `d`, `ok` must stay named (de-naming them costs 1..4 points).
+  Residual: the face pointer is not copied into s0 after the `face()` expansion, off spills to sp+76 (target
+  sp+84), r is not copied into a0 after the 0x100 test, the first inner MAX of `MAXS(MAXS(ia, ib), ic)` is two
+  arms (the target pre-assigns one arm before the branch; every MAXS / MINS spelling, cast placement and operand
+  order is identical or worse), and the edge-loop schedule. A V3 `q` with `(&q.x)[k]` is identical to `f32 q[3]`
+  (&q stays hoisted). `triAt(const int &)` / `nrmAt(const int &)` reference accessors for off: worse here
+  (-0.8 / -3.7), but +0.9 on 3B6A0 (below), whose target keeps off in a frame home.
+
+**2. 5F0B8 (guRotateF-family axis-angle matrix, cfe).** The target keeps the 0.0f store constant in callee-saved
+f22 and c in f20 although no call follows: all ten caller-saved FP registers are taken by interfering live
+ranges, so the constant's live range must begin early. Dropping the second `if (1) {}` (after the m[2][0] store)
+and naming `ys = y * s;` / `xs = x * s;` just before their first use gives the target's fs0 = c / fs1 = 0.0f and
+frame 0x80; declaring `xs, ys` BEFORE `zy, xz` moves the zy / xz homes to the target's sp+60 / sp+56 (cfe slots
+are top-down in declaration order, but here the two named copies land below the unused xs / ys slots).
+Residual: x*s is not memory-homed (the target stores it to sp+52 and reloads it twice; every placement of an
+extra BB break or of the xs / ys definitions moved the zero constant back out of fs1), and the (1-c)*xy / z*s
+products swap f8 / f10. Measured: `0.0f` instead of `0` for the zero stores costs 7 points (84.6), zero stores
+first costs 17, a named zero variable is flat.
+
+**3. Negatives (each probed, no gain).**
+- 39E24 (cfe 99.79): under NCC a DATA symbol for the camera vector gives the target's `lui v0` (vector) before
+  `lui a2` (G) and keeps the 0x30 / 0x34 member offsets in the loads when the vector is a struct object
+  (`gl_39e24_vf.pos.x`), but uopt then hoists the three scale loads above the vector stores (distinct data
+  symbols do not alias). The function-typed alias blocks the hoist but flips the lui order; G as a function
+  alias blocks the hoist with the right lui order but is SPILLED across the call instead of rematerialised (a
+  function address is a value, a data address is a constant); volatile G / a volatile cast / the vector inside G
+  (same symbol, uopt still separates the offsets) / an int-cast address: all lose. The target's shape is as1
+  keeping memory order across different base registers while uopt emitted source order -- not reachable from
+  any NCC or cfe spelling tried.
+- 4EE44 as NCC `Obj::draw()` (the m30 pointer local is required, 95.6 -> 99.76): identical residual to cfe (src
+  load in v0, target a1); src spellings, decl order, loop operand order flat.
+- 525F0 as NCC `Obj::add(Node *)` with inline get() / attach(): identical to cfe (v1 reload, target v0).
+- 35B1C as an NCC constructor `Node::Node(List *, Key, int)` with an inline Member ctor (cfront this==0 alloc
+  cascade reproduced, frame fixed by two volatiles at 97.16 = the cfe score): the vptr store stays right after
+  its `addiu` (target two words later); out-of-class inline ctor placement and one-line layouts are inert.
+- NCC lowers a dense 12-case switch to a beq chain too (51AD8 / 396FC stay cfe).
+- 307A8 under NCC: one global object accessed through an inline member gives per-access `lui at` (no held base,
+  the alias-per-site effect for free) but still one `lui at` per store of the zeroing pair (target shares one).
+- 33EB8 under NCC holds the stream-object base in an s-register (target rematerialises per site).
+- 4B0A8, 49B3C, 34890, 3DF58: member-vs-free, next() spellings, iterator form, declaration order: flat.
+- 3B9C0 as NCC C++ (do-while edge walk, `*nx` split, de-named temporaries): 72.6 vs cfe 76.5, not kept.
+- 3C43C / 36F0C / 3B2EC de-naming (row / k / n / h / vt): flat or worse; the lever is for functions whose
+  frame is too LARGE with many single-use locals.
+
+**4. Rules.**
+- NCC: a named local that is used once is not free -- it is an edg variable with a home slot and a colour.
+  When an NCC port's frame / s-register count exceeds the target's, de-name single-use locals (macros or
+  inline expressions) before adding or removing volatiles.
+- NCC: `*p++` (and `x = *p++` in a call argument) reads through a copy of the old pointer; split it into `*p`
+  and `p++;` when the target reads straight off the walking register.
+- NCC: a `continue` in a `while ((i = *p++) != -1)` loop duplicates the loop test; a nested `if` does not.
+
+Gate (agent-c, not rebased by request): full make ROM byte-identical (cmp), `make verify-blocks` 6/6,
+`make non_matching_objects` 0 errors, no exact lost vs local origin/main, sentinels 551E0 / 55B10 / EBC8 / C5B0 /
+62F08 at 100, 81.29 % code. post0b NM clip 0x2ea68 -> 0x2ea88 (3BE1C +0x20; 62F08 NM offset 0x2ea38). New pin
+`D_3BE1C_c = 0x00000000`. Purge: `build/non_matching/src/game_libs/game_libs_post0b.c.o`, new NM donor
+`build/src/game_libs/game_libs_ncc_3BE1C_nm.cpp.o`, changed NM donor `build/src/game_libs/game_libs_ncc_3B6A0_nm.cpp.o`.
+
+**5. Addendum (same run, after the gate above was first taken; re-gated after these).**
+- **4A308 (run-134 C lift under NCC): de-naming one local is worth 12 points.** The vertex-array base
+  `char *v60 = *(char **)(arg0 + 0x60);` written as a macro (re-read at each of its two uses) took the donor
+  77.35 -> 89.23 and 884 -> 864 bytes; dropping the run-134 `if (arg3) {}` parameter empty test (a fuzzer
+  artefact) then gave 94.24 at 868 bytes (target 872). De-naming the other named pointers there (entry, t0 /
+  t2, sp7C / sp78, pal) is flat or worse. Residual: frame slot layout (declaration order does not move the
+  arrays) and the entry-pointer colour. Report: gl_func_0004A308 77.58 -> 94.47.
+- **An inline call's argument as an RVALUE gets its own edg parameter temp.** In 3BE1C `cc->face(i + 0)`
+  (or `i | 0`) instead of `cc->face(i)` moves the expansion's `this` copy into the target's v0 (87.55 ->
+  88.59); a named copy `int fi = i;`, `+i`, `(s16)i` and an `s16` / `const int &` parameter do not. The same
+  spelling on 3BE1C's `list(cell)` and on 3B2EC's `face(i)` loses, so treat it as a per-site probe, not a rule.
+- Final report.json (agent-c branch on dcaeabb65): gl_func_0003BE1C 77.31 -> 88.64, gl_func_0004A308 77.58 ->
+  94.47, game_libs_func_0005F0B8 91.88 -> 92.54, gl_func_0003B6A0 73.62 -> 74.53; 81.29 % code. Final post0b NM
+  clip 0x2ea78 (62F08 NM offset 0x2ea28); changed NM donor `build/src/game_libs/game_libs_ncc_4A308_nm.cpp.o` is
+  added to the purge list.
+
+**6. Addendum 2: game_libs_func_0005F0B8 EXACT (452 bytes; 81.29 -> 81.35 % code).** Continuing item 2:
+- **A named local the target stores to its home and RE-LOADS at every use is a `volatile` local** (cfe): with
+  `volatile f32 xs` the x*s product goes to its frame home and is reloaded at both uses, exactly the target's
+  `swc1 ft1,52(sp); ... lwc1 ft0,52(sp)` pairs (92.39 -> 99.56, length 444 -> 452 = target). Making ys volatile
+  too (its spill at sp+48 becomes its home) plus two unused declarations BEFORE zy / xz put every home at the
+  target's offset with the frame unchanged at 0x80 (99.58): with a volatile at the end of the declaration list,
+  the cfe slots read top-down `a s c xx yy zz xy yz zx x y z len t zs pad zy xz xs ys`.
+- The last residual, the (1-c)*xy / z*s product registers f8 / f10 swapped, is the CSE temps' ring order:
+  naming z*s (`zs = z * s;` just before m[1][0], into one of the two slot-holding declarations, so the frame
+  does not move) gives it the earlier ring slot -> no instruction or operand difference left; the build ROM is
+  byte-identical with the C on the build path (report.json 100). Body in game_libs_post0b.c, episode
+  `episodes/game_libs_func_0005F0B8.json`.
+- Rule: before calling a store-then-reload-per-use FP local a spill cap, try it as a `volatile` local and then
+  fix its home with declaration order; it does not change any other instruction.
+- Final post0b NM clip 0x2ea80 (62F08 NM offset 0x2ea30; 5F0B8's NM body is now 452 = target).
+- Same lever on gl_func_0004E424 (6-float distance estimate, cfe): the stack-passed third float `z0` declared
+  `volatile` -- the target reads it once from its home next to the y1 / z1 loads -- 93.22 -> 95.37 (report.json),
+  50 -> 49 words = target; a 107-role re-grid of the dy / dz / lo / hi / result variables over the new shape
+  found nothing better (FP colouring left). Clip 0x2ea80 -> 0x2ea7c (62F08 NM offset 0x2ea2c), the final value.
+
+## kit CXXV (agent-g 2026-10-27, run 178): bootup 90CC 98.525 -> 98.829 -- read `NCC -S` (ugen output before as1) to tell uopt, ugen and as1 apart; the "one register behind" t-ring was a recomputed CSE temp, the hoisted `li 25` is as1, and structural fixes have to be landed in batches <a name="kit-cxxv-agent-g-run-178"></a>
+
+Target: `func_000090CC` (bootup_uso, 8424 B, NCC NM donor `src/bootup_uso/bootup_uso_ncc_90CC_nm.cpp`). Start
+98.525 (report.json), end 98.829. Every committed step raised report.json. objdiff "real" rows (diff rows left after
+masking relocation names and immediates) went from 249 to 68.
+
+**1. `NCC -S` is the missing diagnostic.** `tools/ido-static-recomp/build/7.1/out/NCC -S <same flags> -o x.s x.cpp`
+writes ugen's assembly BEFORE as1 runs: macro `la` / `lw r, sym` / `li.s`, the `.livereg` masks and ugen's own
+register choices (`$14` = t6), in ugen order. Diff two variants' `.s` files with the `.loc` and `#` lines filtered out
+(`grep -v "^ #\|\.loc"`) to see which pass made a difference:
+- uopt decides which variable gets which register and where constant / address candidates are loaded (`li $2, 7`).
+- ugen decides the t-ring temps (`la $15, sym`) and the statement order.
+- as1 is responsible for anything that appears in the `.s` but sits somewhere else in the `.o`. as1 expands `la` /
+  `lw sym` and renames its scratch register to any dead register (the target's `lui s0, %hi(g); lw v0, %lo(g)(s0)` is
+  as1 using a dying s0). It fills load and branch delay slots from a successor block, hoists a fall-through block's
+  `la` above a `beqz`, and copies a short join block (`addiu at, -5; and t1, t1, at; b`) into a predecessor that
+  branches to it.
+
+**2. The "t-ring one register behind from 0x41720" (kit CXXIII residual) was a CSE temp, not the case-7 constant.**
+The donor kept `sp40 = (s32 *)var_s0;`, a named local for `arg0 + 0x808` homed at sp+0x48. Fix: drop the variable and
+write `arg0 + 0x808` again at its only use (the call about 150 lines later). uopt then makes a CSE temp and spills it.
+In the `.s`, ugen materialises the temp through the ring (`addu $14, $18, 2056; sw $14, 64($sp); lw $16, 64($sp)`),
+which moves the ring by one register for the rest of the function. as1 folds the copy into `addiu s0, s2, 0x808;
+sw s0, 0x40(sp)`, the target's store at the target's temp slot. On its own this change scored LOWER (report 98.758 ->
+98.719) because two as1 decisions changed elsewhere: a short join block got copied into a predecessor and two `la`
+moved above branches. Together with item 3 it is +0.07. kit CXXIII item 7 tried the same drop without item 3 and
+scored -0.45.
+
+**3. The case-7 `addiu t6, zero, 25` above the switch is as1 filling a load delay slot from a successor block.**
+uopt puts a constant candidate's `li` at the START of the first BB of its live range. The case constant 7 came out as
+`li $2, 7` before `lw $24, 0($3)` because the BB started right after the `if (1) { fq += 6; }` body. So 7 interfered
+with the `fq` pointer (fq -> v1, 7 -> v0), and as1 filled the `lw` delay slot with `li v0, 7`. The target has fq in
+v0. The fix is a BB boundary right after the store: `fq = (s32 *)arg0; fq += 6; if (1) { *fq &= ~2; }`. uopt then
+emits `li $2, 7` after the store and fq takes v0. `li v0, 7` can no longer move above `sw t9, 0(v0)`, so as1 fills the
+delay slot with the next independent instruction it finds, the case-7 arm's `li t6, 25`. That is exactly the target's
+shape. An EMPTY `if (1) {}` after a statement creates no BB; the statement has to be INSIDE the `if (1) { }` body.
+- Tried and inert or worse: every type and int-parameter spelling of the 25; a block-scope or function-scope variable
+  holding 25 (copy-propagated, and the function-scope one adds a frame slot); a dead store of 25 before the switch;
+  ternaries; a shared case-6 / case-7 tail. `-Wo,-zcopy:0` with such a variable gives the target's shape, but only
+  because nothing gets propagated. zdbug:5 joins the case 25 and the 25 at 0x9F48 into one negative-save LR
+  (BB 226..293, three reload points), which turned out to be irrelevant.
+
+**4. Structural fixes can lower objdiff fuzzy, so land them in batches.** objdiff chooses one alignment for the whole
+function. Fixing a local insert/delete pair can make it pick a worse alignment elsewhere (replace pairs instead of
+insert + delete), so a correct local fix can score lower. Two fixes each scored lower on their own:
+- wpos.x/y/z stored together before the int fields (target: `lwc1 z` before the int stores, `swc1 z` scheduled after
+  them).
+- the 0x840 call argument read into `var_v1` before the call (`lw a1, 0x840` before `or a0, s2`).
+
+Together they gave +0.22 (98.531 -> 98.748). Check each fix on its own region (rows.py), keep the ones that are right,
+and score them together.
+
+**5. Smaller levers kept, in order:**
+- `((s32 *)bu_90cc_d148_18)[i] = 0` over a new symbol at the +0x18 address gives the target's `sw zero, -4(v0)` pointer
+  loop (pin `bu_90cc_d148_18`).
+- In the 5-argument call, read the 0x840 argument into a block local first (`lw a3, 0x840` before `lw a2, 0x8b8`).
+- `for (sp58 = 0; sp58 != 0x23; sp58++)` instead of the while loop puts the `addiu at, 0x23` before the increment.
+- Read the third draw-argument global into `temp_v0_51` instead of `var_v1` (v0, like the target).
+
+**6. Residual at 98.829 (68 real rows):**
+- arg2 and the &D_00000000 base swapped between t3 and t4 (uopt colouring order).
+- as1 copies the `arg8 &= ~4` join block into the rgb30 arm.
+- as1 hoists the d148 loop bases and `&D_8880` above their branches (the target puts the `lui` in the delay slot).
+- `var_v1` in v1 instead of v0 in the gcfg read-modify-writes.
+- the first two draw-argument globals (`lui s0; lw v0` in the target: as1 renaming its scratch to the dying s0).
+
+**7. Negatives this run.**
+- bootup 31C0 (99.86): tried obj declared first, `Obj *obj = new Obj2;`, the new inside a block, block volatiles next to
+  the new and the KB new, and three ctor volatiles instead of four. The KB new-temp still reuses the result temp's slot
+  and T stays one slot low.
+- bootup 55A0 (95.32): the target keeps `&D_55A0_G` in t0 across both store pairs and keeps the second `.a = 0`. Tried
+  a `G2 *g` local (in place of the `int cnt = 0` filler), a reference, an inline member `set()`, a free `set()` and
+  inline accessors: each was copy-propagated or made no difference. A toy shows the second `.a = 0` survives only if an
+  indirect store (`*ZP = 0`) comes between the pairs. uopt emits the FP constants' `li.s` in the fixed order 0.0, 0.5,
+  1.0 whatever the source order; the target has 1.0 before 0.5.
+- game_uso 97EC: only the residual was read (two declaration-bound temp homes swapped).
+
+**Gate (agent-g run 178):** full make ROM byte-identical, `make verify-blocks` 6/6, `make non_matching_objects`
+0 errors, no exact lost against local origin/main, sentinels at 100, 81.29 % code. New pin `bu_90cc_d148_18 =
+0x00000000`. Purge `build/non_matching/src/bootup_uso/bootup_uso.c.o` and the changed NM donor
+`build/src/bootup_uso/bootup_uso_ncc_90CC_nm.cpp.o`. post0b clip unchanged.
