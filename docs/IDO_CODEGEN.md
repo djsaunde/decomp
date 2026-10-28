@@ -14588,9 +14588,11 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLXXVI (agent-c 2026-10-28, run 199): **fixed `order` over the agent-c range: 120 hits, 34 on field-store lines, but nearly all on in-tree bodies shadowed by NM donors; one new scoring hit (8CD8), then bbsplit; 8CD8 rewritten as C++ in the 7C1C value-class kit (cfe 86.05 -> NCC 87.19, length = target; six unused Vec3 slots fix the 528-byte frame)**](#kit-clxxvi-agent-c-run-199) -- _No exact; 591C 99.73, 7C1C / 454C4 small; lever-sweep false-positive notes._
 - [kit CLXXX (agent-c 2026-10-28, run 201): **sibling map over the agent-c range; the exact 64388 V3 kit (P3 base, set() ctor, free const-ref operators, named k) on 36694 (86.01 -> 90.67, length = target) and an operator-body ORDER grid inside one-line inline members (37540 += / ctor z, y, x: 93.58 -> 95.72; 3558 operator= z, y, x + += x, z, y: 79.23 -> 81.66); negative-result list**](#kit-clxxx-agent-c-run-201) -- _No exact._
 - [kit CLXXXII (agent-c 2026-10-28, run 202): **33094 as real C++ on the 432BC V3 kit: `set(f32, f32, f32)` with member-expression arguments = the target's load-all-then-store order (edg evaluates arguments right to left), by-value operator= + `*=` / `+=` body-order grid (87.65 -> 93.62, length = target); 35B1C is a C++ ctor (data member with a ctor = cfront `new(4)` protocol, by-value operator==) matching every word but the vtable-store slot; 3DF58 unconstrained LRs coloured in bit order; negatives**](#kit-clxxxii-agent-c-run-202) -- _No exact._
+- [kit CLXXXIV (agent-c 2026-10-28, run 203): **faithful as1 lab = `NCC -S` listing -> as0 -> as1 by hand WITHOUT the driver's `-noglobal` (a plain `cc -c x.s` skips as1's reload elimination); with it, no order / label / `.loc` split of 35B1C's ugen block gives the target's vtable-store slot (only a `li at,-4` in an earlier block does, which ugen never emits) = capped; 33094's a-temp FP colours follow the inline parameter declaration order**](#kit-clxxxiv-agent-c-run-203) -- _No exact; corrects kit CXXXII's as1-input claim; 3AE58 pick() negatives._
 - [kit CLXXVIII (agent-c 2026-10-28, run 200): **37540 ported to C++ from its exact sibling 37348's donor kit (cfe 81.17 -> NCC 93.58, length = target): one inline reads the saved vector and clears x (refs = early stores, return = register), set() + compound `*=` for the store/re-read build; 8CD8 pads worth +0.07, no natural aggregate; 36694 n-CSE diagnosis**](#kit-clxxviii-agent-c-run-200) -- _No exact._
 - [kit CLXXI (agent-g 2026-10-28, run 202): **timproc_uso_b5 32C8 EXACT (1480 B): cfe NM body re-written as NCC on its exact sibling 2B74's donor shape (literal vec constants, rodata pin, `(f32)iz()` zero re-assigned on both alloc paths, cfe decl list); the last 2 colour words fell to a grid of PAIRED `if (1) {}` splits x statement order x line layout**](#kit-clxxi-agent-g-run-202) -- _Run negatives: 4A890 / E68 / 6126C / 18F0 / 65EE4 / 65494 / 578B4 / C310 / 4A308 / E2D0 / 31C0 / C234 / 90CC._
 - [kit CLXXIII (agent-g 2026-10-28, run 203): **range-wide exact-sibling map (bytes x gap x ratio) is sparse: every pair >= 0.58 (D884/D14C, DF14/D550, 4B0A8/4E244, E2D0/63F34, 4A308/46DC0) is already ported and capped; 54E78 94.25 -> 98.22: a first-declared aggregate always sits at frame - 12 (needs a 4-byte home declared before it), and a literal 1.0f CSE's with folded i1() constants into one register**](#kit-clxxiii-agent-g-run-203) -- _No exact; lever sweeps over 15 donors saturated; 4A308 spill-slot probes negative._
+- [kit CLXXV (agent-g 2026-10-28, run 204): **a target slot at the spill end of the frame that reloads into the def's OWN register is a register LR spilled to its named home: decl order + dead multi-def `if (0) { e = 0; }` instead of an `&e` keep (4D688 96.65 -> 97.84, 53 -> 2 words off); 54E78 per-LR colour table: the 0.0 constant loses an adjsave tie to p.d on bit order**](#kit-clxxv-agent-g-run-204) -- _No exact; 4A308 / 63964 / 31C0 / 4B0A8 / 4C5E4 / 50444 / 48510 / 4A890 / 493AC negatives._
 - [kit CLXIX (agent-g 2026-10-28, run 201): **fixed lever-sweep `order` re-sweep over 50 bodies: order hits in 4 (2 kept, 2 false positives), bbsplit kept in B75C / C234 / DF14 / kernel 1ADC; a PAIR declaration grid beats single declmove (B75C 93.61 -> 93.93); four `order` false-positive classes (unqualified member / global stores, cast-deref writes, ALL-CAPS call macros); in-tree whole-file grid harness**](#kit-clxix-agent-g-run-201) -- _No exact; 32C8 zero/l134 colour, 578B4 sp50/ra, E2D0, 1ADC, 4C5E4 grids negative; 54E78 / 65494 / 6808-gD hits rejected (length away from / across the target)._
 - [kit CLIX (agent-g 2026-10-28, run 196): **timer-HUD family: the image pointer as the `this` of tiny Img members instead of a named inline local + 3 block pads (13B8 / 16F4 99.43 -> 99.91, 1340 98.47 -> 99.91); `mtc1 zero` count scan finds int-zero candidates: C234 zf (90.77 -> 91.66, length = target), 8FC8 `seti(0, 0, 0)` (90.90 -> 91.27); last 13B8 pair = edg pool-var itab-bit order**](#kit-clix-agent-g-run-196) -- _No exact; 578B4 declmove only 1000 / 13340 done (chunks timed out); 4A308 / 50444 / 63964 / 4B0A8 / 4B620 / 31C0 / 4C5E4 / 55A0 negatives._
 - [kit CLVII (agent-c 2026-10-28, run 189): **gui sprite-rect family: the CTX edg pool temp gets s0 only when it is ASSIGNED in the loader-call blocks (the `this` of an inline `Ctx::load()`); 3714's a1 is a colour-order cap vs the MAX value, not call-crossing; per-packet append spellings in the rectangle macro (RDPHALF_1 `n = dl->n; dl->n++`, RDPHALF_2 `n = dl->n++`)**](#kit-clvii-agent-c-run-189) -- _No exact; 329C 98.85 -> 99.06, 3714 96.10 -> 96.43; 2DE0 load() inline 96.42 but 1196 bytes (away, not landed)._
@@ -46271,3 +46273,123 @@ col moves to 60). Still 99.99 (one word).
 - 41D40 (dump): the bottom next() copy's array / index temps are operator[]'s `this` / `i` (v0 / v1 by bit order at
   equal priority); a free `at(int i, Arr *a)` / `at(Arr *, int)` (kept or not) loses the inline webs (97.5).
 - 33094: kept-parameter (`if (0) a = 0;`) variants of the set() arguments, a temp copy of a: flat.
+
+## kit CLXXXIV (agent-c 2026-10-28, run 203): a FAITHFUL as1 lab (as0 + as1 by hand, without the driver's `-noglobal`) shows that 35B1C's vtable-store slot cannot be reached by any order of the ugen output; 33094's FP colours follow the parameter declaration order <a name="kit-clxxxiv-agent-c-run-203"></a>
+
+No exacts this run; no source changes (gate re-run on the unchanged branch: ROM byte-identical, verify-blocks 6/6,
+non_matching_objects 0 errors).
+
+**1. The as1 lab that matches the real build.** `cc -c x.s` is NOT the as1 of a C/C++ compile: the driver runs
+`as1 ... -noglobal` for `.s` input, which switches off as1's global pass (the store-then-reload elimination that turns
+ugen's `addu $15,$20,4; sw $15,52($sp); lw $3,52($sp)` into `addiu v1,s4,4; sw v1,52(sp)`), so `.s` experiments
+schedule differently from the real object. Run the two stages yourself instead (paths in the worktree's
+`tools/ido-static-recomp/build/7.1/out/`):
+
+    NCC -S -G 0 -non_shared -Wab,-r4300_mul -O2 -mips2 -32 x.cpp        # ugen listing = the as1 input text
+    as0 -G 0 -r4300_mul -mips2 -EB -g0 -O2 x.s -o x.B -t x.T
+    as1 -t5_ll_sc_bug -elf -G 0 -p0 -r4300_mul -mips2 -EB -g0 -O2 x.B -o x.o -t x.T
+
+The unedited `-S` listing of the 35B1C donor assembled this way gives a `.text` byte-identical to the NCC object, so
+hand-edited orders of the listing are a trustworthy model of what as1 does with a given ugen order. (`-O3`, `-mips1`
+and the IDO 5.3 as1 schedule this block the same way as 7.1 `-O2`.)
+
+**2. 35B1C: the target's block is not an as1 schedule of any order of the ugen instructions.** The block is
+`la t6, vtbl / sw t6,12(s4) / addu v1,s4,4 / sw v1,52(sp) / bne s4,-4` (vptr store, the member-ctor `&key` temp and
+its home store, the `&key == 0` test folded to `this == -4`). Target: `lui t6; addiu t6; addiu v1,s4,4; addiu
+at,-4; sw t6,12(s4); bne; sw v1,52(sp)`. Probed with the faithful lab: every dependency-legal order of those
+instructions (with the home store / reload / move forms of the temp: 6 + 10 + 20 orders), every placement of one or
+two labels or `.loc` group boundaries in them (120 + 420 + 630 probes, also with `la` split into `lui` / `addiu`),
+an explicit `li $1,-4`, the vptr store through `8($3)`, and an exhaustive enumeration of all 9639 dependency-legal
+sequences of 3-6 items drawn from {la, vptr sw, `addu` into $3 / $15 / $2, the three home stores, the reload, two
+moves, a label, a `.loc`} (as1 does delete a duplicate `addu` and a store-reload pair, so extra ugen instructions were
+in scope): NOT ONE gives the target. The only input that does is
+`la t6; addu v1; li $1,-4` + label + `sw t6; sw v1; bne s4,$1` (the -4 constant materialised in an EARLIER basic
+block than the vptr store), which ugen never emits (it emits `bne $20,-4` and as1 expands the `li at` next to the
+branch). as1's rule seen in the lab: the bne delay takes the last movable instruction, and the macro's `li at` lands
+just before the last remaining instruction only when that one is the vptr STORE (the exact sibling 37AF0 / 3E0F0
+block `la; sw vptr; addu v1; bne` gives `lui; addiu; li at; sw vptr; bne; addiu v1` -- matches its target); with
+the `&key` home store present, as1 always issues the vptr store right after `addiu t6`. The 5-word window
+`addiu rY,rZ,K; li at; sw; bne at; sw rY,N(sp)` occurs nowhere else in the ROM (raw-word scan of every .s), so there
+is no exact reference. This also corrects kit CXXXII's addendum (its "as1 input `la; addu; sw t6; sw v1; bne` gives
+the target" was read off delay slots; in the lab that order gives our build). Treat 35B1C as capped unless a
+different construct (not this instruction set) is found. The run-202 C++ donor (every other word exact) stays in
+the run-202 scratch.
+- edg facts checked: the whole ctor prologue (Rec protocol, vptr store, inlined member-ctor protocol, mem-initializers)
+  carries the `.loc` of the ctor's opening brace (multi-line heads change nothing); a mem-initializer's ARGUMENTS are
+  evaluated before edg computes the member's `&key` temp; a non-polymorphic data base or a polymorphic data base adds
+  a second `this == 0` protocol; `Rec : Link, B` with the virtual in B grows the object to 20 bytes; class-scope /
+  out-of-line / non-inline `operator new` and an out-of-class `inline Key::Key()`: flat.
+- cfe facts: `p = o + 4` written before the vptr store sinks below it (memory-homed p: uopt delays the home store to
+  the first use), and `((int **)p)[2] = vt` folds back to `12(o)`; only a REGISTER-coloured p whose first use is the
+  vptr store keeps its `addu` before the store (standalone C reproducer: `p = &o->key; ((void **)p)[2] = vt; if (p
+  == 0) ...` with p used after the protocol) -- irrelevant to 35B1C because its temp is memory-homed.
+
+**3. 33094: the colours of a's three set() parameter temps follow the parameter DECLARATION order.** The coloring
+dump (`-Wo,-zdbug:6`) shows a's x / y / z temps as three equal-priority constrained live ranges coloured in bit
+order (= the inline parameter declaration order), taking f0, f2, f12 in turn; the target's x f12 / y f0 / z f2 is
+the order y, z, x. `void set2(f32 y_, f32 z_, f32 x_)` called as `a.set2(o->pos.y, o->pos.z, o->pos.x)` (same for
+b) gives exactly the target's colours in both arms, but edg's right-to-left argument evaluation then loads x first
+(target: z, y, x), and objdiff drops (93.4554 -> 93.3960 standalone over a 1296-cell set/`*=`/`+=`/set2 body-order
+grid), so not kept. The else arm's 10.0 still colours f14 (target f12 with a.x split out of that arm and reloaded
+from its home), i.e. 10.0 must out-rank a.x. A 2592-cell grid of the existing set / `*=` / `+=` orders x a / b decl
+forms x `10.0f` / `10` / `(f32)10.0` spellings: the current donor is already the best (93.4554 standalone).
+
+**4. Negatives (do not repeat).**
+- 3AE58 (99.26): pick() returning `Ent *` / `Ent &` / `unsigned short &` / `unsigned short *`, `pick(vt, e)` /
+  `pick(e, vt)` returning `&vt[e->vi]` (the vi load becomes a ugen temp, but the entry merge then colours v1 instead
+  of the target's t0: nothing else holds v1), int / unsigned returns, a named or array / struct-member copy of the
+  index, `if (e == 0) {}` / `if (0) return 0;` keeps: flat or worse. The target needs the merge in t0 (v0 and v1
+  occupied) AND the vi load as a ugen temp evaluated after the verts base.
+- 41D40, 3DF58, 3E5E0, 36694, 37540: diffs re-read, all colour / ring residuals already mapped by earlier kits; no
+  new lever tried beyond reading.
+
+## kit CLXXV (agent-g 2026-10-28, run 204): a target stack slot BELOW the uopt spill area that is re-loaded into the LR's own register is a register LR spilled to its NAMED home, not an address-taken local -- 4D688 96.65 -> 97.84 (53 -> 2 words off standalone); 54E78 colour-order diagnosis (zdbug:5 + :6 per-LR table); 4A308 / 63964 / 31C0 / 4B0A8 / 4B620 / 4C5E4 / 50444 / 48510 / 4A890 / 493AC negatives <a name="kit-clxxv-agent-g-run-204"></a>
+
+**1. 4D688 (post0b NM donor, debug-console loop).** The donor kept the polled event pointer `e` in memory with
+`if (0) gl(&e);` (homed sp+60, every reload into a fresh ring temp t7). The target's word is at sp+56 and the
+reload goes back into a0 -- the register the LR was coloured -- and the ring after it is one register lower. That
+is the "named local saves at its decl-order home" signature (kit CI): `e` is a REGISTER live range that uopt splits
+around the poll call and spills to its own named home, so (a) declare `int k;` (the switch selector) before `e`,
+which moves e's home from 60 to 56, and (b) replace the `&e` keep with a dead multi-def `if (0) { e = 0; }` (the
+LR keeps a spill home but stays a register candidate). The t-ring then lines up through the 'e' case. A statement
+grid on top: `m3C = DSTR(..)` back before the volatile `m24++`, and the 'g'/'h' handover as
+`m4 = m8; m8 = 0; m28 = 0;` (the named `int t` made a v0 LR; the target reads m8 into a ring temp). Report
+96.64706 -> 97.84034, length unchanged. Left: the old-n copy of `if (n++ & 1)` (edg's pooled post-increment
+temp, hoisted into the switch-compare delay slot) colours v0, target a0; `n++ % 2`, `(n++ & 1) != 0`, a named
+`int o = n++`, `n++; if (!(n & 1))`, dead multi-def on n and the dispatch-statement permutations are all flat.
+**Rule:** when a target slot at the spill end of the frame reloads into the SAME register as the def, try
+"register LR + named home" (decl order + dead multi-def) before any `&x` keep; `&x` gives the home but reloads
+into ring temps.
+
+**2. 54E78 colour order (no gain; the map for the next run).** Per-LR table (`-Wo,-zdbug:5` adjsave / units /
+interference + `-Wo,-zdbug:6` order; a 40-line parser kept in the run scratch): ours colours p.d (adj 4, bit 45)
+f0, k (4) f0, the 0.0 constant (4, bit 121) f2, n.x / n.y / n.z (3) f12 / f0 / f0, the 2.0 constant (3, bit 120)
+f14, the three products (1) f12 / f16 / f18. The target (zero f0, 2.0 f2, n.x f12, n.y f14, n.z f16, p.d f18,
+products f0 / f12 / f14) needs, all at once: zero before p.d (an adjsave TIE lost on bit order -- constants are
+created in reg-alloc prep, so they always lose ties), 2.0 above 3 (span factor 3 from 4 units + 2 reaching), n.z
+interfering with p.d (same live unit) and the products NOT interfering with zero. Tested this run: per-use
+`i0()` / `i2()` / int-literal / `zf()` zero and two spellings (19-marker greedy + named groups: the all-i0 form is
+byte-identical to the literal form, any partial mix loses), every `if (1) { }` placement over 11 statement
+boundaries (2048 combos, exhaustive: the current two splits are the unique best), int phantom loads
+`mtx.m[r][c + (*(int *)((char *)&p + K) & 0)]` at all 16 stores (inert), and p.d read into a named local at 12
+positions (zero then takes f0 as wanted, but the local's home / 2.0 colour cost more: 96.8). The constant-zero
+tie is the crux; nothing found that creates the constant candidate earlier.
+
+**3. Negatives (do not repeat).**
+- 4A308 spill word (target sp+60, 8 dead bytes below): a named `int off` for `arg3 * 8` at 3 declaration points x
+  2 assignment forms x the block-local r: off is never spilled to its home (the spill is an expression LR in the
+  temp area); best = current.
+- 63964 arm-1 temps (target + temp 12 lower, X 8 lower, 16 bytes of gap redistributed): unused `{ V3 t; }` /
+  volatile blocks at 4 points (1024 probes) and member vs free operator+ / operator* (by value, const f32 &,
+  named-return): flat.
+- 31C0: volatile pad counts in the Obj ctor, case-1 pads, `(void *)new KB`, `Obj *obj = new Obj2` init forms, a
+  named KB pointer, an `ob` copy: flat (the target reads obj through T in case 1 and through obj in case 0).
+- 4B0A8 loop forms (while / do-while guard / for with named result / for (;;) break): IDO canonicalises all to
+  the same body.
+- 4C5E4: volatile pad counts at 3 points give the target frame 208 but no score; the else-arm `m & 4` the target
+  computes before the `if (f)` (an LR in a3) is sunk to the call in every order / dead-multi-def / m78-direct form.
+- 50444: `pos` (target memory-resident, reloaded into t7) -- `&pos` keep +12 bytes; F3-struct / reference /
+  dead-multi-def spellings of the three loads: flat (its LR has adj 1.5, never -ve).
+- 48510 `nv >= max590 - 1` operand / next() spellings: +0.015 only with a non-equivalent form.
+- 4A890: `s = list` reuse (target s0 holds ids then &list) and non-volatile sz: the copy is propagated, flat.
+- 493AC s1 / s2 (o vs the iter return-temp address): dead multi-def / `while (0)` on o at 3 points: inert.
