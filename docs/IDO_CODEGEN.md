@@ -14581,8 +14581,10 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLXX (agent-c 2026-10-28, run 196): **game_uso 591C 94.79 -> 99.03, length = target: cfe field promotion (`switch (v0 = self->f)`, arms write only the field) gives the target's selector copies; per-arm `unsigned` reads defeat a cross-arm CSE; re-reading a base pointer keeps `addiu rX,base,K` unfolded; a never-homed scalar's slot can be a pointer's spill home; cfe store order follows source lines**](#kit-clxx-agent-c-run-196) -- _No exact; cast-alias sweep (14 cfe bodies) negative; 1DDC kit-CLXIII placements 9 rows but lower; region map of 591C residuals._
 - [kit CLXIII (agent-g 2026-10-28, run 198): **1340 + 23FC EXACT: edg homes named locals at SCOPE ENTRY and pooled inline temps at FIRST USE (a nested block places a named local below the pool temps); a named inline local is a fresh variable per expansion, a pooled `img->gw()` temp is reused (long LR, higher register); 4A308 v0/v1 via a folded term**](#kit-clxiii-agent-g-run-198) -- _EXACT 1340 + 23FC (2060 B, 82.79 -> 83.06 %); 4A308 99.85 -> 99.99._
 - [kit CLXV (agent-g 2026-10-28, run 199): **negatives: 578B4 declmove sweep complete (no hit); 4A308's missing 8 frame bytes sit BELOW the spill word (uopt/ugen area, k = 13..20 vs our 9..12), so no edg-level local can supply them; 63964 arm-1 census (target allocates three fresh word temps before the bound copy C); 31C0 T1 / obj read-site swap; 4B0A8 / 4B620 / 48510 / 5F5F0 tie grids**](#kit-clxv-agent-g-run-199) -- _No exact, no source change; mgrproc 1824 = external-jtbl cap._
+- [kit CLXVII (agent-g 2026-10-28, run 200): **m2c-order statement grids: bootup C234 91.66 -> 95.05 from statement / operand order alone (0x290 pool store moved up past the byte stores, 0x944 divide before 0x968 = target load order); lever-sweep's 2-4 line moves skip any statement containing `(`, so cast-style field stores need `@[..]@` permutation grids; 54E78 operand-order grid 93.79 -> 94.04**](#kit-clxvii-agent-g-run-200) -- _No exact; operand-swap / statement-permutation sweeps over 20 bodies mostly flat (hand-ordered bodies have nothing left); 76F0 / 18F0 / 65EE4 / 8FC8 / 50444 negatives._
 - [kit CLXI (agent-g 2026-10-28, run 197): **timer-HUD 13B8 / 16F4 EXACT: pooled edg temps get itab bits by first reference (homes by creation); a folded `+ 0 * tim.pw()` in an earlier statement pre-creates pool vars so the pB width outranks its copy; x locals declared before the panel pointers**](#kit-clxi-agent-g-run-197) -- _EXACT 13B8 + 16F4 (1360 B, 82.62 -> 82.79 %); 578B4 declmove 1000-2500 no hit._
 - [kit CLXXII (agent-c 2026-10-28, run 197): **game_uso 591C 99.03 -> 99.68, length = target: the extra `mtc1 zero` was a copy-propagated abs (put the abs in a temp the next block redefines, `0.0f`); ONE nested selector written into `z` makes the shared cfe join temps colour f14 at every other site; web-rename sweep (dead same-type local for one region's value) recolours per region**](#kit-clxxii-agent-c-run-197) -- _No exact; 168 -> 68 rows; region map of the int-pointer swaps left._
+- [kit CLXXIV (agent-c 2026-10-28, run 198): **a field read through the PARAMETER (`a0->f`) instead of its local copy (`self = a0`) is a separate CSE / PRE expression: one site leaves the function-wide code-motion web and a delay-slot load order elsewhere flips (591C 99.68 -> 99.70); 591C pointer rows are constrained-LR priority order, target order written down**](#kit-clxxiv-agent-c-run-198) -- _No exact; 68 -> 64 rows; axis / counter / bne / chain-site negatives._
 - [kit CLIX (agent-g 2026-10-28, run 196): **timer-HUD family: the image pointer as the `this` of tiny Img members instead of a named inline local + 3 block pads (13B8 / 16F4 99.43 -> 99.91, 1340 98.47 -> 99.91); `mtc1 zero` count scan finds int-zero candidates: C234 zf (90.77 -> 91.66, length = target), 8FC8 `seti(0, 0, 0)` (90.90 -> 91.27); last 13B8 pair = edg pool-var itab-bit order**](#kit-clix-agent-g-run-196) -- _No exact; 578B4 declmove only 1000 / 13340 done (chunks timed out); 4A308 / 50444 / 63964 / 4B0A8 / 4B620 / 31C0 / 4C5E4 / 55A0 negatives._
 - [kit CLVII (agent-c 2026-10-28, run 189): **gui sprite-rect family: the CTX edg pool temp gets s0 only when it is ASSIGNED in the loader-call blocks (the `this` of an inline `Ctx::load()`); 3714's a1 is a colour-order cap vs the MAX value, not call-crossing; per-packet append spellings in the rectangle macro (RDPHALF_1 `n = dl->n; dl->n++`, RDPHALF_2 `n = dl->n++`)**](#kit-clvii-agent-c-run-189) -- _No exact; 329C 98.85 -> 99.06, 3714 96.10 -> 96.43; 2DE0 load() inline 96.42 but 1196 bytes (away, not landed)._
 - [kit CLI (agent-g 2026-10-28, run 193): **cfe literal-spelling decode signals from immediate / `mtc1 zero` counts: a `mul.s` by a held 2.0f is `* 2` (cfe folds `* 2.0f` to add.s), a float store using the compare's zero register is `0.0f` not `0`, `x += a*b*c` gives the target's add / mul operand order; re-run lever-sweep after every decode fix (B75C 90.86 -> 93.31, length = target; 6808 gD de-named 94.24 -> 95.38)**](#kit-cli-agent-g-run-193) -- _No exact; negatives 6126C dispatch copy, E9FC / 6204 prologue (unique), 63964 temp layout, C234 V3 class, 8FC8 iz zeros, E68 split m, 65EE4 literal arg, 4E424 roles, 4C5E4 2.0f._
@@ -45738,3 +45740,97 @@ swap (accel_params adjsave 1.5 < dst 2.5; sites 1 / 3 with the same shape are ri
 0xba8 / 0xc14 delay-slot load order of self->0x30 vs self->0x2C; 0xc88 mul operand order; 0xd84 counter v0 (target v1);
 0xfe4-0x1004 the sacrificed z selector. Probe harness: in-tree asm-processor + cc -DNON_MATCHING per variant, objdiff
 score + objdump row diff (about 4 s per variant, 28 in parallel).
+
+## kit CLXXIV (agent-c 2026-10-28, run 198): game_uso 591C 99.68 -> 99.70 -- reading a field through the PARAMETER instead of its local copy (`a0->f` vs `self->f`, `self = a0` at the top) is a separate uopt expression: it moves one site out of a function-wide PRE web and fixes a delay-slot load order elsewhere; the 591C colour rows are all priority-order rows of CONSTRAINED live ranges (zdbug:6), with the ordering the target needs written down <a name="kit-clxxiv-agent-c-run-198"></a>
+
+No exact. game_uso_func_0000591C (4372 B, cfe NM body) 99.67978 -> 99.70174 report.json, 68 -> 64 differing rows.
+
+**1. Parameter read vs local-copy read (the gain).** 591C copies its parameter once (`self = a0;`, self homed and
+held in s0). Spelling ONE read as `*(char**)((char*)a0 + 0x30)` (the chain-1 `sub = ...` before the speed product)
+instead of `self + 0x30` fixed the 0xba8 / 0xc14 rows: the target loads self->0x30 in the predecessor and self->0x2C as
+the join's first instruction (stolen into the branch delay slot), ours had them the other way round. The a0 read emits
+the same `lw rX,48(s0)` (copy propagation), but it is a different expression for CSE / PRE, so that site no longer
+belongs to the self->0x30 code-motion web and PRE places the later loads differently. Sweep it: every `self` read one
+at a time (80 variants), then pairs of the self->0x30 / self->0x2C reads (325 variants): only that one site moved
+anything, but it is cheap and works only in functions that copy a parameter into a local. Some a0 reads add a home
+reload and change the length (the 0x318 head / 1784 reads), so check the length.
+
+**2. zdbug:6 colour order for the 591C pointer rows.** Every LR involved is `assigned (constrained)`, so the order is
+plain adjsave priority. Ours: self->0x30 code-motion temp (bit 1400, adjsave 2.67, spans the three dispatch arms AND the
+post-3ED4 `sub` block) -> v1; scratch / chain destination copies (2.5) -> v1 or a0; source pointers (1.5) -> a1;
+`&res_a` / `&res_b` address constants (1.0) -> a0. The target's registers need `&res_a`/`&res_b` (v1) coloured BEFORE
+the prefetch (a0), and the source pointer coloured before the destination at the scratch block and chain sites 2 / 4
+but AFTER it at sites 1 / 3 (whose code is word-for-word the same shape). Levers that did not change the order:
+dead `if (0)` / `while (0)` defs (deleted by cfe), moving the source def before / after the `p = 0; if (1)` split,
+index / char* spellings, sharing destination variables across sites (a merged LR only gets denser), adding webs
+(1784 base, head 0x318 base, scratch source, site-3 source) to accel_params (densities stay below 2.5), int /
+unsigned / a0 spellings of the arm load (length changes: PRE no longer puts it in the arms).
+
+**3. Negatives.** Axis region: x / y / z products into any of 9 float variables x the 0xA8 factor in any of 10
+variables (1022 variants): x-first loads are reachable (`x = ax[0] * f; z = ax[1] * f; scale = ax[2] * f`, loads now
+x, y, z) but the x / z products then colour f0 / f14 (target f14 / f0), and putting the x product into the f14
+variable recolours fsel (f12 -> f2) -- 62 rows but lower fuzzy, not kept. Counter at 0xd84: fresh int variables
+(vsel, t0, bits) still colour v0; field `+=` forms change code. `bne v1,v0` operand order: assign-in-condition,
+swapped, `!(!=)`, `^`, field re-read, unsigned forms all canonicalise or change code. lever-sweep bbsplit / order /
+hoist on the current body: no hit. 0xc88 mul order: the inline ternary `K * (c ? a : 1.0f)` puts the join temp
+first like the target (mul.s f4,fJ,f8) but the shared cfe join temp colours f14 (target f2): 66 rows, not kept.
+Chain sites: renaming the destination / holder / source variables (all five Vec3* and four float* locals, per site
+and across sites, holder / copy role swap) never changes a single word -- copy propagation erases the variable
+identity of these pointer webs, only their structure counts. cfe folds `+ (FW(p,K) & 0)` before uopt (no unit
+shift, unlike NCC in kit XCIX).
+game_uso 0B3C (99.83, 3 rows): the two `or a1,t0` literal-1 call arguments (target fresh `addiu a1,zero,1`) are
+immune to literal spellings (`1u`, `(char)1`, `(short)1`, `!0`, `1L`, `(int)1.0f`) and to moving the head
+constant into any other int local (constant propagation); `sltiu 4` stays the proven 4-label jumptable cap
+(default / case 4 / case -1 / unsigned selector placements re-probed).
+
+**Region map (end of run, 64 rows):** 0xb8-0xe4 axis loads y/z/x (6); 0x2b0-0x3d8 prefetch v1 / &res a0 / scratch
+src a1 / dst a0 (27); 0x630-0x684 and 0x8bc-0x910 chain sites 2 / 4 src / dst v1 / a1 swap (22); 0xae4 bne operand
+order (1); 0xc88 mul.s operand order (1); 0xd84 counter v0 vs v1 (4); 0xfe4-0x1004 sacrificed z selector (3).
+
+## kit CLXVII (agent-g 2026-10-28, run 200): m2c-ORDER STATEMENT GRIDS -- bootup C234 91.66 -> 95.05 from statement / operand order alone; lever-sweep's 2-4 line moves skip every statement containing `(` (all cast-style field stores); operand-order and store-order sweeps over 20 NCC / cfe bodies (mostly flat) <a name="kit-clxvii-agent-g-run-200"></a>
+
+No exact. report.json gains: bootup func_0000C234 91.65818 -> 95.04727 (2200; 550 -> 549 words, target 550, FLAGGED),
+post0b gl_func_00054E78 93.78986 -> 94.03623 (552, length = target), bootup func_0000B75C 93.58206 -> 93.60878
+(2096, length = target).
+
+**1. The blind spot.** `lever-sweep.py order` tries adjacent swaps and 2-4 line moves, but the move pass skips any
+statement with `(` in it (`if not la or '(' in a ...`). In an m2c-literal body every field store is
+`*(f32 *)((char *)(arg0) + K) = ...`, so only adjacent swaps were ever tried there. C234's NCC donor is such a body (it
+was lifted from the cfe NM body), and its biggest miss was a five-line move.
+
+**2. C234 fixes (all confirmed in-tree):**
+- `0x290 = D_940` moved up next to the 0x288 / 0x28C stores in both the default and the 0x62 arm (5! x 4! permutation
+  grid): the target loads the pool constant before the four `sb zero,0xA30..0xA33` stores and puts its `swc1` in the
+  branch delay slot. With the m2c order (0x910 store first, 0x290 last) the byte stores could alias the global and
+  pinned the load behind them. 92.79 -> 94.70.
+- The 0x93C / 0x940 / 0x968 / 0x944 divide group: the target LOADS 93C, 940, 944, 968 and stores 93C, 940, 968, 944
+  (div latency puts the 944 store last). With 0x944's statement written before 0x968's, the block lines up word-for-word
+  up to registers, including the target's `nop` before `bc1f`. Alone that made the body 551 words. After it, run 182's
+  `volatile f32 hz` (+2 words then) was surplus; dropping it gives 549 (target 550). 91.85 -> 92.79.
+- Operand order from the target's `mul.s` operands: the A20 / A24 dot products read 0x3B0 / 0x3C8 first, the impulse dot
+  product is `0x33C*0x93C + 0x340*0x940 + 0x344*0x944`, and `0x9D4 = 0` goes after the 0x934 store.
+- Negative: the floor test spelled exactly as the target's operand order (`D128 * (0xDC*e4 + (0xE0+K)*e8 + 0xE4*ec)`)
+  scores 94.62 vs 95.05 for the grid's best (`e4*0xDC + e8*(0xE0+K) + ec*0xE4`, `* D128` last). Writing A1C / A20 as
+  `(sum) * temp_f16` (the target's operand order) also scores lower (95.03): the operand order changes the FP colouring.
+  The residual word is the target's `mov.s f0,f12` copy of the 0x968 quotient before the held products.
+
+**3. 54E78 (NCC).** An operand-order grid over the nine `p.n.a * p.n.b` products, the dot, and the translation-row
+order: m[0][1] = `y*x`, m[2][0] / m[2][1] = `x*z` / `y*z`, dot = `y*o.y + x*o.x + z*o.z` (the first two terms commute
+exactly), and the translation row back in x, y, z order (run 194's y-first order had been compensating for the old dot).
+93.79 -> 94.04.
+
+**4. Mechanised sweeps (scratch scripts, not committed).** (a) Operand swap: every binary `*` whose operands are
+whole terms (not part of a `*` / `/` chain, not after a cast) gets an `@{ A * B @| B * A }@` marker. (b) Statement
+permutation: every run of 2-6 simple assignments with no calls, no `++` / `--` and no textual write/read overlap becomes
+a `@[..]@` marker. Then greedy spelling-grid. Results (standalone): C234 +0.34 (the 0x9D4 move), 2840 / 4BAF4 / 493AC /
+4F2DC / 50444 / 4D688 / 8BD4 / 48AEC flat, 65494 +0.03, 4C5E4 +0.02, 55A0 +0.06 at +8 bytes (away), B75C / 6808 / 76F0
+/ E68 (cfe, extracted standalone) flat. Bodies that were already hand-ordered have nothing left at this level; the win is
+in bodies that still carry m2c's statement order. Extraction gotcha: an extern declared with the wrong type (B75C's
+D_000008E0 is `f32` in bootup_uso.c, not `f64`) gave a false +1.0 in the standalone grid.
+
+**5. Negatives.** 76F0 switch 3 `switch (var_v0 = self->unk4DC)`: identical code (the dead copy is propagated);
+`switch (temp = ...)` with a live `temp` gets the copy but colours it a1 (93.39, worse). 18F0 (kernel): the peel's
+`bnezl found` layout and the hoisted `-9` mask are unchanged by `if (found)` vs `continue`, a named mask local or
+nested ifs (all 89.19). 65EE4 (-Olimit 1 donor): call-argument spellings (`&g` vs `g.base` order, prototypes, local
+copies) all identical. 8FC8 S70 rows: `o = m38` as a block local or inline: flat. 50444: a `volatile` pos parameter is
+ignored by edg (identical code).
