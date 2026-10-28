@@ -14568,6 +14568,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CXLVIII (agent-g 2026-10-28, run 192): **a never-homed parameter register between homed ones is the PAD of an 8-byte-aligned parameter (6126C: union with a double member, a1 = pad); a constant the target holds in an s-register is a direct global store with a literal, not an `int *flag` / `int one` local; a debug event loop as a member function with for(;;) + static long long guard hoists &g2 / 1 like the target (4D688); a value loaded before a DL append was named before the packet (E68); NCC donors of never-returning functions carry an as1 alignment pad in their symbol size (clip = code delta + pad; rm the NM object after a failed clip)**](#kit-cxlviii-agent-g-run-192) -- _No exact; NM 4D688 83.62 -> 96.59, 6126C 84.05 -> 93.81 (484 B, length away, flagged), bootup E68 90.87 -> 93.44, 5A2C4 90.21 -> 90.29 (frame 0xC0), E9FC address decode fix (flat); post0b clip 0x2eac8 -> 0x2eadc; pin D_4D688_g3; negatives 5A2C4 ring temps, 4A890 multi-role, 18F0 found-test shapes, 65EE4 NCC, 6808 field pointer, register-only rest._
 - [kit CL (agent-c 2026-10-28, run 185): **cfe gives every declared local a frame home in declaration order (unused ones too): solve frame / stack-slot residuals by declaring scalars in the target frame's one-word gaps and dropping extras (game_uso 0B3C frame 360 -> 336, raw 172 -> 3 words); split shifts + a named `xl` re-phase the NCC gbi macro ring (gui 4568); NCC named-pointer homes ignore declaration position (1DDC)**](#kit-cl-agent-c-run-185) -- _No exact; 0B3C 99.59 -> 99.83, gui 4568 91.79 -> 96.01; negatives 1DDC / 97EC / 591C / 3558 / 329C / F04 / 3714 / 2DE0._
 - [kit CLII (agent-c 2026-10-28, run 186): **game_uso 7C1C was C++: natural 6A30-class code beats the frame-exact cfe emulation (92.59 -> 95.12); an inline call's pooled return slot stays busy until the end of the full-expression, so a nested call returns through the next slot (`perp(XZ(p) - q)` -> s2 / sp+540); `(const Vec3 &)xz` into a by-value operator=; unnamed booleans land in the uopt spill area**](#kit-clii-agent-c-run-186) -- _No exact; deferred-temp order reversed vs target in every block (edgcpfe difference, no flag fixes it); set() param colours; 8CD8 C++ port lead (s0 vs target's no-s-reg allocation)._
+- [kit CLIII (agent-g 2026-10-28, run 194): **the literal / `mtc1 zero` count scan needs filters (target-side `lui 0x0/0x2/0x4` = baked addresses, surplus `li K` = branch-likely delay copies, `sltiu 4` = the 4-entry-table cap); 4F2DC was C++: V3 by-value operator temporaries give the copy chains (90.45 -> 94.87, length = target); a re-shaped donor can make an old `if (1) {}` harmful (23FC 99.62 -> 99.94); NCC homes: function scope top-down, block scope depth-first after it, inline locals in the block sequence, dead / volatile locals at the bottom**](#kit-cliii-agent-g-run-194) -- _No exact; C310 `- 1 == 0` flagged as a wrong decode kept for score; negatives 8FC8 zero triple, C234 second zero, 1824 `li at,1`, 5A2C4 NCC lift, E68 held `&h`._
 - [kit CLIV (agent-c 2026-10-28, run 187): **NCC never emits a jump table (4 or 8 dense labels both chain); the run-186 "8CD8 C++ emits the 4-entry table" claim was wrong, kit CXL stands; gui 329C's second MAX pool temp is coloured early by uopt PRIORITY (spr as an inline Spr::prep `this` moves it to t2 -- lead); cfe block-scope locals home below function-scope ones**](#kit-cliv-agent-c-run-187) -- _No exact, no source change; negatives for 329C, 250C8 fontId, 37938, 396FC._
 - [kit CLI (agent-g 2026-10-28, run 193): **cfe literal-spelling decode signals from immediate / `mtc1 zero` counts: a `mul.s` by a held 2.0f is `* 2` (cfe folds `* 2.0f` to add.s), a float store using the compare's zero register is `0.0f` not `0`, `x += a*b*c` gives the target's add / mul operand order; re-run lever-sweep after every decode fix (B75C 90.86 -> 93.31, length = target; 6808 gD de-named 94.24 -> 95.38)**](#kit-cli-agent-g-run-193) -- _No exact; negatives 6126C dispatch copy, E9FC / 6204 prologue (unique), 63964 temp layout, C234 V3 class, 8FC8 iz zeros, E68 split m, 65EE4 literal arg, 4E424 roles, 4C5E4 2.0f._
 - [kit CXLIX (agent-c 2026-10-28, run 184): **`scripts/decode-scan.py` -- project-wide mechanical scan of every <100 NM body for address decode errors (per-site %lo of pin + addend vs the USO target's baked word, by lui dataflow; double-added pins, hold-vs-fold splits, unpinned-symbol pin hints, `SYM + K` on non-zero pins), m2c negated float compares and leftovers; objdiff's fuzzy IGNORES relocated immediates, so address fixes are correctness-only**](#kit-cxlix-agent-c-run-184) -- _No exact, report.json flat; 3430 step loads read 0xCC8.. (were address 0), pin D_000019E8; the run-183 class is harvested: 1 new true double-add (bootup E9FC, agent-g unit), 5 negated compares in game_uso 591C (agent-g unit), the rest placement / pairing noise._
@@ -44649,3 +44650,79 @@ lever-sweep all: no hit. The retMsg web colour (target a1 + `move v0,a1`) is unc
   as friends, named results (`V3 r(...); return r;`), operator= returning `V3 &`: flat or worse.
 - gl 396FC: the residual (`or a0,a3` stolen into the range check's delay slot) re-checked: no arm reads a0 before
   writing it, so as1's steal is legal in both; the difference is still unexplained (see the function's header).
+
+## kit CLIII (agent-g 2026-10-28, run 194): literal / `mtc1 zero` count scan over the whole range (what it does and does not find); 4F2DC cfe -> NCC V3 port (90.45 -> 94.87, length = target); stale `if (1) {}` in a re-shaped donor (23FC 99.62 -> 99.94); NCC home-placement probes (block-scope locals, inline temps, volatile / dead locals); negatives <a name="kit-cliii-agent-g-run-194"></a>
+
+No exact. report.json: game_libs_func_0004F2DC 90.45 -> 94.87 (1064 B, length = target), mgrproc_uso_func_000023FC
+99.62 -> 99.94 (1108 B), gl_func_0004C5E4 87.16 -> 87.22, gl_func_00054E78 91.28 -> 91.33, gl_func_0004D688 96.59 -> 96.65.
+post0b NM .text unchanged (0x2eadc).
+
+**1. The literal / `mtc1 zero` count scan (kit CLI), run over every function < 98 % in the agent-g range.**
+Script (scratch): per function, `objdump -dr -M no-aliases --disassemble=FN` on expected/ and build/non_matching/,
+drop every instruction followed by an R_MIPS line, then count `mtc1 zero`, `lui K`, `li K` (addiu/ori from zero),
+`andi/slti/sltiu/xori K`. Read the result with these filters:
+- `lui 0x0` / `lui 0x2` / `lui 0x4` surpluses on the TARGET side are baked USO address halves (the target has no
+  relocs), not literals. Ignore them.
+- A surplus `li K` on one side is often the compare constant duplicated into a branch-likely delay slot
+  (76F0 `li 2` x10 vs x5 = the switch-3 v1 web: the target's false exits jump straight to the `!= 2` compare
+  with `beqzl ..; li at,2`; 6126C `li 102` = the known `bnel` dispatch copy; 8FC8 `li 1..5` = loop shape).
+  Check where the extra copies are before reading them as spellings.
+- `sltiu 4` (target) vs `sltiu 5` (NM) = the open 4-entry-jumptable cap (76F0 x2, kernel 1ADC, titproc 116C).
+- Real decode signals this run: timproc_b5 C310 (`li 1` x2 in the target: `if (x->0x3BC == 1)`, i.e.
+  `li t0,1; bnel t0,t4` -- the NM's `x - 1 == 0` gives `addiu -1; bnezl`). The decode-correct `== 1` scores
+  LOWER (95.83 -> 93.09; the mv / mv2 copy and the t-ring shift); lever-sweep and a 60-cell mv / ternary / copy
+  grid found nothing better, so the NM keeps the wrong spelling. **Flag: C310's `- 1 == 0` is a known wrong
+  decode kept for score.** C234 (target 0x93C..0x944 stored from a second zero `$f0`, 0x968 from the `$f16`
+  zero): NCC ignores 0.0 / (f32)0 / chained / local-zero / pointer spellings (8 variants flat). 1594's
+  `lui 0x8000` is the known no-reloc word. B75C's remaining `mtc1 zero` surplus is the A74 / A70 stores
+  (0.0f there loses: 92.6 / 91.3 vs 93.3, as the kit CLI grid said).
+- decode-scan.py on the same range: only A2-SPLIT rows can score; E68's (the target holds `&dims + 4` in s8 for
+  the last loop's `h` re-read) is not reached by a `s32 *hp = &import_8001FFA0_h[1]` block pointer (90.81 vs
+  93.35, +16 bytes toward the target but the coloring shifts).
+
+**2. 4F2DC was C++ (kit CXLVI lead confirmed).** The target's copy chains are the edg by-value temporaries of
+a plain V3 class: `d = dir` through `void operator=(V3 v)` (word copy 200 -> 180, then float stores 212..220),
+`V3 end = start + d * far;` through by-value `operator*` / `operator+` (products -> 160, copies 180 -> 412, sum
+-> 112 -> 132 -> 84), `start *= kvec` in place, and the scaled end point through the 3-float ctor (no temporary).
+Two details mattered: the ray direction built member by member (`dir.x = ...; dir.y = ...; dir.z = 8.0f / K;`,
+the ctor form computes z first), `start` member-copied (not ctor), and `if (1) {}` after `start *= kvec`
+(lever-sweep bbsplit, 91.11 -> 94.78). `f32 hits[8][3]` (a `V3 hits[8]` with a user ctor emits `__vec_new`).
+Rule of thumb: when a cfe body needs volatile pads and Tri3i copies to imitate copy chains through stack slots
+the code never reads back, port it to NCC with by-value operators before grinding the frame.
+
+**3. 23FC: a re-shaping can make an older `if (1) {}` harmful.** The run-184 `if (1) {}` after `flag = 0`
+turned the next test's `FW(..0x14) & 1` into a v0 candidate (`lw v0; andi v0,v0,1`) after later member rewrites;
+dropping it gives the target's t9 / t3 and the rest of that block's ring (99.62 -> 99.94). Re-test every
+bbsplit / barrier when a donor changes shape. Left on 23FC (all other words match): the 0x798 image load in
+v0 (target t0; uoptlist: inline `i` web assigned reg 1 = v0, target 7 = t0) and the n / x homes (target 84 / 76,
+ours 104 / 100).
+
+**4. NCC home placement (23FC probes, frame 288).** Measured with a `volatile`-one-variable-at-a-time map and
+an exhaustive placement enumerator (compile every combination, read the `sw` offsets and the frame):
+- function-scope named locals take homes top-down in declaration order (p770 140 ... sec 92);
+- block-scope locals come after ALL function-scope homes, depth-first: a block's own locals, then its nested
+  blocks in order; declaring at the assignment point without a new block puts the local with the enclosing
+  block's own locals (n / x right after sec);
+- an inline member's named local (`Img *i = img;`) takes a home in the nested-block sequence; the FIRST inline
+  call on an object expression like `(Spr *)(arg0 + K)` takes two homes (object temporary + local), later calls
+  in the same function one (the object temporary is pooled);
+- dead locals (`d = 0;` never read), non-volatile live temporaries split out of an expression, and volatile pads
+  all land at the BOTTOM (frame +8 / +16), not above the function-scope homes -- they cannot push the top layout
+  down. Nested blocks for n / x + function-scope `Spr *` objects reproduce the target's relative layout
+  (min -192, sec -196, n -204, x -212 from the frame top) but at frame 296 and 99.70; not kept.
+
+**5. Lever-sweep pass (all levers) this run.** Hits kept: 4C5E4 (bbsplit after the 0x294 call, vscale[1] before
+vscale[0]), 54E78 (m[3][1] before m[3][0], local matrix rows, length = target), 4D688 (`m24++` before the m3C
+store, no call between), 4F2DC (see 2). No hits: 4A890, 50444, 63964, 65494, 4E424, 5A2C4, 1824, 2B7C, CEB4,
+23FC (after the fix). Rejected: 6126C `D_00000000 = 1` moved past a call (+0.65), 54E78 m[3][2] moved up (+0.15
+but 548 vs 552 = away from the target). titproc 116C: lever-sweep's in-tree probe fails to score (the unit
+compiles by hand; not chased).
+
+**6. Negatives (do not repeat).**
+- 8FC8 NCC donor: `w->pos` zero triple as `x = y = z = 0.0`, field stores (0.0 / 0.0f), `= V3(0.0, ..)`,
+  `set(0, 0, 0)`, pointer form, FF() stores: none gives the target's three fresh `mtc1 zero` (NCC folds them
+  into the f20 zero; best 90.41 = base).
+- mgrproc 1824 outer two-case switch: case order, `default: break;` (both places), unsigned selector, goto
+  if-chain: the target's `li at,1` after the `beqz` is not reproduced (98.38 flat or 92.32).
+- 5A2C4 straight NCC lift of the cfe body: 79.08, 1632 / 1804 bytes (the cfe body stays).
+- E68 `&dims + 4` held pointer: see 1.
