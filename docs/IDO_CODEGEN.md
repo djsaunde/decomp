@@ -43936,3 +43936,10 @@ temp reuse). Ours colours this s0 / new-temp s1 (the reload is a separate v1 tem
 loses the s0 tie). NCC spellings of the pos store (`V3 &p = w->pos`, `W16C *t = w`, `V3 *p = &w->pos`,
 `char *p += 0xB4`, field stores, an inline `setPos` on B2 or W16C) all score 89.2-89.7 vs 90.41 standalone. Lead:
 this region (and likely the whole unit) wants a cfe body with explicit reused temporaries, not edg's.
+
+**kit CXLII addendum 2 (agent-g run 189, kit CXLI line-layout lever tried on agent-g units, all inert):** bootup 6204
+(the as1 `sw ra` / `lui a0` tie: whole function on one line, `{` on its own line, call split over lines -- identical
+bytes); bootup 90CC's `sh 2188 / sh 2190` pair (one line vs two, either statement order -- identical: the order is
+uopt's, not as1's); gl 3430's entry (`step =` / `FW(arg0,0xEC) = 1` / `for` / first loop statements, every join and
+both statement orders -- identical or worse). 31C0 / 23FC residuals are stack slots and register picks, not delay-slot
+fillers, so the lever does not apply there.
