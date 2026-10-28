@@ -14578,6 +14578,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLXIV (agent-c 2026-10-28, run 193): **compute-order decode in NCC donors: the target loads every operand of a group of independent computations before the first (possibly aliasing) store or before the next group -- compute products into named locals, then store (454C4 light colours 91.71 -> 95.72); triangle edge test `dx / dy` before `ex / ey` (3BE1C 88.64 -> 94.98, 3B9C0 78.72 -> 86.91, 3B2EC 95.62 -> 96.05); load-order row count finds candidates; region maps of 591C / 7C1C / post0b donors**](#kit-clxiv-agent-c-run-193) -- _No exact; small order fixes 42938 97.39 -> 97.44, 46050 89.68 -> 89.71; 454C4 / 3BE1C / 3B9C0 lengths moved past the target (flagged); post0b NM clip 0x2eaf8 -> 0x2ead8; 591C tail-branch threading / selector copy / zero-literal negatives._
 - [kit CLXII (agent-c 2026-10-28, run 192): **cfe NM bodies: un-name m2c's single field-read temps -- a plain repeated `o->f` stays in one register across the store-free path and is re-loaded only where a store kills it (2E354 o->0/4/0x50, o->0x1D, o->0x26, switch selectors: 91.99 -> 93.01, length back to target); selector and result in ONE variable (pan pick, word-exact block, 93.29); u32 selector holds a shared compare constant; full region maps of 2E354 / 30AF4**](#kit-clxii-agent-c-run-192) -- _No exact; gl_func_0002E354 91.55 -> 93.29 (921 -> 923 words, flagged); gl_func_00030AF4 92.52 unchanged (zero-s-reg / param-home diagnosis, kit 63964 reinterpret casts, -O1, u32 constants negative)._
 - [kit CLX (agent-c 2026-10-28, run 191): **cfe stack arguments read into block locals before a 12-argument call give the target's load-all-then-store shape (cfront inline-argument temps): post0b 469A8 74.77 -> 90.45; zf / declmove / hoist sweep over agent-c's range: small declaration-move hits only (3B9C0, 36F0C, 3558, 38A28)**](#kit-clx-agent-c-run-191) -- _No exact; 1DDC frame / 97EC temp order / 40304 / 2D374 / 307A8 / 250C8 / 38A28 / 33094 negatives; scan: longest outgoing-arg store run, target vs NM._
+- [kit CLXX (agent-c 2026-10-28, run 196): **game_uso 591C 94.79 -> 99.03, length = target: cfe field promotion (`switch (v0 = self->f)`, arms write only the field) gives the target's selector copies; per-arm `unsigned` reads defeat a cross-arm CSE; re-reading a base pointer keeps `addiu rX,base,K` unfolded; a never-homed scalar's slot can be a pointer's spill home; cfe store order follows source lines**](#kit-clxx-agent-c-run-196) -- _No exact; cast-alias sweep (14 cfe bodies) negative; 1DDC kit-CLXIII placements 9 rows but lower; region map of 591C residuals._
 - [kit CLXIII (agent-g 2026-10-28, run 198): **1340 + 23FC EXACT: edg homes named locals at SCOPE ENTRY and pooled inline temps at FIRST USE (a nested block places a named local below the pool temps); a named inline local is a fresh variable per expansion, a pooled `img->gw()` temp is reused (long LR, higher register); 4A308 v0/v1 via a folded term**](#kit-clxiii-agent-g-run-198) -- _EXACT 1340 + 23FC (2060 B, 82.79 -> 83.06 %); 4A308 99.85 -> 99.99._
 - [kit CLXI (agent-g 2026-10-28, run 197): **timer-HUD 13B8 / 16F4 EXACT: pooled edg temps get itab bits by first reference (homes by creation); a folded `+ 0 * tim.pw()` in an earlier statement pre-creates pool vars so the pB width outranks its copy; x locals declared before the panel pointers**](#kit-clxi-agent-g-run-197) -- _EXACT 13B8 + 16F4 (1360 B, 82.62 -> 82.79 %); 578B4 declmove 1000-2500 no hit._
 - [kit CLIX (agent-g 2026-10-28, run 196): **timer-HUD family: the image pointer as the `this` of tiny Img members instead of a named inline local + 3 block pads (13B8 / 16F4 99.43 -> 99.91, 1340 98.47 -> 99.91); `mtc1 zero` count scan finds int-zero candidates: C234 zf (90.77 -> 91.66, length = target), 8FC8 `seti(0, 0, 0)` (90.90 -> 91.27); last 13B8 pair = edg pool-var itab-bit order**](#kit-clix-agent-g-run-196) -- _No exact; 578B4 declmove only 1000 / 13340 done (chunks timed out); 4A308 / 50444 / 63964 / 4B0A8 / 4B620 / 31C0 / 4C5E4 / 55A0 negatives._
@@ -45561,3 +45562,75 @@ the call) and reloads arg2 into t0 for `& 0x1FF`. Moving `temp_ra_8 = arg2 & 0x1
 (`char **p = &sp50;` / `if (&sp50 == 0) {}`) makes it memory-resident: store-at-def with ugen temps (t8 / t9), worse
 (143-282 rows). declmove sweep variants 2500-8500 (four 1500-variant chunks, alone, each ~6-9 min under load): no hit (best
 = base 99.9508). 8500-13340 not run.
+
+## kit CLXX (agent-c 2026-10-28, run 196): game_uso 591C 94.79 -> 99.03 (length = target) -- cfe FIELD PROMOTION gives the target's selector copies; per-arm reads through an `unsigned` lvalue defeat a cross-arm CSE; re-reading a base pointer keeps an unfolded `addiu rX,base,K`; a stack slot of a never-homed scalar can be a pointer's spill home; cfe store order follows source LINES <a name="kit-clxx-agent-c-run-196"></a>
+
+No exact. game_uso_func_0000591C (4372 B, cfe NM body) 94.7914 -> 99.03202 report.json, 4380 -> 4372 bytes (= target)
+in seven commits. Every block now lines up word-for-word up to registers; the only opcode-level residual is one extra
+`mtc1 zero,$f16` at 0x3f0 (the `(f32)0.0` yaw-abs literal; `0.0f` fixes it but recolours the FP web, 99.02 -> 98.76).
+
+**1. Tail selector read per arm, through `unsigned` (97.02 with 2. and 3.).** The target reloads `self->0x2C` on every
+exit of the second switch: case-0 exits go through a `b J; lw v0,44(s0)` block, case 1 / default reach J with the load
+in the delay slot. A single read after the switch is CSE'd with the proximity block's earlier read (the case-0 block
+disappears, the gotos are threaded). Fix: read it in EACH arm (`tail_common: v0 = *(unsigned int *)(self + 0x2C);
+break; case 1: default: v0 = *(unsigned int *)(self + 0x2C); break;`). The type change keeps it from being CSE'd with the
+`int` reads; `case 1: default:` is required (without `default` the default path keeps the old selector). Plain `int`
+reads in the arms: no change; `volatile int` = `unsigned` here.
+**2. Store-then-test from memory.** `self->0x4C4 = v0 - 1; if (self->0x4C4 == 0)` gives the target's `addiu v1,v0,-1;
+bnez v1; sw v1` with the else-arm reload in the `blezl` delay slot. `v0 -= 1` reuses v0; `t0 = v0 - 1; if (t0 == 0)` is
+folded to `v0 == 1`.
+**3. Do not reassign a pointer in one arm.** `child_flags = sub + 2648;` before the if and `*child_flags |= 0x4000` in
+the then-arm (no second assignment) gives the target's re-derived `addiu v0,a0,2648` in that arm; the reassignment
+folds to `lw 2648(a0)`.
+
+**4. Field promotion = selector copy (97.02 -> 97.71).** Target: `lw v1,116(s0); beqz v1; or v0,v1,zero; beql v0,at`
+(dispatch on a COPY), promote path `addiu v1,1; sw v1,116(s0)`, demote `sw zero,116(s0); or v1,zero,zero`, and
+`or v0,v1` on every case exit before the second dispatch. That is uopt promoting the FIELD self->0x74 to v1 with v0
+the switch value: no shadow variable. Spelling: `switch (v0 = self->0x74)` for both dispatches, arms write only the
+field (`self->0x74 = 1;` before `t0 = 1;`), and the case-0 test assigns v0 (`((v0 = state_flag) == 0) && ...`) so
+no case-0 path keeps v0 == field (every case-0 exit goes through the copy block, as in the target). A `vsel` shadow
+(any spelling: `v0 = vsel`, `switch (v0 = vsel)`, unsigned / pointer / fresh copy variables, if-chains) is always
+copy-propagated away; `switch (field)` without the `v0 =` promotes the field but drops the copies.
+
+**5. Re-read a base pointer to keep `addiu rX,base,K` (97.71 -> 97.81 -> 99.02).** The target holds `sub + 1784` in a
+register (`addiu v0,a0,1784; lwc1 16(v0)`), ours folded it to `lwc1 1800(a0)`. `accel = (float *)(*(char **)(self +
+0x30) + 1784);` -- re-reading self->0x30 instead of using `sub` -- is CSE'd back to `sub`'s register but the add on
+top is no longer folded into the load (one word, length = target). Through the `a0` parameter instead of `self` it
+also unfolds (97.81) but colours sub v1; through `self` sub stays a0 = target (99.02, after 6.).
+**6. Inline the read where the target uses a temp (97.81 -> 98.19).** The first switch's case 0 loads self->0x30 into
+`t6` in the target: an inline `*(float *)(*(char **)(self + 0x30) + 0x348)` instead of `sub = ...` (kept off the `sub`
+web; alone it scores lower because the t-register ring shifts). Scored only together with `hit_parent == 0 ||
+!((v0 = hit_parent->0x84) & 1)` (one hit_parent load, target `beqzl t2; lwc1 f18,368(sp)`) and the chain-1 hit's
+0x6C store written before the 0x48 store in source (constant 20 then lands in t1 as in the target).
+**7. A never-homed scalar's slot is a pointer's spill home (98.19 -> 98.31).** The target spills the hit_parent+48
+source of both chain diff sites at sp+192 (`sw a1,192(sp)` around the alloc call), the slot our layout gave `float y`,
+which the target never stores. `float *hsrc` declared in y's position for those two sites, the y temporaries moved to
+`scale` (dead there): all three spill homes match. Check unexplained spill offsets against the homes of scalars the
+target never touches.
+**8. cfe store order follows source lines (98.02 -> 99.03).** `a = ..; b = ..;` on ONE line came out b-first; on two lines
+a-first = target (contrast kit CLXVIII: `if (1) {}` placement is line-insensitive in cfe). A join/split sweep over all
+other statement pairs: no further hit.
+
+**Region map (end of run, 1093 = 1093 words; M 884 / R 171 / B 29 / X 9):** 0xb8-0xe4 scaled-axis products (target
+loads 792 first, x/y/z in f14/f2/f0; ours y-first, f14/f0/f2: all 36 statement / store orders and every x / z variable
+substitution lower); 0x230 and nine other nested float selectors (target inner join temp f14, ours f2: parenthesised /
+`(float)` / assigned-temp / if-else spellings no change); 0x2b0-0x3d8 a0 / v1 swap of the self->0x30 prefetch vs the
+res / scratch pointers (the cost of 5.'s `self` spelling; scratch src/dst spellings no change); 0x3ec mtc1; 0x400-0x454 FP
+colours of the yaw abs / accel product; 0x630-0x684 chain-1 second delta v1 / a1 swap. lever-sweep `all` (3 bases) and
+the cast-alias sweep (232 variants): no hit.
+
+**9. Sweeps.** Alias-copy sweep extended to cfe cast forms (`T *P_al = P;` replacing `(char *)P` / `(int)P +` / `P->`
+on 1-6 lines): 2D374, 2E354, 30AF4, 31A74, 33094, 40304, 396FC, 35B1C, 415A4, 469A8, 250C8, B3C, 591C, 8CD8 -- no hit;
+NCC donors 307A8 / 3E5E0 / 46790 / 46050 / 36694 have no `->` sites. Folded `0 * inline()` in 97EC: the only inline
+results are floats (`0 * dot(..)` is not folded: +32 bytes). 1DDC with kit CLXIII placements: `V3 e` for the last
+product + `a0->src->mtx.getPos(m)` + `c.getOut()->goal.set(m)` reaches 9 differing rows (r 340 / e 328 = target, frame
+384) but key==3 colours v0 vs v1 and acc 244 vs 252 (gap above acc instead of below; acc declared before ref / after
+self / after speed / mag / sel, Body::pos() member spellings: no move); 99.911 < 99.969, not kept.
+
+**10. Addendum (same run): lever 5 on post0b 469A8 (cfe, 90.45 -> 94.24, 400 -> 408 bytes, target 412).** `p100 =
+FW(arg0, 0x240) + 0x100;` and `pDC = FW(arg0, 0x240) + 0xDC;` (re-read instead of `temp_v1 +`) hold the target's
+`addiu a2,v1,256` / `addiu t7,v1,220` (93.47); the same re-read for p78 overshoots (+12 bytes, lower). And a GLOBAL
+address with a constant offset: `*(char **)((int)&D_00000000 + 0x254) = x;` emits the target's `lui rX; addiu rX,rX,%lo;
+sw x,596(rX)` where `(char *)&D_00000000 + 0x254` folds to `lui at; sw x,%lo+596(at)` (+0.8, +4 bytes toward). Post0b NM
+clip 0x2ead0 -> 0x2ead8. A lui/addiu-pair census over the range (target vs NM object) finds no other function where the
+target has MORE held global addresses except NCC donors (3B9C0 table, 46050 margin pointer: kit CLXIV negatives).
