@@ -14578,6 +14578,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLXIV (agent-c 2026-10-28, run 193): **compute-order decode in NCC donors: the target loads every operand of a group of independent computations before the first (possibly aliasing) store or before the next group -- compute products into named locals, then store (454C4 light colours 91.71 -> 95.72); triangle edge test `dx / dy` before `ex / ey` (3BE1C 88.64 -> 94.98, 3B9C0 78.72 -> 86.91, 3B2EC 95.62 -> 96.05); load-order row count finds candidates; region maps of 591C / 7C1C / post0b donors**](#kit-clxiv-agent-c-run-193) -- _No exact; small order fixes 42938 97.39 -> 97.44, 46050 89.68 -> 89.71; 454C4 / 3BE1C / 3B9C0 lengths moved past the target (flagged); post0b NM clip 0x2eaf8 -> 0x2ead8; 591C tail-branch threading / selector copy / zero-literal negatives._
 - [kit CLXII (agent-c 2026-10-28, run 192): **cfe NM bodies: un-name m2c's single field-read temps -- a plain repeated `o->f` stays in one register across the store-free path and is re-loaded only where a store kills it (2E354 o->0/4/0x50, o->0x1D, o->0x26, switch selectors: 91.99 -> 93.01, length back to target); selector and result in ONE variable (pan pick, word-exact block, 93.29); u32 selector holds a shared compare constant; full region maps of 2E354 / 30AF4**](#kit-clxii-agent-c-run-192) -- _No exact; gl_func_0002E354 91.55 -> 93.29 (921 -> 923 words, flagged); gl_func_00030AF4 92.52 unchanged (zero-s-reg / param-home diagnosis, kit 63964 reinterpret casts, -O1, u32 constants negative)._
 - [kit CLX (agent-c 2026-10-28, run 191): **cfe stack arguments read into block locals before a 12-argument call give the target's load-all-then-store shape (cfront inline-argument temps): post0b 469A8 74.77 -> 90.45; zf / declmove / hoist sweep over agent-c's range: small declaration-move hits only (3B9C0, 36F0C, 3558, 38A28)**](#kit-clx-agent-c-run-191) -- _No exact; 1DDC frame / 97EC temp order / 40304 / 2D374 / 307A8 / 250C8 / 38A28 / 33094 negatives; scan: longest outgoing-arg store run, target vs NM._
+- [kit CLXIII (agent-g 2026-10-28, run 198): **1340 + 23FC EXACT: edg homes named locals at SCOPE ENTRY and pooled inline temps at FIRST USE (a nested block places a named local below the pool temps); a named inline local is a fresh variable per expansion, a pooled `img->gw()` temp is reused (long LR, higher register); 4A308 v0/v1 via a folded term**](#kit-clxiii-agent-g-run-198) -- _EXACT 1340 + 23FC (2060 B, 82.79 -> 83.06 %); 4A308 99.85 -> 99.99._
 - [kit CLXI (agent-g 2026-10-28, run 197): **timer-HUD 13B8 / 16F4 EXACT: pooled edg temps get itab bits by first reference (homes by creation); a folded `+ 0 * tim.pw()` in an earlier statement pre-creates pool vars so the pB width outranks its copy; x locals declared before the panel pointers**](#kit-clxi-agent-g-run-197) -- _EXACT 13B8 + 16F4 (1360 B, 82.62 -> 82.79 %); 578B4 declmove 1000-2500 no hit._
 - [kit CLIX (agent-g 2026-10-28, run 196): **timer-HUD family: the image pointer as the `this` of tiny Img members instead of a named inline local + 3 block pads (13B8 / 16F4 99.43 -> 99.91, 1340 98.47 -> 99.91); `mtc1 zero` count scan finds int-zero candidates: C234 zf (90.77 -> 91.66, length = target), 8FC8 `seti(0, 0, 0)` (90.90 -> 91.27); last 13B8 pair = edg pool-var itab-bit order**](#kit-clix-agent-g-run-196) -- _No exact; 578B4 declmove only 1000 / 13340 done (chunks timed out); 4A308 / 50444 / 63964 / 4B0A8 / 4B620 / 31C0 / 4C5E4 / 55A0 negatives._
 - [kit CLVII (agent-c 2026-10-28, run 189): **gui sprite-rect family: the CTX edg pool temp gets s0 only when it is ASSIGNED in the loader-call blocks (the `this` of an inline `Ctx::load()`); 3714's a1 is a colour-order cap vs the MAX value, not call-crossing; per-packet append spellings in the rectangle macro (RDPHALF_1 `n = dl->n; dl->n++`, RDPHALF_2 `n = dl->n++`)**](#kit-clvii-agent-c-run-189) -- _No exact; 329C 98.85 -> 99.06, 3714 96.10 -> 96.43; 2DE0 load() inline 96.42 but 1196 bytes (away, not landed)._
@@ -45511,3 +45512,52 @@ s / c / n. No lever-sweep (all, declmove) hit on that base. Open: what makes n i
   and held +0x100 / +0x78 pointers are not reproduced by inline member accessors or a struct object with a set() member.
 - 38A28: `switch (*(int *)c)` with the default re-reading `*(int *)c` still gives cfe's code home.
 - B3C: dropping the empty `case 4: break;` gives the target's `sltiu at,t1,4` but costs 4 bytes and 99.81 -> 94.41.
+
+## kit CLXIII (agent-g 2026-10-28, run 198): timer-HUD 1340 + results panel 23FC EXACT -- edg homes: a scope's NAMED locals at scope entry, POOLED inline temps at first use; a named inline local is a FRESH variable per expansion, a pooled temp is reused; 4A308 v0/v1 via a folded term <a name="kit-clxiii-agent-g-run-198"></a>
+
+EXACT: timproc_uso_b1_func_00001340 (952 B, 99.91 -> 100) and mgrproc_uso_func_000023FC (1108 B, 99.94 -> 100).
+Code 82.79 -> 83.06 %. No pins. Donors renamed `_nm.cpp` -> `.cpp`, spliced over a placeholder in both trees.
+
+**1. Where edg puts a home (zdbug:6 `isvar M 4 -N`).** All named locals of a scope get their frontend address when the
+scope is ENTERED, in declaration order; a declaration later in the same scope (`s32 count = f(buf);` mid-block) is
+still allocated at scope entry. Pooled inline temporaries are function-scope variables allocated at FIRST USE, after
+every named local of the scopes entered so far. So a named local can be placed BELOW (after) a set of pool temps only
+by declaring it in a nested block opened after the statements that create them. Spill words of a named local are its
+own home (the "count spill" of 1340 = count's home).
+- 1340: count declared at the top sat above the five pool temps (sp+172); declared as the first local of the nested
+  block (`{ s32 count = f(buf); s32 x, pos4, posA1, pos6; ...`) it lands right above x (sp+152) = target. Together with
+  13B8's kit-CLXI fix (`+ 0 * arg0->tim.pw()` on the glyph statement, `tim.img->gh()` in the loop, x / pos4 / posA1 /
+  pos6 declared before the panel pointers) and one[] stored in index order: EXACT.
+- 23FC: n / x in nested blocks opened after the glyph-width / vt statements, min / sec in the timer block, and a folded
+  `+ 0 * SPR(0x788)->width()` in the first panel test (two function-scope pool temps above min / sec, no code) put
+  min / sec / n / x on 96 / 92 / 84 / 76. Bracing case bodies or other statements does NOT move pool temps (they are
+  function scope); only named locals follow scopes.
+
+**2. Named inline local vs pooled temp.** `s32 width() { Img *i = img; return i->w; }` gives every expansion a FRESH
+function-scope variable for `i` (never reused, one short live range). `s32 pw() { return img->gw(); }` (img as the
+`this` of a tiny Img member) uses a POOLED temp, which later expressions reuse, so its uopt live range is the union of
+all reuses. In 23FC the glyph-width image load was v0 (zdbug:5: forbidden only a0, interferes with 10 ranges) where
+the target has t0; reading the width and vt through `pw()` made the variable shared and long: t0. With that change the
+loop height had to go back through `height()` (named local, two fresh homes) and one unreferenced `volatile s32` in
+the n block restored the x home and the spill words: EXACT. Rule: a value whose register is too LOW (v0 where the
+target has t0) wants a pooled spelling; one that is too HIGH wants a named inline local.
+
+**3. 4A308 (NM 99.85 -> 99.99).** `entry = ... + arg3 * 8 + 0 * (int)(*(char **)(arg0 + 0x60));` (folded, no code)
+references the 0x60 load before entry: v60 v0 / entry v1 as in the target. Left: the arg3*8 spill word 56 vs 60.
+Without the block-local `int r` the body is word-exact up to frame size (120 vs 128) with the spill at the target's
+frame-relative offset, i.e. the target keeps 8 bytes below the spill that nothing in this body reserves.
+
+**4. Negatives.** 63964: V3 temps A / C 12 / 8 bytes high (ctor forwarding to set(), operator results as named `r`,
+operator= by const ref, count / out / n declaration positions, n in a nested block): no move. 31C0: bracing the case
+bodies / the new statements does not change the new-temp homes (pool temps are function scope). 4B0A8: cur() / res()
+/ next() spellings (named vs direct) and folded idx / cur terms: no gain. 4B620: folded head / count terms on the
+first three appends: no gain. 90CC: in-tree real diffs (relocs and branch targets normalised) are 126 words in the
+0x848 / 0x88C / 0x170 region plus a v0 / v1 pair at the cfg RMW.
+
+**5. 578B4 (99.95, 9676 B).** In-tree real diffs (relocs normalised) are ONE region: the FD50 packet pointer `sp50`
+is t0 in ours (uopt candidate 765 coloured 7, zdbug:5) where the target holds it in ra (spilled to its home 80 around
+the call) and reloads arg2 into t0 for `& 0x1FF`. Moving `temp_ra_8 = arg2 & 0x1FF` before / after the packet, folded
+`+ 0 * arg2` terms, alias copies of sp50 / arg2 and `(void)&sp50`: no change at all. Taking sp50's address
+(`char **p = &sp50;` / `if (&sp50 == 0) {}`) makes it memory-resident: store-at-def with ugen temps (t8 / t9), worse
+(143-282 rows). declmove sweep variants 2500-8500 (four 1500-variant chunks, alone, each ~6-9 min under load): no hit (best
+= base 99.9508). 8500-13340 not run.
