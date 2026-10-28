@@ -14585,6 +14585,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLXI (agent-g 2026-10-28, run 197): **timer-HUD 13B8 / 16F4 EXACT: pooled edg temps get itab bits by first reference (homes by creation); a folded `+ 0 * tim.pw()` in an earlier statement pre-creates pool vars so the pB width outranks its copy; x locals declared before the panel pointers**](#kit-clxi-agent-g-run-197) -- _EXACT 13B8 + 16F4 (1360 B, 82.62 -> 82.79 %); 578B4 declmove 1000-2500 no hit._
 - [kit CLXXII (agent-c 2026-10-28, run 197): **game_uso 591C 99.03 -> 99.68, length = target: the extra `mtc1 zero` was a copy-propagated abs (put the abs in a temp the next block redefines, `0.0f`); ONE nested selector written into `z` makes the shared cfe join temps colour f14 at every other site; web-rename sweep (dead same-type local for one region's value) recolours per region**](#kit-clxxii-agent-c-run-197) -- _No exact; 168 -> 68 rows; region map of the int-pointer swaps left._
 - [kit CLXXIV (agent-c 2026-10-28, run 198): **a field read through the PARAMETER (`a0->f`) instead of its local copy (`self = a0`) is a separate CSE / PRE expression: one site leaves the function-wide code-motion web and a delay-slot load order elsewhere flips (591C 99.68 -> 99.70); 591C pointer rows are constrained-LR priority order, target order written down**](#kit-clxxiv-agent-c-run-198) -- _No exact; 68 -> 64 rows; axis / counter / bne / chain-site negatives._
+- [kit CLXXVI (agent-c 2026-10-28, run 199): **fixed `order` over the agent-c range: 120 hits, 34 on field-store lines, but nearly all on in-tree bodies shadowed by NM donors; one new scoring hit (8CD8), then bbsplit; 8CD8 rewritten as C++ in the 7C1C value-class kit (cfe 86.05 -> NCC 87.19, length = target; six unused Vec3 slots fix the 528-byte frame)**](#kit-clxxvi-agent-c-run-199) -- _No exact; 591C 99.73, 7C1C / 454C4 small; lever-sweep false-positive notes._
+- [kit CLXIX (agent-g 2026-10-28, run 201): **fixed lever-sweep `order` re-sweep over 50 bodies: order hits in 4 (2 kept, 2 false positives), bbsplit kept in B75C / C234 / DF14 / kernel 1ADC; a PAIR declaration grid beats single declmove (B75C 93.61 -> 93.93); four `order` false-positive classes (unqualified member / global stores, cast-deref writes, ALL-CAPS call macros); in-tree whole-file grid harness**](#kit-clxix-agent-g-run-201) -- _No exact; 32C8 zero/l134 colour, 578B4 sp50/ra, E2D0, 1ADC, 4C5E4 grids negative; 54E78 / 65494 / 6808-gD hits rejected (length away from / across the target)._
 - [kit CLIX (agent-g 2026-10-28, run 196): **timer-HUD family: the image pointer as the `this` of tiny Img members instead of a named inline local + 3 block pads (13B8 / 16F4 99.43 -> 99.91, 1340 98.47 -> 99.91); `mtc1 zero` count scan finds int-zero candidates: C234 zf (90.77 -> 91.66, length = target), 8FC8 `seti(0, 0, 0)` (90.90 -> 91.27); last 13B8 pair = edg pool-var itab-bit order**](#kit-clix-agent-g-run-196) -- _No exact; 578B4 declmove only 1000 / 13340 done (chunks timed out); 4A308 / 50444 / 63964 / 4B0A8 / 4B620 / 31C0 / 4C5E4 / 55A0 negatives._
 - [kit CLVII (agent-c 2026-10-28, run 189): **gui sprite-rect family: the CTX edg pool temp gets s0 only when it is ASSIGNED in the loader-call blocks (the `this` of an inline `Ctx::load()`); 3714's a1 is a colour-order cap vs the MAX value, not call-crossing; per-packet append spellings in the rectangle macro (RDPHALF_1 `n = dl->n; dl->n++`, RDPHALF_2 `n = dl->n++`)**](#kit-clvii-agent-c-run-189) -- _No exact; 329C 98.85 -> 99.06, 3714 96.10 -> 96.43; 2DE0 load() inline 96.42 but 1196 bytes (away, not landed)._
 - [kit CLI (agent-g 2026-10-28, run 193): **cfe literal-spelling decode signals from immediate / `mtc1 zero` counts: a `mul.s` by a held 2.0f is `* 2` (cfe folds `* 2.0f` to add.s), a float store using the compare's zero register is `0.0f` not `0`, `x += a*b*c` gives the target's add / mul operand order; re-run lever-sweep after every decode fix (B75C 90.86 -> 93.31, length = target; 6808 gD de-named 94.24 -> 95.38)**](#kit-cli-agent-g-run-193) -- _No exact; negatives 6126C dispatch copy, E9FC / 6204 prologue (unique), 63964 temp layout, C234 V3 class, 8FC8 iz zeros, E68 split m, 65EE4 literal arg, 4E424 roles, 4C5E4 2.0f._
@@ -45834,3 +45836,109 @@ D_000008E0 is `f32` in bootup_uso.c, not `f64`) gave a false +1.0 in the standal
 nested ifs (all 89.19). 65EE4 (-Olimit 1 donor): call-argument spellings (`&g` vs `g.base` order, prototypes, local
 copies) all identical. 8FC8 S70 rows: `o = m38` as a block local or inline: flat. 50444: a `volatile` pos parameter is
 ignored by edg (identical code).
+
+## kit CLXIX (agent-g 2026-10-28, run 201): re-sweep with the fixed lever-sweep `order` (deref field stores now count as statements) over agent-g's range -- small order / bbsplit / declaration hits only (B75C 93.61 -> 93.93, DF14 96.27 -> 96.31, D884 96.63 -> 96.65, C234 95.05 -> 95.07, kernel 1ADC 93.39 -> 93.54, 6808 94.864 -> 94.875); four lever-sweep false positives; 32C8 / 578B4 / E2D0 / 1ADC / 4C5E4 grid negatives <a name="kit-clxix-agent-g-run-201"></a>
+
+**Sweep counts (fixed `order`, then `all`, `hoist`, `declmove`).** 50 bodies (36 from the run-201 list + 14 further
+in-range NM bodies / donors at 85-99.99: post0b 48510 / 48AEC / 493AC / 4A9F0 / 4B2F4 / 4BAF4 / 4FD00 / 51AD8 / 578B4 /
+59E80 / 5F5F0, kernel 1ADC, timproc_b5 32C8, bootup E2D0). `order`: 4 bodies with hits (8FC8 1, 6808 10, 55A0 1,
+D884 2) -- 2 kept (6808 `c8 = 0.0f` moved up past the 0x8005EE6C store, D884 `p->0xB4 = 0` moved down past the first
+0x8005EE6C read-modify-write; p is the child's 0x108 sub-object, so no alias with the global), 2 false positives (below).
+`all`: bbsplit hits kept in B75C (`if (1) {}` after the 0xA6C counter store, 93.61 -> 93.89 in report.json), C234
+(after the 0x968 divide store), DF14 (after the rr->0x134 store), kernel 1ADC (after the case-2 HI16 store, 93.39 ->
+93.54); 54E78 bbsplit x5 (+1.8 standalone) and 65494 `hoist` x4 (+0.5) REJECTED (length 552 -> 560 / 1336 -> 1340,
+away from the target); 6808 de-naming of gD (94.25 -> 95.38 standalone) REJECTED: length 2380 -> 2372 crosses the
+target 2376 to the same distance (structural rows 25 -> 18, but the arg rows grow 194 -> 230). `declmove`: only B75C
+(5 hits). Re-sweeps after every kept change: no further hits.
+
+**Declaration grid beats single declmove.** B75C declmove's best single move (sp60 after sp1C) gave 93.645 standalone;
+a 56-way grid moving sp60 AND sp6C together found sp6C between sp28 and sp24 + sp60 after sp1C (93.662 standalone,
+93.89 -> 93.93 in report.json). cfe homes every named local by declaration position, so two moves interact; a pair grid
+is cheap once a single move has paid. A 720-way grid over 6808's first six declarations: flat (the g0/g00-before-e4/e0
+swap from the order sweep, +0.003, is the only gain).
+
+**lever-sweep `order` false positives (fixed version, 6187dc5).** All four reorder a memory access the tool took for a
+local:
+1. C++ member store written unqualified (`f124 = 1.0f;` inside a ctor = `this->f124`) swapped with a call
+   (`w->pos.set(...)`, 8FC8).
+2. Plain global assignment (`D_00000000 = 1;`) swapped with a call (6126C, in-tree post0b).
+3. Write through a cast deref (`*(SC4_ *)&(t4.w) = ...;`) is not seen as a write of t4, so it was swapped with its own
+   reader `p1.w = t4.w;` (55A0) -- semantics-changing, and the length also moved away.
+4. ALL-CAPS macros that expand to a call plus stores (`PKT(c, a, b)` = `c->next()` + two stores) are treated as access
+   macros, so two display-list packets were swapped (59E80) -- changes the emitted DL.
+Suggested fixes: treat any identifier not declared as a local in the function as memory; treat `*(...)&(x...)` as a
+write of x; treat ALL-CAPS macros whose expansion contains `(` after `->`/`.` (a call) as calls.
+
+**In-tree statement-order grids (whole-file template, asm-processor + cfe per probe).** A small harness that renders
+`@[a @; b]@` / `@{a @| b}@` markers in a copy of the whole src file and scores with lever-sweep's probe gave: D884
+store block (162 interleavings of p->0xBC/0xB8/0xB4 and child->0x124 into the 0x8005EE6C sequence): the order-sweep
+result is the optimum. B75C seven store groups (sp6C init, the 0x978 / 0x30C / 0x310 loads, both A04/A08/A0C triples,
+the 0x938 five-store block, the A6C/A74/A70 block, the final scale block), greedy: flat. DF14 12-store child block
+(3 groups, 25920 combos, greedy): flat. 6808 init block (d4/dc/p, bC..b0, c8/import/c4/c0): dc before d4 only (+0.003).
+Keep `@{..}@` alternatives ending in a newline: an alternative ending in `{}` closes the marker early (`{}@|` contains
+`}@`).
+
+**timproc_b5 32C8 (99.96, 1480 B; one register row).** All other rows are reloc-symbol names. Target: l134 in $f2,
+zero in $f0 (the zero is colored first and interferes); ours l134 $f0. 145 orders of {vF8 line, uE8 load, vEC line,
+v104 zero line} x `if (1) {}` position, and 61 zero spellings (0 / 0.0f / chained / via `fa`) x 10 layouts: nothing
+beats the current layout. Without the `if (1) {}` the zero and l134 share a block but the zero then takes $f12 (both
+v104 and vDC zeros), l134 still $f0 -- the zero is not a local first-free pick. Negative.
+
+**post0b 578B4 (99.95, 9676 B; s2_508 FD packet).** Target holds the sp50 packet pointer in ra and reloads arg2 into
+t0; ours t0 / ra. Spelling grid (sp50 char* / int*, the FD packet on one / two lines / with blank, `arg2 & 0x1FF`
+in four positions around the next DL-index increment): 24 combos all identical (99.9508). bootup E2D0 (99.54): the
+`dot *= 1.0f + arg4` spelling (6) x scale-statement order and form (18): flat. kernel 1ADC: val / p / orig statement
+order and `base + off` / `off + base` / `&base[off]`: flat. 4C5E4 viewport block (float temps + vp order, store
+order, constant pair order; 144 probes greedy): flat.
+
+## kit CLXXVI (agent-c 2026-10-28, run 199): fixed lever-sweep `order` (field stores) over the whole agent-c range -- one new scoring hit (game_uso 8CD8 field-store swap), then bbsplit on the re-swept body (+1.5), and an NCC value-class rewrite of 8CD8 (cfe 86.05 -> NCC 87.19, length = target on the first build); small 7C1C / 591C / 454C4 gains <a name="kit-clxxvi-agent-c-run-199"></a>
+
+No exact. report.json: game_uso 8CD8 84.23978 -> 87.19041 (2836), 591C 99.70174 -> 99.73376 (4372),
+7C1C 95.196075 -> 95.197945 (4284), post0b 454C4 95.9428 -> 95.94675 (2028). Lengths all unchanged or = target.
+
+**1. The sweep (coordinator commit 6187dc5 order mode).** `order` over 42 functions / 71 sources (every in-tree cfe
+body and every NCC donor in game_uso, gui_uso, game_libs_post and post0b < 0x48000 at 85-99.9): 120 GAIN lines, 34 of
+them on `*(T *)(p + K)` field-store / field-read lines (the class the fix opened). Almost all were on in-tree cfe bodies
+that are SHADOWED by an NM donor in build/non_matching (3B6A0, 3BE1C, 3B9C0, 36694, 36F0C, 42938, 454C4, 3E5E0, 46790,
+33094, 3B2EC, BB8C, 3558, 4568): they cannot move report.json. Check `grep "REPLACE_FUNC_BODY.*<fn>" Makefile` before
+reading an in-tree hit. Scoring-path hits: 8CD8 (in-tree cfe, no donor) `*(s32 *)(arg1 + 0x9C) = 0;` after the
+`*(f32 *)(arg1 + 0x98) += ...` RMW (disjoint words off one base, no alias) 84.24 -> 84.51 -- the only NEW hit the fix
+produced; and 7C1C's donor first-hit copies back in hitA, hitB order (struct copies between stack locals).
+`all` then on every scoring source: 8CD8 bbsplit `if (1) {}` between the two sp9C chain copies 84.51 -> 86.02, then a
+`w->y = 0.0f` move above the z difference (w is &stack or a fresh 0xC allocation, never q / qb) -> 86.05; 591C bbsplit
+after the case-1 `res_c = res_b` copy 99.70 -> 99.73; 454C4 donor denaming of `v = amb` (read the member three times)
++0.004. Rejected (length away from target): 2E354 `volatile f32 sp78` (+4 B), 415A4 bbsplit (+4 B), 36694 / 3558 donor
+volatiles (+8 / +12 B), 8CD8 NCC `volatile float dot` (+8 B). declmove / hoist / unlever: see the end.
+
+**2. 8CD8 as C++ (the bigger gain).** 8CD8 is 7C1C's sibling (same file, same 16 `bnez &stack; jal 055750(12)` guards,
+same sp+372 word-copy slot). The cfe emulation (`p = 0; if (1) { p = &spX; }` + Tri3i copies) sat at 86. Rewriting it in
+7C1C's value-class kit -- XZ(const Vec3 &) / XZ(float, float) ctors, `inline XZ operator-(const Vec3 &, const Vec3 &)`,
+perp, by-value operator=, operator+= / *= -- gave 709 words = target on the first build (70.2 with `XZ bp = XZ(v)`,
+76.4 with direct-init `XZ bp(v)`: the functional cast adds a temp + copy). A spelling grid over each named temporary
+(Vec3 / XZ copy vs `const Vec3 &` / `const XZ &` binding) and `p = (const Vec3 &)XZ(v)` (binds operator= to the base, no
+derived-to-base copy) reached 87.12: the normalised directions are XZ copies, the dot-product operands d2 / g bind to a
+const reference (two word copies in the target, not three). Then the frame: the target is 528 bytes, ours 456; six
+UNUSED `Vec3` locals keep NCC stack slots with no code (else-arm placement from a 343-probe grid) -> 528, 87.19 (rows
+568 -> 518). Ctor body orders (y, z, x stores), named-return operator-, switch spellings (`++s->phase &= 3`, default arm),
+`side = side * k` forms: no same-length gain. Left: the target's `bnezl a0 / lw v0` guard in the then-arm (ours bnez v1),
+guard pointer colouring a0 / a3 vs ours v1 / a0, and the 4-entry phase jumptable.
+
+**3. Tool notes for the coordinator.** (a) In-tree sweeps of a function that has a non_matching REPLACE_FUNC_BODY donor
+score a body that is never built into the report -- worth a warning in lever-sweep. (b) BB8C's order pass swapped a call
+(`game_uso_func_070F38(q, ...)`) with a statement that LOADS a global (`temp_v0 = *(int *)&import_...`): the call could
+write that global; the call-vs-store rule should also cover call-vs-global-read. (c) The 3E5E0 swap of `FW(rec, 4)` with
+`*(PairE5E0 *)(rec + 2)` is safe only because rec is `s32 *` (byte 8 vs byte 4); the textual check cannot see pointer
+scale, so 8-byte struct copies next to word stores need a by-hand check.
+**4. Other lever-sweep modes (same range, scoring sources only).** `unlever` found two stale splits / tests: 3B6A0's
+NCC donor `if (1) {}` after the verts read (added by an earlier sweep, now a cost) 95.595 -> 95.795, and 2D374's
+`if (fr) {}` (fr assigned on the line above) 99.645 -> 99.675 -- re-run `unlever` after a body has moved on, earlier
+lever additions go stale. `hoist` and `declmove` (all donors, in-tree bodies except 2E354 / 30AF4, whose declmove pass
+alone ran > 15 min): no hit. 8CD8 phase switch: NCC gives no jumptable for labels 0-3, 0-4 or 0-5 (empty or
+`side *= 1.0f` arms), so the target's sltiu-4 table stays a cap.
+
+**Block-split POSITION grid (kit CLXIX addendum).** When a bbsplit / unlever hit raises the score but moves the length
+AWAY from the target (54E78: adding an `if (1) {}` after m[1][1..3] / m[2][0..1], or removing the run-190 split after
+m[0][2], all 95.8 at 560 bytes vs target 552), don't stop at "rejected": grid every on/off combination of `if (1) {}`
+over the whole statement run (12 lines -> 4096 combos, standalone NCC, ~2 min) and take the best row at the TARGET
+length. 54E78: the run-190 / run-195 splits after m[0][0] / m[0][2] move to after m[2][1] / m[2][2]: 94.04 -> 94.25 in
+report.json, length 552 = target.
