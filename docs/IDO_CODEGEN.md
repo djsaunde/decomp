@@ -14586,7 +14586,9 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLXXII (agent-c 2026-10-28, run 197): **game_uso 591C 99.03 -> 99.68, length = target: the extra `mtc1 zero` was a copy-propagated abs (put the abs in a temp the next block redefines, `0.0f`); ONE nested selector written into `z` makes the shared cfe join temps colour f14 at every other site; web-rename sweep (dead same-type local for one region's value) recolours per region**](#kit-clxxii-agent-c-run-197) -- _No exact; 168 -> 68 rows; region map of the int-pointer swaps left._
 - [kit CLXXIV (agent-c 2026-10-28, run 198): **a field read through the PARAMETER (`a0->f`) instead of its local copy (`self = a0`) is a separate CSE / PRE expression: one site leaves the function-wide code-motion web and a delay-slot load order elsewhere flips (591C 99.68 -> 99.70); 591C pointer rows are constrained-LR priority order, target order written down**](#kit-clxxiv-agent-c-run-198) -- _No exact; 68 -> 64 rows; axis / counter / bne / chain-site negatives._
 - [kit CLXXVI (agent-c 2026-10-28, run 199): **fixed `order` over the agent-c range: 120 hits, 34 on field-store lines, but nearly all on in-tree bodies shadowed by NM donors; one new scoring hit (8CD8), then bbsplit; 8CD8 rewritten as C++ in the 7C1C value-class kit (cfe 86.05 -> NCC 87.19, length = target; six unused Vec3 slots fix the 528-byte frame)**](#kit-clxxvi-agent-c-run-199) -- _No exact; 591C 99.73, 7C1C / 454C4 small; lever-sweep false-positive notes._
+- [kit CLXXX (agent-c 2026-10-28, run 201): **sibling map over the agent-c range; the exact 64388 V3 kit (P3 base, set() ctor, free const-ref operators, named k) on 36694 (86.01 -> 90.67, length = target) and an operator-body ORDER grid inside one-line inline members (37540 += / ctor z, y, x: 93.58 -> 95.72; 3558 operator= z, y, x + += x, z, y: 79.23 -> 81.66); negative-result list**](#kit-clxxx-agent-c-run-201) -- _No exact._
 - [kit CLXXVIII (agent-c 2026-10-28, run 200): **37540 ported to C++ from its exact sibling 37348's donor kit (cfe 81.17 -> NCC 93.58, length = target): one inline reads the saved vector and clears x (refs = early stores, return = register), set() + compound `*=` for the store/re-read build; 8CD8 pads worth +0.07, no natural aggregate; 36694 n-CSE diagnosis**](#kit-clxxviii-agent-c-run-200) -- _No exact._
+- [kit CLXXI (agent-g 2026-10-28, run 202): **timproc_uso_b5 32C8 EXACT (1480 B): cfe NM body re-written as NCC on its exact sibling 2B74's donor shape (literal vec constants, rodata pin, `(f32)iz()` zero re-assigned on both alloc paths, cfe decl list); the last 2 colour words fell to a grid of PAIRED `if (1) {}` splits x statement order x line layout**](#kit-clxxi-agent-g-run-202) -- _Run negatives: 4A890 / E68 / 6126C / 18F0 / 65EE4 / 65494 / 578B4 / C310 / 4A308 / E2D0 / 31C0 / C234 / 90CC._
 - [kit CLXIX (agent-g 2026-10-28, run 201): **fixed lever-sweep `order` re-sweep over 50 bodies: order hits in 4 (2 kept, 2 false positives), bbsplit kept in B75C / C234 / DF14 / kernel 1ADC; a PAIR declaration grid beats single declmove (B75C 93.61 -> 93.93); four `order` false-positive classes (unqualified member / global stores, cast-deref writes, ALL-CAPS call macros); in-tree whole-file grid harness**](#kit-clxix-agent-g-run-201) -- _No exact; 32C8 zero/l134 colour, 578B4 sp50/ra, E2D0, 1ADC, 4C5E4 grids negative; 54E78 / 65494 / 6808-gD hits rejected (length away from / across the target)._
 - [kit CLIX (agent-g 2026-10-28, run 196): **timer-HUD family: the image pointer as the `this` of tiny Img members instead of a named inline local + 3 block pads (13B8 / 16F4 99.43 -> 99.91, 1340 98.47 -> 99.91); `mtc1 zero` count scan finds int-zero candidates: C234 zf (90.77 -> 91.66, length = target), 8FC8 `seti(0, 0, 0)` (90.90 -> 91.27); last 13B8 pair = edg pool-var itab-bit order**](#kit-clix-agent-g-run-196) -- _No exact; 578B4 declmove only 1000 / 13340 done (chunks timed out); 4A308 / 50444 / 63964 / 4B0A8 / 4B620 / 31C0 / 4C5E4 / 55A0 negatives._
 - [kit CLVII (agent-c 2026-10-28, run 189): **gui sprite-rect family: the CTX edg pool temp gets s0 only when it is ASSIGNED in the loader-call blocks (the `this` of an inline `Ctx::load()`); 3714's a1 is a colour-order cap vs the MAX value, not call-crossing; per-packet append spellings in the rectangle macro (RDPHALF_1 `n = dl->n; dl->n++`, RDPHALF_2 `n = dl->n++`)**](#kit-clvii-agent-c-run-189) -- _No exact; 329C 98.85 -> 99.06, 3714 96.10 -> 96.43; 2DE0 load() inline 96.42 but 1196 bytes (away, not landed)._
@@ -45985,3 +45987,112 @@ ours CSEs them (n.x even spilled to sp+24, the target's px slot). Computing l fr
 scores 87.01 standalone, but moves the length away (716 -> 720, target 712): not kept. A named dot `f32 d`, an
 `if (1) {}` after it, n.dot(p) / p.dot(n), a non-member by-value operator/ (the target's 60 -> 188 -> 72 copy chain
 looks like one): none stops the n CSE at the right length.
+
+## kit CLXXI (agent-g 2026-10-28, run 202): timproc_uso_b5 32C8 EXACT (99.96 -> 100, 1480 B) by porting the cfe NM body to NCC on the shape of its EXACT sibling 2B74's donor; the last colour cap fell to a multi-split statement grid, not to register levers <a name="kit-clxxi-agent-g-run-202"></a>
+
+**1. The sibling port.** `scripts/sibling-scan.py --exact-only` pairs 32C8 (cfe NM, 99.96, 3 words: l134 $f0 vs
+$f2, kit CLXIII section 3) with timproc_uso_b5_func_00002B74 (EXACT NCC donor, similarity 0.75). Compiling the cfe
+body unchanged under NCC drops to 96.49; rewriting it on the 2B74 donor's shape gets every word before the vec3
+children right at once: the braced child blocks, the TimB5Nm name copies (`uK.v = B5_NAME(..); nm = uK;` for the
+rows, `uK = *(TimB5Nm *)(&sym + lo); nm.v = uK.v;` for the vec children), the vec3 constants as SOURCE LITERALS
+(donor .rodata = -2500, -1500, 2500, 1500, -pi, pi in first-use order = the ROM words at RoData +0x134; renamed
+timproc_uso_b5_func_000032C8_rodata by the splice and pinned), and the alloc-fallback comma
+`(cA = alloc(0x20)), (h = ...), (cA != 0)` plus `h = ...;` after the ctor call: the target's two `mtc1 zero,$f0`
+after the calls are the zero vector value h re-assigned on both paths.
+**2. h must not be a folded constant.** With `h = 0` uopt propagates the zero and re-materialises it at the use
+(length 1476, no path mtc1s). `h = (f32)iz()` (inline int returning 0, kit CXIX / CLXIII) keeps h a variable:
+length 1480 = target, path mtc1s present, but h first coloured $f12.
+**3. Frame homes from the cfe decl list.** The 2B74 list put the cB spill / the struct temp t at 40 / 56 (target
+80 / 60); the cfe body's own list (cB right after cp2, then only padF0 / padF1, no padF2) gives the target homes.
+**4. The colour residual was statement / BB order.** Normalising the pool offsets (`lwc1 $fN,K(at)`), a 768-variant
+grid of `if (1) {}` after each of the seven vec statements x h-site spellings found 9 -> 7 words (`if (1) {}` after
+vA, after vC2 and after vD: the -pi / pi loads then reuse $f0 one at a time, as in the target); a 1152-variant
+permutation x same-line grid over {h + vC, name load, vA, split, vB} got 2 words (mtc1 / lwc1 adjacent swap); adding
+a SECOND `if (1) {}` token to the permutation (1200 variants, all-one-line or all-separate) found 17 exact orders,
+e.g. one line: `h = (f32)iz(); u12 = ..; if (1) {} vC = {h,h,h}; vA = ..; if (1) {} vB = ..;`. Single-split and
+single-token grids never reach it: the target needs the zero's BB boundary on BOTH sides of the name load.
+Takeaway: when an NCC port sits a few colour words off, grid BB splits in PAIRS together with statement order
+and line layout before declaring a coloring cap (NCC compiles take ~5 ms, so thousands of variants are cheap).
+**5. Splice mechanics.** Placeholder C function re-emits the six floats (`*(volatile float *)(arg0 + 0) = K;` in
+order) so the unit's RoData layout keeps the INCLUDE_ASM .s's .late_rodata words; the superseded cfe body is under
+`#if 0` for reference. Pins: D_timb5_32C8_vt0..vt5 / vv0 / vv1 / vw0 / vw1 = 0, timproc_uso_b5_func_000032C8_rodata
+= 0x134. ROM byte-identical, verify-blocks 6/6.
+**6. Negatives this run (bytes / score unchanged unless noted).** 4A890: s0 id copy and the s1 size are not reached
+by a pointer variable reused for ids then list, `n + s`, a for-loop over `ids + n`. E68: holding &dims[1] in s8
+(`*(s32 *)((int)import_8001FFA0_h + 4)`, the kit CLXX-10 spelling) moves the length toward the target (3008 ->
+3024 of 3036) but hoists and spills n * 64 (90.8, not kept). 6126C: a switch gives a sorted beq chain (83.3); the
+v1 -> a0 dispatch copy is not a type (u8 / u16 / s16 / s8 / u32) or an explicit copy. kernel 18F0: the `bnezl
+found` + `b skip` layout survives every if / goto / else form. 65EE4: argument spellings / prototypes do not move
+the fallback-mode a0 / a1 order. 65494: alias copies of self->0x2FC (the spill-vs-s8 cap). 578B4: the ra / t0 pair
+is a ugen temp-ring choice (sp50 is not coloured; zdbug:6 `not colored (-ve save)`): placement of the arg2 & 0x1FF
+read, packet line layout and the shared temp_t0_25 variable choice are all inert. 32C8-style sweeps elsewhere:
+C310 single / pair `if (1) {}` over the prologue, 4A308 array types (long long / int / double) and referenced or
+volatile pads at every declaration position, E2D0 comma operands on `1.0f + arg4`, 31C0 fresh new-temps (frame
++8; compensating q-pads lose more), C234 hx through var_v0_2 (load now lines up, mov.s still missing, 94.76 ->
+94.65), declmove / hoist sweeps on E68 / B75C / 6808 / 5A2C4: no hit. 90CC: renaming D_xxx externs to the target's
+func_YYYY+K reloc names is NOT codegen-neutral (one symbol per base re-enables the %hi CSE: 8436 -> 8632 bytes).
+
+## kit CLXXX (agent-c 2026-10-28, run 201): systematic sibling map over the agent-c range; the exact 64388 donor's V3 kit and an OPERATOR-BODY ORDER grid are the transferable levers (36694 86.01 -> 90.67, 37540 93.58 -> 95.72, 3558 79.23 -> 81.66, small 37938 / 7C1C gains; no exact) <a name="kit-clxxx-agent-c-run-201"></a>
+
+**1. Sibling map (non-exact functions < 99.9 in game_uso, gui_uso, game_libs_post, post0b < 0x48000).**
+Sources: (a) header-named siblings, (b) `scripts/sibling-scan.py --exact-only` restricted to the range (a scratch
+copy that filters the targets; `--min 0.5 --size-tol 0.4`, then `--min 0.4` for the big ones), (c) shared struct
+layouts / callees. Hits (target fuzzy -> exact partner, similarity):
+- (b) 41D40 99.61 -> 4E244 (0.73); 37938 98.55 -> game_uso F948 (0.63, cfe emulation of the same by-value copy);
+  3E5E0 99.36 -> 38360 (0.57, cfe, the same alloc-or-reuse cascade); 34890 98.75 -> 3D2C8 / 5185C (0.55-0.57);
+  35B1C 97.40 -> timproc b5 0058 / 35C6C (0.56-0.57); 38A28 84.62 -> 4E96C (0.55, cfe jump-table decoder);
+  36694 86.01 -> 64388 (0.52, NCC V3 kit); 3AE58 99.26 -> 3AC5C (0.51); 3DF58 99.06 -> 43D8 / 3DE48 / 3DA14
+  (0.50); 33094 87.65 -> 432BC (0.47); game_uso 3558 79.23 -> 5F984 / A0E8 / 28C0 (0.40). The raw-.word USO bodies
+  (2E354, 30AF4, 7C1C, 8CD8, gui) have no parsable words for the scanner: nothing above 0.4.
+- (a) 2DE0 -> 27A0 / 3B80; 7C1C -> 6A30; 3558 / 1DDC -> 24BC / 28C0; 3DF58 -> 3D48C / 3D54C / 3DDC0; 454C4 ->
+  42F4C; 8CD8 -> 7C1C. All of these were already ported by earlier runs (their kits are in the donors).
+- (c) 3AE58 / 3B2EC / 3BE1C / 3B9C0 / 3B6A0 share the Col layout (remap 0x4C, verts 0x60, faces 0x68) with the
+  exact 54264 Mesh::sample (V3(const S3 &) ctor); 3C43C calls the exact 36A48 (by-value V3 operator=); 415A4 is
+  the 41820 Self::init sibling (vtable +0x68 / +0x6C call, `new X(1)`).
+Ranking used bytes x gap x similarity; the top real transfers were the NCC V3 kits (64388 -> 36694 / 37938,
+37540's by-value z, y, x operator= -> 3558).
+
+**2. What transferred.**
+- **36694 (`V3 Obj::perp`) takes the 64388 kit:** P3 base, ctor through set(), FREE operators on `const V3 &`
+  parameters; first build 85.95 -> 87.90 standalone and length 716 -> 712 = target (post0b NM clip 0x2ead8 ->
+  0x2ead4). Then lever-sweep on the new base: bbsplit after the fallback axis's `r.y = 0.0f` (-> 89.21), and an
+  operator-spelling grid: operator- through a named `V3 r; r.set(...); return r;` with operator* using the named
+  `f32 k = s` (frame 0xE8 -> 0xF0 = target, 90.61). Report 86.01 -> 90.67. Left: edg temp slots (target t lowest
+  at sp+0x5C, ours above the operator temporaries) and FP colours.
+- **37938:** the free `operator*(const V3 &, f32 s) { f32 k = s; ... }` moves operator*'s result slot to the
+  target's sp+0x44 (98.55 -> 98.60). The op- temps (8 high) and the by-value param temp (8 low) did not move with
+  any op- spelling (member / free / named / set / by-value a).
+- **OPERATOR-BODY ORDER grid (new, scriptable):** permute the three component statements inside each one-line
+  inline member (`set`, ctor, `operator=`, `+=`, `*=`, getPos) with `@[ .. @; .. ]@` markers (a 30-line helper
+  wrote the markers for every one-line body with three x / y / z assignments; lever-sweep's `order` never looks
+  inside inline bodies). Hits: **37540** `+=` and the ctor in z, y, x order: 93.58 -> 95.72 (length = target);
+  **3558** the by-value `operator=` in z, y, x (37540's kit; 1024 -> 1016 bytes, toward 1008) then `+=` in x, z, y:
+  79.23 -> 81.66. Line breaks between the permuted statements made no difference. No hit on 7C1C / 8CD8 / BB8C /
+  36F0C / 37938 / 1DDC.
+- **7C1C:** compound `+=` / `-=` and a set()-filled operator* result: 95.20 -> 95.24 (length = target).
+
+**3. Negative results (do not repeat).**
+- 3558: M4::rotate (the 28C0 member, x, y, z order) gives length 1008 = target but 61.1 (the target's
+  vb-add interleave is lost); explicit rotate in x, y, z order with the `M4 *m` base 78.91; vb += per component
+  inside the block 56.9-59.4.
+- 41D40: the 4E244 iterator kit variants (IBase ctor order x6, ternary / if next(), kept ctor parameter,
+  operator[] through a local): flat at 99.26 standalone.
+- 3AE58: 54264's `V3(const SV &)` conversion and a Mesh::face(i) member: 98.91 flat or lower.
+- 34890: 38360's exact cfe cascade shape (decl orders x24, h in a1): 89.7 (NCC donor 98.27 stays).
+- 3E5E0: the 38360 cfe shape: 84.4 (outer pointer in s0, target a2 spilled; NCC donor 99.36 stays).
+- 33094: a V3 class with by-value operator= / compound `*=` / `+=` for the else arm: 84.9 at 416 bytes (C lift
+  under NCC 87.49 at 404 stays).
+- 3C43C: the 36A48 by-value operator= class in place of the tmp / tmp2 copies: best 92.33 at 840 bytes
+  (current 96.05).
+- 415A4: `a28 |= 6; a28 |= 0x400;` reproduces the target's two oris but adds a store (+8 bytes); NCC lift 87.9.
+  `a28 |= 6 | 0x400` +0.04 only.
+- 36F0C: `f32 &wy = w.y, &wz = w.z` bound at the top (the 64388 reference lever) does not hoist the target's
+  &w.y / &w.z into a1 / a2: +0.04, not kept. 2DE0: the 27A0 one-scratch `int t` for ctx / switch / MAX: worse.
+- 1DDC (99.97): decl permutation x720 of the else arm, the tail product as a named / block V3, ref / self read
+  spellings: flat (residual = edg temp slots 0xFC / 0x154 / 0x148 vs ours 8 / 8 / 40 lower).
+- 8CD8 / BB8C: operator spellings (op* named k / set / named r, XZ op- / perp named r, compound ops) all flat.
+**7. Paired-split grid over other NCC donors (same run).** Every single and pair `if (1) {}` insertion after a
+statement line (objdiff-scored, own line, statement indentation): 59E80 one hit, after the 0xFCFFFFFF combine
+packet AND after the 0xB9000002 packet (97.80 -> 97.86 in-tree, length unchanged; neither alone scores); no hit on
+4B620 (210 variants), 4B0A8 (105), 48510 (55), 4B2F4 / 5F5F0 (300 each, first 300 pairs), 4F2DC (120), 4FD00 (66),
+54E78 (136), 4C5E4 (300 of the pairs), timproc C310 prologue (120), post0b cfe 5A2C4 (528 around the colour block).
