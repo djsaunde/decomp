@@ -14551,7 +14551,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CXXX (agent-c 2026-10-27, run 181): **gl_func_000201B8 = OoT AudioHeap_AllocCached (older revision): transcribing the reference source with its own types and control flow beat a 97.94 typed-view rewrite in one step (99.11; IDO turns the CACHE_EITHER self tail call into the branch to the top), then `x = 0; if (c) {} else { x = v; }` (hoisted constant + kept empty then-arm) fixed the last delay-slot swap; -O3 / literal-0 `new` / ternary-hoist negatives**](#kit-cxxx-agent-c-run-181) -- _EXACT gl_func_000201B8 (1796 B) + gl_func_0004E00C (300 B, NCC: a five-trip loop's peeled iteration = the kept `li v1,1` IV) + gl_func_00040070 (564 B, NCC: int element + a folded float-zero test keeps the constant's remats), 81.57 -> 81.92 % code; new pins D_345c0_201B8, gl_func_00000000_201B8v, D_40070_vta, D_40070_vtb; post0b NM clip 0x2ea94 -> 0x2ea9c; NM 33094 84.65 -> 87.17, 48AEC 96.86 -> 96.88; lead: 51AD8 one as1 delay-slot word from exact (default label needs a second reference)._
 - [kit CXXXI (agent-g 2026-10-27, run 182): **gl 690A8 was C++ -- an inline `M4::xf(V3 &)` on one stack V3 (target tell: `lwc1 112(v0); lwc1 128(v0); addiu v0,v0,112`) matched all 191 words on the first compile; NCC frame budget = named locals + compound-assignment lvalue temps + inline `this` temps on computed objects; 63964: int-parameter ctor gives a zero its own register, `count = 1` first swaps v0/v1, an inline forwarder in operator= homes its temps after the by-value parameter**](#kit-cxxxi-agent-g-run-182) -- _EXACT gl_func_000690A8 (764 B, NCC donor in both trees; the last frame residual: uopt reserves frame bytes only down to the lowest memory-resident variable, so a register-coloured edg temp created ABOVE a later-declared V3 pushes it down -- declare the memory object first), 81.60 -> 81.70 % code; NM gl_func_00063964 88.72 -> 99.96 (length 1112 -> 1120 = target); twin sweep negative; 97EC / 3558 / 65EE4 / E2D0-as-NCC negatives._
 - [kit CXXXII (agent-c 2026-10-27, run 183): **jumptable bound-check delay census -- 82 target tables, 0 default heads stolen; 51AD8 / 396FC are the only defaults our as1 steals (needs a second predecessor; 38A28 has default holes); 35B1C is an NCC ctor (vptr + inlined member ctor, frame via p / a3p locals); 37938's symbol excludes its jr delay nop**](#kit-cxxxii-agent-c-run-183) -- _EXACT gl_func_0004EE44 (616 B, addendum 2: route the call's a1 argument through the variable that later holds the post-call reload -- dead-web reuse fixes a "scratch-pick" v0/a1 tie; a new local costs an 8-byte dead home), 81.95 -> 82.03 % code; 35B1C NCC lead 97.13 standalone (t slot + vptr-store order left); 250C8 / 4EE44 / 578B4 / flag / layout negatives; spelling-grid `@}@` typo trap._
-- [kit CXXXIII (agent-g 2026-10-27, run 184): **bootup 63B4 was C++ hiding in a "cfe body lifted under NCC" donor: inline `M3::xf(V3 &)` through `ctx->view->rot` (this-adjust tell), A's stores through an inline `set()`, the `+=` accumulates through an inline `addz()` member (the f14 reload), a POD record declared after exactly three named scalars; lever-sweep hits flip sign after structural changes -- re-run it after each one; 8BD4 (compound-assignment lvalue temps, operator+= members) and 24B8 (cfront virtual slot 13, one pooled s0 temp via inline members) C++ leads; 63964 arm-1 slot map**](#kit-cxxxiii-agent-g-run-184) -- _EXACT func_000063B4 (896 B, 82.05 -> 82.17 % code); new pins bu_63b4_c57c = func_0000057C, func_00000000_63b4_{ff,fpp,pq,p}; 8BD4 C++ 97.65 / 24B8 C++ 93.97 standalone (below their donors, not landed); 63964 / 2840 / E2D0 negatives; spelling-grid `}@|` brace trap. Addendum: timer-HUD family via sprite member objects + inline `Spr::width() { Img *i = img; return i->w; }` (13B8 / 16F4 89.18 -> 97.96, 1340 86.53 -> 94.34, mgrproc 23FC 98.70 -> 99.35) and b5 C310 via an inline `Col::set(int, int, int, int)` (run-time /255 channels, 94.88 -> 95.92, new NM donor)._
+- [kit CXXXIII (agent-g 2026-10-27, run 184): **bootup 63B4 was C++ hiding in a "cfe body lifted under NCC" donor: inline `M3::xf(V3 &)` through `ctx->view->rot` (this-adjust tell), A's stores through an inline `set()`, the `+=` accumulates through an inline `addz()` member (the f14 reload), a POD record declared after exactly three named scalars; lever-sweep hits flip sign after structural changes -- re-run it after each one; 8BD4 (compound-assignment lvalue temps, operator+= members) and 24B8 (cfront virtual slot 13, one pooled s0 temp via inline members) C++ leads; 63964 arm-1 slot map**](#kit-cxxxiii-agent-g-run-184) -- _EXACT func_000063B4 (896 B, 82.05 -> 82.17 % code); new pins bu_63b4_c57c = func_0000057C, func_00000000_63b4_{ff,fpp,pq,p}; 8BD4 C++ 97.65 / 24B8 C++ 93.97 standalone (below their donors, not landed); 63964 / 2840 / E2D0 negatives; spelling-grid `}@|` brace trap. Addendum: timer-HUD family via sprite member objects + inline `Spr::width() { Img *i = img; return i->w; }` and every image read through members (13B8 / 16F4 89.18 -> 99.39, 1340 86.53 -> 98.47, mgrproc 23FC 98.70 -> 99.61 with no volatile pads left) and b5 C310 via an inline `Col::set(int, int, int, int)` (run-time /255 channels, 94.88 -> 95.99, new NM donor); gui 2DE0 frame words 94.54 -> 94.57; 8BD4 C++ port landed once its call returns `unsigned char` (97.77 -> 97.95, pin func_8bd4_c)._
+- [kit CXXXIV (agent-c 2026-10-27, run 174): **EDG for-init iterator lever: `for (Iter it(...); it.next(); )` keeps the init's pooled temps alive, so the entry copy of the condition gets fresh temps off the call-crossing s-register (41D40 99.17 -> 99.26, 49B3C 99.01 -> 99.33, 34890 98.10 -> 98.27); itab `vreg` temps = EDG's inline this / argument / return pool, reused across roles; 37938 boundary deferred (body has a stack-hole-order residual, 4096-combination toggle search negative)**](#kit-cxxxiv-agent-c-run-174) -- _No exact. Negatives: for-init on 493AC / 48AEC / 4B0A8 / 4B620 / 454C4 / 3DF58 and on 49B3C's array loop; 578B4 ra/t0, 250C8 fontId-as-CSE, 5F5F0 else-arm head probes._
 - [kit LXXXVII (agent-c 2026-10-24, run 148): **alignment survey (negative) + the original-file-start map of game_libs, and three twin / NCC levers** -- no non-exact function in the ROM differs from its target only in nop count or position; units in game_libs start at gl = 4 (mod 16) (16-byte aligned in bootup.uso text), every infinite-loop epilogue sits at gl = 0x14 (mod 32), and the pad words after a final `jr ra` mark 40+ original unit ends (map inside); arcproc 125C EXACT by porting the exact mgrproc 1C90 match_imports C; gl 44CE8 under NCC (pool base rematerialised, the old count carried in the result variable to keep the frame at 32); gl 3E0F0 arg word read before `gl(tmp = o, x)`](#kit-lxxxvii-agent-c-run-148) -- _1 exact (arcproc_uso_func_0000125C, 556 bytes; 76.92 -> 77.00 % code on e5cf258f7); NM: gl 44CE8 91.28 -> 99.53 (new NCC NM donor), gl 3E0F0 93.88 -> 99.90; post0b NM clip unchanged (0x2e928)._
 - [kit LXXXIV (agent-g 2026-10-24, run 155): **colour-pairing levers -- a void alias for a discarded call plus ONE local per register pair** -- gl 68DD4 (98.71, "colours only" for months) fell when the leading discarded K&R call went through a void alias (the dead v0 def pushed every later value one register up, kit IX) AND the two cursor reads were written with two int locals that each carry two roles (A = cursor then q2, B = value then cursor2), mirroring the target's register pairs; scripts/sibling-scan.py at 0.5 plus a longest-common-block scan found no new exact templates in agent-g units; twin NM port b3 13B8 <- arcproc 16F4 (+5.0); 5F984 NM donor takes the 5EB4C/5ED54 param copy; negatives for 5A2C4, D884, C310, BDEC, 2B7C, 23FC, 1824, 5F5F0, 525F0, E2D0, B154](#kit-lxxxiv-agent-g-run-155) -- _1 exact (gl_func_00068DD4, 340 bytes; 76.74 -> 76.78 % code with main's agent-c gains); NM: b3 13B8 80.36 -> 85.41, arcproc 16F4 85.36 -> 85.41, gl 5F984 90.11 -> 92.46 (post0b clip 0x2e904 -> 0x2e90c), gl 51448 95.00 -> 95.56, bootup 24B8 94.87 -> 95.21._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
@@ -43200,3 +43201,99 @@ cfe-lift 93.05. bootup E2D0: the cfe residual is the FP ring after the call (f8/
 - (same run, end) lever-sweep `all` / `volatile` / `bbsplit` over the remaining post0b NCC donors: no keepable hits
   (3BE1C denaming of v1 reads 89.70 but moves the length away from the target, 1560 -> 1552 vs 1568; 3B9C0 swap of two
   float zero stores +0.003, not taken).
+- **8BD4 landed as C++ after all (97.77 -> 97.95, report.json).** The item-3 port plus one decode fix: the
+  surface-code call returns an `unsigned char` (per-site alias `func_8bd4_c`, pinned 0). With an `int` code the
+  register allocator keeps the code in v0 and xors it in place; typed u8 (no `andi`: IDO trusts the callee's
+  zero-extension) the target's `move a1,v0` copy before the 0x62 test comes back (as a0 here -- the last row
+  of that chain), and `int skip;` declared before `code` is worth +0.02. `short` / `signed char` / `char` codes
+  and `unsigned` / `unsigned char` skip flags are flat or lower. Tell for the next function: a call result
+  copied to a second register right after the first compare, with no extension instructions, may be a
+  narrow-typed return.
+- **Same family, second pass: EVERY image read goes through a member.** The glyph sheet's `w / 12` and the
+  per-glyph `h / 2` were still raw `arg0->tim.img->w` / `->h` reads; through `tim.width()` and a matching
+  `s32 height() { Img *i = img; return i->h; }` the frame becomes the target's 328 with no pads, and `if (1) {}`
+  after the tim begin call (lever-sweep) follows: 13B8 / 16F4 97.96 -> 99.39, 1340 94.34 -> 98.39 (length now =
+  target 952), 23FC 99.35 -> 99.57 (glyph height through `height()`, `if (1) {}` after `c = buf[i]`). Rule: once one
+  accessor of a class is shown to be an inline member, route every access of that class through members --
+  a raw field read next to member reads is a decode error, and fixing it moves the frame and the t-ring.
+  13B8 left (46 objdiff rows): the int temp ring one register behind at the image-pointer loads (t2 / t0 / t1 vs
+  t3 / t1 / t2), x / xb / xoff homes (180 / 160 / 164 vs 136 / 144 / 148), the spill slots 4 low and the last two
+  draws' argument reload order; `draw()` / `dig()` members, an embedded `(xa = ...)` and 5040 declaration orders are
+  inert.
+- 23FC later: with `height()` in, the last two volatile pads become surplus -- dropping them leaves the target
+  frame (288) with no pads at all (the inline members' temporaries were what the pads stood in for), then a
+  5040-order declaration grid (`sec`, `n` before `min`): 99.57 -> 99.61 (report.json). The same pad -> member
+  swap is the first thing to try on any NCC donor that still carries volatile frame pads in a family where a
+  member-function rewrite has landed. Negative: gui 3714 with the 329C `Ctx::load()` inline is +8 bytes.
+- Late, small: C310 two `volatile s32` words declared first give the target frame 200 (95.98 -> 95.99) and 1340 one
+  after `one[]` (98.43 -> 98.47); neither reveals a lever-sweep hit, the same pads on 13B8 / 16F4 cost 0.01.
+- gui 2DE0 (agent-g, same run): ten function-top `volatile s32` words toward the target's frame 104 (ours 64):
+  94.54 -> 94.57 (report.json, length unchanged); 6 / 12 / 14 words and the 329C `Ctx::load()` / next-spelling
+  combinations score lower or move the length away from 1212.
+- Lead (not landed): game_uso 3558 has the raw 3x3 rotation block of the 63B4 shape (`m->m[0][0] * stage.x + ...`
+  on `&s0->b0->mtx`); through an inline `M4::xf(Vec3 &)` called as `{ Body *b = s0->b0; b->mtx.xf(stage); }` the
+  body drops from 1024 to the target's 1008 bytes but scores 61 (vs 78.81): the frame is 240 vs 256 and the f20
+  zero / `sdc1 f20` save is gone -- the next run should rebuild 3558 around the member call (xf computing x, y, z
+  in order) rather than tune the 1024-byte body.
+- bootup C234 (NCC NM donor): three lever-sweep de-namings one at a time, re-sweeping after each (temp_f14 load
+  of +0x934 past stores at other offsets, temp_v1 s16 +0x9A0 read, temp_f2_2 = (f32) temp_v0_4): 90.67 -> 90.73,
+  length unchanged; the sweep's second-round candidates differ from the first round's (temp_f16 appears, then
+  vanishes after temp_f2_2) -- the kit's "re-run after each change" point holds for de-naming too.
+
+## kit CXXXIV (agent-c 2026-10-27, run 174 in commit numbering): EDG for-init iterator lever (41D40 / 49B3C / 34890 NM gains); no exact <a name="kit-cxxxiv-agent-c-run-174"></a>
+
+**Summary.** No exact this run. Three NM donor gains from one lever: write an iterator walk as
+`for (Iter it(...); it.next(); )` instead of `Iter it(...); while (it.next())`. 41D40 99.17 -> 99.26,
+49B3C 99.01 -> 99.33 (also switched from the run 162 donor to the run 173 draft), 34890 98.10 -> 98.27
+(objdiff diff scores, expected/ vs NM object). No NM length change, so the post0b clip did not move.
+
+**1. EDG pooled temps, read from the itab dump.** `-Wo,-zdbug:1` on an NCC donor lists the inline-expansion temps
+as `isvar M 4 -N vreg` entries. Every inlined call's `this`, each argument and each returned value gets a temp
+from a pool, and the pool reuses temps across calls and across roles. In 41D40 one temp held the
+`iter(*(Arr **)D)` argument, the array pointer inside next() and the one inside cur(). Because those are a
+single variable, its live range crosses the body's calls and gets s1, and the condition's array load is
+s1 as well. In the target that load is v0 (entry copy) / v1 (bottom copy). You can see the two copies of
+the loop condition in the itab: they use different temps (entry copy: fresh temps; bottom copy: the
+reused pool), so EDG emits the condition twice and uopt does not just duplicate one copy. `if (0) { ... }`
+blocks and dead statements (`(void)it.cur();`) anywhere in the loop do not change which temps the pool
+hands out (all 9-diff in 41D40).
+
+**2. The lever: declare the iterator in the for-init.** EDG keeps the for-init statement's temps alive for
+the whole `for` statement, so the entry copy of the condition gets fresh temps that do not cross a call.
+- 41D40: entry next() array load s1 -> v0 (= target), result v1 (= target). The two extra temps add 8 to the
+  frame. Take those 8 bytes out of the dead `volatile` pad block (6 -> 4 words) and go back to `return &(*a)[++idx]`
+  (the run 173 `int n` spelling scores worse in this form). Left (8 words): the entry copy's index temp is a0
+  (target a1) because that temp is also the bottom copy's result temp (a0 = target). In the target they must be
+  two different temps. The bottom copy's array and index temps swap v0 / v1.
+- 49B3C: the list walk `for (LI li(g->head); li.next(); )` fixes the entry copy's result (a1 = target). The same
+  form on the ARRAY loop costs 16 words there, because its next() copies were already off s1. Use the lever only
+  where the dump shows the condition's temp sharing a call-crossing register.
+- 34890: `for (LIter it(o->list); it.next(); )`, 31 -> 28 words. What is left is the alloc cascade.
+- Negative (scored with a scratch script that converts each adjacent decl + `while (x.next())` pair, alone and in
+  every combination): 493AC (184 -> 191..204), 48AEC (258 -> 258..264), 4B0A8 (21 -> 24), 4B620 (49 -> 78),
+  454C4 (the `while ((e = it.next()) != 0)` form, 261 -> 281 difflib rows), 3DF58 (for-init `Node *n`, a
+  per-branch second iterator, `while` / `for (;;)` shapes: all 16 or worse).
+
+**3. 37938 boundary (queue item 1) not done, on purpose.** The symbol does end at the bare `jr ra` (0x154; the delay
+nop is asm-processor block padding at 0x3634, and the `_pad.s` word is at 0x3638). The recipe from MATCHING_WORKFLOW
+(`#splat-symbol-boundary-trailing-delay-nop-2026-06-22`) would make it 0x158. But the body is not one word from
+exact: the NM object has 11 more rows wrong, all stack offsets plus the final `s` reload. Those are the inline
+temp homes in the wrong order: target holes between the named V3s are 5 / 6 / 1 / 5 / 3 words, the port's are
+3 / 8 / 2 / 6 / 1, and the frame is the same size. A 4096-combination toggle search (kept `if (0)` parameters
+on gp / operator* / ctor / operator=, named return locals, getPos vs getPos0, `V3 d = b - a;`, s escape
+position, a/b declaration order) gave no improvement over the current donor (16 difflib rows each). Since the
+fix moves the score less than 1% and needs a full `refresh-expected-baseline.py` run, it is left for a run that
+also fixes the body.
+
+**4. Other negatives (diagnosis only).**
+- 578B4 s2_508 ra/t0 (7 words): kit XCIX's analysis still holds. Moving the `arg2 & 0x1FF` statement, splitting it
+  or folding it into the packet store, and binding the FD50 pointer to temp_t0_25: all 8 rows.
+- 250C8 (cfe): replacing fontId with `ASYNC_ID(retMsg)` expressions puts the CSE temp at 0x24 (= target) but
+  adds two frame words and a second temp (95.8). `fontId = ASYNC_ID(retMsg)` (93.6) and OoT's all-retMsg
+  switch (94.2) are worse. The current spelling (99.39 diff) is still the best.
+- 5F5F0 (NCC): ten probes on the else arm (`if (mf) {}` head, `if (1) {}` before / after the v[] stores,
+  pointer v stores, store order, x/y/z declaration order): the mf home store stays after the v[] stores, 7 rows.
+- lever-sweep `all` on the three new donors: no variant beats them.
+- kernel_000 func_80001594 (agent-g, same run): in-tree lever-sweep bbsplit `if (1) {}` after
+  `e->unk0 = arg0[i].unkC;` 96.62 -> 96.80 (report.json, length unchanged; the in-tree sweep's base reads 96.05,
+  so trust only the report).
