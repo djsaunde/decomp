@@ -14582,6 +14582,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLXIII (agent-g 2026-10-28, run 198): **1340 + 23FC EXACT: edg homes named locals at SCOPE ENTRY and pooled inline temps at FIRST USE (a nested block places a named local below the pool temps); a named inline local is a fresh variable per expansion, a pooled `img->gw()` temp is reused (long LR, higher register); 4A308 v0/v1 via a folded term**](#kit-clxiii-agent-g-run-198) -- _EXACT 1340 + 23FC (2060 B, 82.79 -> 83.06 %); 4A308 99.85 -> 99.99._
 - [kit CLXV (agent-g 2026-10-28, run 199): **negatives: 578B4 declmove sweep complete (no hit); 4A308's missing 8 frame bytes sit BELOW the spill word (uopt/ugen area, k = 13..20 vs our 9..12), so no edg-level local can supply them; 63964 arm-1 census (target allocates three fresh word temps before the bound copy C); 31C0 T1 / obj read-site swap; 4B0A8 / 4B620 / 48510 / 5F5F0 tie grids**](#kit-clxv-agent-g-run-199) -- _No exact, no source change; mgrproc 1824 = external-jtbl cap._
 - [kit CLXI (agent-g 2026-10-28, run 197): **timer-HUD 13B8 / 16F4 EXACT: pooled edg temps get itab bits by first reference (homes by creation); a folded `+ 0 * tim.pw()` in an earlier statement pre-creates pool vars so the pB width outranks its copy; x locals declared before the panel pointers**](#kit-clxi-agent-g-run-197) -- _EXACT 13B8 + 16F4 (1360 B, 82.62 -> 82.79 %); 578B4 declmove 1000-2500 no hit._
+- [kit CLXXII (agent-c 2026-10-28, run 197): **game_uso 591C 99.03 -> 99.68, length = target: the extra `mtc1 zero` was a copy-propagated abs (put the abs in a temp the next block redefines, `0.0f`); ONE nested selector written into `z` makes the shared cfe join temps colour f14 at every other site; web-rename sweep (dead same-type local for one region's value) recolours per region**](#kit-clxxii-agent-c-run-197) -- _No exact; 168 -> 68 rows; region map of the int-pointer swaps left._
 - [kit CLIX (agent-g 2026-10-28, run 196): **timer-HUD family: the image pointer as the `this` of tiny Img members instead of a named inline local + 3 block pads (13B8 / 16F4 99.43 -> 99.91, 1340 98.47 -> 99.91); `mtc1 zero` count scan finds int-zero candidates: C234 zf (90.77 -> 91.66, length = target), 8FC8 `seti(0, 0, 0)` (90.90 -> 91.27); last 13B8 pair = edg pool-var itab-bit order**](#kit-clix-agent-g-run-196) -- _No exact; 578B4 declmove only 1000 / 13340 done (chunks timed out); 4A308 / 50444 / 63964 / 4B0A8 / 4B620 / 31C0 / 4C5E4 / 55A0 negatives._
 - [kit CLVII (agent-c 2026-10-28, run 189): **gui sprite-rect family: the CTX edg pool temp gets s0 only when it is ASSIGNED in the loader-call blocks (the `this` of an inline `Ctx::load()`); 3714's a1 is a colour-order cap vs the MAX value, not call-crossing; per-packet append spellings in the rectangle macro (RDPHALF_1 `n = dl->n; dl->n++`, RDPHALF_2 `n = dl->n++`)**](#kit-clvii-agent-c-run-189) -- _No exact; 329C 98.85 -> 99.06, 3714 96.10 -> 96.43; 2DE0 load() inline 96.42 but 1196 bytes (away, not landed)._
 - [kit CLI (agent-g 2026-10-28, run 193): **cfe literal-spelling decode signals from immediate / `mtc1 zero` counts: a `mul.s` by a held 2.0f is `* 2` (cfe folds `* 2.0f` to add.s), a float store using the compare's zero register is `0.0f` not `0`, `x += a*b*c` gives the target's add / mul operand order; re-run lever-sweep after every decode fix (B75C 90.86 -> 93.31, length = target; 6808 gD de-named 94.24 -> 95.38)**](#kit-cli-agent-g-run-193) -- _No exact; negatives 6126C dispatch copy, E9FC / 6204 prologue (unique), 63964 temp layout, C234 V3 class, 8FC8 iz zeros, E68 split m, 65EE4 literal arg, 4E424 roles, 4C5E4 2.0f._
@@ -45692,3 +45693,48 @@ result is a pure uopt spill word (104, under the parent spill 108); ours keeps a
   the target has two result live ranges. `while (it.next())`, `while (... != 0)`, `for (;;)` with a named
   `Elem **e` re-assigned from a second next(), and a guarded `if (it.next()) do {...} while (it.next());` compile to
   identical bytes (edg / uopt normalise them all).
+
+## kit CLXXII (agent-c 2026-10-28, run 197): game_uso 591C 99.03 -> 99.68 (length = target) -- the extra `mtc1 zero` was a copy-propagated abs result; ONE selector written into a different variable makes every other nested-selector inner temp colour f14; a dead float/pointer variable for one region's value is a per-region recolour lever (web-rename sweep) <a name="kit-clxxii-agent-c-run-197"></a>
+
+No exact. game_uso_func_0000591C (4372 B, cfe NM body) 99.03202 -> 99.67978 report.json in five commits; 168 -> 68
+differing rows (probe count).
+
+**1. The extra `mtc1 zero` (99.03 -> 99.47).** Run 196 left `scale = yaw < (f32)0.0 ? -yaw : yaw; yaw_metric = scale;`
+and `scale = 1.0f + a / b;` (scale reused). `0.0f` alone shares the zero but recolours (98.77): with `scale` no longer
+redefined before yaw_metric's uses, copy propagation replaces yaw_metric by scale and colours it (yaw_metric's stack
+home and its six reloads disappear). Fix: put the abs into `fsel`, which the NEXT statement block redefines (accel
+abs), so the copy into yaw_metric is not propagated (yaw_metric stays homed, reloaded as in the target), and inline the
+`1.0f + a / b` factor into the product (the target computes it in an expression temp f10, not a candidate). With `0.0f`
+the compare uses the hoisted f16 zero as the target does. General: a `homed = tmp;` copy survives only if `tmp` is
+redefined before the homed variable's last use -- pick the temp variable by its NEXT definition.
+
+**2. One selector in another variable recolours all the others (99.49 -> 99.66).** The ten nested float selectors
+`fsel = v0 == 3 ? a : v0 == 2 ? b : c;` use two cfe join temps that are SHARED across sites (zdbug:5: one LR spanning
+all the sites' blocks, forbidden only f0 / f12, so f2; the target has f14 at every site). Writing ONE site's selector
+into `z` (`z = ...; if (z <= metric_a)`) puts z's f2 web into the join temps' interference: they colour f14 at the
+nine other sites (that one site's outer is f2 instead of f12: -4 words, +36). Any site works (same score); no other
+variable did it (z is the only f2-coloured float web with priority above the temps). Assigned-temp / if-else spellings
+of the inner join with a named variable do not change the colour (copy-propagated, or the named variable gets f2).
+Try this on any function with a repeated cfe ?: shape whose join temp is one register off at every site.
+
+**3. Web-rename sweep (new probe tool pattern).** For each definition of a local V, rename V to another dead local of the
+same type from that definition up to V's next textual definition, compile, score. Hits here: the yaw-region speed
+`f2v = sub->0x348` (f2 -> target f0 when spelled `dot`, dead there: +4 rows); the accel `sub + 1784` pointer in
+`axis_src` instead of `accel_params` (v0 as target; accel_params kept for the chain sites' sp+288 spill home); the
+selector-in-z of 2. Hits must be checked by hand for the next-def boundary (a def inside one branch does not end the web
+on the other path). No hit on int / pointer groups for the remaining swaps. Plus lever-sweep `order`: the scaled-axis
+`z` product computed before `x` (+0.016, product colours f14/f2/f0 now = target; loads still y, z, x).
+
+**4. Negatives.** Per-site selector variable (dot/neg/...): outer f2, inner f12 (lower). Dead `while (0) { v = 0.0f; }`
+at four anchors x 13 float variables: no move. `while (0) { stmt }` before each of 118 assignments: no hit. Dead
+while(0) refs of accel_params at the chain sites, `&res_a` copies: no move (cfe deletes them before analoop here).
+Counter `self->0x54 + 1`: target v1; only a long pointer web (`p`, a `Vec3 *`) as the counter gets v1 (+0.02, not
+kept: type pun). Operand order of `f2v * self->0xC4` and `v0 == 0x10000`: every spelling canonicalised.
+
+**Region map (end of run, 68 rows):** 0xb8-0xe4 axis loads y/z/x vs x/y/z (colours right; x-product-first variants
+recolour fsel); 0x2b0-0x3d8 self->0x30 prefetch v1 (target a0) vs res / src / dst pointers (zdbug:5: prefetch adjsave
+2.67 colours first; src 1.5 would have to colour first); 0x630-0x684 and 0x8bc-0x910 chain sites 2 / 4 src / dst v1 / a1
+swap (accel_params adjsave 1.5 < dst 2.5; sites 1 / 3 with the same shape are right); 0xae4 `bne v1,v0` operand order;
+0xba8 / 0xc14 delay-slot load order of self->0x30 vs self->0x2C; 0xc88 mul operand order; 0xd84 counter v0 (target v1);
+0xfe4-0x1004 the sacrificed z selector. Probe harness: in-tree asm-processor + cc -DNON_MATCHING per variant, objdiff
+score + objdump row diff (about 4 s per variant, 28 in parallel).
