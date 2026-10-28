@@ -14587,8 +14587,10 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLXXIV (agent-c 2026-10-28, run 198): **a field read through the PARAMETER (`a0->f`) instead of its local copy (`self = a0`) is a separate CSE / PRE expression: one site leaves the function-wide code-motion web and a delay-slot load order elsewhere flips (591C 99.68 -> 99.70); 591C pointer rows are constrained-LR priority order, target order written down**](#kit-clxxiv-agent-c-run-198) -- _No exact; 68 -> 64 rows; axis / counter / bne / chain-site negatives._
 - [kit CLXXVI (agent-c 2026-10-28, run 199): **fixed `order` over the agent-c range: 120 hits, 34 on field-store lines, but nearly all on in-tree bodies shadowed by NM donors; one new scoring hit (8CD8), then bbsplit; 8CD8 rewritten as C++ in the 7C1C value-class kit (cfe 86.05 -> NCC 87.19, length = target; six unused Vec3 slots fix the 528-byte frame)**](#kit-clxxvi-agent-c-run-199) -- _No exact; 591C 99.73, 7C1C / 454C4 small; lever-sweep false-positive notes._
 - [kit CLXXX (agent-c 2026-10-28, run 201): **sibling map over the agent-c range; the exact 64388 V3 kit (P3 base, set() ctor, free const-ref operators, named k) on 36694 (86.01 -> 90.67, length = target) and an operator-body ORDER grid inside one-line inline members (37540 += / ctor z, y, x: 93.58 -> 95.72; 3558 operator= z, y, x + += x, z, y: 79.23 -> 81.66); negative-result list**](#kit-clxxx-agent-c-run-201) -- _No exact._
+- [kit CLXXXII (agent-c 2026-10-28, run 202): **33094 as real C++ on the 432BC V3 kit: `set(f32, f32, f32)` with member-expression arguments = the target's load-all-then-store order (edg evaluates arguments right to left), by-value operator= + `*=` / `+=` body-order grid (87.65 -> 93.62, length = target); 35B1C is a C++ ctor (data member with a ctor = cfront `new(4)` protocol, by-value operator==) matching every word but the vtable-store slot; 3DF58 unconstrained LRs coloured in bit order; negatives**](#kit-clxxxii-agent-c-run-202) -- _No exact._
 - [kit CLXXVIII (agent-c 2026-10-28, run 200): **37540 ported to C++ from its exact sibling 37348's donor kit (cfe 81.17 -> NCC 93.58, length = target): one inline reads the saved vector and clears x (refs = early stores, return = register), set() + compound `*=` for the store/re-read build; 8CD8 pads worth +0.07, no natural aggregate; 36694 n-CSE diagnosis**](#kit-clxxviii-agent-c-run-200) -- _No exact._
 - [kit CLXXI (agent-g 2026-10-28, run 202): **timproc_uso_b5 32C8 EXACT (1480 B): cfe NM body re-written as NCC on its exact sibling 2B74's donor shape (literal vec constants, rodata pin, `(f32)iz()` zero re-assigned on both alloc paths, cfe decl list); the last 2 colour words fell to a grid of PAIRED `if (1) {}` splits x statement order x line layout**](#kit-clxxi-agent-g-run-202) -- _Run negatives: 4A890 / E68 / 6126C / 18F0 / 65EE4 / 65494 / 578B4 / C310 / 4A308 / E2D0 / 31C0 / C234 / 90CC._
+- [kit CLXXIII (agent-g 2026-10-28, run 203): **range-wide exact-sibling map (bytes x gap x ratio) is sparse: every pair >= 0.58 (D884/D14C, DF14/D550, 4B0A8/4E244, E2D0/63F34, 4A308/46DC0) is already ported and capped; 54E78 94.25 -> 98.22: a first-declared aggregate always sits at frame - 12 (needs a 4-byte home declared before it), and a literal 1.0f CSE's with folded i1() constants into one register**](#kit-clxxiii-agent-g-run-203) -- _No exact; lever sweeps over 15 donors saturated; 4A308 spill-slot probes negative._
 - [kit CLXIX (agent-g 2026-10-28, run 201): **fixed lever-sweep `order` re-sweep over 50 bodies: order hits in 4 (2 kept, 2 false positives), bbsplit kept in B75C / C234 / DF14 / kernel 1ADC; a PAIR declaration grid beats single declmove (B75C 93.61 -> 93.93); four `order` false-positive classes (unqualified member / global stores, cast-deref writes, ALL-CAPS call macros); in-tree whole-file grid harness**](#kit-clxix-agent-g-run-201) -- _No exact; 32C8 zero/l134 colour, 578B4 sp50/ra, E2D0, 1ADC, 4C5E4 grids negative; 54E78 / 65494 / 6808-gD hits rejected (length away from / across the target)._
 - [kit CLIX (agent-g 2026-10-28, run 196): **timer-HUD family: the image pointer as the `this` of tiny Img members instead of a named inline local + 3 block pads (13B8 / 16F4 99.43 -> 99.91, 1340 98.47 -> 99.91); `mtc1 zero` count scan finds int-zero candidates: C234 zf (90.77 -> 91.66, length = target), 8FC8 `seti(0, 0, 0)` (90.90 -> 91.27); last 13B8 pair = edg pool-var itab-bit order**](#kit-clix-agent-g-run-196) -- _No exact; 578B4 declmove only 1000 / 13340 done (chunks timed out); 4A308 / 50444 / 63964 / 4B0A8 / 4B620 / 31C0 / 4C5E4 / 55A0 negatives._
 - [kit CLVII (agent-c 2026-10-28, run 189): **gui sprite-rect family: the CTX edg pool temp gets s0 only when it is ASSIGNED in the loader-call blocks (the `this` of an inline `Ctx::load()`); 3714's a1 is a colour-order cap vs the MAX value, not call-crossing; per-packet append spellings in the rectangle macro (RDPHALF_1 `n = dl->n; dl->n++`, RDPHALF_2 `n = dl->n++`)**](#kit-clvii-agent-c-run-189) -- _No exact; 329C 98.85 -> 99.06, 3714 96.10 -> 96.43; 2DE0 load() inline 96.42 but 1196 bytes (away, not landed)._
@@ -46096,3 +46098,176 @@ statement line (objdiff-scored, own line, statement indentation): 59E80 one hit,
 packet AND after the 0xB9000002 packet (97.80 -> 97.86 in-tree, length unchanged; neither alone scores); no hit on
 4B620 (210 variants), 4B0A8 (105), 48510 (55), 4B2F4 / 5F5F0 (300 each, first 300 pairs), 4F2DC (120), 4FD00 (66),
 54E78 (136), 4C5E4 (300 of the pairs), timproc C310 prologue (120), post0b cfe 5A2C4 (528 around the colour block).
+
+## kit CLXXIII (agent-g 2026-10-28, run 203): systematic exact-sibling map over agent-g's range (sibling-scan --exact-only, bytes x gap x similarity) -- the map is SPARSE: no new template-grade pair exists; every pair at >= 0.6 is already ported, and single/paired lever sweeps over 15 donors are saturated <a name="kit-clxxiii-agent-g-run-203"></a>
+
+**1. Map.** `scripts/sibling-scan.py --exact-only --min 0.55` over the whole report gives only 10 rows repo-wide, one
+in range (4B0A8 / 49B3C 0.554). A range-restricted rescan (best EXACT partner at any ratio >= 0.4, size tolerance
+0.5, rank = bytes x (100 - fuzzy) x ratio; script kept outside the repo, logic = sibling-scan's opcode signature)
+over the 50 non-exact functions >= 16 words in post0b >= 0x48000 / bootup / timproc_b5 / post1b / kernel /
+game_libs.c / tail / titproc / mgrproc / arcproc / timproc_b1/b3. Top of the ranking (rank, fn, bytes, fuzzy,
+best exact partner, opcode ratio):
+
+| rank | function | B | fuzzy | exact partner | ratio |
+|---|---|---|---|---|---|
+| 79 | timproc_b5 8FC8 | 5728 | 91.27 | game_uso C48C | 0.16 |
+| 74 | post0b 5A2C4 | 1804 | 90.29 | gui 1EF4 | 0.42 |
+| 59 | bootup E68 | 3036 | 93.44 | 1304C | 0.29 |
+| 42 | post1b 65494 | 1336 | 91.75 | 40974 | 0.38 |
+| 39 | post0b 4C5E4 | 836 | 87.22 | gui 4354 | 0.37 |
+| 33 | bootup 6808 | 2376 | 94.88 | titproc 5DC | 0.27 |
+| 32 | timproc_b5 DF14 | 1352 | 96.31 | timproc_b5 D550 | **0.65** |
+| 28 | game_libs 76F0 | 2308 | 95.00 | timproc_b5 32C8 | 0.25 |
+| 28 | timproc_b5 D884 | 1344 | 96.65 | timproc_b5 D14C | **0.62** |
+| 27 | post1b 65EE4 | 584 | 89.73 | 41A9C | 0.45 |
+| 27/26 | bootup B75C / C234 | 2096 / 2200 | 93.9 / 95.1 | 36224 | 0.21 / 0.24 |
+| 17 | post0b 54E78 | 552 | 94.25 | 5CB68 | 0.54 |
+| 15 | timproc_b5 C310 | 968 | 96.02 | timproc_b5 BDEC | 0.40 |
+| 1.6 | post0b 4B0A8 | 588 | 99.56 | 4E244 / 49B3C | **0.60** / 0.55 |
+| 1.4 | bootup E2D0 | 524 | 99.54 | post1b 63F34 | **0.58** |
+| 0.1 | post0b 4A308 | 872 | 99.99 | 46DC0 | **0.67** |
+
+Below 0.5 the partners are opcode-mix coincidences (different control flow); the named header siblings (post1b
+690A8 / 64388 for 65EE4 / 65494 / 63964, bootup 1A44 / 63B4 / 76F4, timproc_b5 AC20 / B368 / B154 / B624 / BDEC /
+4118 / 32C8 for C310 / CEB4 / 8FC8) all score < 0.45 against their targets. Every >= 0.58 pair is ALREADY ported:
+D884 / DF14 carry the D550 / D14C kit II (residual = the external-data jumptable lo16 + volatile EE6C flag word,
+both documented caps), 4B0A8 carries the 49B3C / 4E244 AIter kit, E2D0 the 63F34 `z + (y + x)` sum, 4A308 is the
+run-198 frame-spill cap.
+
+**2. Negatives this run (all objdiff-scored standalone, length = target unless noted).**
+- E2D0 (63F34 kit lever: comma operands): every spelling of `1.0f + arg4` (5 operand/comma forms, separate `sc`
+  temp, statement order of the lim / k / sc loads, `dot *= / dot = sc * dot / dot * sc / (0, dot) * sc`, the three
+  scale stores as `*=` / `dot * v` / `v * (0, dot)`, `if (arg4)` / none / `!= 0.0f`): 240 probes, all <= 99.43.
+  The whole residual is ONE colour pair: arg4's load f14 (target f16, the register the 0x9F8 factor just freed)
+  and the 1.0f ring f6 (target f8); the final-scale ring shifts with it. Not an operand-order problem.
+- 54E78 frame (128 vs 152): measured offsets ours/target -- a0 spill 32/32, set() parameter 36/44, construct
+  temp 72/80, return copy 92/100, `a` 116/136. So the target has +8 bytes between the spill and the parameter and
+  +12 between the copy and `a` (one more V3-sized temporary). Unused volatile / V3 / double locals are dropped by
+  NCC (no frame change). A NAMED return local in operator* (`V3 r; ... return r;`) puts the construct temp at
+  exactly 80 and the copy at exactly 100 (frame 136) but adds a third copy ladder (+20 B); `a.set(V3(p.n) * p.d)`
+  gives frame 152 with the wrong offsets (+28 B). Free / by-value / reversed operator* forms: no change. Next
+  probe: an NRV-eliding form that keeps the named r (e.g. operator* building r through set()).
+- 4A308: volatile / double pads at three declaration points x early-return spelling (96 probes): no change
+  (NCC drops unused locals; the 8 bytes below the spill word need a USED object).
+- 4B2F4: `flags | 2` folded into the packet expression (4 spellings) x flags/slot1 load order: 98.20 -> 90.5
+  (the in-place `|=` is load-bearing for the t5 operand build even though it colours a2 wrong).
+- lever-sweep `all` + `declmove` + `hoist` + `unlever` over the NM donors 4B620 / 4C5E4 / 50444 / 4D688 / 4F2DC /
+  54E78 / 4B2F4 / 5F5F0 / 48510 / 4B0A8 / 4A308 / timproc_b5 C310 and in-tree bootup 31C0 / 8BD4 / 24B8 / E2D0:
+  no gain except 54E78 `unlever` (drop the `if (1) {}` after m[2][2]: 94.20 -> 95.62 but 560 B vs target 552,
+  a length move AWAY from the target, not kept) and 8BD4 bbsplit (+0.13 on the in-tree body that a donor replaces,
+  i.e. not reaching report.json).
+
+**Conclusion.** The exact-sibling vein in this range is exhausted at the current kit: the remaining > 0.55 pairs
+are ported and capped, and the large functions (8FC8 / 5A2C4 / E68 / 65494 / 6808) have no exact sibling above
+0.42. Further sibling-driven progress needs NEW exacts in game_uso / gui / post0b < 0x48000 to serve as donors --
+rerun the range-restricted scan after agent-c lands (e.g. 5A2C4 vs gui 1EF4 0.42, 4C5E4 vs gui 4354 0.37).
+
+## kit CLXXXII (agent-c 2026-10-28, run 202): 33094 rewritten as real C++ on the 432BC V3 kit (87.65 -> 93.62, length = target); 35B1C is a C++ ctor (member Key ctor = cfront `new(4)` protocol) that reproduces every word but the vtable-store slot; near-exact sibling ports flat <a name="kit-clxxxii-agent-c-run-202"></a>
+
+**1. 33094 (game_libs_post, NM donor) -- "C decoded as C" on a V3 function.** The C lift under NCC (volatile
+pads, block locals) was 87.65. Read against the exact 432BC donor's V3 class (`set(const V3 &)`, by-value
+`operator=(V3 v) { set(v); }`), the target words are:
+- `a = o->pos` and `b = p->pos`: three float LOADS into registers, then the three stores. That is
+  `set(f32 a, f32 b, f32 c)` called with `(o->pos.x, o->pos.y, o->pos.z)`: edg evaluates the call arguments RIGHT
+  TO LEFT, so the target's z, y, x load order at the top falls out (no z, y, x spelling needed).
+- the else arm `b = o->v104; b *= 10; b += a;`: the by-value operator= is the word copy into the sp+0x54
+  parameter temp, then set(v); uopt forwards b.z and keeps the b.x / b.y stores the target has.
+- then `a.mul(k); b.mul(k)` (component products with `const V3 &k`), the emit call, the two flag calls.
+First compile 78.69 at 412 bytes; the set(f32 x3) form for the p arm 84.70; for a as well 89.71 (400); then the
+kit-CLXXX OPERATOR-BODY ORDER grid (set / *= / += bodies, 1296 probes): set y, x, z; *= x, z, y; += y, z, x ->
+93.44 at 404 = target; the two unused volatiles in a block at the end +0.02. Report 87.65 -> **93.62**. Left: the
+FP colours of a (target x f12 / y f0 / z f2 with x split and reloaded in the else arm; ours f0 / f2 / f12 = the
+set() inline parameters a, b, c coloured in bit order at equal priority) and the parameter temp 8 below the
+target's. Not moved by: V3 ctor instead of set, set(const V3 &) for p, an explicit `Obj *p`, k as a reference,
+k folded, an explicit `b.x = b.x + a.x ...` for += (+4 bytes), lever-sweep `all` (no hit).
+**Lesson:** when a function loads all three components before storing any, try a three-float setter called
+with the member expressions -- edg's right-to-left argument evaluation gives the load order for free.
+
+**2. 35B1C (post0b, 97.40) is a C++ constructor -- one scheduling slot short of exact (not landed).** The cfe body's
+"list-append constructor" (vtable at +0xC, placement-construct a 4-byte member at o+4 with `alloc(4)` if null,
+o->8 = a3, duplicate scan, tail append, `next = 0`, key copy) is:
+
+    struct Key { int v; Key() { v = 0; } int operator==(Key o) { return v == o.v; } };
+    struct Rec { Rec *next; Key key; int val; virtual void f(); Rec(List *l, Key k, int v); };
+    Rec::Rec(List *l, Key k, int v) : val(v) {
+        Rec *n;
+        for (n = l->head; n; n = n->next) if (k == n->key) gl(&gl_ref_0001E6B0, &k);
+        Rec *last = 0;
+        for (n = l->head; n; n = n->next) last = n;
+        if (last) last->next = this; else l->head = this;
+        next = 0; key = k;
+        { volatile int z0; }
+    }
+
+(renamed `__ct__3RecFP4List3Keyi` -> gl_func_00035B1C, `__vtbl__3Rec` -> D_00000000). A data member with a ctor
+gets edg's cfront `this == 0 -> new(4)` protocol (`addiu v1,s4,4; addiu at,zero,-4; bne`), the by-value
+`operator==` makes the n->key copy temp at sp+0x3C, `k == n->key` (not `n->key == k`) gives the target's operand
+roles, and the end-block volatile gives frame 0x50 with the &key temp at sp+0x34. Every word matches up to
+relocations EXCEPT the vtable store: target `addiu v1,s4,4; addiu at,zero,-4; sw t6,12(s4); bne`, ours
+`sw t6,12(s4); addiu v1,s4,4; addiu at,zero,-4; bne` -- the same residual the cfe body has, so the report does not
+move (97.40 both ways) and the donor was not wired (source kept in the run-202 scratch). `NCC -S` shows our
+pre-scheduling order is vptr store, then `this + 4`; the target needs `this + 4` first. Not moved by: Key as a
+base (`Rec : Link, Key`: protocol before the vptr store, worse), a non-polymorphic base holding the data (+16
+bytes), `Key() : v(0)`, `Key(int)` with `key(0)`, an explicit `key()` mem-initializer, `val = v` in the body,
+`virtual ~Rec()`, volatile pads at 4 positions. Open: whatever makes edg / uopt compute the member address before
+the vptr store.
+
+**3. Negatives (do not repeat).**
+- 41D40: member `Arr::iter()` with the 4E244 `self` trick, while-form iterator, IBase ctor orders x6, pads 0 / 4 / 6,
+  11 next() spellings x 3 operator[] spellings: flat at 99.26 standalone (entry next() index a0 vs a1, bottom
+  array / index v0 / v1 swap).
+- 3DF58 (dump-guided): uopt colours the `unconstrained` LRs in BIT order; the pooled next() return temp (bit 28,
+  v0) is coloured before pass 1's n (bit 50); the target needs n first. Separate next2 / next3 copies for either
+  pass, per-branch iterators, while / for-init forms, `Node *n` at function scope with `= 0` / `= (Node *)o`: flat
+  or worse.
+- 3AE58: pick() returning the entry pointer / int / reference, and seven index spellings: flat or worse (the
+  vi read stays in the inline return register v1, target t6).
+- 37938: free / by-value / named-result operator-, P3 base, operator= returning `V3 &` or through `this`, `V3 d`,
+  pads at 4 positions: flat (temps stay 8 off).
+- 37540: declaration-order grid of s / a,b,ab / hx,hy,hz / vB4 / v6C / v9C,v90 (720 orders): +12 bytes.
+- 36694: `V3 r;` before `f32 l;` +0.01 (landed); `px * px + (py * py + pz * pz)` 91.81 but +4 bytes; t declared
+  at function scope / as a reference to the temporary / through an inline helper: flat or worse.
+- 38A28: NCC lowers the 9-way switch to a beq chain even with `default:`; under cfe (7.1 and 5.3) o / code stay
+  uncoloured whatever the block-scope layout (12 layouts, all 84.20); target allocation looks NCC.
+- 34890: make(h, o) / O::make / new-expression inline: flat or -16 bytes. 3E5E0: decl order + pads, kept-param
+  inlines off: flat.
+- 469A8 as C++ (first sketch, not scored in-tree): the vtables of the o->0x240 / o->0x290 objects sit at +0x28 AFTER
+  0x28 bytes of data, so the polymorphic class is a BASE `{ char pad[0x28]; virtual ...; }` and the fields from
+  0x2C belong to the derived class (a vptr declared with the derived data lands after it, 4 bytes off); v12 =
+  entry 0x60 / 0x64, v3 = 0x18 / 0x1C. Member-struct predicates (`o->f100.on()`, `o->f78.on()`) do NOT hold the
+  target's `addiu a2,v1,256` / `addiu t1,v1,120` pointers (folded into offsets), and the target's single s0 for
+  the vcall result / second vtable / new DL count is not reproduced; the cfe body (94.24) stays.
+
+**3. Same run, later: post0b 54E78 94.25 -> 98.22 (NM donor, length = target, 4 commits).** Ported the 63964 donor's
+frame rules (kit CXXXI) and found a constant-CSE lever:
+- by-value `set(V3 p)` forwarding to an inline `cp(const V3 &)` puts the set() parameter / operator* return temp
+  / copy on the target's sp+44 / 80 / 100 (94.25 -> 94.32);
+- **a first-declared aggregate is always homed at frame - 12 (frame is a multiple of 8, so its offset is 4 mod 8)**:
+  the target's `a` at sp+136 in a 152 frame therefore needs a 4-byte home declared BEFORE it (`volatile int u;`),
+  plus the 12 unreferenced bytes below it from a block-scope `{ V3 t; }` (unreferenced V3 survives because of
+  its user ctor; unreferenced arrays / ctor-less structs / plain volatile ints of the wrong size are dropped or
+  fall into an existing alignment hole: F2 +8, F4 +16, F5 +16, `{ V3 t; }` +8, `{ V3 t; } + { volatile int w; }`
+  +16) -- frame and every home = target (94.38);
+- **mixed constant spellings CSE into one register**: the diagonals were already the folded int inline `i1()` (each
+  use rematerialised as `mtc1 at` after candidate selection), but the last-row `m[3][3] = 1.0f` literal was CSE'd
+  with them into ONE long-lived f16 (one mtc1 + nops where the target issues `mtc1 at` per use). Spelling it
+  `i1()` as well: 94.38 -> 98.01 in one change;
+- operand-order grid over the nine `2 * (a * b)` products: m[0][1] x*y, m[2][0] z*x, m[2][1] z*y (98.22).
+Left: 2.0f colours f14 (target f2) and the shared zero f2 (target f0); the operator* products then take
+f12/f16/f18 (target f0/f12/f14) and p.d f0 (target f18). Negative: 0.0f / 2.0f spellings ((f32)0, i0(), (f32)2,
+i2(), 2.0), named `two` / `zero` locals (+ dead while(0) ref multipliers), operator* as free / reversed / const-ref
+/ named-temp forms, V3 ctor forwarding to s3() or reversed stores, single and paired `if (1) {}` positions.
+
+**4. 4A308 frame (same run).** Every sp offset except one already equals the target: the arg3*8 call-spill is at
+sp+56 with a 4-byte hole at 60 (the block-local `r`), target spill at 60 directly under col (64). Without `r` the
+frame is 120 and everything moves down 8, so the target has 8 bytes BELOW the spill. Every probe lands above the
+spill instead: block volatiles (int / short / float / double / long long, 1-4 of them, at the end or after the
+last call), a volatile double / int declared first, a named `int off = arg3 * 8` (its home replaces the spill but
+col moves to 60). Still 99.99 (one word).
+- 97EC (99.97): f declared before e, f in an inner block (+8 frame), `XZ e = ...` copy-init, `XZ(...)` / `Vec3(...)`
+  wrapped initialisers, an inline `xz(const Vec3 &)` maker: the two bound temporaries stay in prepend order.
+- 3558: the stage rotate as `stage.set3(row0 . stage, row1 . stage, row2 . stage)` (right-to-left args = the
+  target's k, t, mag order) with all six set3 body orders, va through set3: flat or worse (81.66 stays).
+- 41D40 (dump): the bottom next() copy's array / index temps are operator[]'s `this` / `i` (v0 / v1 by bit order at
+  equal priority); a free `at(int i, Arr *a)` / `at(Arr *, int)` (kept or not) loses the inline webs (97.5).
+- 33094: kept-parameter (`if (0) a = 0;`) variants of the set() arguments, a temp copy of a: flat.
