@@ -14573,6 +14573,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLV (agent-c 2026-10-28, run 188): **a jump-table target (`sltiu; lw jtbl; jr tN`) is cfe: retire any NCC NM donor for it (38A28 77.17 -> 84.59, plus record-store / report-arg decode fixes); one pinned symbol per format string keeps each arm's `lui a0`; cfe never colours a value live across a jump-table switch; 33094 frame homes (b above a + six words)**](#kit-clv-agent-c-run-188) -- _No exact; 38A28 length away (flagged); negatives 469A8 && args, 97EC nested block, 3558 zero / rotate grids, 2DE0 / 3714 / 329C / F04 sweeps, 2E354 1.0f, 31A74 (s8) re-extension (length crossed the target)._
 - [kit CLVI (agent-g 2026-10-28, run 195): **stale-lever audit (remove each `if (1) {}` / empty test / `volatile` / pad alone) over all 52 agent-g-range bodies at 90-99.99: zero gains, every lever still load-bearing; C310 NCC homes by declaration order (i, vals, ptrs, hud, cols, volatile pair last: 95.99 -> 96.02); timer-HUD family spill shift = the `height()` inline local's home; 4A308 frame 8 bytes short with all relative offsets right; an address-taken NCC param homes every param; NCC donors: declare a mid-body aggregate at the function top (54E78 `V3 a` 91.33 -> 93.79) and sweep declaration positions (declmove / hoist: 4F2DC, C234, 2B7C, 4A890)**](#kit-clvi-agent-g-run-195) -- _No exact; negatives 578B4 packet pointer, 32C8 zero / l134, 63964 member operators, E2D0 1.0f + arg4, 4E424 roles, 6126C switch / copy, 31C0 new-temp, 50444 volatile param._
 - [kit CLVIII (agent-c 2026-10-28, run 190): **gui sprite-rect family: per-packet append grid with 9 spellings (incl. `dl->n += 1` and local `DL *d`) lifts F04 97.44 -> 98.59 and 2DE0 94.59 -> 95.53 (length now = target); 2DE0 load() variant's &D const LR loses its split piece over the y tree (zdbug:5); int-zero `zf(lhs, 0)` sweep: BB8C 95.66 -> 98.33 (length now = target), 3B9C0 77.84 -> 78.62; 7C1C `out`-in-s0 / 3558 f20 zero / 37540-as-NCC negatives**](#kit-clviii-agent-c-run-190) -- _No exact; 329C / 3714 / 4568 9-spelling grids flat; spelling-grid duplicate-alternative race._
+- [kit CLXII (agent-c 2026-10-28, run 192): **cfe NM bodies: un-name m2c's single field-read temps -- a plain repeated `o->f` stays in one register across the store-free path and is re-loaded only where a store kills it (2E354 o->0/4/0x50, o->0x1D, o->0x26, switch selectors: 91.99 -> 93.01, length back to target); selector and result in ONE variable (pan pick, word-exact block, 93.29); u32 selector holds a shared compare constant; full region maps of 2E354 / 30AF4**](#kit-clxii-agent-c-run-192) -- _No exact; gl_func_0002E354 91.55 -> 93.29 (921 -> 923 words, flagged); gl_func_00030AF4 92.52 unchanged (zero-s-reg / param-home diagnosis, kit 63964 reinterpret casts, -O1, u32 constants negative)._
 - [kit CLX (agent-c 2026-10-28, run 191): **cfe stack arguments read into block locals before a 12-argument call give the target's load-all-then-store shape (cfront inline-argument temps): post0b 469A8 74.77 -> 90.45; zf / declmove / hoist sweep over agent-c's range: small declaration-move hits only (3B9C0, 36F0C, 3558, 38A28)**](#kit-clx-agent-c-run-191) -- _No exact; 1DDC frame / 97EC temp order / 40304 / 2D374 / 307A8 / 250C8 / 38A28 / 33094 negatives; scan: longest outgoing-arg store run, target vs NM._
 - [kit CLIX (agent-g 2026-10-28, run 196): **timer-HUD family: the image pointer as the `this` of tiny Img members instead of a named inline local + 3 block pads (13B8 / 16F4 99.43 -> 99.91, 1340 98.47 -> 99.91); `mtc1 zero` count scan finds int-zero candidates: C234 zf (90.77 -> 91.66, length = target), 8FC8 `seti(0, 0, 0)` (90.90 -> 91.27); last 13B8 pair = edg pool-var itab-bit order**](#kit-clix-agent-g-run-196) -- _No exact; 578B4 declmove only 1000 / 13340 done (chunks timed out); 4A308 / 50444 / 63964 / 4B0A8 / 4B620 / 31C0 / 4C5E4 / 55A0 negatives._
 - [kit CLVII (agent-c 2026-10-28, run 189): **gui sprite-rect family: the CTX edg pool temp gets s0 only when it is ASSIGNED in the loader-call blocks (the `this` of an inline `Ctx::load()`); 3714's a1 is a colour-order cap vs the MAX value, not call-crossing; per-packet append spellings in the rectangle macro (RDPHALF_1 `n = dl->n; dl->n++`, RDPHALF_2 `n = dl->n++`)**](#kit-clvii-agent-c-run-189) -- _No exact; 329C 98.85 -> 99.06, 3714 96.10 -> 96.43; 2DE0 load() inline 96.42 but 1196 bytes (away, not landed)._
@@ -45133,3 +45134,108 @@ a false positive).
   0xc8), the same invariant class as 97EC.
 - 469A8 follow-ups (flat): A0 / A1 argument locals, the p100 / p78 / pDC / sp48 statement order (4!),
   `char *g = &D` / array-index spellings of the 0x254 store, and lever-sweep all on the new body.
+
+## kit CLXII (agent-c 2026-10-28, run 192): deep session on gl_func_0002E354 (91.55 -> 93.29) and gl_func_00030AF4 (92.52, no gain) -- full region maps; UNNAMED FIELD EXPRESSIONS beat m2c's named copies (uopt keeps a plain `o->f` load in one register across a region and re-loads it only where a store kills it); selector-and-result in ONE variable; u32 selector holds a shared compare constant; 30AF4 negatives <a name="kit-clxii-agent-c-run-192"></a>
+
+Both functions are cfe NM bodies in `game_libs_post.c` (jump tables). Region maps were made with a small
+basic-block classifier over `scripts/rdiff.py`'s disassembly (raw branch offsets + pins): the TARGET is split
+at every branch / branch target, each block is aligned to ours on the register- and sp-normalised stream, and
+classed **M** (raw-identical), **S** (only sp offsets differ: frame 0xA0 vs 0x80 in 2E354), **R**
+(register names only), **X** (shape: unaligned / missing / extra words).
+
+### 1. The lever: un-name single field reads (2E354, five hits)
+
+m2c gives every field read a temp (`temp_v1_2 = o->0x1D; if (o->0x34 != temp_v1_2) ... if (temp_v1_2 == 1)`).
+When the target re-uses one register for the read across several statements and *reloads it only after a
+store or call that kills it*, the original source simply repeated the expression `o->0x1D`: uopt's
+redundancy elimination keeps the load in a register on the store-free path and re-materialises it (fresh
+`lbu`) in the arms that stored. A named copy instead becomes a candidate of its own: an extra `or aX,aY,zero`,
+a different colour, and sometimes a lost delay-slot fill.
+
+| site in 2E354 | change | fuzzy | length (target 921) |
+|---|---|---|---|
+| o->0x0 / o->0x4 product + 0x32 block | product of plain reads, spelled `o4 * o0` (cfe swaps it to the target's `lwc1 f2,0; lwc1 f14,4`); in-block `o->4 = o->4 * f` | 91.99 -> 92.11 -> 92.15 | 923 -> 922 |
+| o->0x50 average | plain reads, `(o0 + o50) * 0.5` (target `add.s f10,f16,f2`) | -> 92.16 | 922 |
+| o->0x1D compare / == 1 / default-arm store | plain reads | -> 92.99 | 922 -> **921** |
+| o->0x26 (u8 -> float) + switch-2 selector o->0x21 | plain reads | -> 92.996 (rdiff rows 500 -> 377) | 921 |
+| odd-case selector o->0x29 | plain read | -> 93.007 | 921 |
+
+Not every named read is a copy: un-naming o->0x15, o->0x22, o->0x2E, the switch-1 selector o->0x21 and the
+race-block `temp_f16 = o->0` all LOWERED fuzzy (those reads really are single register values the target
+keeps). Test each site; keep only the risers.
+
+### 2. Selector and result in one variable (2E354 pan pick, 93.007 -> 93.289)
+
+Target: `lbu v0,46(s0); li at,1; bne v0,at,A; ...; b J; li v0,127 / A: li at,3; bnel v0,at,J; li v0,64;
+b J; move v0,zero; li v0,64(dead) / J:`. The selector is loaded straight into the RESULT register. Source:
+`v = o->0x2E; if (v == 1) v = 0x7F; else if (v == 3) v = 0; else v = 0x40;` -- word-for-word. (The previous
+`t = o->0x2E; if (t == 1) v = 0x7F; else { v = 0x40; if (t == 3) v = 0; }` was two words short here.)
+FLAG: function length 921 -> 923 (the short spelling had been hiding surplus words elsewhere).
+
+### 3. u32 selector holds a shared compare constant (2E354 raceB, +0.24)
+
+`(v == 4 || v == 10) && (v != 4 || o->0x21 != 2)`: the target materialises 4 once (`li v1,4; beq v1,v0 /
+bne v1,v0`). With `s32 v` the 4 joins the function-wide signed-4 constant web and is rematerialised into `at`
+at each test; `u32 v` gives it its own web -> held register. (Operand spelling `4 == v` changes nothing.)
+FLAG: 922 -> 923 words at the time. The same trick on 30AF4's case-5 `c14` (u32) holds 14 in a0 as in the
+target but not 13, and costs -0.18 -- not kept.
+
+### 4. Smaller 2E354 items
+
+- the 1C73C easing result reuses `temp_f0` (target `add.s f0,f6,f0`): +0.03.
+- `if (1) {}` after the 1C738 ratio division (lever-sweep bbsplit hit): +0.16.
+- negatives: one `D_E354_1C738` / `1C73C` symbol instead of six per-site externs (-1.15, the per-site
+  `lui at,2` lever of run 109 still stands); `static` instead of extern for them (no change at all);
+  split base symbol for the G+0x14 countdown (-0.6: holds the wrong one of the two bases); a
+  multi-role `temp_f16 = 0.5f` clamp variable (identical code); o->0x15 chain as a switch / else-if chain
+  (closer shape, -0.9 / -0.3); `(unsigned)o->0x14 + 2` in the switch-6 default arm (that block becomes
+  word-exact and length 923 -> 922, but -0.16); `sp78 = sum; sp78 = sp78 * sp64` (reproduces the target's
+  two `swc1 ...,120(sp)` but reorders the u32 conversion, 87.4); `volatile f32 sp78` (+0.05 but 921 -> 922,
+  not kept).
+
+### 5. Region maps after this run
+
+**gl_func_0002E354** (923 vs 921 words; M 186 / R 530 / S 28 / X 177 words; start of run: M 113 / R 553 /
+S 49 / X 206, 922 words):
+
+```
+0000-0034 S  prologue (frame 0xA0 vs 0x80)        0034-00e4 M/R cfg / stateC 1-2-3 / stateB / stateD gates (li a3,1 vs a0)
+00e4-01a0 R/M/S o->0x32 block + 0.5 / 2.0 clamp    01a0-0240 X  /200 + D load order; target ALSO stores the sum to sp78 (dead store)
+0240-03e8 R/M u32 conversion, o->0x26 average, switch 1 (o->0x21), o->0x34 = o->0x1D
+03e8-03f4 X  target hoists `lui t7,%hi(stateF)` into the beqz delay (t-reg rotation one ahead of ours)
+03f4-04a0 R  o->0x1C & 1 conversion                04a0-04d4 X  sp78 * o58 operand order, o60 / o28 load order (spelling-immune)
+04d4-06c4 M/R setf / emit calls, stateF == 4 switch 2, o->0x16 & 1 block, o->0x14 vs o->0x2C
+06c4-0704 X  o->0x15 1 / 2 / default chain (target: beq chain, case-order arms, case-2 arm `move a2,v0` = held 1)
+0718-074c X  o->0x22 jump table (baked %lo vs reloc only)   07f0-0820 X 25 / 50 / 75 pick: target stores sp6B twice
+08b0-08b8 X  switch 4 case 2/3 arm: target keeps `b J; andi`, ours folds it into the beq delay slot
+08b8-0afc R/M pan pick (now exact shape), switch 5 (jtbl offsets reloc-only at 098c), divu, 0x48 countdown, raceA/B gates
+0afc-0c3c X  race block: (a) target keeps o->0x14 (t0) across the 1C738 stores, ours re-loads at the join;
+             (b) the 1.0f / 0.5f clamp assignments: target `mov.s f0,f2` from the held compare constant,
+             ours re-materialises with `mtc1 at,f0`; (c) &G re-materialised for the +0x14 store in the >= 7 arm
+0c3c-0e64 R/M/X switch 6 + emits (0dd4 X: default arm uses the switch selector register + 2, ours copies it)
+```
+
+**gl_func_00030AF4** (533 vs 528 words; M 215 / R 182 / X 131; unchanged this run):
+
+```
+0000-00e0 M/X prologue, emit block, state zero sweep; 00b0: ours loads `mode` twice (volatile modeSel store + switch),
+              target once; target hoists &gl_state (lui/addiu v0) above the switch, ours sinks it into case 6
+00e0-01c4 M/R cases 0-3            01c4-0268 X/R case 4: target loads sub once (t9, copy v0), ours re-loads per use
+0268-02dc X  case 5: 13 / 14 / 16 held constant webs (a0 / v1)
+02dc-0474 X/R case 6: a0 = 13 held, `sw 256,12(v0)` through the pre-switch &gl_state
+0474-054c R/X cases 7-10: 0508 case 10 `(D_s = sub) == 2` (ours materialises &D_s with addiu)
+054c-0780 M/R flag block, switch 2, switch 3      0780-0840 M tail
+```
+
+30AF4 diagnosis: the target uses ZERO s-registers, homes a0/a1/a2, keeps flag / prev / w in stack slots and
+re-loads params once per region (CSE inside a block). Ours gets the zero-s-reg shape only through the
+`volatile modeSel`, which also makes every param-home read uncacheable (the double `lw 60(sp)` in case 4,
+the double `lw 56(sp)` at 0xb0). Negatives: kit 63964 K&R-int reinterpret-cast params (`#define mode
+(*(u32 *)&mode_)`) for mode+sub 90.48 / mode only 91.79 (a2 still unhomed); IDO 7.1 -O1 standalone 61.0
+(not -O1); dropping the `if (1) {}` after `modeSel = mode` 91.87; `(void)&param` statements fold away;
+u32 c / c13 / c14 (see 3); `D_h = sv = sub`; un-named `*cp` reads (identical); lever-sweep all + declmove:
+0 hits. `gb = ...; modeSel = mode;` without the `if (1) {}` gives the target's single `lw 56(sp)` with the
+modeSel store in the beqz delay slot, but the jump-table index lands in t9 where the target uses a FRESH t0
+(and every later t-reg is one behind the target's rotation, 91.87); `switch (modeSel)` on the volatile copy
+92.42. The same one-ahead t-reg rotation is the 2E354 0x3e8 residual: find the extra integer temp the
+target spends before the region and the whole tail re-colours.
