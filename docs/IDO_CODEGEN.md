@@ -14577,6 +14577,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLXIV (agent-c 2026-10-28, run 193): **compute-order decode in NCC donors: the target loads every operand of a group of independent computations before the first (possibly aliasing) store or before the next group -- compute products into named locals, then store (454C4 light colours 91.71 -> 95.72); triangle edge test `dx / dy` before `ex / ey` (3BE1C 88.64 -> 94.98, 3B9C0 78.72 -> 86.91, 3B2EC 95.62 -> 96.05); load-order row count finds candidates; region maps of 591C / 7C1C / post0b donors**](#kit-clxiv-agent-c-run-193) -- _No exact; small order fixes 42938 97.39 -> 97.44, 46050 89.68 -> 89.71; 454C4 / 3BE1C / 3B9C0 lengths moved past the target (flagged); post0b NM clip 0x2eaf8 -> 0x2ead8; 591C tail-branch threading / selector copy / zero-literal negatives._
 - [kit CLXII (agent-c 2026-10-28, run 192): **cfe NM bodies: un-name m2c's single field-read temps -- a plain repeated `o->f` stays in one register across the store-free path and is re-loaded only where a store kills it (2E354 o->0/4/0x50, o->0x1D, o->0x26, switch selectors: 91.99 -> 93.01, length back to target); selector and result in ONE variable (pan pick, word-exact block, 93.29); u32 selector holds a shared compare constant; full region maps of 2E354 / 30AF4**](#kit-clxii-agent-c-run-192) -- _No exact; gl_func_0002E354 91.55 -> 93.29 (921 -> 923 words, flagged); gl_func_00030AF4 92.52 unchanged (zero-s-reg / param-home diagnosis, kit 63964 reinterpret casts, -O1, u32 constants negative)._
 - [kit CLX (agent-c 2026-10-28, run 191): **cfe stack arguments read into block locals before a 12-argument call give the target's load-all-then-store shape (cfront inline-argument temps): post0b 469A8 74.77 -> 90.45; zf / declmove / hoist sweep over agent-c's range: small declaration-move hits only (3B9C0, 36F0C, 3558, 38A28)**](#kit-clx-agent-c-run-191) -- _No exact; 1DDC frame / 97EC temp order / 40304 / 2D374 / 307A8 / 250C8 / 38A28 / 33094 negatives; scan: longest outgoing-arg store run, target vs NM._
+- [kit CLXI (agent-g 2026-10-28, run 197): **timer-HUD 13B8 / 16F4 EXACT: pooled edg temps get itab bits by first reference (homes by creation); a folded `+ 0 * tim.pw()` in an earlier statement pre-creates pool vars so the pB width outranks its copy; x locals declared before the panel pointers**](#kit-clxi-agent-g-run-197) -- _EXACT 13B8 + 16F4 (1360 B, 82.62 -> 82.79 %); 578B4 declmove 1000-2500 no hit._
 - [kit CLIX (agent-g 2026-10-28, run 196): **timer-HUD family: the image pointer as the `this` of tiny Img members instead of a named inline local + 3 block pads (13B8 / 16F4 99.43 -> 99.91, 1340 98.47 -> 99.91); `mtc1 zero` count scan finds int-zero candidates: C234 zf (90.77 -> 91.66, length = target), 8FC8 `seti(0, 0, 0)` (90.90 -> 91.27); last 13B8 pair = edg pool-var itab-bit order**](#kit-clix-agent-g-run-196) -- _No exact; 578B4 declmove only 1000 / 13340 done (chunks timed out); 4A308 / 50444 / 63964 / 4B0A8 / 4B620 / 31C0 / 4C5E4 / 55A0 negatives._
 - [kit CLVII (agent-c 2026-10-28, run 189): **gui sprite-rect family: the CTX edg pool temp gets s0 only when it is ASSIGNED in the loader-call blocks (the `this` of an inline `Ctx::load()`); 3714's a1 is a colour-order cap vs the MAX value, not call-crossing; per-packet append spellings in the rectangle macro (RDPHALF_1 `n = dl->n; dl->n++`, RDPHALF_2 `n = dl->n++`)**](#kit-clvii-agent-c-run-189) -- _No exact; 329C 98.85 -> 99.06, 3714 96.10 -> 96.43; 2DE0 load() inline 96.42 but 1196 bytes (away, not landed)._
 - [kit CLI (agent-g 2026-10-28, run 193): **cfe literal-spelling decode signals from immediate / `mtc1 zero` counts: a `mul.s` by a held 2.0f is `* 2` (cfe folds `* 2.0f` to add.s), a float store using the compare's zero register is `0.0f` not `0`, `x += a*b*c` gives the target's add / mul operand order; re-run lever-sweep after every decode fix (B75C 90.86 -> 93.31, length = target; 6808 gD de-named 94.24 -> 95.38)**](#kit-cli-agent-g-run-193) -- _No exact; negatives 6126C dispatch copy, E9FC / 6204 prologue (unique), 63964 temp layout, C234 V3 class, 8FC8 iz zeros, E68 split m, 65EE4 literal arg, 4E424 roles, 4C5E4 2.0f._
@@ -45402,3 +45403,32 @@ the switch: identical code.
 
 Load-order rows (`rdiff --raw --pins --noreg --nosp`, insert / delete blocks only) at the end of the run: 8CD8 23,
 37540 14, 7C1C 13, 46050 12, 3B9C0 11, 38A28 6, 591C 6, 36694 4, 3558 4.
+
+## kit CLXI (agent-g 2026-10-28, run 197): timer-HUD 13B8 / 16F4 EXACT -- edg pool-temp order set by a folded `0 * inline()` term; zdbug reading of pooled temporaries <a name="kit-clxi-agent-g-run-197"></a>
+
+EXACT: timproc_uso_b3_func_000013B8 (680 B) and arcproc_uso_func_000016F4 (680 B), 99.91 -> 100. Code 82.62 -> 82.79 %.
+No pins. Donors renamed `_nm.cpp` -> `.cpp` and spliced into both trees (16F4's calls rebound to `gl_func_00000000`:
+the arcproc ROM holds `jal 0`; the NM-only `arcproc_uso_func_00001B88` binding gave 12 wrong jal words).
+
+**1. Reading pooled temporaries in zdbug:5.** edg turns every inline `this` copy and every inline result that is an
+operand of a later inline call into a function-scope pool variable. Homes are top-down in edg CREATION order
+(`isvar M 4 -N`), but the itab bit (= the colouring tie-break) is the order of FIRST REFERENCE in the ucode. Within one
+inline expansion the result variable is created before the `this` copy, yet the copy is stored first, so a fresh result
+variable always gets a higher bit than its own copy. A pool variable freed at the end of a full expression is reused by
+the next expression's temporaries (first free first), and its whole LR (all reuses) is one uopt candidate: that is how
+the loop's `tim.img->gh()` temp shares the pA copy's variable (adjsave 11, t0).
+- 13B8's last pair: pB width (fresh, bit 64) vs pB copy (fresh, bit 60), both adjsave 2.0 -> copy t4, width t5.
+
+**2. The fix: create extra pool temporaries in an EARLIER statement.** `s32 w = arg0->tim.width() / 12 + 0 *
+arg0->tim.pw();` -- uopt folds the zero term away (no code), but edg has already created the pw() temps (and a result
+temp for width()). They are free at the sum, so pA result / pA copy / pB result reuse them; pB's width now has a lower
+bit than its fresh copy: width t4, copy t5, as in the target. The three extra enclosing-scope homes push the nested
+block's named locals 12 bytes low; declaring `s32 xoff, xb, xa, x;` BEFORE `Spr *pC.., *pA.., *pB..` (assignments
+after) puts them back on 148 / 144 / 136. Flat / worse: `if (0)` / `while (0)` blocks with inline calls before the sum
+(92.9: they split the BB), operand order / parenthesisation of the sum (edg expands pA, pB, then pC regardless), panel
+pointer declaration order, 4^6 per-site pw / gw / width / direct spellings, `Spr::dr()` draw members.
+- Check for any pooled-temp tie: if the wanted winner is a fresh variable created after its rival in the same
+  expansion, give it an earlier free pool variable by adding a folded `0 * member()` term to a preceding statement.
+
+**3. Not done (time).** timproc_b1 1340 (same pair + count spill 172 vs 152): apply section 2 first. 578B4 declmove
+sweep: variants 1000-2500 scored (base 99.9508, best 99.9409, no hit); 2500-13340 not run.
