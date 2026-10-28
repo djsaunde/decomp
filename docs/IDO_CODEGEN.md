@@ -14580,6 +14580,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLX (agent-c 2026-10-28, run 191): **cfe stack arguments read into block locals before a 12-argument call give the target's load-all-then-store shape (cfront inline-argument temps): post0b 469A8 74.77 -> 90.45; zf / declmove / hoist sweep over agent-c's range: small declaration-move hits only (3B9C0, 36F0C, 3558, 38A28)**](#kit-clx-agent-c-run-191) -- _No exact; 1DDC frame / 97EC temp order / 40304 / 2D374 / 307A8 / 250C8 / 38A28 / 33094 negatives; scan: longest outgoing-arg store run, target vs NM._
 - [kit CLXX (agent-c 2026-10-28, run 196): **game_uso 591C 94.79 -> 99.03, length = target: cfe field promotion (`switch (v0 = self->f)`, arms write only the field) gives the target's selector copies; per-arm `unsigned` reads defeat a cross-arm CSE; re-reading a base pointer keeps `addiu rX,base,K` unfolded; a never-homed scalar's slot can be a pointer's spill home; cfe store order follows source lines**](#kit-clxx-agent-c-run-196) -- _No exact; cast-alias sweep (14 cfe bodies) negative; 1DDC kit-CLXIII placements 9 rows but lower; region map of 591C residuals._
 - [kit CLXIII (agent-g 2026-10-28, run 198): **1340 + 23FC EXACT: edg homes named locals at SCOPE ENTRY and pooled inline temps at FIRST USE (a nested block places a named local below the pool temps); a named inline local is a fresh variable per expansion, a pooled `img->gw()` temp is reused (long LR, higher register); 4A308 v0/v1 via a folded term**](#kit-clxiii-agent-g-run-198) -- _EXACT 1340 + 23FC (2060 B, 82.79 -> 83.06 %); 4A308 99.85 -> 99.99._
+- [kit CLXV (agent-g 2026-10-28, run 199): **negatives: 578B4 declmove sweep complete (no hit); 4A308's missing 8 frame bytes sit BELOW the spill word (uopt/ugen area, k = 13..20 vs our 9..12), so no edg-level local can supply them; 63964 arm-1 census (target allocates three fresh word temps before the bound copy C); 31C0 T1 / obj read-site swap; 4B0A8 / 4B620 / 48510 / 5F5F0 tie grids**](#kit-clxv-agent-g-run-199) -- _No exact, no source change; mgrproc 1824 = external-jtbl cap._
 - [kit CLXI (agent-g 2026-10-28, run 197): **timer-HUD 13B8 / 16F4 EXACT: pooled edg temps get itab bits by first reference (homes by creation); a folded `+ 0 * tim.pw()` in an earlier statement pre-creates pool vars so the pB width outranks its copy; x locals declared before the panel pointers**](#kit-clxi-agent-g-run-197) -- _EXACT 13B8 + 16F4 (1360 B, 82.62 -> 82.79 %); 578B4 declmove 1000-2500 no hit._
 - [kit CLIX (agent-g 2026-10-28, run 196): **timer-HUD family: the image pointer as the `this` of tiny Img members instead of a named inline local + 3 block pads (13B8 / 16F4 99.43 -> 99.91, 1340 98.47 -> 99.91); `mtc1 zero` count scan finds int-zero candidates: C234 zf (90.77 -> 91.66, length = target), 8FC8 `seti(0, 0, 0)` (90.90 -> 91.27); last 13B8 pair = edg pool-var itab-bit order**](#kit-clix-agent-g-run-196) -- _No exact; 578B4 declmove only 1000 / 13340 done (chunks timed out); 4A308 / 50444 / 63964 / 4B0A8 / 4B620 / 31C0 / 4C5E4 / 55A0 negatives._
 - [kit CLVII (agent-c 2026-10-28, run 189): **gui sprite-rect family: the CTX edg pool temp gets s0 only when it is ASSIGNED in the loader-call blocks (the `this` of an inline `Ctx::load()`); 3714's a1 is a colour-order cap vs the MAX value, not call-crossing; per-packet append spellings in the rectangle macro (RDPHALF_1 `n = dl->n; dl->n++`, RDPHALF_2 `n = dl->n++`)**](#kit-clvii-agent-c-run-189) -- _No exact; 329C 98.85 -> 99.06, 3714 96.10 -> 96.43; 2DE0 load() inline 96.42 but 1196 bytes (away, not landed)._
@@ -45634,3 +45635,60 @@ address with a constant offset: `*(char **)((int)&D_00000000 + 0x254) = x;` emit
 sw x,596(rX)` where `(char *)&D_00000000 + 0x254` folds to `lui at; sw x,%lo+596(at)` (+0.8, +4 bytes toward). Post0b NM
 clip 0x2ead0 -> 0x2ead8. A lui/addiu-pair census over the range (target vs NM object) finds no other function where the
 target has MORE held global addresses except NCC donors (3B9C0 table, 46050 margin pointer: kit CLXIV negatives).
+
+## kit CLXV (agent-g 2026-10-28, run 199): negatives -- 578B4 declmove sweep finished (no hit); 4A308 frame arithmetic (the 8 bytes sit BELOW the spill word); 63964 arm-1 slot census; 31C0 read-site swap; register-tie grids on 4B0A8 / 4B620 / 48510 / 5F5F0 <a name="kit-clxv-agent-g-run-199"></a>
+
+No exact, no source change. Code % unchanged (83.06).
+
+**1. 578B4 declmove sweep: done.** Variants 8500-13340 scored alone in three chunks (scratch driver importing
+`scripts/lever-sweep.py` and slicing `variants('declmove', ...)`, `sys.modules['ls']` registered so the pool can
+pickle `probe`): no variant beats the base 99.9508. With kits CLXI / CLXIII the whole 0-13340 range is covered.
+The body has no inline functions, so the pooled-temp levers have nothing to act on.
+
+**2. 4A308 frame arithmetic.** zdbug:6 of the no-`r` body lists every edg home at the target's frame-relative
+offsets (sp7C -4 ... col -64, t0 -60 vreg, entry -24 vreg) and the arg3*8 spill at -68 = the target's. Frame:
+no-`r` 120, with the block-local `r` (vreg, -68) the spill drops to -72 and the frame is 128. So
+`frame = 40 + round8(|lowest slot| + k)` with k in 9..12 in both of our bodies, while the target needs k in 13..20:
+the target reserves one more word BELOW its spill word, i.e. in uopt / ugen's area, not edg's. Every edg-level
+spelling therefore fails: unreferenced `volatile int` / `int[2]` / `double` / `long long` locals in every scope
+(function, if-arm, else-arm, return block, tail), `return f()` vs named / split `r`, ternary / inverted early return,
+second-call index spellings (`(arg3 << 3)`, `[arg3]` on a `char **`, `[3]` on a `u16 *`, `+ 0 * t0`): 197 + 120
+probes, none better than the `r` body. Open: what makes uopt reserve a second spill word (a second uncoloured
+split piece of the arg3*8 live range?).
+
+**3. 63964 arm-1 slot census (zdbug + objdump).** Only arm 1 differs (arms 2 / 3 reuse its temps and match).
+Frame-relative (M = sp - 328): target = [3 words] C(-144) R(-156) [1 word] P(-172) S(-184); ours = C(-132) R(-144)
+-148vreg [-152] P(-164) -168vreg -172vreg S(-184) (R = the operator* V3 result, C = the copy bound to operator+'s
+reference parameter, P = operator='s by-value parameter, S = the operator+ result). Same word total: the target
+allocates three fresh word temps BEFORE C (its pool had nothing free of that kind at arm 1) and nothing between P
+and S. Negatives: named-`this` / named-local spellings of operator+= / V3(int) / V3(f32) / set / cp / operator= /
+operator+ / operator* / operator- (greedy over 9 dimensions + 96 + 144 exhaustive), by-value vs const-ref parameters,
+`va.y * n` with a scalar-first operator*, explicit `operator+(...)` calls, named `t` for the product, folded
+`+ 0 * (int)(V3 expr).x` terms (NOT folded: each emits the whole V3 expression), unreferenced volatile / V3 /
+reference locals between n and arm 1. Named `this` in operator+= plus field-wise V3(int) moves the arm temps 4 toward
+the target but X (sp208) 8 away.
+
+**4. 31C0 read-site swap.** The target's `new Obj2` result temp T1 is at 116 directly under obj (120) and the KB new
+result is a pure uopt spill word (104, under the parent spill 108); ours keeps a KB new-temp home (116) above T1
+(112). The uses are also routed differently: target WA ctor / KB ctor read T1 and both links read obj; ours WA ctor
+/ link-0 / 0xB4 store read T1 and KB ctor reads obj. Named `KB *k` / `WA *k` / `Obj2 *o2` results, placement new,
+`(Obj *)new Obj2`: no gain.
+
+**5. Register-tie grids (standalone, kit CLXIII levers): no hit.**
+- 4B0A8: next() with folded `0 * last` / `0 * (int)a` / `0 * idx` terms, named `Elem **p`, `Arr &r`, `a->data[]`,
+  pre-increment statement; IBase ctor with named `this` / named arr / pre-computed last; `AIter it(...)` forms.
+- 4B620 (the s0 / s3 swap is uopt candidate 39 = the pooled inc() result shared by the 2nd / 3rd packets, coloured
+  after candidates 32 / 129 / 9): inc() as named `n`, per-packet named-head / inc2() spellings -- all lower.
+- 48510: the target evaluates `max590 - 1` before `nv` (ring t6 / t7 / t8) and the buf base before the scaled index;
+  operand-order / parenthesised / `+ -1` spellings and six next() forms are identical; `nv + 1 >= max590` gives
+  the target's load order but emits addiu +1 (different code, not taken).
+- 5F5F0: empty `if (xEye) {}` / `if (yEye) {}` / `if (1) {}` at five points of the normalise arm (1024 probes)
+  leave the `sw a1,160(sp)` placement and z's f14 (target f18) unchanged.
+- lever-sweep `all` and `declmove` over the seven donors above (4B0A8, 4B620, 48510, 5F5F0, 31C0, 63964, 4A308):
+  no hit.
+- mgrproc 1824 (98.5): the only real diffs are one `li at,1` schedule slot and the HI16-only external jump-table
+  load (`lw t8,0x5B8(at)` against import_80264348) = the jr-external-rodata-table cap, not landable.
+- 4B0A8 loop form: the target's loop-bottom next() copy keeps its result in a0 (top copy v1), ours v1 in both, i.e.
+  the target has two result live ranges. `while (it.next())`, `while (... != 0)`, `for (;;)` with a named
+  `Elem **e` re-assigned from a second next(), and a guarded `if (it.next()) do {...} while (it.next());` compile to
+  identical bytes (edg / uopt normalise them all).
