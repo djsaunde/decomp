@@ -14599,6 +14599,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLXXV (agent-g 2026-10-28, run 204): **a target slot at the spill end of the frame that reloads into the def's OWN register is a register LR spilled to its named home: decl order + dead multi-def `if (0) { e = 0; }` instead of an `&e` keep (4D688 96.65 -> 97.84, 53 -> 2 words off); 54E78 per-LR colour table: the 0.0 constant loses an adjsave tie to p.d on bit order**](#kit-clxxv-agent-g-run-204) -- _No exact; 4A308 / 63964 / 31C0 / 4B0A8 / 4C5E4 / 50444 / 48510 / 4A890 / 493AC negatives._
 - [kit CLXXIX (agent-g 2026-10-28, run 203): **NCC folded `+ 0` on a pointer-valued inline-call result (or the inline's return) re-pools EDG temporaries = zero-code colour lever (41D40 99.61 -> 99.90, 42938 97.44 -> 97.60, gui 3714 96.43 -> 96.51); a `+ 0` site-sweep recipe over 30 NCC donors; negatives 3DF58 / 46790 / 3AE58 / 250C8 / 2D374 / 591C / 97EC / 1DDC / 0B3C**](#kit-clxxix-agent-g-run-203) -- _No exact._
 - [kit CLXXXI (agent-g 2026-10-28, run 204): **`scripts/zero-lever-grid.py` = rerunnable `+ 0` / folded `0 * inline()` / `(&X)[0]` site grid for NCC donors (30 donors: one hit, game_uso 3558 81.66 -> 85.86 via `&p->mtx + 0 * (int)(c.getOut())`); 41D40's last register is an EDG pool-slot merge (bottom array temp reuses the entry index vreg), 3E5E0's spill is the CB-level ctor `this` vreg; 2D374 / 97EC / 3AE58 / 0B3C / 591C / 396FC negatives**](#kit-clxxxi-agent-g-run-204) -- _No exact._
+- [kit CLXXXIII (agent-g 2026-10-28, run 205): **count the by-value copy hops: game_uso 8CD8 87.19 -> 89.48 (XZ return type, `Vec3 dir = xz-expr`, direct-init `XZ e(..)`, `kE0 * (250 * width)`); the report scores with `functionRelocDiffs=none` (CLI default differs on reloc-free cfe units: 30AF4 92.52 report = 91.73 CLI); 30AF4 92.52 -> 93.20 (if / else-if decode, direct fC store, wv/cp order); 3558 x,y,z operator= fixes two copy regions but loses the matrix juggle; 46050 / 454C4 constant-hoist pattern**](#kit-clxxxiii-agent-g-run-205) -- _No exact._
 - [kit CLXXVII (agent-g 2026-10-28, run 202): **NCC `(&x)[0]` re-read = a load uopt will not CSE but ugen still reuses across the fall-through edge: a candidate (v1) becomes the target's ugen temp (t8 / t9); cfe folds the spelling away (NCC-only)**](#kit-clxxvii-agent-g-run-202) -- _EXACT game_libs_func_000307A8 (99.46 -> 100); negatives 41D40 / 97EC / 0B3C / 3AE58 / 46790 / 3DF58 / 37938 / 250C8 / 1DDC._
 - [kit CLXIX (agent-g 2026-10-28, run 201): **fixed lever-sweep `order` re-sweep over 50 bodies: order hits in 4 (2 kept, 2 false positives), bbsplit kept in B75C / C234 / DF14 / kernel 1ADC; a PAIR declaration grid beats single declmove (B75C 93.61 -> 93.93); four `order` false-positive classes (unqualified member / global stores, cast-deref writes, ALL-CAPS call macros); in-tree whole-file grid harness**](#kit-clxix-agent-g-run-201) -- _No exact; 32C8 zero/l134 colour, 578B4 sp50/ra, E2D0, 1ADC, 4C5E4 grids negative; 54E78 / 65494 / 6808-gD hits rejected (length away from / across the target)._
 - [kit CLIX (agent-g 2026-10-28, run 196): **timer-HUD family: the image pointer as the `this` of tiny Img members instead of a named inline local + 3 block pads (13B8 / 16F4 99.43 -> 99.91, 1340 98.47 -> 99.91); `mtc1 zero` count scan finds int-zero candidates: C234 zf (90.77 -> 91.66, length = target), 8FC8 `seti(0, 0, 0)` (90.90 -> 91.27); last 13B8 pair = edg pool-var itab-bit order**](#kit-clix-agent-g-run-196) -- _No exact; 578B4 declmove only 1000 / 13340 done (chunks timed out); 4A308 / 50444 / 63964 / 4B0A8 / 4B620 / 31C0 / 4C5E4 / 55A0 negatives._
@@ -46765,3 +46766,54 @@ _No exact. 6126C 99.35 -> 99.92 (length unchanged)._
   (expression v0, copy a1; the case-1 reload stays in t2): 94.69 -> 93.08 on my scorer. The if-chain
   `if (self->unk4DC == 1) .. else if (temp == 2)` (90.1) and a goto chain that copies the switch layout (90.6) are
   worse. Not kept.
+
+## kit CLXXXIII (agent-g 2026-10-28, run 205): **count the by-value copy hops per expression (8CD8 87.19 -> 89.48), score with the report's `functionRelocDiffs=none` (30AF4 92.52 -> 93.20), 3558 operator= order, constant-hoist pattern in 46050 / 454C4** <a name="kit-clxxxiii-agent-g-run-205"></a>
+
+Second run on agent-c's usual range (structural pass). No exact; 2 functions up.
+
+**1. Copy-chain counting (NCC value-class donors).** Every edg by-value result shows up as a run of `lw/sw` word
+copies between sp slots. Count the hops in the target per expression and make the source produce the same count:
+- game_uso 8CD8 `dir = bp - a->pos`: target 356 (operator-'s XZ temp) -> 372 (pooled return slot) -> 516 -> 432 (dir),
+  three hops; `XZ dir = ...` gives two. `Vec3 dir = bp - a->pos;` (derived-to-base copy) gives the third; for `e`
+  the direct-init `XZ e(bp - a->pos);` does it. Alone each costs +20 bytes.
+- the return: target 36 -> 372 -> *ret (two hops); `extern "C" Vec3 f(...) { return xz - v; }` makes four (XZ -> Vec3
+  slicing copy, then the return copy). Declaring the function to return `XZ` removes both (-40), and with the two
+  extra hops above the length is back at 2836 = target with both chains word-aligned: 87.19 -> 88.68.
+- then `side *= s->kE0 * (250.0f * b->width)` (target muls 250 * width first): -> 89.48.
+- the phase switch double store (`lw; addiu t6; andi t8; sw t6,156; ...; sw t8,156`) is
+  `++s->phase; s->phase &= 3; switch (s->phase)` (registers t5/t6/t8 exact), but the 4-case table stays a compare
+  ladder (kit CXL cap), so it is +4 bytes and was NOT kept.
+- flat: XZ(const Vec3 &) ctor bodies (the target loads z then x; every non-base-init body is +8), set() store
+  orders, pad placement (+0.05 at best), `s->p84 = s->p90` / `s->p90 = XZ(..)` spellings. 7C1C: the same seven-site
+  hop grid only finds +20-byte variants (best 95.44 at 4304), nothing at length.
+
+**2. The report metric is `functionRelocDiffs=none`.** `objdiff-cli report generate` scores relocated operands as
+equal; `objdiff-cli diff` (and therefore scripts/spelling-grid.py / lever-sweep.py / zero-lever-grid.py) uses the
+default reloc diff. On reloc-free expected units (game_libs_post / post0b, gui) the two disagree: 30AF4 92.52 report vs
+91.73 CLI, 469A8 94.24 vs 93.93, 33094 93.62 vs 93.46 (game_uso NCC donors agree). A grid that ranks with the CLI can
+reject real gains: the 30AF4 else-if decode below is -0.4 in the CLI and +0.19 in the report. Scratch copies with
+`'-c', 'functionRelocDiffs=none'` added to the objdiff call give report-identical numbers (the repo tools were not
+changed this run). Re-ran lever-sweep `all` with the corrected metric on 3B9C0, 46050, 3BE1C, 454C4, 36694, 37540,
+33094, gui 2DE0 / 3714, 469A8 and 2E354: no gain at length (2E354 `volatile f32 sp78` +0.05 at +4 bytes).
+
+**3. gl_func_00030AF4 (cfe) 92.52 -> 93.20.**
+- decode: switch-2 case 0 is `if (g == 1) { f(1); g = W; } else if (g == 0) { f(2); g = W; }` -- the target's g == 1
+  arm ends with `b +0x6a0` (past the g == 0 test) after the reload. +1 word (target has it), 92.52 -> 92.71.
+- case 6 `gl_state_30AF4.fC = 256;` directly instead of `*(s32 *)(gb + 0xC)`: -1 word, -> 93.17. (Case 9's
+  `*(s32 *)gb = sub` must stay on gb: the direct form is -1.5.)
+- lever-sweep (report metric): the m == 4 arm stores `wv = 523` before `*cp = 13`: -> 93.20.
+- still open: case 4 keeps `sub` in t9 with a v0 copy for the `sv == 0` test (every sv / sub placement flat); case 10
+  `(D_s = sub) == 2` store schedule (three spellings flat).
+
+**4. game_uso 3558: operator= order.** The target copies to STACK locals in z, y, x order (stage = v68 at 192..200,
+e at 216..224) and to `s0->v3C` in x, y, z; our donor (operator= z, y, x) emits the opposite at both sites. An
+x, y, z operator= makes both regions word-aligned (shape diffwords 53 -> 42) but drops the matrix block's FP juggle:
+81.37 at 1024 bytes; re-gridding k / t / mag order and the += order gets 84.74 (< 85.86). Not kept.
+
+**5. Constant hoisting into callee-saved registers (46050, 454C4).** Our builds hoist a loop-invariant constant into
+an s / fs register where the target rematerialises it per use: 46050 hoists 0xE4000000 into s8 (target keeps
+`&margin` = `lui/addiu s8` there and uses `lui at,0xe400` per emit), 454C4 holds 255.0f in fs1 for the whole function
+(target: f0, rematerialised after the loop call) and 0x03000000 in s5. The margin pointer spellings (register /
+const / `+ 0` / `margin[0]`) and E4 operand orders are flat; a named `b3w` for 46050's B3 word before the B4 emit is
++0.04 (not kept). gui 4568: the only non-register residue is the first MAX arm's delay slot; the last target word is
+past TRUNCATE_TEXT (known).
