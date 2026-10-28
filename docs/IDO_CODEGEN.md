@@ -14597,6 +14597,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLXXIII (agent-g 2026-10-28, run 203): **range-wide exact-sibling map (bytes x gap x ratio) is sparse: every pair >= 0.58 (D884/D14C, DF14/D550, 4B0A8/4E244, E2D0/63F34, 4A308/46DC0) is already ported and capped; 54E78 94.25 -> 98.22: a first-declared aggregate always sits at frame - 12 (needs a 4-byte home declared before it), and a literal 1.0f CSE's with folded i1() constants into one register**](#kit-clxxiii-agent-g-run-203) -- _No exact; lever sweeps over 15 donors saturated; 4A308 spill-slot probes negative._
 - [kit CLXXV (agent-g 2026-10-28, run 204): **a target slot at the spill end of the frame that reloads into the def's OWN register is a register LR spilled to its named home: decl order + dead multi-def `if (0) { e = 0; }` instead of an `&e` keep (4D688 96.65 -> 97.84, 53 -> 2 words off); 54E78 per-LR colour table: the 0.0 constant loses an adjsave tie to p.d on bit order**](#kit-clxxv-agent-g-run-204) -- _No exact; 4A308 / 63964 / 31C0 / 4B0A8 / 4C5E4 / 50444 / 48510 / 4A890 / 493AC negatives._
 - [kit CLXXIX (agent-g 2026-10-28, run 203): **NCC folded `+ 0` on a pointer-valued inline-call result (or the inline's return) re-pools EDG temporaries = zero-code colour lever (41D40 99.61 -> 99.90, 42938 97.44 -> 97.60, gui 3714 96.43 -> 96.51); a `+ 0` site-sweep recipe over 30 NCC donors; negatives 3DF58 / 46790 / 3AE58 / 250C8 / 2D374 / 591C / 97EC / 1DDC / 0B3C**](#kit-clxxix-agent-g-run-203) -- _No exact._
+- [kit CLXXXI (agent-g 2026-10-28, run 204): **`scripts/zero-lever-grid.py` = rerunnable `+ 0` / folded `0 * inline()` / `(&X)[0]` site grid for NCC donors (30 donors: one hit, game_uso 3558 81.66 -> 85.86 via `&p->mtx + 0 * (int)(c.getOut())`); 41D40's last register is an EDG pool-slot merge (bottom array temp reuses the entry index vreg), 3E5E0's spill is the CB-level ctor `this` vreg; 2D374 / 97EC / 3AE58 / 0B3C / 591C / 396FC negatives**](#kit-clxxxi-agent-g-run-204) -- _No exact._
 - [kit CLXXVII (agent-g 2026-10-28, run 202): **NCC `(&x)[0]` re-read = a load uopt will not CSE but ugen still reuses across the fall-through edge: a candidate (v1) becomes the target's ugen temp (t8 / t9); cfe folds the spelling away (NCC-only)**](#kit-clxxvii-agent-g-run-202) -- _EXACT game_libs_func_000307A8 (99.46 -> 100); negatives 41D40 / 97EC / 0B3C / 3AE58 / 46790 / 3DF58 / 37938 / 250C8 / 1DDC._
 - [kit CLXIX (agent-g 2026-10-28, run 201): **fixed lever-sweep `order` re-sweep over 50 bodies: order hits in 4 (2 kept, 2 false positives), bbsplit kept in B75C / C234 / DF14 / kernel 1ADC; a PAIR declaration grid beats single declmove (B75C 93.61 -> 93.93); four `order` false-positive classes (unqualified member / global stores, cast-deref writes, ALL-CAPS call macros); in-tree whole-file grid harness**](#kit-clxix-agent-g-run-201) -- _No exact; 32C8 zero/l134 colour, 578B4 sp50/ra, E2D0, 1ADC, 4C5E4 grids negative; 54E78 / 65494 / 6808-gD hits rejected (length away from / across the target)._
 - [kit CLIX (agent-g 2026-10-28, run 196): **timer-HUD family: the image pointer as the `this` of tiny Img members instead of a named inline local + 3 block pads (13B8 / 16F4 99.43 -> 99.91, 1340 98.47 -> 99.91); `mtc1 zero` count scan finds int-zero candidates: C234 zf (90.77 -> 91.66, length = target), 8FC8 `seti(0, 0, 0)` (90.90 -> 91.27); last 13B8 pair = edg pool-var itab-bit order**](#kit-clix-agent-g-run-196) -- _No exact; 578B4 declmove only 1000 / 13340 done (chunks timed out); 4A308 / 50444 / 63964 / 4B0A8 / 4B620 / 31C0 / 4C5E4 / 55A0 negatives._
@@ -46653,3 +46654,57 @@ _No exact. 493AC 96.93 -> 97.18, timproc_b5 8FC8 91.27 -> 91.44 (both at the sam
   (memory variable, while uv stays a register candidate spilled in the call's delay slot). Not reproduced:
   `S3(const float *)`, `S3(float *const &)` (makes every param memory-homed, 80.2), `S3(const F3 &)` over
   `*(F3 *)pos` (83.9), and `(&pos)[0][k]` re-reads (frame 0x28, m loses s0, 88.8 - 90.1).
+
+## kit CLXXXI (agent-g 2026-10-28, run 204): **folded zero-code levers re-run as one grid (`scripts/zero-lever-grid.py`, `+ 0` / `+ 0 * (int)(pure inline)` / `(&X)[0]` per site) over 30 NCC donors: one hit (game_uso 3558 81.66 -> 85.86, `&p->mtx + 0 * (int)(c.getOut())`), flat elsewhere; 41D40's last register is an EDG pool-slot merge (bottom array temp shares the entry index vreg), not a colour tie; 3E5E0's spill slot is the CB-level ctor `this` vreg home; cfe 2D374 i-reload and EDG dead-code temps negatives** <a name="kit-clxxxi-agent-g-run-204"></a>
+
+Fresh-eyes run (second) on agent-c's usual range. No exact.
+
+**Tool.** `scripts/zero-lever-grid.py DONOR.cpp OUT.tpl --run FN TARGET_OBJ` (worktree script, committed) replaces the
+run-203 throwaway: it writes a spelling-grid template with one dimension per site -- expression ends (return / if /
+while / for-condition / assignment rhs / call arguments) get `'' | + 0 | + 0 * (int)(Z)` for every PURE no-arg inline
+member call Z already seen in the body (body = one `return` with no `++` / `--` / `=` / call), and rvalue member chains
+`a->b` get `X | (&X)[0]` -- then runs `scripts/spelling-grid.py` (greedy, `--rounds 2`, `-I <donor dir> -I include`).
+Sites after a numeric literal are skipped (`0 + 0` never moves anything). NCC only: cfe folds all three before uopt.
+
+**Sweep result (all flat = the first alternative stays best):** 41D40, 3E5E0, 3AE58, 3DF58, 46790, 37938, 34890,
+37540, 33094, 36694, 36F0C, 3B2EC, 3B6A0, 3B9C0, 3BE1C, 3C43C, 42938, 454C4, 46050, gui 329C / 0F04 / 3714 / 2DE0 /
+4568, game_uso BB8C / 7C1C / 8CD8 / 1DDC. **One hit: game_uso 3558 81.66 -> 85.86 (report, length unchanged)** with
+`M4 *m = &s0->b0->mtx + 0 * (int)(c.getOut());` -- the folded pure-inline term on a POINTER initialiser (pointer + 0
+elements) re-pools the edg temps exactly like kit CLXI's scalar `+ 0 * tim.pw()`; a second greedy round from there is flat.
+
+**41D40 (99.90) diagnosed with zdbug:5 (dump NCC).** For-form vregs: entry copy = this -56, idx+1 -64 (bit 41), res
+-68, arr -72; bottom copy = this -48, idx+1 -56 (bit 13, v0), elem -60 (bit 38, v1), result -44 (bit 4, a0), arr -64
+(bit 41 again). The bottom array load is pooled into the SAME vreg as the entry index temp, so one LR spans BB 10 and
+BB 20 (adjsave 11.5, forbidden v0 / v1 / a0) and colours a1 everywhere: the entry needs a1, the bottom needs v1. The
+target's colours fit a different pooling (bottom idx = entry arr's vreg v0, bottom arr = entry res's vreg v1), i.e.
+the target's bottom copy allocates its temps two pool slots deeper. Probed, all flat or worse: 540-probe grid of
+operator[] bodies x index-test spellings x 9 next() returns x 4 condition forms; if / do-while with a separate
+`next2()` for the bottom copy (the bottom then becomes arr a1 / idx v1, 99.41) x 56 + 220 next2 bodies (ternary,
+named `r`, `+ 0` / `0 * x` folded terms on the array, index and result) x wrapper depth (`w1(it)` / `it.nw2()` /
+pointer wrappers -- inline levels add no pool temps) x pad counts; folded `+ 0 * (int)it.peek()` / `it.arr()` /
+`it.ix()` pre-creation terms at 7 sites (kit CLXI); body spellings (`(*it.a)[it.idx]`, `(&it)[0].cur()`); a
+declaration in the for / while condition is rejected by this edg ("identifier p is undefined").
+
+**3E5E0 (99.36): the spilled LR is the CB-level ctor `this` (second alloc-or-given level), not the new result.**
+`M 4 -N` homes: x = -12 (sp+44), reg0's kept `a` = -16, the CB this vreg -24 (sp+32), shared by reg0, reg1 and the
+loop. The target spills reg0 / reg1's CB this at sp+44 (the FIRST pool slot) and the loop's at sp+32, so in the target
+the loop's ctor temps are a different vreg from the register calls'. Every probe keeps all three in one vreg (the spill
+slot moves together: 32 / 36 with `node` dropped or a direct `FW(arg0, 0xC)` argument): x as block / direct /
+typed-alias call / `dbg()` inline with or without a kept parameter, decl orders, `it` / `node` block-scoped, the loop
+new through `reg2()` / `reg3()` inlines or straight into the call. The direct read costs 4 bytes (arg0 home reload).
+
+**Negatives.**
+- 2D374 (cfe, 99.67): the post-call `i` reload is a ugen temp in the target (t2, ring one ahead: rec[2] t3) but a
+  coloured a3 here, i.e. the target's `i` is not a candidate. `volatile int i`, `(void)&i`, `int *ip = &i` (live or
+  in `if (0)`), `*&i` / `(&i)[0]` / `i + 0 * (int)&i` at both uses: flat (cfe drops dead address-takes before uopt).
+- 97EC (99.97): EDG dead-code temps (`if (0) { XZ t(f-expr); }` / `(void)((a - b) * s->k)`) get homes (+8..+120
+  frame) but never swap the two by-value temps (always 24 apart in the same order); `0 * (temp).x` folded terms are
+  NOT folded when the operand is a by-value operator result (+144 bytes).
+- 3AE58: `->vi` read directly (no pick()) does put the vi load in a ugen temp like the target, but the frame loses 8
+  and the ring runs one register behind (t5 vs t6) with the join address in v1 (target t0); pads do not fix it (98.88).
+- game_uso 0B3C / 76F0 `sltiu 4` table: re-confirmed with a standalone 4-case switch under cc and NCC (compare tree
+  in both; `case -1:` / `case 5:` / `case 7:` phantoms give sltiu 5 / 6 / 8) -- kit CXL cap stands.
+- 591C (cfe, 99.73): the three alloc-or-given blocks are cfront's `this == 0` ctor protocol on stack objects, which
+  edg (NCC) never emits for a direct stack object or a by-value return (checked), so an NCC port is not the lever.
+- 396FC: kit CLXXXVIII's delay-slot tell does not apply (the stolen insn is the DEFAULT block's first insn, and no
+  table arm reads a0 before writing it in either object).
