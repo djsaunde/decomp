@@ -362,6 +362,14 @@ def main():
                target=a.target if os.path.isabs(a.target) else os.path.join(wt, a.target),
                cc=os.path.join(wt, 'tools/ido-static-recomp/build/7.1/out', 'NCC' if ext == '.cpp' else 'cc'),
                flags=a.flags or (NCC_FLAGS if ext == '.cpp' else CFE_FLAGS))
+    if intree:
+        try:
+            mk = open(os.path.join(wt, 'Makefile')).read()
+            if re.search(r'REPLACE_FUNC_BODY\s*\+=\s*%s=' % re.escape(a.fn), mk):
+                print('WARNING: %s has a REPLACE_FUNC_BODY donor in the Makefile; the in-tree body never reaches '
+                      'report.json in the non_matching build. Sweep the donor source instead.' % a.fn, flush=True)
+        except OSError:
+            pass
     L = open(src).read().split('\n')
     s0, e0 = find_body(L, a.fn, not intree)
     V = variants(a.cmd, L, s0, e0)
