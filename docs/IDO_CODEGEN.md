@@ -14571,7 +14571,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLIII (agent-g 2026-10-28, run 194): **the literal / `mtc1 zero` count scan needs filters (target-side `lui 0x0/0x2/0x4` = baked addresses, surplus `li K` = branch-likely delay copies, `sltiu 4` = the 4-entry-table cap); 4F2DC was C++: V3 by-value operator temporaries give the copy chains (90.45 -> 94.87, length = target); a re-shaped donor can make an old `if (1) {}` harmful (23FC 99.62 -> 99.94); NCC homes: function scope top-down, block scope depth-first after it, inline locals in the block sequence, dead / volatile locals at the bottom**](#kit-cliii-agent-g-run-194) -- _No exact; C310 `- 1 == 0` flagged as a wrong decode kept for score; negatives 8FC8 zero triple, C234 second zero, 1824 `li at,1`, 5A2C4 NCC lift, E68 held `&h`._
 - [kit CLIV (agent-c 2026-10-28, run 187): **NCC never emits a jump table (4 or 8 dense labels both chain); the run-186 "8CD8 C++ emits the 4-entry table" claim was wrong, kit CXL stands; gui 329C's second MAX pool temp is coloured early by uopt PRIORITY (spr as an inline Spr::prep `this` moves it to t2 -- lead); cfe block-scope locals home below function-scope ones**](#kit-cliv-agent-c-run-187) -- _No exact, no source change; negatives for 329C, 250C8 fontId, 37938, 396FC._
 - [kit CLV (agent-c 2026-10-28, run 188): **a jump-table target (`sltiu; lw jtbl; jr tN`) is cfe: retire any NCC NM donor for it (38A28 77.17 -> 84.59, plus record-store / report-arg decode fixes); one pinned symbol per format string keeps each arm's `lui a0`; cfe never colours a value live across a jump-table switch; 33094 frame homes (b above a + six words)**](#kit-clv-agent-c-run-188) -- _No exact; 38A28 length away (flagged); negatives 469A8 && args, 97EC nested block, 3558 zero / rotate grids, 2DE0 / 3714 / 329C / F04 sweeps, 2E354 1.0f, 31A74 (s8) re-extension (length crossed the target)._
-- [kit CLVI (agent-g 2026-10-28, run 195): **stale-lever audit (remove each `if (1) {}` / empty test / `volatile` / pad alone) over all 52 agent-g-range bodies at 90-99.99: zero gains, every lever still load-bearing; C310 NCC homes by declaration order (i, vals, ptrs, hud, cols, volatile pair last: 95.99 -> 96.02); timer-HUD family spill shift = the `height()` inline local's home; 4A308 frame 8 bytes short with all relative offsets right; an address-taken NCC param homes every param**](#kit-clvi-agent-g-run-195) -- _No exact; negatives 578B4 packet pointer, 32C8 zero / l134, 63964 member operators, E2D0 1.0f + arg4, 4E424 roles, 6126C switch / copy, 31C0 new-temp, 50444 volatile param._
+- [kit CLVI (agent-g 2026-10-28, run 195): **stale-lever audit (remove each `if (1) {}` / empty test / `volatile` / pad alone) over all 52 agent-g-range bodies at 90-99.99: zero gains, every lever still load-bearing; C310 NCC homes by declaration order (i, vals, ptrs, hud, cols, volatile pair last: 95.99 -> 96.02); timer-HUD family spill shift = the `height()` inline local's home; 4A308 frame 8 bytes short with all relative offsets right; an address-taken NCC param homes every param; NCC donors: declare a mid-body aggregate at the function top (54E78 `V3 a` 91.33 -> 93.79) and sweep declaration positions (declmove / hoist: 4F2DC, C234, 2B7C, 4A890)**](#kit-clvi-agent-g-run-195) -- _No exact; negatives 578B4 packet pointer, 32C8 zero / l134, 63964 member operators, E2D0 1.0f + arg4, 4E424 roles, 6126C switch / copy, 31C0 new-temp, 50444 volatile param._
+- [kit CLVIII (agent-c 2026-10-28, run 190): **gui sprite-rect family: per-packet append grid with 9 spellings (incl. `dl->n += 1` and local `DL *d`) lifts F04 97.44 -> 98.59 and 2DE0 94.59 -> 95.53 (length now = target); 2DE0 load() variant's &D const LR loses its split piece over the y tree (zdbug:5); 7C1C `out`-in-s0 / 3558 f20 zero negatives**](#kit-clviii-agent-c-run-190) -- _No exact; 329C / 3714 / 4568 9-spelling grids flat; spelling-grid duplicate-alternative race._
 - [kit CLVII (agent-c 2026-10-28, run 189): **gui sprite-rect family: the CTX edg pool temp gets s0 only when it is ASSIGNED in the loader-call blocks (the `this` of an inline `Ctx::load()`); 3714's a1 is a colour-order cap vs the MAX value, not call-crossing; per-packet append spellings in the rectangle macro (RDPHALF_1 `n = dl->n; dl->n++`, RDPHALF_2 `n = dl->n++`)**](#kit-clvii-agent-c-run-189) -- _No exact; 329C 98.85 -> 99.06, 3714 96.10 -> 96.43; 2DE0 load() inline 96.42 but 1196 bytes (away, not landed)._
 - [kit CLI (agent-g 2026-10-28, run 193): **cfe literal-spelling decode signals from immediate / `mtc1 zero` counts: a `mul.s` by a held 2.0f is `* 2` (cfe folds `* 2.0f` to add.s), a float store using the compare's zero register is `0.0f` not `0`, `x += a*b*c` gives the target's add / mul operand order; re-run lever-sweep after every decode fix (B75C 90.86 -> 93.31, length = target; 6808 gD de-named 94.24 -> 95.38)**](#kit-cli-agent-g-run-193) -- _No exact; negatives 6126C dispatch copy, E9FC / 6204 prologue (unique), 63964 temp layout, C234 V3 class, 8FC8 iz zeros, E68 split m, 65EE4 literal arg, 4E424 roles, 4C5E4 2.0f._
 - [kit CXLIX (agent-c 2026-10-28, run 184): **`scripts/decode-scan.py` -- project-wide mechanical scan of every <100 NM body for address decode errors (per-site %lo of pin + addend vs the USO target's baked word, by lui dataflow; double-added pins, hold-vs-fold splits, unpinned-symbol pin hints, `SYM + K` on non-zero pins), m2c negated float compares and leftovers; objdiff's fuzzy IGNORES relocated immediates, so address fixes are correctness-only**](#kit-cxlix-agent-c-run-184) -- _No exact, report.json flat; 3430 step loads read 0xCC8.. (were address 0), pin D_000019E8; the run-183 class is harvested: 1 new true double-add (bootup E9FC, agent-g unit), 5 negated compares in game_uso 591C (agent-g unit), the rest placement / pairing noise._
@@ -44893,3 +44894,77 @@ one step. 2DE0 (no load inline): best 96.94 but 1204 bytes (base 1208): away, no
 Negatives: 2DE0 declaration-order x pad-count grid with load() inline (5! x 3, flat 96.42, length 1196); 2DE0 `t =
 spr->fmt` / `arg0->spr->fmt` (329C recipe) 88.9-89.0 (1200); 329C Spr::prep / Obj::prep / free prep(Spr *) /
 `prep(int f, ...)` (72-79); 3714 bbsplit sweep (no hit).
+
+**7. Later in the run: declaration-position sweeps found five more rises (all length-neutral).** Two more
+scratch lever-sweep subcommands: `declmove` (move one declaration of the first declaration block to every
+other slot) and `hoist` (move a mid-body C++ declaration to the top / bottom of the function's declaration
+block; an initialiser becomes an assignment at the old spot). The big one was by hand first:
+**54E78 `V3 a;` declared at the top of `Obj::reflect` instead of just before `a.set(p.n * p.d)`:
+91.33 -> 93.64** (NCC homes the aggregate first, at the frame top), then a lever-sweep re-run gave an
+`if (1) {}` after `mtx.m[0][0]` (93.79). So after any home-order change, re-run lever-sweep. Sweep hits
+kept (report.json): 4F2DC `count` below dists / surfs 94.87 -> 94.89; bootup C234 `spB4` below
+temp_f12_2 90.73 -> 90.77; mgrproc 2B7C (cfe) `a3` above held / panel 97.68 -> 97.69; 4A890 walk pointer
+`s` at function scope 93.47 -> 93.48. A standalone-only hit can be flat in report.json (bootup B75C `sp60`
+moved: +0.02 standalone, 0 in-tree, reverted), so check every hit with refresh-report. 65494's hoist
+hits move the length away from the target (1340 vs 1336), so they were not kept.
+Totals for the run (report.json, all length-neutral): 54E78 +2.46, C310 +0.02, C234 +0.03, 4F2DC +0.02,
+2B7C +0.01, 4A890 +0.01.
+
+## kit CLVIII (agent-c 2026-10-28, run 190): gui sprite-rect family -- the per-packet append grid (kit CLVII section 2) generalises: F04 97.44 -> 98.59 and 2DE0 94.59 -> 95.53 with the length reaching the target; why the 2DE0 load() variant loses the target's four-arm `lui/addiu t3` &D rebuilds; 7C1C / 3558 / BB8C negatives <a name="kit-clviii-agent-c-run-190"></a>
+
+No exact. Two NM gains (report.json): gui F04 97.44409 -> 98.58786 (length 1252 = target), gui 2DE0 94.59076 ->
+95.52805 (length 1208 -> 1212 = target).
+
+**1. Per-packet append spellings, applied to F04 and 2DE0.** Give gSPScisTextureRectangle three packet arguments
+(`pkt` for the rect words, `pkt2` for RDPHALF_1, `pkt3` for RDPHALF_2), write each append as a separate inline Ctx
+member, and grid the texture append plus the three rectangle appends independently. Nine spellings are worth
+including (all return `&buf[old n]` and store `old n + 1`): `n = dl->n++`; `n = dl->n; dl->n++`;
+`n = dl->n; dl->n = n + 1`; `n = dl->n; dl->n += 1`; `&dl->buf[dl->n++]`; and the same through a local
+`DL *d = dl` (`d->n = n + 1` / `n = d->n++` / `&d->buf[d->n++]`). Each one changes the ugen temp order of that
+append, and the effect reaches the MAX / MIN tree after it.
+- F04 (4^4 grid): texture `&dl->buf[dl->n++]`, rect `n = dl->n; dl->n++`, RDPHALF_1 `n = dl->n; dl->n = n + 1`,
+  RDPHALF_2 `&dl->buf[dl->n++]`: 97.25 -> 98.51 standalone. The run-173 one-packet donor had the rectangle's
+  slot as `&dl->buf[dl->n++]`. Left: the rect append's dl in a0 (target v0), the second MAX temp in v1 (target
+  a0), and one spill slot 4 bytes low (120 vs 124: the `y & 0xffff` CSE held across the glyph-index call). A
+  7! declaration-order grid and the 9-spelling 9^4 grid are both flat.
+- 2DE0 (exhaustive 9^4 grid, direct loader calls, 10 pads): texture / rect / RDPHALF_2 `&dl->buf[dl->n++]`,
+  RDPHALF_1 `n = dl->n; dl->n += 1` (the `+=` spelling: `n + 1` gives a different length) is the only
+  spelling family at length 1212 above 95: 95.43 standalone. Only 30 of 6561 combinations reach 1212, and most
+  of the grid sits at 1180-1192. Higher scores are all shorter (96.94 at 1204), so they are not landed.
+- The same grid with `CTX->load()` inline in the three arms (kit CLVII, s0 as in the target) gives 251
+  combinations at 1212, best 95.05 (texture / rect / RDPHALF_2 `&dl->buf[dl->n++]`, RDPHALF_1 `n + 1`): s0, the
+  switch and the arm loads all match, but &D is in t2 (target t3) and the w / h homes are swapped (56 / 60). A
+  7! x 2 declaration-order x pad grid peaks at 95.10. So the load() form gets the target's registers but loses
+  on everything else. The direct-call form is landed.
+- No gain from the 9-spelling grid on 329C (99.06, 4096 combinations), 3714 (96.43, 4096) or 4568 (96.01, five
+  spellings over its six packets).
+
+**2. Why 2DE0 + load() loses the four-arm `lui/addiu t3` rebuild (zdbug:5).** &D (`&D_00000000`) is a `const`
+live range coloured t3 in both forms, and uopt splits it. Without load() (base donor) the coloured piece covers
+the head, the switch and the whole RDPHALF_1 tree up to the RDPHALF_2 append (blocks 29-38, 40-42, 45, 46). Only
+the case arms after each call (blocks 5 / 7 / 9) and the two yl < 0 MAX arms (39 / 43) split off, uncoloured,
+`needreglod`. That is exactly the target's `lui t3; addiu t3` after each loader jal and in the y arms. With
+load(), `this` is the pool variable A (s0, forbidden for &D) and the coloured piece stops at block 28. Everything
+from the y tree to the end (blocks 29-46) becomes ONE uncoloured split piece, so the final RDPHALF_2 append
+folds to `lui s0; lw s0, %lo(D)(s0)` and the y-arm rebuilds disappear (-16 bytes). Reaching the target needs A
+in s0 and the &D piece still running to block 46, and no append-spelling combination gives both (part 1).
+
+**3. Negatives.**
+- 7C1C: the target loads the stack argument `out` straight into s0 (`lw s0, 964(sp)`, used only for the
+  `*out = 0` store), then reuses s0 for the ctor-protocol pool `this`. That suggests `out` was copied into the
+  pooled edg temporary (one uopt variable over both uses). None of these spellings does it: `clr(out)` /
+  `clr(float *&)` inlines, placement `new (out) float(0.0f)` (null-checked: +4 bytes), `((Flt *)out)->clear()`,
+  `(*(Flt **)&out)->clear()`, `((Flt *)(out + 0))->clear()`. edg passes `out` directly in each case, so `out`
+  stays in v0 / t6 (95.12 flat or lower). lever-sweep all: no hit.
+- 3558 (target holds 0.0f in f20 across four calls: side.x / side.z / w.y and the else-arm `w *= 0` muls): a
+  reused variable (`zero` reassigned as the final k), `zero = 0.0f` after the first call, `const float &`
+  Vec3 ctor / operator*= params with `Vec3 side(0.0f, k, 0.0f)` / `side(zero, k, zero)`, and `w *= zero` /
+  `0.0f` / `0.0`: still one mtc1 per site (the 0.0 constant becomes 4 block-local const LRs, never one
+  call-spanning LR). Spellings that score higher are 1036 bytes (away). lever-sweep: the hits (volatile zero
+  80.99, bbsplit 80.03) are 1036, away.
+- BB8C lever-sweep all: no hit (standalone base is 1012 vs the target's 1008). 591C (in-tree cfe) lever-sweep: one
+  hit, which swaps a call with a later load. Not legal, and the length moves away.
+- Tooling note: spelling-grid probe directories are named by the source hash, so duplicate alternatives (the
+  same text twice in one marker) race on makedirs / rmtree under parallel jobs (FileExistsError /
+  "could not open source file"). Keep the alternatives in each marker distinct. A literal `}` right before
+  `@|` or `}@` closes the marker early (write `} @|`).
