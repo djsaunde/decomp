@@ -14586,6 +14586,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLXXII (agent-c 2026-10-28, run 197): **game_uso 591C 99.03 -> 99.68, length = target: the extra `mtc1 zero` was a copy-propagated abs (put the abs in a temp the next block redefines, `0.0f`); ONE nested selector written into `z` makes the shared cfe join temps colour f14 at every other site; web-rename sweep (dead same-type local for one region's value) recolours per region**](#kit-clxxii-agent-c-run-197) -- _No exact; 168 -> 68 rows; region map of the int-pointer swaps left._
 - [kit CLXXIV (agent-c 2026-10-28, run 198): **a field read through the PARAMETER (`a0->f`) instead of its local copy (`self = a0`) is a separate CSE / PRE expression: one site leaves the function-wide code-motion web and a delay-slot load order elsewhere flips (591C 99.68 -> 99.70); 591C pointer rows are constrained-LR priority order, target order written down**](#kit-clxxiv-agent-c-run-198) -- _No exact; 68 -> 64 rows; axis / counter / bne / chain-site negatives._
 - [kit CLXXVI (agent-c 2026-10-28, run 199): **fixed `order` over the agent-c range: 120 hits, 34 on field-store lines, but nearly all on in-tree bodies shadowed by NM donors; one new scoring hit (8CD8), then bbsplit; 8CD8 rewritten as C++ in the 7C1C value-class kit (cfe 86.05 -> NCC 87.19, length = target; six unused Vec3 slots fix the 528-byte frame)**](#kit-clxxvi-agent-c-run-199) -- _No exact; 591C 99.73, 7C1C / 454C4 small; lever-sweep false-positive notes._
+- [kit CLXXVIII (agent-c 2026-10-28, run 200): **37540 ported to C++ from its exact sibling 37348's donor kit (cfe 81.17 -> NCC 93.58, length = target): one inline reads the saved vector and clears x (refs = early stores, return = register), set() + compound `*=` for the store/re-read build; 8CD8 pads worth +0.07, no natural aggregate; 36694 n-CSE diagnosis**](#kit-clxxviii-agent-c-run-200) -- _No exact._
 - [kit CLXIX (agent-g 2026-10-28, run 201): **fixed lever-sweep `order` re-sweep over 50 bodies: order hits in 4 (2 kept, 2 false positives), bbsplit kept in B75C / C234 / DF14 / kernel 1ADC; a PAIR declaration grid beats single declmove (B75C 93.61 -> 93.93); four `order` false-positive classes (unqualified member / global stores, cast-deref writes, ALL-CAPS call macros); in-tree whole-file grid harness**](#kit-clxix-agent-g-run-201) -- _No exact; 32C8 zero/l134 colour, 578B4 sp50/ra, E2D0, 1ADC, 4C5E4 grids negative; 54E78 / 65494 / 6808-gD hits rejected (length away from / across the target)._
 - [kit CLIX (agent-g 2026-10-28, run 196): **timer-HUD family: the image pointer as the `this` of tiny Img members instead of a named inline local + 3 block pads (13B8 / 16F4 99.43 -> 99.91, 1340 98.47 -> 99.91); `mtc1 zero` count scan finds int-zero candidates: C234 zf (90.77 -> 91.66, length = target), 8FC8 `seti(0, 0, 0)` (90.90 -> 91.27); last 13B8 pair = edg pool-var itab-bit order**](#kit-clix-agent-g-run-196) -- _No exact; 578B4 declmove only 1000 / 13340 done (chunks timed out); 4A308 / 50444 / 63964 / 4B0A8 / 4B620 / 31C0 / 4C5E4 / 55A0 negatives._
 - [kit CLVII (agent-c 2026-10-28, run 189): **gui sprite-rect family: the CTX edg pool temp gets s0 only when it is ASSIGNED in the loader-call blocks (the `this` of an inline `Ctx::load()`); 3714's a1 is a colour-order cap vs the MAX value, not call-crossing; per-packet append spellings in the rectangle macro (RDPHALF_1 `n = dl->n; dl->n++`, RDPHALF_2 `n = dl->n++`)**](#kit-clvii-agent-c-run-189) -- _No exact; 329C 98.85 -> 99.06, 3714 96.10 -> 96.43; 2DE0 load() inline 96.42 but 1196 bytes (away, not landed)._
@@ -45942,3 +45943,45 @@ m[0][2], all 95.8 at 560 bytes vs target 552), don't stop at "rejected": grid ev
 over the whole statement run (12 lines -> 4096 combos, standalone NCC, ~2 min) and take the best row at the TARGET
 length. 54E78: the run-190 / run-195 splits after m[0][0] / m[0][2] move to after m[2][1] / m[2][2]: 94.04 -> 94.25 in
 report.json, length 552 = target.
+
+## kit CLXXVIII (agent-c 2026-10-28, run 200): 37540 ported to C++ from its exact sibling 37348 (cfe 81.17 -> NCC 93.58, length = target); 8CD8 frame question answered (no natural aggregate; the pads are worth +0.07) <a name="kit-clxxviii-agent-c-run-200"></a>
+
+**1. Sibling-template port (37540, post0b).** The cfe body (81.17, every frame offset already exact) was the "C++
+decoded as C" pattern: its header named 37348 as the sibling (same homed-r reload idiom, same callback triple), and
+37348 has an EXACT NCC donor. Copying that donor's kit -- `Node *s = o->s; if (0) gl(&s);`, every access to s through
+a kept `Node *` inline parameter (`if (0) { n = 0; }`), the block-scoped `{ V3 v1(0.0f, -b, 0.0f); call(s, &v1, o); }`
+push vector, the volatile flag word read through `Inp::fl()` -- gave 84.28 on the first build (756 bytes, target 764).
+Then three spelling grids, each found by reading one region of the target:
+- **Saved vector = one inline that reads all three and clears x.** Target: ONE `lw v0,96(sp)` serves the y / x / z
+  loads AND the x zero store, y and z are stored to their slots at once (sp+172 / 176), x stays in a register until
+  the call (spilled to sp+168 in the jal shadow). Spelling: `f32 gr(Node *n, f32 &y, f32 &z) { if (0) { n = 0; }
+  f32 x = n->v60.x; y = n->v60.y; z = n->v60.z; n->v60.x = 0.0f; return x; }` -- y / z through references are
+  memory (early stores), x as the return value is a register. A V3 out-parameter (all three early) or three
+  separate getters (one s reload per getter) both lose. 87.17 -> 93.47 together with:
+- **Store / re-read of a built vector.** Target builds vB4 from s->v50 with x / y stored and re-read but z kept in
+  f12, then multiplies. `V3 vB4; vB4.set(s->v50.x, s->v50.y, s->v50.z); vB4 *= a;` with the COMPOUND
+  `void operator*=(f32 k) { x *= k; y *= k; z *= k; }` reproduces it word-for-word (`x = x * k` re-reads all
+  three or none, depending on the build-up). Length 756 -> 764 = target, so the post0b NM clip is unchanged.
+- **v6C / v90 copies** are a BY-VALUE `void operator=(V3 v) { z = v.z; y = v.y; x = v.x; }` (word copy into the
+  sp+28 parameter temp, then the z, y, x float stores the target has).
+Report: 81.17 -> 93.58. Left: zero / a colouring (target zero f14, a f16; ours swapped -- int zeros, decl order,
+abs spellings, split ab: all flat), the v9C serial `lwc1 f4 / swc1 f4` copy + re-read before `+=` (set(), ref
+inline, `V3 &r` alias: all flat or +12), the target frame being 24 bytes bigger (two unused V3 between v6C and v90:
++0.03 only, not kept). **Lesson:** when a near-miss header names an exact sibling, port the sibling's donor kit
+before any lever work -- the 37348 kit was worth +3 on the first compile and the region grids another +9.
+
+**2. 8CD8 frame (queue question).** Are the six unused Vec3 locals the natural source of the 528-byte frame? Tested:
+(a) a 2401-probe grid over pad placement (function top / then-arm / else-arm / inner if, 0-6 each): the current
+else-arm six is the best row, and NO pads scores 87.12 vs 87.19 -- the pads are worth +0.07 only; (b) by-value
+parameters on `XZ(Vec3)`, `perp(Vec3)`, `operator-(Vec3, Vec3)` (six XZ(v) sites = exactly six Vec3 temps) add
+copy code (+60 .. +432 bytes, 70-85); (c) body-assigned XZ ctors (`{ y = 0; z = v.z; x = v.x; }`, the target's
+y, z, x store order) drop the edg `this == 0 -> new` guards (-96 .. -124 bytes). No natural aggregate found; kept
+the pads. lever-sweep `all` on 8CD8 and on the 3BE1C / 46050 / 3B9C0 / gui 2DE0 / 3714 donors after the order fix:
+no same-length hit.
+
+**3. 36694 diagnosis (no gain kept).** The target RE-LOADS n.x / n.y / n.z for `n * dot` after the dot product;
+ours CSEs them (n.x even spilled to sp+24, the target's px slot). Computing l from t's members inside t's block
+(`l = t.x * t.x + ...; px = t.x; ...`) reproduces the target's `mov.s f18,f8 / mov.s f2,f4` px/py/pz copies and
+scores 87.01 standalone, but moves the length away (716 -> 720, target 712): not kept. A named dot `f32 d`, an
+`if (1) {}` after it, n.dot(p) / p.dot(n), a non-member by-value operator/ (the target's 60 -> 188 -> 72 copy chain
+looks like one): none stops the n CSE at the right length.
