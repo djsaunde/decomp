@@ -77,6 +77,21 @@ def writes(t):
     return out
 
 
+_NOTCALL = {'if', 'while', 'for', 'switch', 'return', 'sizeof'}
+
+
+def has_call(t):
+    """True if the statement contains a function call. Casts and field-access expressions like
+    *(T *)((char *)(p) + K) don't count; ALL-CAPS identifiers are treated as access macros (e.g. FW(p, K)),
+    not calls. Conservative enough for a textual sweep; hits are still checked by hand."""
+    for m in re.finditer(r'\b([A-Za-z_]\w*)\s*\(', t):
+        name = m.group(1)
+        if name in _NOTCALL or name.isupper():
+            continue
+        return True
+    return False
+
+
 def variants(cmd, L, s0, e0):
     out = []
     if cmd in ('denaming', 'all'):
@@ -138,15 +153,16 @@ def variants(cmd, L, s0, e0):
         for i in range(s0 + 1, e0):
             a = L[i]
             la = lhs(a) if is_stmt(a) else None
-            if not la or '(' in a or '++' in a or '--' in a:
+            # field stores like *(T *)((char *)(p) + K) = v are allowed; statements with calls are not
+            if not la or has_call(a) or '++' in a or '--' in a or 'volatile' in a:
                 continue
             for k in (2, 3, 4, -2, -3, -4):
                 lo, hi = (i + 1, i + k) if k > 0 else (i + k, i - 1)
                 if lo <= s0 or hi >= e0:
                     continue
                 seg = L[lo:hi + 1]
-                if not all(is_stmt(x) and ind(x) == ind(a) and lhs(x) and '(' not in x and '++' not in x
-                           and '--' not in x for x in seg):
+                if not all(is_stmt(x) and ind(x) == ind(a) and lhs(x) and not has_call(x) and '++' not in x
+                           and '--' not in x and 'volatile' not in x for x in seg):
                     continue
                 if any(la in x.strip() or lhs(x) in a.strip() for x in seg):
                     continue
