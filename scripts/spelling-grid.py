@@ -92,7 +92,8 @@ def init(ctx):
 def probe(job):
     """Compile one rendered source and score it. Returns (choice, score, size, err)."""
     choice, text = job
-    h = hashlib.sha1(text.encode()).hexdigest()[:16]
+    # include the choice so identical renderings from different choices never share a probe dir
+    h = hashlib.sha1((repr(choice) + text).encode()).hexdigest()[:16]
     d = os.path.join(CTX['tmp'], h); os.makedirs(d, exist_ok=True)
     src = os.path.join(d, 'p' + CTX['ext']); obj = os.path.join(d, 'p.o')
     with open(src, 'w') as f: f.write(text)
