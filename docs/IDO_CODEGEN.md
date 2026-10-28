@@ -46393,3 +46393,8 @@ tie is the crux; nothing found that creates the constant candidate earlier.
 - 48510 `nv >= max590 - 1` operand / next() spellings: +0.015 only with a non-equivalent form.
 - 4A890: `s = list` reuse (target s0 holds ids then &list) and non-volatile sz: the copy is propagated, flat.
 - 493AC s1 / s2 (o vs the iter return-temp address): dead multi-def / `while (0)` on o at 3 points: inert.
+- (kit CLXXV addendum) 54E78 split moves: with the two row splits dropped and one `if (1) { }` after `m[2][3]`,
+  p.d stops interfering with the zero constant and zero takes f0 as in the target, but the 2.0 constant's span
+  falls to 2 (adj 4.5) and it outranks zero (f0); adding a second split after `a.set()` drops 2.0 to adj 3, which
+  then loses the tie to n.x (f2). The target needs 2.0 strictly between 3 and zero's 4 -- not reachable with
+  split placement alone (both lengths also move: 548 / 560). Row-0 statement permutations (24): flat.
