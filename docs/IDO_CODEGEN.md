@@ -44511,8 +44511,10 @@ DF14, 18F0, 1ADC, 1594, 3430, mgrproc 1824 / 23FC / 2B7C, 5A2C4, donors C234 / 5
 
 ## kit CLII (agent-c 2026-10-28, run 186): game_uso 7C1C rewritten as C++ value classes (92.59 -> 95.12); an inline call's pooled return slot stays busy until the end of the FULL-EXPRESSION, so a nested call returns through the NEXT pooled slot; `(const Vec3 &)xz` for by-value operator=; unnamed booleans go to the uopt spill area; negatives (deferred-temp order is a compiler difference, Vec3 param colours, 8CD8 C++ port) <a name="kit-clii-agent-c-run-186"></a>
 
-**Result.** No exact. game_uso_func_00007C1C (4284 B) 92.5929 -> 95.12138 in report.json, length = target (1071 words) at
-every step. Commits `96e044fde`, `4c482f4ff`, `3469b3b78` on agent-c.
+**Result.** No exact. game_uso_func_00007C1C (4284 B) 92.5929 -> 95.12325 in report.json, length = target (1071 words) at
+every step. Commits `96e044fde`, `4c482f4ff`, `3469b3b78` on agent-c. Rejected on purpose: `s->active = active = !active;`
+scores 95.41 at the same length, but it swaps the target's `addiu v0,zero,1` for a `sltu` / `sltiu` pair that the target
+doesn't have. It's a wrong decode that happens to score higher, so it isn't committed.
 
 **1. 7C1C was C++ (the kit CL lead), and the frame is NOT the place to start.** The cfe emulation (`p = 0; if (1) { p = &nA; }
 if (p || (p = alloc(12))) {...}` + Tri3i word copies, all 60 Vec3s at function scope in target order) had every home right
