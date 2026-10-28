@@ -89,10 +89,27 @@ def has_call(t):
     not calls. Conservative enough for a textual sweep; hits are still checked by hand."""
     for m in re.finditer(r'\b([A-Za-z_]\w*)\s*\(', t):
         name = m.group(1)
-        if name in _NOTCALL or name.isupper():
+        # only known pure field-access macros are exempt; other ALL-CAPS macros (e.g. PKT) may expand to calls
+        if name in _NOTCALL or name in _ACCESS_MACROS:
             continue
         return True
     return False
+
+
+_ACCESS_MACROS = {'FW', 'FH', 'FB', 'FF', 'FS', 'FD', 'FP', 'FU8', 'FS8', 'FU16', 'FS16', 'FF32'}
+
+
+def lhs_names(t):
+    """Identifiers a statement may write through its left-hand side. For `*(T *)&(x.f) = v` or `p->f = v`
+    style targets, every identifier after '&' or before '.'/'->' counts (conservative); the plain
+    `*(T *)((char *)(p) + K) = v` field-store form keeps the whole-text comparison only."""
+    l = lhs(t) or ''
+    names = set()
+    for m in re.finditer(r'&\s*\(?\s*([A-Za-z_]\w*)', l):
+        names.add(m.group(1))
+    if re.match(r'^[A-Za-z_]\w*$', l):
+        names.add(l)
+    return names
 
 
 def variants(cmd, L, s0, e0):
@@ -145,13 +162,12 @@ def variants(cmd, L, s0, e0):
         for i in range(s0 + 1, e0 - 1):
             a, c = L[i], L[i + 1]
             # never swap two statements that both contain calls (call order is observable)
-            mem = lambda s: (lhs(s) or '').startswith('*') or '->' in (lhs(s) or '') or '[' in (lhs(s) or '')
-            # never swap two calls, a call with a memory store (the callee may read it), or volatile accesses
-            if is_stmt(a) and is_stmt(c) and ind(a) == ind(c) and not (has_call(a) and has_call(c)) \
-                    and not (has_call(a) and mem(c)) and not (has_call(c) and mem(a)) \
+            # never move a statement across a call: a callee may read or write member, global or pointed-to
+            # state that a textual check can't see (bare C++ member stores, globals, reads of globals)
+            if is_stmt(a) and is_stmt(c) and ind(a) == ind(c) and not has_call(a) and not has_call(c) \
                     and 'volatile' not in a and 'volatile' not in c:
                 # textual dependency check: skip when one statement writes a name the other mentions
-                wa, wc = writes(a), writes(c)
+                wa, wc = writes(a) | lhs_names(a), writes(c) | lhs_names(c)
                 if any(re.search(r'(?<![\w.>])%s(?!\w)' % re.escape(w), c) for w in wa) or \
                    any(re.search(r'(?<![\w.>])%s(?!\w)' % re.escape(w), a) for w in wc):
                     continue
