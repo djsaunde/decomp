@@ -14573,6 +14573,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLV (agent-c 2026-10-28, run 188): **a jump-table target (`sltiu; lw jtbl; jr tN`) is cfe: retire any NCC NM donor for it (38A28 77.17 -> 84.59, plus record-store / report-arg decode fixes); one pinned symbol per format string keeps each arm's `lui a0`; cfe never colours a value live across a jump-table switch; 33094 frame homes (b above a + six words)**](#kit-clv-agent-c-run-188) -- _No exact; 38A28 length away (flagged); negatives 469A8 && args, 97EC nested block, 3558 zero / rotate grids, 2DE0 / 3714 / 329C / F04 sweeps, 2E354 1.0f, 31A74 (s8) re-extension (length crossed the target)._
 - [kit CLVI (agent-g 2026-10-28, run 195): **stale-lever audit (remove each `if (1) {}` / empty test / `volatile` / pad alone) over all 52 agent-g-range bodies at 90-99.99: zero gains, every lever still load-bearing; C310 NCC homes by declaration order (i, vals, ptrs, hud, cols, volatile pair last: 95.99 -> 96.02); timer-HUD family spill shift = the `height()` inline local's home; 4A308 frame 8 bytes short with all relative offsets right; an address-taken NCC param homes every param; NCC donors: declare a mid-body aggregate at the function top (54E78 `V3 a` 91.33 -> 93.79) and sweep declaration positions (declmove / hoist: 4F2DC, C234, 2B7C, 4A890)**](#kit-clvi-agent-g-run-195) -- _No exact; negatives 578B4 packet pointer, 32C8 zero / l134, 63964 member operators, E2D0 1.0f + arg4, 4E424 roles, 6126C switch / copy, 31C0 new-temp, 50444 volatile param._
 - [kit CLVIII (agent-c 2026-10-28, run 190): **gui sprite-rect family: per-packet append grid with 9 spellings (incl. `dl->n += 1` and local `DL *d`) lifts F04 97.44 -> 98.59 and 2DE0 94.59 -> 95.53 (length now = target); 2DE0 load() variant's &D const LR loses its split piece over the y tree (zdbug:5); int-zero `zf(lhs, 0)` sweep: BB8C 95.66 -> 98.33 (length now = target), 3B9C0 77.84 -> 78.62; 7C1C `out`-in-s0 / 3558 f20 zero / 37540-as-NCC negatives**](#kit-clviii-agent-c-run-190) -- _No exact; 329C / 3714 / 4568 9-spelling grids flat; spelling-grid duplicate-alternative race._
+- [kit CLXVI (agent-c 2026-10-28, run 194): **post-increment pointer copy: `tbl[*tp++]` costs an `or` copy of tp -- read `*tp`, step `++tp` separately (3B6A0 87.65 -> 90.12, 820 -> 800 = target; 3B9C0 edge loop word-for-word); pointer arithmetic hoisted above an early `continue` (3B9C0 88.42 -> 91.18); face() on the member col (3BE1C -> 95.45); re-sweeps after decode fixes (3B6A0 -> 93.65, same-line `if (1) {}` matters; 454C4 -> 95.94; BB8C -> 98.50)**](#kit-clxvi-agent-c-run-194) -- _No exact; 591C tail-reload diagnosis (target reloads self->0x2C on every case-0 exit); 3B2EC pointer walk, 3558 / 33094 / 36694 / 36F0C / 8CD8-NCC-draft negatives; post0b NM clip 0x2eaec -> 0x2ead8._
 - [kit CLXIV (agent-c 2026-10-28, run 193): **compute-order decode in NCC donors: the target loads every operand of a group of independent computations before the first (possibly aliasing) store or before the next group -- compute products into named locals, then store (454C4 light colours 91.71 -> 95.72); triangle edge test `dx / dy` before `ex / ey` (3BE1C 88.64 -> 94.98, 3B9C0 78.72 -> 86.91, 3B2EC 95.62 -> 96.05); load-order row count finds candidates; region maps of 591C / 7C1C / post0b donors**](#kit-clxiv-agent-c-run-193) -- _No exact; small order fixes 42938 97.39 -> 97.44, 46050 89.68 -> 89.71; 454C4 / 3BE1C / 3B9C0 lengths moved past the target (flagged); post0b NM clip 0x2eaf8 -> 0x2ead8; 591C tail-branch threading / selector copy / zero-literal negatives._
 - [kit CLXII (agent-c 2026-10-28, run 192): **cfe NM bodies: un-name m2c's single field-read temps -- a plain repeated `o->f` stays in one register across the store-free path and is re-loaded only where a store kills it (2E354 o->0/4/0x50, o->0x1D, o->0x26, switch selectors: 91.99 -> 93.01, length back to target); selector and result in ONE variable (pan pick, word-exact block, 93.29); u32 selector holds a shared compare constant; full region maps of 2E354 / 30AF4**](#kit-clxii-agent-c-run-192) -- _No exact; gl_func_0002E354 91.55 -> 93.29 (921 -> 923 words, flagged); gl_func_00030AF4 92.52 unchanged (zero-s-reg / param-home diagnosis, kit 63964 reinterpret casts, -O1, u32 constants negative)._
 - [kit CLX (agent-c 2026-10-28, run 191): **cfe stack arguments read into block locals before a 12-argument call give the target's load-all-then-store shape (cfront inline-argument temps): post0b 469A8 74.77 -> 90.45; zf / declmove / hoist sweep over agent-c's range: small declaration-move hits only (3B9C0, 36F0C, 3558, 38A28)**](#kit-clx-agent-c-run-191) -- _No exact; 1DDC frame / 97EC temp order / 40304 / 2D374 / 307A8 / 250C8 / 38A28 / 33094 negatives; scan: longest outgoing-arg store run, target vs NM._
@@ -45332,3 +45333,72 @@ the four statements scores the same while they exist), `a` named again for `qa =
 word-for-word (M 47 -> 122, X 55 -> 10), 74.59 -> 87.65 report, 800 -> 820 bytes (target 800: FLAGGED; the
 target spills `this` at sp+128 in a 128-byte frame, ours keeps 64). post0b NM clip net 0x2eaf8 -> 0x2eaec.
 agent-g's range has three more `verts[]` donors worth the same check: 54264, 4FD00, 65494.
+
+## kit CLXVI (agent-c 2026-10-28, run 194): POST-INCREMENT POINTER COPY -- `v = tbl[*tp++]` copies tp into a second register (`or a3,a2,zero`) where the target loads through tp and steps it in place (3B6A0 87.65 -> 90.12, 820 -> 800 bytes = target; 3B9C0 edge loop word-for-word); pointer arithmetic HOISTED ABOVE AN EARLY `continue` (3B9C0 88.42 -> 91.18); face() on the member pointer (3BE1C 94.98 -> 95.45); lever-sweep re-runs (3B6A0 -> 93.65, 454C4 -> 95.94, BB8C -> 98.50); 591C tail-reload diagnosis; negatives <a name="kit-clxvi-agent-c-run-194"></a>
+
+### 1. Post-increment in an index expression = an extra register copy
+
+`s16 *w = verts[f->vi[*tp++]];` (3B6A0) / `v1 = vt[f->vi[*nx++]];` (3B9C0): edg evaluates the post-increment as
+`tmp = tp; tp = tmp + 1; ... *tmp`, and uopt keeps both values live, so ours has `or a3,a2,zero; lh t7,0(a3);
+addiu a2,a2,2` where the target has `lh t7,0(a2); addiu a2,a2,2`. Fix: read `*tp` and step the pointer as its own
+operation -- `++tp` in the loop test (`while (inside && (fp++, ++tp != tbl + 3))`, 3B6A0) or a separate `nx++;`
+right after the read (3B9C0; the test-side `++nx` scored lower there). Same semantics: the old step only differed
+on the exit path, where tp is dead. 3B6A0 87.65 -> 90.12 and 820 -> 800 bytes (= target, the run-193 overshoot was
+this copy); 3B9C0 86.91 -> 88.42 with the edge-loop block now word-for-word up to register names
+(ours[158:214] = target[161:217] under `rdiff --noreg --nosp`), length 1104 -> 1100 (target 1116; FLAGGED, the
+copy word was one of ours). How to spot: an `or rX,rY,zero` in ours right before a load through rX, with an
+`addiu rY,rY,k` next to it. 3BE1C already had the split form (run 178); 3B2EC / 3BE1C `*list++` in the outer
+`while ((i = *list++) != -1)` must stay (splitting it: 93.0 / 93.3).
+
+### 2. Re-sweep after a decode fix, and NCC line layout
+
+After the ++tp fix `lever-sweep.py all` on 3B6A0 found a bb split after `verts = c->verts` and de-naming qa / qb
+(read `pt[a]` / `pt[b]` in the loop): 90.12 -> 93.65. The `if (1) {}` had to stay ON THE SAME SOURCE LINE as the
+statement: on its own line the same code scored 92.77 (NCC donors are line-layout sensitive; keep sweep hits
+exactly as the tool rendered them). 454C4: bb split after `n++` in the light loop 95.72 -> 95.94 (any split in that
+loop gave the same 95.903 standalone). A sweep of all 22 other NCC donors in agent-c's range found only BB8C
+(`if (1) {}` after `f24 *= obj->sub->k`, 98.33 -> 98.50); volatile hits on 36694 / 3558 move length away.
+
+### 3. Pointer arithmetic above an early `continue`
+
+3B9C0's loop: target `lw t7,84(s5)` (col->nrm) and `addu v0,t7,a1` BEFORE `bltzl t9` (the `grp < 0` continue),
+with `addiu s3,s3,1` (i++) in the bltzl delay slot. Moving `n = (V3 *)((char *)self->col->nrm + off);` above the
+`if (grp < 0) continue;` (a pure load + add, no store or call in between): 88.42 -> 91.18. The 3B2EC / 3BE1C
+analogues (verts / face before the test) are worse (94.4 / -).
+
+### 4. Member pointer vs cached copy (3BE1C)
+
+`Face *f = col->face(i); cc = col;` (face on the member, the cached cc assigned after) instead of
+`cc = col; Face *f = cc->face(i + 0);`: 94.98 -> 95.45, 1552 -> 1556 (toward 1568). The `this` copy (`or v0,v1`)
+now appears, but in v1 where the target uses s1 (cc); `(cc = col)->face(i)` loses the copy again.
+
+### 5. 591C tail reload (diagnosis)
+
+Target: all 13 case-0 exits of the second switch (gotos + if-exits) branch to `b J; lw v0,44(s0)` and the case-1 /
+default dispatch to J with the load in the delay slot, i.e. EVERY path reloads `self->0x2C` before the common
+tail. Ours CSEs the proximity block's `v0 = self->0x2C` into the tail on the fall-through path (`bc1f J+4`, the
+`out_flags |= 0x80` arm ends `b J+4; sw t5,436(sp)` without a reload), which is why the case-0 jump block
+disappears and the gotos are threaded. Something in the original kills that availability on the last path only.
+Tried: `out_flags` address-taken (`int out_flags[1]` or `{ int *ofp = &out_flags; }`) reloads it but kills five
+other CSEs (94.79 -> 83.02); `(void)&out_flags`, a `v0 = self->0x2C` at tail_common, `tail_common:` moved out of
+the switch: identical code.
+
+### 6. Negatives
+
+- 3B2EC: the 3B6A0-style table / face-word pointer walk instead of the `k` loop: 96.05 -> 94.57 in tree and
+  948 -> 940 bytes (the k loop is already 0.92 shape-aligned).
+- 3B9C0: loop count cached in a local `ntri` 83.67 (the target keeps it in a0 and reloads only after the stores).
+- 3B6A0: `Col::face()` member spellings, volatile pads for the 128-byte frame: flat.
+- 3BE1C: face() spellings (6), r type (int / u32 / u16 / const / volatile), ok declaration position: flat.
+- 3558: the three matrix-row statements in all 6 orders x 6 store orders: flat; `Vec3 r(...)` / `stage = Vec3(...)`
+  / per-component `vb.x += ..`: 55.9 - 59.4.
+- 33094: `a` loaded into block locals before the stores (the CLXIV lever): 78.1 (-24 bytes).
+- 36694: product operand order (`p.x * n.x`): +0.1 only; 36F0C declaration permutations (120): flat;
+  46790 `put()` increment spellings: 75.3.
+- 8CD8 as an NCC donor with the 7C1C classes (XZ temporaries, by-value operator=, `XZ - Vec3` through the return
+  slot; first draft): 77.26 standalone vs the cfe body's 84.24, 2876 bytes (target 2836) -- the shape is right
+  (guards, copy chains) but the first copy chain has one extra binding copy and the guard calls spill differently;
+  a multi-run project, not kept.
+
+Load-order rows (`rdiff --raw --pins --noreg --nosp`, insert / delete blocks only) at the end of the run: 8CD8 23,
+37540 14, 7C1C 13, 46050 12, 3B9C0 11, 38A28 6, 591C 6, 36694 4, 3558 4.
