@@ -12,7 +12,11 @@ if [ "$(git -C "$D" rev-parse origin/main)" != "$(git -C "$D" merge-base HEAD or
   echo "!! origin/main moved since the gate; re-run land-agent.sh"; exit 1
 fi
 git -C "$D" add report.json
-git -C "$D" commit -q -m "$MSG$TRAILER" || { echo "!! commit failed"; exit 1; }
+if git -C "$D" diff --cached --quiet; then
+  echo "report.json unchanged: pushing the landed commits without a report commit"
+else
+  git -C "$D" commit -q -m "$MSG$TRAILER" || { echo "!! commit failed"; exit 1; }
+fi
 git -C "$D" push -q origin HEAD:main || { echo "!! push failed"; exit 1; }
 echo "pushed: $(git -C "$D" log --oneline -1 | cut -c1-120)"
 cd "$ROOT" && bash scripts/reset-agent-worktree.sh "$L" 2>&1 | tail -1
