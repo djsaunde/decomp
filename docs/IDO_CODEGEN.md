@@ -14562,6 +14562,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CXLII (agent-g 2026-10-28, run 189): **a multi-role variable lands in the target's callee-saved register only when its FIRST role is in the web: route the first call's argument intermediate through it (bootup 24B8 `s0 = (char *)((cfg->0x10 & 0x400) != 0); f((int)s0, ..)` -> arg0 s1, var s0); saved-register-set scan finds these; gl 3430's four "step" words are ONE 0.1f literal in caller-saved f2 (live-range split + per-load literals), our cfe colours it f24; no volatile spelling gives per-site `lui; lw lo(rX)` store-then-reload (b5 D884 / DF14)**](#kit-cxlii-agent-g-run-189) -- _No exact; NM bootup 24B8 95.21 -> 97.05 (length = target); negatives 65EE4 layout / args, 18F0, 97EC temp order, 3558 NCC zeros, 8CD8 real-C++ probe 76.9, gui 2DE0 NCC multi-role var, lever-sweep no-hits (0B3C, 591C, 8CD8, 7C1C, BB8C, 65494)._
 - [kit CXLIII (agent-c 2026-10-28, run 177): **a module-local data block's shared-`lui at` pairs are reachable in EVERY function that touches it once one sibling is an exact static-block donor: gl 307A8 under NCC with `static St308` (the 308AC block), two field references per statement block for each pair, per-site aliases elsewhere (68 -> 65 words); 38A28's 9-entry table is cfe-only while its s0 / v0 colouring is edg-only (kit CXL from the other side)**](#kit-cxliii-agent-c-run-177) -- _No exact; NM 307A8 96.38 -> 99.46 (length = target, new NM donor game_libs_ncc_307A8_nm.cpp); 66 unused allocator alias pins retired; leads 415A4 (static T: Vec4 base + store order), 35B1C real C++ ctor; flat grids 41D40 / 3E5E0 / 3AE58 / 37938 / 250C8 / 33094; 2D374 / 250C8 negatives._
 - [kit CXLIV (agent-g 2026-10-28, run 190): **gl 49B3C EXACT: an iterator `cur()` reading the array through a local reference (`Arr &r = *a; return r[idx];`) gives the body's base reload / vtable the target's v1 / a1, an if-statement list `next()` gives the bottom loop copy's result v0, and a plain while replaces the for-init; an inline `DLHead::inc() { return count++; }` makes edg's `this` temp the s-register head of DL appends (4B620); NCC drops write-only local arrays even when volatile (5A2C4 colour bytes are cfe)**](#kit-cxliv-agent-g-run-190) -- _EXACT gl_func_00049B3C (640 B, 82.53 -> 82.62 % code; pins D_49B3C_s1..s6, gl_49B3C_regf); NM 4B620 99.22 -> 99.66, 4B0A8 99.32 -> 99.56 (the same iterator levers as a group), 4A308 95.66 -> 99.83 (slot-order split declarations, early return of a named block local = target length, sp74[0] decode fix), 54E78 91.07 -> 91.28 (report.json); post0b clip 0x2eac0 -> 0x2eac4; negatives 4B0A8 / 4B2F4 / 48510 / 59E80 / 4A9F0 / 4E424 / 54E78 frame / 6126C / 5A2C4 cfe grid, lever-sweep no-hits._
+- [kit CXLV (agent-c 2026-10-28, run 182): **an edg compare chain `beq K / beq K / beql K / b default` with out-of-line case bodies is a `switch` (46050 newline case `goto next`, x read after the switch); 3-word lw/sw copy chains between sp slots are by-value V3 operators -- 36694 as real C++ `V3 Obj::perp(V3, V3)`, dot product written on the members so the scale reloads n; 3B6A0 single guard = do-while (length away)**](#kit-cxlv-agent-c-run-182) -- _No exact; NM 46050 86.91 -> 89.66 (1832 -> 1840, target 1848), 36694 84.03 -> 85.85 (704 -> 716, target 712); post0b clip 0x2eac0 -> 0x2ead4 (agent-c branch); negatives 46050 margin hoist (14 spellings), 469A8 spill vs struct local, 38A28 selector home, 415A4 NCC port, 3B6A0 o spill._
 - [kit LXXXVII (agent-c 2026-10-24, run 148): **alignment survey (negative) + the original-file-start map of game_libs, and three twin / NCC levers** -- no non-exact function in the ROM differs from its target only in nop count or position; units in game_libs start at gl = 4 (mod 16) (16-byte aligned in bootup.uso text), every infinite-loop epilogue sits at gl = 0x14 (mod 32), and the pad words after a final `jr ra` mark 40+ original unit ends (map inside); arcproc 125C EXACT by porting the exact mgrproc 1C90 match_imports C; gl 44CE8 under NCC (pool base rematerialised, the old count carried in the result variable to keep the frame at 32); gl 3E0F0 arg word read before `gl(tmp = o, x)`](#kit-lxxxvii-agent-c-run-148) -- _1 exact (arcproc_uso_func_0000125C, 556 bytes; 76.92 -> 77.00 % code on e5cf258f7); NM: gl 44CE8 91.28 -> 99.53 (new NCC NM donor), gl 3E0F0 93.88 -> 99.90; post0b NM clip unchanged (0x2e928)._
 - [kit LXXXIV (agent-g 2026-10-24, run 155): **colour-pairing levers -- a void alias for a discarded call plus ONE local per register pair** -- gl 68DD4 (98.71, "colours only" for months) fell when the leading discarded K&R call went through a void alias (the dead v0 def pushed every later value one register up, kit IX) AND the two cursor reads were written with two int locals that each carry two roles (A = cursor then q2, B = value then cursor2), mirroring the target's register pairs; scripts/sibling-scan.py at 0.5 plus a longest-common-block scan found no new exact templates in agent-g units; twin NM port b3 13B8 <- arcproc 16F4 (+5.0); 5F984 NM donor takes the 5EB4C/5ED54 param copy; negatives for 5A2C4, D884, C310, BDEC, 2B7C, 23FC, 1824, 5F5F0, 525F0, E2D0, B154](#kit-lxxxiv-agent-g-run-155) -- _1 exact (gl_func_00068DD4, 340 bytes; 76.74 -> 76.78 % code with main's agent-c gains); NM: b3 13B8 80.36 -> 85.41, arcproc 16F4 85.36 -> 85.41, gl 5F984 90.11 -> 92.46 (post0b clip 0x2e904 -> 0x2e90c), gl 51448 95.00 -> 95.56, bootup 24B8 94.87 -> 95.21._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
@@ -44082,3 +44083,66 @@ Context: game_libs_post0b >= 0x48000 (new assignment), the NCC donor family of 4
    which also takes the frame word the target has); (c) decode fix: the 0x20030 debug print passes the byte `sp74[0]`
    (target `lbu a1,0x74(sp)`), not the array. Left: col[] and the spill word 4 / 8 bytes low, and the entry / v60
    v0-v1 swap. post0b NM clip 0x2eac0 -> 0x2eac4 (separate clip-only commit).
+
+## kit CXLV (agent-c 2026-10-28, run 182): an edg compare chain `beq K / beq K / beql K / b default` with the case bodies OUT OF LINE is a `switch`, not an if / else-if chain (46050: +2.6); a by-value V3 return / parameter copy chain (A -> B -> C lw/sw triples) is real C++ operators -- write the dot product on the members so the scale reloads its operands (36694); 3B6A0's single loop guard is a do-while but costs a word <a name="kit-cxlv-agent-c-run-182"></a>
+
+No exact. report.json: gl_func_00046050 "86.91" -> "89.66" (1848 B, NM NCC donor, 1832 -> 1840 bytes, target 1848),
+gl_func_00036694 "84.03" -> "85.85" (712 B, NM NCC donor rewritten as real C++, 704 -> 716 bytes: distance 8 -> 4);
+matched code unchanged at "82.53" %. post0b NM clip 0x2eac0 -> 0x2ead4 on agent-c's branch (62F08 NM offset 0x2ea84).
+
+**1. Read the branch LAYOUT of a character / opcode dispatch before choosing if vs switch (46050).** The target's loop
+head is `beq s5(10),a1 -> newline body; beq a1,s6(9) -> tab body; beql a1,s7(0x30),.. ; b default` with the bodies
+placed after the chain (newline at +0x42C, tab at +0x440, '0' at +0x44C, the default joining at +0x450) and the
+constants hoisted into s5..s7. An if / else-if chain always gives `bne K, next-test` with the then-arm falling through
+(our old body). edg's switch lowering gives exactly the target's shape: `switch (ch) { case 10: newline; goto next;
+case 9: ch = cc = 0x20; break; case 0x30: ch = cc = 0x4F; break; }` with x read AFTER the switch and the newline case
+jumping past the advance to the loop-condition label. 86.91 -> 89.54, +8 bytes toward the target; reading charw before
+lineh puts them in the target's s1 / s2: -> 89.66. Rule: a `beq` (not `bne`) to an out-of-line arm in a compare chain
+= switch case; look for this shape in every remaining if-chain NM body.
+- Still open (8 bytes): the target hoists `&D` (the margin global) into s8 (`lui s8; addiu s8` + `lw t6,0(s8)` in the
+  default branch's delay slot) and keeps 0xE4000000 as a `lui at` immediate; ours hoists 0xE4000000 into s8 and
+  re-materialises `lui; lw` per use. Inert: margin as pointer / reference / direct / const-pointer / per-iteration
+  pointer (8 spellings), 0xE4000000 / 0xB4000000 / 0xB3000000 as unsigned, (s32), negative and `(0xE4 << 24)`, the OR
+  association of the E4 word (3), operand order of its second word, the 0x2000 / charw / lineh divisions hoisted into
+  named locals before or after the E4 append (the "after" form +0.05, not kept). The dump shows the E4 word built
+  through `ucvt` (unsigned constant) -- the signed spellings remove the ucvt but do not change the colouring.
+
+**2. Copy chains of 3-word lw/sw triples between sp slots are by-value V3 operators; write the C++ (36694).** The
+target projects p onto the plane of n: A (sp+172, three products) -> B (+188) -> C (+228) -> sub -> D (+120) -> E (+140)
+-> F (+92), then the length test, flip to z >= 0, `(r * 1.0f) / sqrtf(l)` (G +60 -> B reused -> H +72), else the
+fallback axis; a0 = hidden return, a1 = unused `this`. `V3 Obj::perp(V3 p, V3 n)` with `V3 operator*(f32) const`,
+`operator/(f32) const`, `operator-(V3) const` (by value), the result `t` in a BLOCK scope (its slot sits low like F)
+and `r.x = px; r.y = py; r.z = pz;` member stores (not `r = V3(..)`) reproduces the chains: 84.03 -> 84.85. The
+target RELOADS n.x / n.y / n.z for the scale after the dot product (no CSE); `n.dot(p)` CSEs them (and spills n.x to
+sp+24); writing the dot out on the members, `n * (n.x * p.x + n.y * p.y + n.z * p.z)`, gives the reloads: -> 85.85.
+Negatives: `const f32 &` operator parameters (86.62 but 720 bytes, away), named d / h temporaries (712 = target length
+but 83.2-84.3), `p.dot(n)`, `const V3 &` operator-.
+
+**3. 3B6A0 (not landed).** The target has ONE loop guard (`beqz t7,L2ec; sw t7,56(sp)` after the null test) where the
+for-loop body gives two: the loop is `if (count != 0) { off = 0; do { .. off += 12; } while (++i < count); }` (77.07,
+with the triangle offset / count in an 80-byte struct local -> frame 128 like the target and their homes at 48 / 56:
+77.89), but 796 vs 800 bytes (length away). The missing word is register pressure: the target spills o (`sw a0,128`,
+`lw t9,128(sp)` per use, ra = nfound) where ours keeps o in ra; o through an inline taking `Obj *const &` homes it
+correctly but then the 5th (stack) parameter pt is no longer promoted (+12 bytes) -- an address-taken parameter makes
+uopt treat the whole incoming-argument area as aliased. Faces through an inline `Col::face(int)`, a `Col *cc = c` copy,
+`*tp++` split, the four edge-statement orders (24) and `(f32)` casts: inert.
+
+**4. Leads and negatives (same run).**
+- 469A8: the sp+72 store / reload of `(o->148)->F0` right before the 12-argument call is a register-pressure SPILL
+  (the target uses `ra` as an argument temp), not an aggregate local: a `struct { int w; }` local scores 76.59 at length
+  = target, but only because cfe copies the struct into the outgoing slot (sp+8) and the frame grows to 136 -- wrong
+  mechanism, not landed. The held `addiu a2,v1,256` / `addiu t1,v1,120` field pointers do not appear from a BB split
+  (`if (1) {}` / `if (temp_v1) {}`) between their assignment and use. A real-C++ port with cfront vtables (vptr +0x28,
+  slot k at 8 * (k + 1)) gives 412 bytes = target at 62.3: the s0 multi-role variable (vcall result, the 0x290
+  object's vptr, the DL count) needs a named temp, i.e. cfront-generated C, which cfe compiles.
+- 38A28: `switch (*(int *)c)` with the default re-reading `*(int *)c` still homes the selector (`sw t6,24(sp)`); o
+  copied into a local, the decl order of key / p / e / code (24): all 84.22 at 344.
+- 415A4 whole-function NCC port with `static T415 T;`: best 85.25 (cfe body 93.38); the a28 pair needs a value whose
+  ORs are not folded (`addiu v0,1030; ori 6; ori 0x400`) -- five spellings (reference, `|=`, named m) all fold or add
+  stores.
+- 37540 as real C++ (smart-pointer `Ptr r` aggregate local for o->0x14 like 372D4, `V3 &operator*=(f32)` on the
+  copied velocity, `set(V3)` by value with z / y / x member stores for the sp+28 word-copy chains, `+=` members):
+  764 bytes = target but 71.50 (cfe NM 81.17); the target builds saved / vB4 / v9C with FLOAT member copies (lwc1 /
+  swc1) while the by-value set() parameter is a WORD copy (lw / sw) -- the default copy constructor for parameters,
+  three-float construction for the named locals. Node layout: vel at +0x50, v60 at +0x60 (4-byte gap), vA0 at +0xA0.
+  Not landed.
