@@ -14573,6 +14573,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLV (agent-c 2026-10-28, run 188): **a jump-table target (`sltiu; lw jtbl; jr tN`) is cfe: retire any NCC NM donor for it (38A28 77.17 -> 84.59, plus record-store / report-arg decode fixes); one pinned symbol per format string keeps each arm's `lui a0`; cfe never colours a value live across a jump-table switch; 33094 frame homes (b above a + six words)**](#kit-clv-agent-c-run-188) -- _No exact; 38A28 length away (flagged); negatives 469A8 && args, 97EC nested block, 3558 zero / rotate grids, 2DE0 / 3714 / 329C / F04 sweeps, 2E354 1.0f, 31A74 (s8) re-extension (length crossed the target)._
 - [kit CLVI (agent-g 2026-10-28, run 195): **stale-lever audit (remove each `if (1) {}` / empty test / `volatile` / pad alone) over all 52 agent-g-range bodies at 90-99.99: zero gains, every lever still load-bearing; C310 NCC homes by declaration order (i, vals, ptrs, hud, cols, volatile pair last: 95.99 -> 96.02); timer-HUD family spill shift = the `height()` inline local's home; 4A308 frame 8 bytes short with all relative offsets right; an address-taken NCC param homes every param; NCC donors: declare a mid-body aggregate at the function top (54E78 `V3 a` 91.33 -> 93.79) and sweep declaration positions (declmove / hoist: 4F2DC, C234, 2B7C, 4A890)**](#kit-clvi-agent-g-run-195) -- _No exact; negatives 578B4 packet pointer, 32C8 zero / l134, 63964 member operators, E2D0 1.0f + arg4, 4E424 roles, 6126C switch / copy, 31C0 new-temp, 50444 volatile param._
 - [kit CLVIII (agent-c 2026-10-28, run 190): **gui sprite-rect family: per-packet append grid with 9 spellings (incl. `dl->n += 1` and local `DL *d`) lifts F04 97.44 -> 98.59 and 2DE0 94.59 -> 95.53 (length now = target); 2DE0 load() variant's &D const LR loses its split piece over the y tree (zdbug:5); int-zero `zf(lhs, 0)` sweep: BB8C 95.66 -> 98.33 (length now = target), 3B9C0 77.84 -> 78.62; 7C1C `out`-in-s0 / 3558 f20 zero / 37540-as-NCC negatives**](#kit-clviii-agent-c-run-190) -- _No exact; 329C / 3714 / 4568 9-spelling grids flat; spelling-grid duplicate-alternative race._
+- [kit CLXIV (agent-c 2026-10-28, run 193): **compute-order decode in NCC donors: the target loads every operand of a group of independent computations before the first (possibly aliasing) store or before the next group -- compute products into named locals, then store (454C4 light colours 91.71 -> 95.72); triangle edge test `dx / dy` before `ex / ey` (3BE1C 88.64 -> 94.98, 3B9C0 78.72 -> 86.91, 3B2EC 95.62 -> 96.05); load-order row count finds candidates; region maps of 591C / 7C1C / post0b donors**](#kit-clxiv-agent-c-run-193) -- _No exact; small order fixes 42938 97.39 -> 97.44, 46050 89.68 -> 89.71; 454C4 / 3BE1C / 3B9C0 lengths moved past the target (flagged); post0b NM clip 0x2eaf8 -> 0x2ead8; 591C tail-branch threading / selector copy / zero-literal negatives._
 - [kit CLXII (agent-c 2026-10-28, run 192): **cfe NM bodies: un-name m2c's single field-read temps -- a plain repeated `o->f` stays in one register across the store-free path and is re-loaded only where a store kills it (2E354 o->0/4/0x50, o->0x1D, o->0x26, switch selectors: 91.99 -> 93.01, length back to target); selector and result in ONE variable (pan pick, word-exact block, 93.29); u32 selector holds a shared compare constant; full region maps of 2E354 / 30AF4**](#kit-clxii-agent-c-run-192) -- _No exact; gl_func_0002E354 91.55 -> 93.29 (921 -> 923 words, flagged); gl_func_00030AF4 92.52 unchanged (zero-s-reg / param-home diagnosis, kit 63964 reinterpret casts, -O1, u32 constants negative)._
 - [kit CLX (agent-c 2026-10-28, run 191): **cfe stack arguments read into block locals before a 12-argument call give the target's load-all-then-store shape (cfront inline-argument temps): post0b 469A8 74.77 -> 90.45; zf / declmove / hoist sweep over agent-c's range: small declaration-move hits only (3B9C0, 36F0C, 3558, 38A28)**](#kit-clx-agent-c-run-191) -- _No exact; 1DDC frame / 97EC temp order / 40304 / 2D374 / 307A8 / 250C8 / 38A28 / 33094 negatives; scan: longest outgoing-arg store run, target vs NM._
 - [kit CLIX (agent-g 2026-10-28, run 196): **timer-HUD family: the image pointer as the `this` of tiny Img members instead of a named inline local + 3 block pads (13B8 / 16F4 99.43 -> 99.91, 1340 98.47 -> 99.91); `mtc1 zero` count scan finds int-zero candidates: C234 zf (90.77 -> 91.66, length = target), 8FC8 `seti(0, 0, 0)` (90.90 -> 91.27); last 13B8 pair = edg pool-var itab-bit order**](#kit-clix-agent-g-run-196) -- _No exact; 578B4 declmove only 1000 / 13340 done (chunks timed out); 4A308 / 50444 / 63964 / 4B0A8 / 4B620 / 31C0 / 4C5E4 / 55A0 negatives._
@@ -45239,3 +45240,95 @@ modeSel store in the beqz delay slot, but the jump-table index lands in t9 where
 (and every later t-reg is one behind the target's rotation, 91.87); `switch (modeSel)` on the volatile copy
 92.42. The same one-ahead t-reg rotation is the 2E354 0x3e8 residual: find the extra integer temp the
 target spends before the region and the whole tail re-colours.
+
+## kit CLXIV (agent-c 2026-10-28, run 193): COMPUTE-ORDER DECODE in NCC donors -- the target reads every operand of a group of independent computations before the first store / before the second group (454C4 colour products before the Light byte stores 91.71 -> 95.72; collision-edge loop dx / dy before ex / ey in the 3BE1C / 3B9C0 / 3B2EC triangle-test family 88.64 -> 94.98, 78.72 -> 86.91, 95.62 -> 96.05); region maps of 591C / 7C1C / post0b donors; 591C tail / switch negatives <a name="kit-clxiv-agent-c-run-193"></a>
+
+Region maps were made with a small basic-block classifier over `scripts/rdiff.py --raw --pins` (target split at
+every branch and branch target, each block aligned to ours on the register- and sp-normalised stream, classed
+**M** raw-identical, **S** sp offsets only, **R** register names only, **X** shape: unaligned / missing / extra).
+
+### 1. The lever: statement order of independent computations = load order
+
+IDO keeps the source order of independent loads unless a store in between could alias them. Two cases in
+agent-c's range where the m2c / earlier body wrote the groups in the wrong order:
+
+- **Loads before stores (454C4 light loop).** Target: all six colour operands (`s[0..2]`, `e->col[0..2]`) are
+  loaded before the first `sb` into the Light record. The body wrote
+  `cv = (s32)(s[i] * e->col[i] * 255.0f); l->col[i] = cv; l->colc[i] = cv;` per component, and the byte stores
+  (which may alias the float loads) pinned each next component's loads behind them. Fix: three products
+  first (`s32 c0 = ..; c1 = ..; c2 = ..;`), then the six stores (`colc[0]` first, as the target's schedule),
+  plus the bb split after `dir[0]`. 91.71 -> 95.72; 2032 -> 2020 bytes (target 2028): the old order had been
+  hiding three surplus words; what is left is the hoisted 0x03000000 gSPLight constant (s5, target `lui at`
+  per site), 255.0f in fs1 (target f0, rematerialised after the loop's call) and its sdc1 / ldc1. FLAGGED:
+  length moved past the target.
+- **Operand group order (triangle edge test).** Target edge loop: `lh v0[a]; lh v0[b]; cvt; cvt;` then the v1
+  reads -- i.e. `dx = (int)(qa - v0[a]); dy = (int)(qb - v0[b]);` are evaluated BEFORE
+  `ex = v1[a] - v0[a]; ey = v1[b] - v0[b];` (no stores in the loop, so this is pure source order). With dx / dy
+  first the whole 3BE1C loop block aligns word-for-word (X 30 -> 13 words): 88.64 -> 94.98, 1560 -> 1552 bytes
+  (target 1568; FLAGGED: the remaining deficit is the face-pointer / r copies and the two-arm inner MAX). The
+  same order in the twins: 3B9C0 78.72 -> 86.91 (1116 -> 1104, FLAGGED; the rest is the f24 save and the
+  spilled loop offset), 3B2EC 95.62 -> 96.05 (length unchanged). Found by a permutation marker
+  (`@[ex = ..@;ey = ..@;dx = ..@;dz = ..]@` with split declarations) in `scripts/spelling-grid.py`;
+  `lever-sweep.py order` did not propose it (it skips initialised declarations).
+
+Smaller order fixes, same idea: 42938 `G.m228 = G.m224 = 8` (target stores 0x228 first) and the rectangle read
+`x, w, h, y` (97.39 -> 97.43), setvp constant stores `vtrans[3], vscale[2], vscale[3], vtrans[2]` (-> 97.44);
+3B9C0 zero vector `zf(d.x, 0); zf(d.z, 0);` (target stores x then z; the run-190 z-first spelling scored but
+was the wrong order) 78.72; 46050 texrect w1 `((0x220 * 4) & 0xFFF) | (((0x21C * 4) & 0xFFF) << 12)` (target
+loads 0x220 first) 89.68 -> 89.71.
+
+How to find more: count insert/delete rows that are loads in the noreg/nosp diff
+(`rdiff.py --raw --pins --noreg --nosp | grep -A20 '^--- \(insert\|delete\)' | grep -cE '^  [<>] (lwc1|lw|lh|lhu|lb|lbu) '`).
+Agent-c's range after this run: 8CD8 41, 3558 22, 37540 20, 46050 15, 3B9C0 15, 7C1C 15, 591C 12, 3B6A0 11,
+38A28 11, 36694 11, 469A8 10. A generic permutation sweep over every block of 2-5 independent assignments
+in all 31 NCC donors of the range found nothing beyond the fixes above (each needs splitting a compute
+from its store, or a declaration from its initialiser, first).
+
+### 2. Region maps (start of run)
+
+- **game_uso_func_0000591C** (cfe NM, 1095 vs 1093 words; M 711 / S 7 / R 195 / X 180): head 0x0-0x80 M;
+  0x80-0x158 X = the scaled-axis products (target f14 / f2 / f0 for x / y / z, ours f14 / f0 / f2; no statement
+  order or temp-name choice of x / y / z or the pool floats reproduces it: register-only); 0x178-0x2b4 R / X =
+  first switch (target keeps the selector COPY `or v0,v1` in both dispatches and a `b J; or v0,v1` join block
+  on every case-0 exit, ours coalesces the copy -- `v0 = vsel; switch (v0)`, `switch (v0 = vsel)`, a
+  `= vsel` 0x74 store are all identical code); 0x2b4-0x404 transform dispatch / dead-sentinel alloc
+  (R + delay-slot shape); 0x418-0x470 accel block (target `addiu v0,a0,1784` + `lwc1 16(v0)`, ours folds
+  1800(a0); `p = sub; p += 1784/4` changes nothing); 0x4a0-0xcdc case-0 body: 13 `goto tail_common` /
+  if-exit branches -- target branches to the case-0 `b J` block (`b Lce8; lw v0,44(s0)`), ours threads them
+  to the join and fills each delay with the join's `lw v0,44(s0)` (one extra word per site, every later
+  branch offset shifted); 0xcdc-0x1114 tail mostly M with R islands.
+- **game_uso_func_00007C1C** (NCC donor, 1071 = 1071; M 438 / S 238 / R 311 / X 84): S = edg temporary homes
+  (deferred temporaries listed in reverse creation order); the X islands are XZ(const Vec3 &) ctor operand
+  folding (target `lwc1 56(v0); lwc1 48(v0); ... addiu v0,v0,48` after the loads, ours advances the pointer
+  first) and by-value copy pairs `lw/sw` interleave vs `lw lw sw sw`; the rest is the t-register ring.
+- **gl_func_000454C4** (NCC, 508 vs 507): prologue X (extra fs1 save), loop X (fixed above), constant hoists.
+- **gl_func_00046050** (NCC, 460 vs 462; M 311 / R 121 / X 30): the margin pointer: target holds `&D` in s8
+  (lui / addiu before the loop, `lw t6,0(s8)` at both uses), ours holds 0xE4000000 in s8 and folds the margin
+  load to `lui; lw 0(t6)` -- `register`, `const`, reference, assignment after the header, all 0xE4000000
+  spellings: no change (uopt constant-candidate priority).
+- **gl_func_0003BE1C** (NCC, 390 vs 392; X 0x21c-0x350, 0x43c-0x568): MAX block shape + edge loop (fixed).
+- **game_libs_func_00042938** (NCC, 389 = 389; M 286 / R 96 / X 5): 5 schedule pairs (3 fixed), rest colours.
+- **gl_func_0003B9C0** (NCC, 279 = 279; M 86 / S 23 / R 83 / X 87): target saves f20 / f22 / f24 (n->z held
+  in f20 across the dn test and the t computation), loop offset spilled at sp+128 while its register is reused
+  for the recomputed i*12; edge loop fixed above.
+
+### 3. Negatives
+
+- 591C: `0.0f` instead of `(f32)0.0` in the yaw absolute value gives the target's single `mtc1 zero,f16`
+  (function-wide mtc1-zero count 19 -> 18 = target) but re-colours the FP web (M 711 -> 613), 94.78 -> 94.70:
+  not kept. Tail selector read through `unsigned` / `short` / `volatile` / `void *` at the tail breaks the
+  join's load reuse but deletes the case-0 `b J` block (1087 words, 86.6); the same type change on the
+  0x10000 arm's selector read scores 95.31 but at 1096 words (away from 1093): not kept. `tail_common: break`
+  -> fallthrough into `case 1` (86.9), `if (1) {}` before the break (90.2), `break` instead of the gotos, a
+  `do { } while (0)` wrapper, `case 1: default:` with the selector load in each arm: identical or worse.
+  Volatile `out_flags` 81.1.
+- 3B9C0 rewritten in the 3BE1C member-function style (Obj::cast, Col::face, p as f32[3]): 70.7 at +24 bytes.
+- 3B9C0 order sweep of the zero stores: only x-then-z both matches the target and scores.
+
+Addendum (same run): **3B6A0** (`Obj::below`, the fourth member of the triangle-test family) takes the same
+order: `px = (int)(qa - v[a]); py = (int)(qb - v[b]); ex = w[a] - v[a]; ey = w[b] - v[b];` read straight
+from v[] (the named `int ax = v[a], ay = v[b]` copies of runs 160 / 179 hide the order: every permutation of
+the four statements scores the same while they exist), `a` named again for `qa = pt[a]`: edge loop
+word-for-word (M 47 -> 122, X 55 -> 10), 74.59 -> 87.65 report, 800 -> 820 bytes (target 800: FLAGGED; the
+target spills `this` at sp+128 in a 128-byte frame, ours keeps 64). post0b NM clip net 0x2eaf8 -> 0x2eaec.
+agent-g's range has three more `verts[]` donors worth the same check: 54264, 4FD00, 65494.
