@@ -14573,6 +14573,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLV (agent-c 2026-10-28, run 188): **a jump-table target (`sltiu; lw jtbl; jr tN`) is cfe: retire any NCC NM donor for it (38A28 77.17 -> 84.59, plus record-store / report-arg decode fixes); one pinned symbol per format string keeps each arm's `lui a0`; cfe never colours a value live across a jump-table switch; 33094 frame homes (b above a + six words)**](#kit-clv-agent-c-run-188) -- _No exact; 38A28 length away (flagged); negatives 469A8 && args, 97EC nested block, 3558 zero / rotate grids, 2DE0 / 3714 / 329C / F04 sweeps, 2E354 1.0f, 31A74 (s8) re-extension (length crossed the target)._
 - [kit CLVI (agent-g 2026-10-28, run 195): **stale-lever audit (remove each `if (1) {}` / empty test / `volatile` / pad alone) over all 52 agent-g-range bodies at 90-99.99: zero gains, every lever still load-bearing; C310 NCC homes by declaration order (i, vals, ptrs, hud, cols, volatile pair last: 95.99 -> 96.02); timer-HUD family spill shift = the `height()` inline local's home; 4A308 frame 8 bytes short with all relative offsets right; an address-taken NCC param homes every param; NCC donors: declare a mid-body aggregate at the function top (54E78 `V3 a` 91.33 -> 93.79) and sweep declaration positions (declmove / hoist: 4F2DC, C234, 2B7C, 4A890)**](#kit-clvi-agent-g-run-195) -- _No exact; negatives 578B4 packet pointer, 32C8 zero / l134, 63964 member operators, E2D0 1.0f + arg4, 4E424 roles, 6126C switch / copy, 31C0 new-temp, 50444 volatile param._
 - [kit CLVIII (agent-c 2026-10-28, run 190): **gui sprite-rect family: per-packet append grid with 9 spellings (incl. `dl->n += 1` and local `DL *d`) lifts F04 97.44 -> 98.59 and 2DE0 94.59 -> 95.53 (length now = target); 2DE0 load() variant's &D const LR loses its split piece over the y tree (zdbug:5); int-zero `zf(lhs, 0)` sweep: BB8C 95.66 -> 98.33 (length now = target), 3B9C0 77.84 -> 78.62; 7C1C `out`-in-s0 / 3558 f20 zero / 37540-as-NCC negatives**](#kit-clviii-agent-c-run-190) -- _No exact; 329C / 3714 / 4568 9-spelling grids flat; spelling-grid duplicate-alternative race._
+- [kit CLX (agent-c 2026-10-28, run 191): **cfe stack arguments read into block locals before a 12-argument call give the target's load-all-then-store shape (cfront inline-argument temps): post0b 469A8 74.77 -> 90.45; zf / declmove / hoist sweep over agent-c's range: small declaration-move hits only (3B9C0, 36F0C, 3558, 38A28)**](#kit-clx-agent-c-run-191) -- _No exact; 1DDC frame / 97EC temp order / 40304 / 2D374 / 307A8 / 250C8 / 38A28 / 33094 negatives; scan: longest outgoing-arg store run, target vs NM._
 - [kit CLIX (agent-g 2026-10-28, run 196): **timer-HUD family: the image pointer as the `this` of tiny Img members instead of a named inline local + 3 block pads (13B8 / 16F4 99.43 -> 99.91, 1340 98.47 -> 99.91); `mtc1 zero` count scan finds int-zero candidates: C234 zf (90.77 -> 91.66, length = target), 8FC8 `seti(0, 0, 0)` (90.90 -> 91.27); last 13B8 pair = edg pool-var itab-bit order**](#kit-clix-agent-g-run-196) -- _No exact; 578B4 declmove only 1000 / 13340 done (chunks timed out); 4A308 / 50444 / 63964 / 4B0A8 / 4B620 / 31C0 / 4C5E4 / 55A0 negatives._
 - [kit CLVII (agent-c 2026-10-28, run 189): **gui sprite-rect family: the CTX edg pool temp gets s0 only when it is ASSIGNED in the loader-call blocks (the `this` of an inline `Ctx::load()`); 3714's a1 is a colour-order cap vs the MAX value, not call-crossing; per-packet append spellings in the rectangle macro (RDPHALF_1 `n = dl->n; dl->n++`, RDPHALF_2 `n = dl->n++`)**](#kit-clvii-agent-c-run-189) -- _No exact; 329C 98.85 -> 99.06, 3714 96.10 -> 96.43; 2DE0 load() inline 96.42 but 1196 bytes (away, not landed)._
 - [kit CLI (agent-g 2026-10-28, run 193): **cfe literal-spelling decode signals from immediate / `mtc1 zero` counts: a `mul.s` by a held 2.0f is `* 2` (cfe folds `* 2.0f` to add.s), a float store using the compare's zero register is `0.0f` not `0`, `x += a*b*c` gives the target's add / mul operand order; re-run lever-sweep after every decode fix (B75C 90.86 -> 93.31, length = target; 6808 gD de-named 94.24 -> 95.38)**](#kit-cli-agent-g-run-193) -- _No exact; negatives 6126C dispatch copy, E9FC / 6204 prologue (unique), 63964 temp layout, C234 V3 class, 8FC8 iz zeros, E68 split m, 65EE4 literal arg, 4E424 roles, 4C5E4 2.0f._
@@ -45060,3 +45061,75 @@ the target and in the donor object for every NCC donor; only 8FC8 (12 vs 7) and 
   scheduling in the else arm.
 - 55A0: dropping `&it` (the home lever) lets `it` take an s-register and loses 36 bytes; the bbsplit sweep on that
   form reaches 92.18 (base 96.76).
+
+## kit CLX (agent-c 2026-10-28, run 191): cfe stack arguments evaluated into locals before a many-argument call (post0b 469A8 74.77 -> 90.45); zf / declmove / hoist sweep over agent-c's range (small hits only); 1DDC / 97EC / 40304 / 2D374 / 307A8 / 250C8 / 38A28 negatives <a name="kit-clx-agent-c-run-191"></a>
+
+No exact. report.json gains: post0b 469A8 74.76699 -> 90.44660 (412, length unchanged at 400), post0b 3B9C0
+78.61649 -> 78.71684, post0b 36F0C 93.28513 -> 93.30991, game_uso 3558 79.21825 -> 79.23016, post0b 38A28 84.59259 ->
+84.61729.
+
+**1. Stack arguments read into locals first (469A8).** The target's 12-argument call loads the five memory stack
+arguments into t1-t4 and `ra` (`lw t5,0x148(v1); lw t1,0xc0(v1); lw t2,0xc4(v1); lw t3,0xb8(v1); lw t4,0xbc(v1);
+lw ra,0xb8(t5)`) and only then stores them (`sw t1,0x18(sp)` .. `sw ra,0x28(sp)`). cfe evaluates and stores
+each argument in turn when the argument is written in the call, so the loads and stores alternate. Reading the
+arguments into block locals first, then passing the locals, gives the target's load-then-store shape:
+
+    { s32 a6 = FW(o, 0xC0), a7 = FW(o, 0xC4), a8 = FW(o, 0xB8), a9 = FW(o, 0xBC), a10 = FW(FW(o, 0x148), 0xB8);
+      f(s1, s0, st, m4, t0, pDC, a6, a7, a8, a9, a10, FW(o, 0x1B0)); }
+
+This is what cfront's inline-argument temporaries produce. The last argument (0x1B0) stays in the call: the target
+loads it just before the jal (in the delay slot). Writing it as a local too scores lower (88.28 vs 90.05).
+The same commit puts the `&D + 0x254` store before the object's 0x158 field store (the target's order). 74.46 -> 90.06
+standalone. Frame: the target is 0x58 vs our 0x50, with three homes at 0x4c..0x57. Two unused `volatile s32` pads
+declared before the volatile sp48 home give 0x58 and sp48 at 72 (90.39 -> 90.45). The target keeps `v1 + 0x100` / `v1 + 0x78`
+in registers (a2 / t1, which suggests real pointer variables with homes). cfe folds them into 0x104(v1) / 0x78(v1)
+in every spelling tried (`int *` / `&FW()` / casts, function or block scope). Other leftovers: the early
+`or a1,s0,zero` and the held `lui v1; addiu v1` &D base.
+Scan for more cases: compare the longest run of consecutive outgoing-argument stores (`sw rX,16..60(sp)`) in the
+target against the NM build. In agent-c's range only 469A8 had a longer run in the target (38A28's run is a spill,
+a false positive).
+
+**2. Sweeps (zf, declmove, hoist) over every NM body / donor in agent-c's range.**
+- zf (`X = 0.0f;` -> `zf(X, 0)`, and each `0.0f` literal -> `0`, one site at a time; scratch script over
+  lever-sweep's probe): no gain in any NCC donor (1DDC, BB8C, 3558, 7C1C, F04 / 2DE0 / 329C / 3714, 307A8, 33094,
+  34890, 36694, 36A48, 36F0C, 37938, 3AE58, 3B2EC, 3B6A0, 3BE1C, 3C43C, 3DF58, 3E5E0, 41D40, 42938, 454C4, 46050,
+  46790). For cfe, the int-zero routes `z = zi` (int local 0), `z = c - c` and `z = c - 256` in 2D374 are all flat:
+  cfe folds them before candidate selection.
+- declmove / hoist (lever-sweep): landed 3B9C0 (`s16 ex` declared before `vt`, 78.62 -> 78.72), 36F0C (`V3 v`
+  first), 3558 (`Vec3 vb` first), 469A8 (`var_t0` before the volatile home), 38A28 (`char *r` first). Smaller
+  hits not landed: 2E354 declmove (+0.01, length 3688 vs 3684), 37540 (+0.01). No hits on 1DDC, 97EC, BB8C, 7C1C,
+  the gui family, 307A8, 33094, 34890, 36694, 36A48, 37938, 3AE58, 3B2EC, 3B6A0, 3BE1C, 3C43C, 3DF58, 3E5E0, 41D40,
+  42938, 454C4, 46050, 46790, 250C8, 2D374, 30AF4, 31A74, 591C.
+- Tooling note: the zf sweep's NCC-donor base scores for 25C54 / 27804 / 36A48 are for STALE `_nm.cpp` donors.
+  Those functions are exact through their cfe / NCC donors (report.json 100). The Makefile still lists both
+  REPLACE_FUNC_BODY lines for the non_matching object, and the exact one wins.
+
+**3. Negatives.**
+- 1DDC (99.97, only stack offsets differ): `V3 e` for the last product (target 0x148) makes everything in the else arm
+  match but grows the frame by 8 (0x188): the key-3 block moves up 8 and the 23D4 return slot sits 8 low (0xf4 vs
+  0xfc). Only the named `const M4 &` / `const M4 *` block reference gives the target's v1 for the matrix pointer, and
+  that reference takes a home. Flat or worse: direct `mtx.getPos()`, free / member / pointer getPos helpers,
+  `set(mtx.pos())`, a function-scope `const M4 *` or `Body *` assigned in each arm, `Out *o` spellings, and unused
+  int / V3 pads (dropped).
+- 97EC (99.97, two edg temp homes swapped): `XZ e = ...` / `const XZ &e` / copy-init, a nested block for f,
+  `s->k * (a - b)` via a friend operator, scale / sub / minus helpers, `-(pos - other)`: the e-bound / f-bound temp
+  order never flips (the best other spelling is 99.95).
+- 40304 (99.65: the 1/32767 constant in f18, target f14): the while(0) anchor permutations with `c` added, the
+  constant through `kt` or a named `k`, lever-sweep all / declmove: flat. As NCC: 90.55.
+- 307A8 (the hold count in the ugen ring): `(c = load) != 0`, a C++ condition declaration, a dec() inline, `+ -1` /
+  `-1 +`: flat or worse.
+- 250C8 (fontId homed at +84, target temp +36; retMsg v0 / a1 swap): fontId as `ASYNC_ID(retMsg)` / a #define /
+  removed, the switch operand spellings, and a 4! decl permutation: flat.
+- 38A28 (o in a3 + spills, target s0; `code` homed): an explicit `default:`, `switch (code = ...)`, re-reading
+  `*(int *)c` in the report, `register char *o`: flat or +0.02 only.
+- 33094: Vec3 a loaded through block locals first (kit LXXXVI shape, as in its p != 0 arm) drops a's stores
+  (380 bytes, away).
+- 454C4 (255.0f in fs1 for the whole function; the target keeps it in f0 and rematerialises it after the loop's
+  call): routing the head / MIN / loop uses through int-parameter inlines (`mk(x, 255)`, `ik(255)`), in any
+  combination, scores the same or lower (90.66-91.38) and moves the length away.
+- 3BE1C (the target copies `this` into v0 for the inline face() and copies the result v1 -> s0): six face()
+  spellings (ternary / if-return / result local / explicit `Col *c = this`) x three call-site forms: flat.
+- 36694: the edg temporary homes are laid out in reverse order (target 0xe4 / 0xac / 0x5c vs ours 0x64 / 0x90 /
+  0xc8), the same invariant class as 97EC.
+- 469A8 follow-ups (flat): A0 / A1 argument locals, the p100 / p78 / pDC / sp48 statement order (4!),
+  `char *g = &D` / array-index spellings of the 0x254 store, and lever-sweep all on the new body.
