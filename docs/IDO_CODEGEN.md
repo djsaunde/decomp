@@ -14570,6 +14570,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLII (agent-c 2026-10-28, run 186): **game_uso 7C1C was C++: natural 6A30-class code beats the frame-exact cfe emulation (92.59 -> 95.12); an inline call's pooled return slot stays busy until the end of the full-expression, so a nested call returns through the next slot (`perp(XZ(p) - q)` -> s2 / sp+540); `(const Vec3 &)xz` into a by-value operator=; unnamed booleans land in the uopt spill area**](#kit-clii-agent-c-run-186) -- _No exact; deferred-temp order reversed vs target in every block (edgcpfe difference, no flag fixes it); set() param colours; 8CD8 C++ port lead (s0 vs target's no-s-reg allocation)._
 - [kit CLIII (agent-g 2026-10-28, run 194): **the literal / `mtc1 zero` count scan needs filters (target-side `lui 0x0/0x2/0x4` = baked addresses, surplus `li K` = branch-likely delay copies, `sltiu 4` = the 4-entry-table cap); 4F2DC was C++: V3 by-value operator temporaries give the copy chains (90.45 -> 94.87, length = target); a re-shaped donor can make an old `if (1) {}` harmful (23FC 99.62 -> 99.94); NCC homes: function scope top-down, block scope depth-first after it, inline locals in the block sequence, dead / volatile locals at the bottom**](#kit-cliii-agent-g-run-194) -- _No exact; C310 `- 1 == 0` flagged as a wrong decode kept for score; negatives 8FC8 zero triple, C234 second zero, 1824 `li at,1`, 5A2C4 NCC lift, E68 held `&h`._
 - [kit CLIV (agent-c 2026-10-28, run 187): **NCC never emits a jump table (4 or 8 dense labels both chain); the run-186 "8CD8 C++ emits the 4-entry table" claim was wrong, kit CXL stands; gui 329C's second MAX pool temp is coloured early by uopt PRIORITY (spr as an inline Spr::prep `this` moves it to t2 -- lead); cfe block-scope locals home below function-scope ones**](#kit-cliv-agent-c-run-187) -- _No exact, no source change; negatives for 329C, 250C8 fontId, 37938, 396FC._
+- [kit CLV (agent-c 2026-10-28, run 188): **a jump-table target (`sltiu; lw jtbl; jr tN`) is cfe: retire any NCC NM donor for it (38A28 77.17 -> 84.59, plus record-store / report-arg decode fixes); one pinned symbol per format string keeps each arm's `lui a0`; cfe never colours a value live across a jump-table switch; 33094 frame homes (b above a + six words)**](#kit-clv-agent-c-run-188) -- _No exact; 38A28 length away (flagged); negatives 469A8 && args, 97EC nested block, 3558 zero / rotate grids, 2DE0 / 3714 / 329C / F04 sweeps, 2E354 1.0f, 31A74 (s8) re-extension (length crossed the target)._
 - [kit CLI (agent-g 2026-10-28, run 193): **cfe literal-spelling decode signals from immediate / `mtc1 zero` counts: a `mul.s` by a held 2.0f is `* 2` (cfe folds `* 2.0f` to add.s), a float store using the compare's zero register is `0.0f` not `0`, `x += a*b*c` gives the target's add / mul operand order; re-run lever-sweep after every decode fix (B75C 90.86 -> 93.31, length = target; 6808 gD de-named 94.24 -> 95.38)**](#kit-cli-agent-g-run-193) -- _No exact; negatives 6126C dispatch copy, E9FC / 6204 prologue (unique), 63964 temp layout, C234 V3 class, 8FC8 iz zeros, E68 split m, 65EE4 literal arg, 4E424 roles, 4C5E4 2.0f._
 - [kit CXLIX (agent-c 2026-10-28, run 184): **`scripts/decode-scan.py` -- project-wide mechanical scan of every <100 NM body for address decode errors (per-site %lo of pin + addend vs the USO target's baked word, by lui dataflow; double-added pins, hold-vs-fold splits, unpinned-symbol pin hints, `SYM + K` on non-zero pins), m2c negated float compares and leftovers; objdiff's fuzzy IGNORES relocated immediates, so address fixes are correctness-only**](#kit-cxlix-agent-c-run-184) -- _No exact, report.json flat; 3430 step loads read 0xCC8.. (were address 0), pin D_000019E8; the run-183 class is harvested: 1 new true double-add (bootup E9FC, agent-g unit), 5 negated compares in game_uso 591C (agent-g unit), the rest placement / pairing noise._
 - [kit LXXXVII (agent-c 2026-10-24, run 148): **alignment survey (negative) + the original-file-start map of game_libs, and three twin / NCC levers** -- no non-exact function in the ROM differs from its target only in nop count or position; units in game_libs start at gl = 4 (mod 16) (16-byte aligned in bootup.uso text), every infinite-loop epilogue sits at gl = 0x14 (mod 32), and the pad words after a final `jr ra` mark 40+ original unit ends (map inside); arcproc 125C EXACT by porting the exact mgrproc 1C90 match_imports C; gl 44CE8 under NCC (pool base rematerialised, the old count carried in the result variable to keep the frame at 32); gl 3E0F0 arg word read before `gl(tmp = o, x)`](#kit-lxxxvii-agent-c-run-148) -- _1 exact (arcproc_uso_func_0000125C, 556 bytes; 76.92 -> 77.00 % code on e5cf258f7); NM: gl 44CE8 91.28 -> 99.53 (new NCC NM donor), gl 3E0F0 93.88 -> 99.90; post0b NM clip unchanged (0x2e928)._
@@ -44726,3 +44727,65 @@ compiles by hand; not chased).
   if-chain: the target's `li at,1` after the `beqz` is not reproduced (98.38 flat or 92.32).
 - 5A2C4 straight NCC lift of the cfe body: 79.08, 1632 / 1804 bytes (the cfe body stays).
 - E68 `&dims + 4` held pointer: see 1.
+
+## kit CLV (agent-c 2026-10-28, run 188): a jump-table target is cfe -- retire an NCC NM donor for it (38A28 77.17 -> 84.59); cfe never gives a register to a value that stays live across a jump-table switch; distinct format-string symbols keep each arm's `lui a0`; frame homes for 33094; negatives <a name="kit-clv-agent-c-run-188"></a>
+
+No exact. NM (report.json): gl 38A28 77.17284 -> 84.59259 (324 B; length 316 -> 344, target 324, AWAY --
+decode fixes, flagged), gl 33094 87.41584 -> 87.653465 (404 B, length = target). post0b clip
+0x2eadc -> 0x2eaf8. Pins D_0001EC6C / D_0001EC84 / D_0001EC9C. Retired donor
+build/src/game_libs/game_libs_ncc_38A28_nm.cpp.o.
+
+**1. A target with a jump table (`sltiu at,tN,K; ... lw tN,%lo(jtbl)(at); jr tN`) was compiled by cfe.**
+NCC never emits one (kit CLIV; checked again here with 9 and 11 dense labels, with and without
+`default:`). So an NCC NM donor for such a function cannot reach the target's dispatch shape. 38A28 had
+one. Putting the cfe body back gave the 9-entry table and the target's arm layout at once.
+To find these: `objdump -d expected/<unit>.o`, list every function that has a `jr` on a register other
+than ra, and check that list against the NCC donors in the Makefile. In game_uso / gui / post / post0b
+38A28 was the only donor on that list.
+Decode fixes read from the target in the same pass: the 0x66 arm stores the looked-up RECORD pointer to
+o->0x14 (`sw v0,36(sp)` in the call's delay slot, `lw v0,36(sp)`, `sw v0,20(s0)`), not the call's
+return value; the arms `return`, and the report call after the switch takes (code, o->0xC);
+`case 0x6C: return;` gives the table its 9th entry. A cfe `case X: break;` that shares the exit gets no
+compare of its own, so you can't see the table's padding labels in the text. Only the table length
+(`sltiu 9`) shows them.
+
+**2. Distinct format strings are distinct symbols.** Each target arm has its own `lui a0,0x2; addiu a0,..`
+(baked 0x1EC6C / 0x1EC84 / 0x1EC9C, no shared hi). Written as `&D_00000000 + 0x1EC6C`, cfe CSEs the
+common %hi, and uopt hoists the default arm's `lui a0` into the switch head. One pinned symbol per string
+keeps each lui in its own arm.
+
+**3. cfe never colours a value that stays live across a jump-table switch** (uoptlist: `0: not colored,
+not splittable`). A 6-line test shows it: `int code = *c; switch (code) {...} f(code);` homes `code` in
+memory even when no arm makes a call. The target keeps it in v0 (and o in s0, NCC-style), so 38A28 keeps
+an allocation residual: `code` gets a memory home, and o sits in a3 with spills around the calls. Neutral: `register`,
+copy-local, IDO 5.3 cc, -O2 -g3, default inside vs after the switch, return vs break arms, unsigned key.
+
+**4. 33094 frame homes.** The target frame is 144: b at sp+132, a at sp+120, and the copy temp t at
+sp+84. Declaring `Vec3 b; Vec3 a;`, then six frame words, then `Vec3 t;` puts every home at the target's
+offset. The entry copy runs z, y, x like the target's loads. Still open there: the target keeps a.y / a.z
+in their entry registers (f0 / f2) through the else arm and reloads only a.x (f12 is taken by 10.0f). Our
+a members are not coloured. Held block locals (`f32 ax = ...`) colour them for the WHOLE function instead
+(380 bytes, 78.1). Inline reference-taking emit wrappers are neutral.
+
+**5. Negatives (don't repeat).**
+- 469A8 (cfe and NCC): the target holds o+0x100 in a2 and o+0x78 in t1, and evaluates args 1-4 / 6
+  before the `&&` argument. `&&` inline in the call, separate statements, Flags / F100 classes with an
+  inline `has()`, and an inline `both(F100 *, Flags *)` helper all fold the offsets and evaluate the `&&`
+  first (68.8-71.5 vs 74.46). In-tree lever-sweep: no hit.
+- 97EC (two edg temp homes swapped): a nested block around f's statements moves f's temps BELOW e's but
+  shifts every other home (99.97 -> 99.75). Copy-init, explicit `XZ(...)`, `(const Vec3 &)` casts and
+  `{ }` / `if (1) {}` fillers make no change.
+- 3558: no spelling of the three zero sites (zero var / 0.0f / 0.0 / 0, 192 cells) gets uopt to colour the
+  0.0f constant into f20. The zero LR splits into three -ve-save pieces (uoptlist 286/290/291). A rotate-
+  as-inline-member (`stage = M.rot(stage)`) is far worse (56.7). All 36 statement / store orders of the
+  matrix block are <= 79.22. Lever-sweep hits (`volatile float zero` 80.99, a bbsplit 80.03) both move the
+  length AWAY (1024 -> 1036, target 1008).
+- 2DE0 / 3714 / 329C / F04: lever-sweep all, no hit. 2DE0's switch-temp spellings (`arg0->spr->fmt`,
+  named t, block-scoped `Ctx *c`) cost about 3 points. F04's `(s16)(x << 2)` as a named s32 / s16 block local
+  is neutral or worse.
+- 2E354 (cfe, jump tables): the target keeps 1.0f in f2 for the `if (1.0f <= x) x = 1.0f` clamp (`mov.s`);
+  ours re-materialises it with `mtc1 at`. A block `f32 one` is neutral.
+- 31A74: `(s8)(sel + 0)` in the call gives the target's `lb a2` + `sll/sra 24` re-extension.
+  Without `if (r) {}` the frame (24) and the length (564) match the target, but fuzzy drops 90.40 -> 90.26
+  (the tail swc1 / sb order and the duplicated mfc1 stay). With the dead-if kept it is 92.23, but at 568
+  bytes (the other side of 564, same distance), so it was not kept.
