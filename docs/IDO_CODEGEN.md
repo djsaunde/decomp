@@ -14557,6 +14557,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CXXXVII (agent-g 2026-10-27, run 186): **kernel 80001ADC 52.46 -> 93.32 (phantom label ON the default arm, info read through memory, lever-sweep de-naming of the symbol pointer); gl 65494 as C++ 80.62 -> 89.98: float-bit call args typed int (no mfc1 reuse of hoisted FP constants), `(float)iz()` as a second uncombined zero, inline `r.set(...)` so a named result's loads precede its stores**](#kit-cxxxvii-agent-g-run-186) -- _No exact; final NM 80001ADC 93.39 (frame = target), 65494 91.75, b5 8FC8 90.90; FLAGGED B75C `(f32)2` decode fix (length away); new NM donor game_libs_ncc_65494_nm.cpp; 18F0 mask-constant negatives; lever-sweep no-hit list (C234, 8FC8, 55A0, gui x4, b5 x3, 3430, 2840, 8BD4, mgrproc x2, BB8C, 1594, 24B8); 8CD8 derived-ctor protocol probe._
 - [kit CXXXVIII (agent-c 2026-10-28, run 175): **per-site base-0 alias globals were ONE struct read through a local base pointer `g` (same-base accesses keep store / load order, a g-relative read is not loop-hoisted: both 33EB8 "caps"); one variable reused for buf / flags and every ring-register read is the target's s0 web; do-while + `if / else` min decode fixes; 4FD00 / 54E78 as real C++ with POD V3, by-value `set(V3)`, an inline-local short-vector sum**](#kit-cxxxviii-agent-c-run-175) -- _No exact; NM 4FD00 80.29 -> 95.51, 334E8 74.48 -> 96.20, 33BE4 80.70 -> 96.66, 33EB8 90.83 -> 98.70, 54E78 86.62 -> 91.07 (all lengths = target); new NM donors game_libs_ncc_4FD00_nm.cpp / game_libs_ncc_54E78_nm.cpp; post0b clip 0x2ea9c -> 0x2eabc; 37540 C++ draft (length away), frame-residual negatives._
 - [kit CXXXIX (agent-g 2026-10-28, run 187): **cfe keeps a dead `addiu vN,vN,K` after folded accesses when the pointer variable is advanced FIRST and the load / store go through it (`tv += 0xA58; msk = *tv & ~m; *tv = msk;`) -- game_uso 0B3C's two "NCC this-adjust" words without a C++ port, so the flagged `goto adv` tail lands at length; a field read once before two branch tests is the target's hoisted f0 load (591C)**](#kit-cxxxix-agent-g-run-187) -- _No exact; NM 0B3C 95.11 -> 99.59 (length = target; addendum: named block floats on one line, `char *ob[1]` fed from the v1 variable re-aligns the t-ring, base-first `((s32 *)(seg + K))[i]`, switch selector through an existing variable), 591C 94.36 -> 94.79 (toward target); negatives: B75C zero-store literal grid, unfolded RMW pointer spellings (6808 / 591C), 0B3C obj-in-v1 and fresh call-arg `1`._
+- [kit CXL (agent-g 2026-10-28, run 188): **the 4-entry jump table (`sltiu 4`: 76F0, 0B3C, 8CD8, 116C, 80001ADC) is unreachable from every compiler in tools/** -- cfe 5.3 and 7.1 split clusters of <5 labels (both binaries), edgcpfe 5.3 and 7.1 lower every switch to `equ`/`tjp` chains (no `xjp` writer), uopt/ugen never shorten a table; the exact 2FB74 has a same-shape 4-label chain in the same segment, so the table units came from another front end -- keep the phantom 5th label on an existing arm; side finding: `switch (x & M)` over 0..M drops the sltiu/beqz bound check](#kit-cxl-agent-g-run-188) -- _No exact; NM game_uso 8CD8 83.97 -> 84.24 (guard + chain -> phantom-label table switch, masked index stored through memory)._
 - [kit LXXXVII (agent-c 2026-10-24, run 148): **alignment survey (negative) + the original-file-start map of game_libs, and three twin / NCC levers** -- no non-exact function in the ROM differs from its target only in nop count or position; units in game_libs start at gl = 4 (mod 16) (16-byte aligned in bootup.uso text), every infinite-loop epilogue sits at gl = 0x14 (mod 32), and the pad words after a final `jr ra` mark 40+ original unit ends (map inside); arcproc 125C EXACT by porting the exact mgrproc 1C90 match_imports C; gl 44CE8 under NCC (pool base rematerialised, the old count carried in the result variable to keep the frame at 32); gl 3E0F0 arg word read before `gl(tmp = o, x)`](#kit-lxxxvii-agent-c-run-148) -- _1 exact (arcproc_uso_func_0000125C, 556 bytes; 76.92 -> 77.00 % code on e5cf258f7); NM: gl 44CE8 91.28 -> 99.53 (new NCC NM donor), gl 3E0F0 93.88 -> 99.90; post0b NM clip unchanged (0x2e928)._
 - [kit LXXXIV (agent-g 2026-10-24, run 155): **colour-pairing levers -- a void alias for a discarded call plus ONE local per register pair** -- gl 68DD4 (98.71, "colours only" for months) fell when the leading discarded K&R call went through a void alias (the dead v0 def pushed every later value one register up, kit IX) AND the two cursor reads were written with two int locals that each carry two roles (A = cursor then q2, B = value then cursor2), mirroring the target's register pairs; scripts/sibling-scan.py at 0.5 plus a longest-common-block scan found no new exact templates in agent-g units; twin NM port b3 13B8 <- arcproc 16F4 (+5.0); 5F984 NM donor takes the 5EB4C/5ED54 param copy; negatives for 5A2C4, D884, C310, BDEC, 2B7C, 23FC, 1824, 5F5F0, 525F0, E2D0, B154](#kit-lxxxiv-agent-g-run-155) -- _1 exact (gl_func_00068DD4, 340 bytes; 76.74 -> 76.78 % code with main's agent-c gains); NM: b3 13B8 80.36 -> 85.41, arcproc 16F4 85.36 -> 85.41, gl 5F984 90.11 -> 92.46 (post0b clip 0x2e904 -> 0x2e90c), gl 51448 95.00 -> 95.56, bootup 24B8 94.87 -> 95.21._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
@@ -43715,3 +43716,64 @@ s0 has a THIRD role (first vcall result, second vtable pointer, then the display
 argument): `temp_s0 = dl->n` before the last call, 74.14 -> 74.77 (same length). Its held `v1+0x100` / `v1+0x78`
 pointers are NCC inline `this` temps on member sub-objects; a C++ draft with inline Flags members and reference
 locals did not hold them (65-67 standalone) -- not landed.
+
+## kit CXL (agent-g 2026-10-28, run 188): the 4-entry jump table is not reachable from ANY front end we have -- cfe 5.3/7.1 (cluster rule), edgcpfe 5.3/7.1 (never tables), uopt/ugen (never shrink a table); a same-segment 4-label compare chain proves the 4-table units used a different compiler; side finding: `switch (x & M)` drops the bound check <a name="kit-cxl-agent-g-run-188"></a>
+
+**Question.** gl_func_000076F0 (two tables), game_uso 0B3C / 8CD8, titproc 116C and kernel func_80001ADC (about 9.6 KB)
+each dispatch through a table guarded by `sltiu at,x,4`. Our cfe emits a compare chain for every 4-label switch.
+Is there a source spelling, flag, compiler version or front end that gives a 4-entry table? **Answer: no, with every
+compiler in tools/. The units came from a compiler we do not have. Keep the phantom-5th-label shape.** Kit LXXVI
+found the cfe rule; this run re-checked it and closed the other routes.
+
+1. **cfe 7.1 (rule re-read, `tools/ido-static-recomp-dump/build/7.1/cfe.c` func_465d90, lines ~162100-162420).**
+   It sorts the labels and walks them into clusters. A label joins the cluster while `value <= prev + 25`. A
+   cluster with `count < 5` (`at = a1 < 0x5`, used both inside the loop and for the last cluster) is broken up
+   into single-label entries, and those become a binary search of `equ` tests (func_465654). The direct
+   `func_46508c` (the only `xjp` writer, opcode 0x8c) call at L4666b4 runs only when exactly ONE cluster is
+   left and its count is not 1, i.e. after a 5+ cluster survives. A table's range is first..last label, so it always
+   has at least 5 entries. No flag, pragma or selector type touches either constant.
+   `default:` is not in the list.
+2. **cfe 5.3**: the same code (`objdump -d ido/5.3/usr/lib/cfe`: `addiu t5,t9,25` at 0x470824/0x470868 next to
+   `sltiu at,a1,5` at 0x4708f8/0x470b48).
+3. **edgcpfe 7.1 AND 5.3 (NCC; IDO 5.3 ships `usr/lib/DCC/edgcpfe` too).** The switch lowering
+   (7.1 `func_51d740`, called for statement kind 9 from `mbe_statement`; 5.3 the same code inside `mbe_block`
+   around 0x51bac4) loops over every clause and every case value: `lod` (0x52) temp, `mbe_load_constant`,
+   `equ` (0x23), `tjp` (0x7f) to the clause label, then `ujp` (0x88) to the default. No code path writes `xjp`.
+   The only `li aN,0x8c` writers in either binary are initializer code (`scan_*initializer*`, func_43a878 / func_459f38).
+   cfront `c++` (5.3) emits C for cfe and so follows rule 1.
+4. **uopt / ugen never make a table smaller.** uopt re-emits `xjp` from the graph node's stored bounds (`f_reemit`,
+   uopt.c ~55290). It does not turn `tjp` chains into tables: NCC's 16- and 40-case dense switches come out as chains.
+   Dead and default-equal trailing entries stay in the table: `switch (x & 3)` with labels 0..4 deletes the
+   case-4 arm but keeps 5 rodata words, the 5th pointing at the join. `case 5: default:` (kit CXXXVII) also stays
+   `sltiu 5`.
+5. **The ROM shows two compilers in game_libs.** The visible (uncompressed) dispatches scan as sltiu 4 x4,
+   5 x7, 6 x5, 7 x5, ... and never 2 or 3, so 4 is the smallest table anyone built. The table contents
+   (`scripts/extract-uso-jumptable.py gl_func_000076F0 --module 0xD9FE28 --vaddr 0x76F0 --size 0x904
+   --shim 0x1466C`) are: 76F0 switch 1 = 6 entries (labels 0..5, 4 and 5 share an arm), **switch 2 = 4 entries
+   for labels 0, 1, 2, 3 with 1 and 2 sharing an arm**, switch 4 = 4 distinct arms. The EXACT
+   gl_func_0002FB74 (game code in the same segment, `game_libs_o2_2FB74.c`) has
+   `switch (sel) { case 0: case 1: ...; case 2: ...; case 3: ...; }`. That is the same shape (4 labels, one shared
+   pair, 3 arms + default), and the target has the cfe compare chain (`beqz; beq 1; beq 2; beq 3`). The OoT audio
+   code (253C4, 28B0C, 28C6C) has more exact 4-label chains. One deterministic per-switch rule cannot give both, so
+   76F0 / 0B3C / 8CD8 / 116C / 80001ADC were built by another front end, one with a 4-label threshold (the old
+   pcc `n >= 4` rule) that we do not have. A donor splice therefore has no compiler to come from.
+6. **What to do with these functions.** Keep a phantom 5th label, and attach it to an arm that already exists so
+   that no extra block is laid out: on the default arm (80001ADC `case 5: default:`), on a shared arm (76F0
+   switch 2 `case 1: case 2: case 4:`), or on an empty arm (8CD8 below). Then the residual is the `sltiu` word
+   plus the table-base words. Do not spend more time on the table itself.
+
+**Applied (NM).** game_uso 8CD8 83.97 -> 84.24 (report, length = target 745): the source had an explicit
+`if ((u32)idxm < 4U)` guard around a 2-case chain. It is now a switch that puts `case 2: case 3: case 4: break;` on
+one empty arm (table dispatch like the target, `sltiu 5` vs 4). Storing the increment and the mask straight through
+`*(s32 *)(arg1 + 0x9C)` (no `idx` / `idxm` locals) keeps both in ugen t-temps, as in the target (`lw t5; addiu t6;
+andi t8; sw t6; sltiu; sw t8`); `= (*p += 1) & 3` loses the first store (83.96). The other four already use the best
+phantom shape: 0B3C 99.59, 116C 99.12, 76F0 95.00, 80001ADC 93.39.
+
+**Side finding: `switch (x & M)` drops the bound check.** When the switch operand is literally `expr & M`,
+lbound is 0 and hbound >= M, cfe/IDO emits `andi; sll; lui; addu; lw; jr` with no `sltiu/beqz`, and it deletes the
+arms for labels above M (the table keeps its full length in rodata). Measured at -O2: `switch (x & 3)` with labels
+0..4 or 0..7 has no check. These keep it: `(x & 3) + 1`, `x & 7` with labels 1..5 (lbound 1), `x & 7` with
+labels 0..4 (hbound < M), unsigned `x % 4`, a named `y = x & 3` (also stored), and at -O2 `switch (g = x & 3)` (no
+check at -O1). So a target table WITHOUT a bound check after an `andi` is `switch (x & M)` over 0..M plus enough
+phantom labels to reach 5. A table of 4 or 5 entries cannot be told apart in .text. 8CD8's target keeps the check
+after `andi 3`, which matches the assignment-operand form.
