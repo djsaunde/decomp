@@ -14572,7 +14572,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLIV (agent-c 2026-10-28, run 187): **NCC never emits a jump table (4 or 8 dense labels both chain); the run-186 "8CD8 C++ emits the 4-entry table" claim was wrong, kit CXL stands; gui 329C's second MAX pool temp is coloured early by uopt PRIORITY (spr as an inline Spr::prep `this` moves it to t2 -- lead); cfe block-scope locals home below function-scope ones**](#kit-cliv-agent-c-run-187) -- _No exact, no source change; negatives for 329C, 250C8 fontId, 37938, 396FC._
 - [kit CLV (agent-c 2026-10-28, run 188): **a jump-table target (`sltiu; lw jtbl; jr tN`) is cfe: retire any NCC NM donor for it (38A28 77.17 -> 84.59, plus record-store / report-arg decode fixes); one pinned symbol per format string keeps each arm's `lui a0`; cfe never colours a value live across a jump-table switch; 33094 frame homes (b above a + six words)**](#kit-clv-agent-c-run-188) -- _No exact; 38A28 length away (flagged); negatives 469A8 && args, 97EC nested block, 3558 zero / rotate grids, 2DE0 / 3714 / 329C / F04 sweeps, 2E354 1.0f, 31A74 (s8) re-extension (length crossed the target)._
 - [kit CLVI (agent-g 2026-10-28, run 195): **stale-lever audit (remove each `if (1) {}` / empty test / `volatile` / pad alone) over all 52 agent-g-range bodies at 90-99.99: zero gains, every lever still load-bearing; C310 NCC homes by declaration order (i, vals, ptrs, hud, cols, volatile pair last: 95.99 -> 96.02); timer-HUD family spill shift = the `height()` inline local's home; 4A308 frame 8 bytes short with all relative offsets right; an address-taken NCC param homes every param; NCC donors: declare a mid-body aggregate at the function top (54E78 `V3 a` 91.33 -> 93.79) and sweep declaration positions (declmove / hoist: 4F2DC, C234, 2B7C, 4A890)**](#kit-clvi-agent-g-run-195) -- _No exact; negatives 578B4 packet pointer, 32C8 zero / l134, 63964 member operators, E2D0 1.0f + arg4, 4E424 roles, 6126C switch / copy, 31C0 new-temp, 50444 volatile param._
-- [kit CLVIII (agent-c 2026-10-28, run 190): **gui sprite-rect family: per-packet append grid with 9 spellings (incl. `dl->n += 1` and local `DL *d`) lifts F04 97.44 -> 98.59 and 2DE0 94.59 -> 95.53 (length now = target); 2DE0 load() variant's &D const LR loses its split piece over the y tree (zdbug:5); 7C1C `out`-in-s0 / 3558 f20 zero negatives**](#kit-clviii-agent-c-run-190) -- _No exact; 329C / 3714 / 4568 9-spelling grids flat; spelling-grid duplicate-alternative race._
+- [kit CLVIII (agent-c 2026-10-28, run 190): **gui sprite-rect family: per-packet append grid with 9 spellings (incl. `dl->n += 1` and local `DL *d`) lifts F04 97.44 -> 98.59 and 2DE0 94.59 -> 95.53 (length now = target); 2DE0 load() variant's &D const LR loses its split piece over the y tree (zdbug:5); int-zero `zf(lhs, 0)` sweep: BB8C 95.66 -> 98.33 (length now = target), 3B9C0 77.84 -> 78.62; 7C1C `out`-in-s0 / 3558 f20 zero / 37540-as-NCC negatives**](#kit-clviii-agent-c-run-190) -- _No exact; 329C / 3714 / 4568 9-spelling grids flat; spelling-grid duplicate-alternative race._
 - [kit CLVII (agent-c 2026-10-28, run 189): **gui sprite-rect family: the CTX edg pool temp gets s0 only when it is ASSIGNED in the loader-call blocks (the `this` of an inline `Ctx::load()`); 3714's a1 is a colour-order cap vs the MAX value, not call-crossing; per-packet append spellings in the rectangle macro (RDPHALF_1 `n = dl->n; dl->n++`, RDPHALF_2 `n = dl->n++`)**](#kit-clvii-agent-c-run-189) -- _No exact; 329C 98.85 -> 99.06, 3714 96.10 -> 96.43; 2DE0 load() inline 96.42 but 1196 bytes (away, not landed)._
 - [kit CLI (agent-g 2026-10-28, run 193): **cfe literal-spelling decode signals from immediate / `mtc1 zero` counts: a `mul.s` by a held 2.0f is `* 2` (cfe folds `* 2.0f` to add.s), a float store using the compare's zero register is `0.0f` not `0`, `x += a*b*c` gives the target's add / mul operand order; re-run lever-sweep after every decode fix (B75C 90.86 -> 93.31, length = target; 6808 gD de-named 94.24 -> 95.38)**](#kit-cli-agent-g-run-193) -- _No exact; negatives 6126C dispatch copy, E9FC / 6204 prologue (unique), 63964 temp layout, C234 V3 class, 8FC8 iz zeros, E68 split m, 65EE4 literal arg, 4E424 roles, 4C5E4 2.0f._
 - [kit CXLIX (agent-c 2026-10-28, run 184): **`scripts/decode-scan.py` -- project-wide mechanical scan of every <100 NM body for address decode errors (per-site %lo of pin + addend vs the USO target's baked word, by lui dataflow; double-added pins, hold-vs-fold splits, unpinned-symbol pin hints, `SYM + K` on non-zero pins), m2c negated float compares and leftovers; objdiff's fuzzy IGNORES relocated immediates, so address fixes are correctness-only**](#kit-cxlix-agent-c-run-184) -- _No exact, report.json flat; 3430 step loads read 0xCC8.. (were address 0), pin D_000019E8; the run-183 class is harvested: 1 new true double-add (bootup E9FC, agent-g unit), 5 negated compares in game_uso 591C (agent-g unit), the rest placement / pairing noise._
@@ -44968,3 +44968,33 @@ in s0 and the &D piece still running to block 46, and no append-spelling combina
   same text twice in one marker) race on makedirs / rmtree under parallel jobs (FileExistsError /
   "could not open source file"). Keep the alternatives in each marker distinct. A literal `}` right before
   `@|` or `}@` closes the marker early (write `} @|`).
+
+**4. (kit CLVIII, later in run 190) The int-zero inline lever (kit CXIX / 37348 `z3`) in more bodies.** A float
+store of zero written as `zf(lhs, 0)` with `inline void zf(float &f, int z) { f = z; }` folds int -> float
+only after uopt has chosen its candidates. So that store materialises its own zero instead of joining the
+function's shared 0.0 constant candidate, which shortens or splits that candidate's live range. A quick sweep
+is cheap: wrap every `X = 0.0f;` statement in a donor as `@{X = 0.0f; @|zf(X, 0);}@` and run spelling-grid.
+- game_uso BB8C (NCC): the probe direction's `q.dir.x / q.dir.y` zeros through zf. In the target they use their
+  own f0, while the f20 init and the effect vector share a later f14. 95.58 -> 96.65 standalone, length 1012 ->
+  1008 = target. Then a store-order grid over the local effect record: `w.s = f20 * obj->k2` first, zeros
+  z, y, x: 98.21 standalone. report.json 95.65873 -> 98.28571. Left: the sub pointer in v1 / v0 (target a2),
+  the by-value operator= param temp 8 bytes low (164 vs 172), and f20 / f22 swapped for the double k.
+- post0b 3B9C0: the fallback direction's `d.x / d.z` zeros through zf, z first: 77.84229 -> 78.61649
+  (length 1116 = target).
+- Flat or away: 7C1C (`*out`, `result.y`), 36694, 36F0C (+0.9 but 976 vs 968, away), 3B2EC, 3C43C, 27804.
+- 3558 (the opposite case): `zf(zero, 0)` right after the first call (the target's `mtc1 zero, f20`
+  position) DOES turn `zero` into a real variable with one live range across the calls (one def, every use
+  reads it). But uopt spills it to a home (`swc1 f2, 164(sp)` + reloads) instead of colouring f20: 1028 bytes
+  (away from 1008), 74.19. Decl-order grid (5040) flat. So the f20 zero needs this variable form plus enough
+  priority for a callee-saved FP register. Still open.
+- Small order / de-naming hits from lever-sweep (length unchanged): 36694 (negations y, z, x; fallback zeros y
+  before z) 85.85 -> 86.01; 46050 (`x` de-named into the wrap test) 89.66 -> 89.68.
+- 37540 as NCC (37348 helper recipe: kept Node * inline params, block-scoped ctor push vector, volatile flags
+  via fl()): first cut 76.90 at 756 bytes, vs the cfe NM body's 81.17 at 764, so not landed. The target never
+  forwards a store to a later load on v6C / v90 / v9C / save / vB4 (one escaped 84-byte aggregate, as in the
+  cfe body). `if (0) gl(&v9C, ...)` escapes are dropped by edg (no effect), and a real local struct holding
+  the five vectors grows the body to 892.
+- BB8C follow-up: a lever-sweep bbsplit hit (`if (1) {}` after the effect vector's `w.v.z = 0.0f`) -> report.json
+  98.32539 (length 1008). Declaring / scoping the sub pointer differently (block-scoped, via `M4 *`, getPos
+  non-const) does not move it from v1 / v0 to the target's a2. lever-sweep on the new 2DE0 and 3B9C0 donors finds
+  no hits.
