@@ -316,7 +316,7 @@ def probe(job):
             if c['fn'] not in T and T:
                 cand = [t for t in T if '__' in t and not t.startswith('__sti')] or T
                 subprocess.run(['mips-linux-gnu-objcopy', '--redefine-sym', cand[0] + '=' + c['fn'], o])
-        d = json.loads(subprocess.run(['objdiff-cli', 'diff', '-1', c['target'], '-2', o, '-o', '-', c['fn']],
+        d = json.loads(subprocess.run(['objdiff-cli', 'diff', '-c', 'functionRelocDiffs=none', '-1', c['target'], '-2', o, '-o', '-', c['fn']],
                                       capture_output=True, text=True).stdout)
         Lf = [x for x in d['left']['symbols'] if x['name'] == c['fn']][0]
         Rf = [x for x in d['right']['symbols'] if x['name'] == c['fn']][0]

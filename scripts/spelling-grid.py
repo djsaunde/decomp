@@ -113,7 +113,7 @@ def probe(job):
         if not cand: return choice, -1.0, 0, 'no text symbol'
         subprocess.run(['mips-linux-gnu-objcopy', '--redefine-sym', cand[0] + '=' + fn, obj])
     try:
-        out = subprocess.run(['objdiff-cli', 'diff', '-1', CTX['target'], '-2', obj, '-o', '-', fn],
+        out = subprocess.run(['objdiff-cli', 'diff', '-c', 'functionRelocDiffs=none', '-1', CTX['target'], '-2', obj, '-o', '-', fn],
                              capture_output=True, text=True, timeout=120).stdout
         dj = json.loads(out)
         L = [s for s in dj['left']['symbols'] if s['name'] == fn][0]
@@ -194,7 +194,7 @@ def main():
         if e0:
             print('baseline (all first alternatives) failed to compile/score; compiler output:')
             print(e0); shutil.rmtree(tmp, ignore_errors=True); sys.exit(1)
-        dj = json.loads(subprocess.run(['objdiff-cli', 'diff', '-1', target, '-2', target, '-o', '-', a.fn],
+        dj = json.loads(subprocess.run(['objdiff-cli', 'diff', '-c', 'functionRelocDiffs=none', '-1', target, '-2', target, '-o', '-', a.fn],
                                        capture_output=True, text=True).stdout or '{}')
         tsize = next((int(s['size']) for s in dj.get('left', {}).get('symbols', []) if s['name'] == a.fn), 0)
         tag = '--render' if want else 'first alternatives'
