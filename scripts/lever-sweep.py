@@ -162,6 +162,90 @@ def variants(cmd, L, s0, e0):
                 M = L[:]
                 M[i] = L[i].rstrip() + ' if (1) {}'
                 out.append(('bbsplit line %d: %s' % (i + 1, L[i].strip()[:50]), M))
+    if cmd == 'declmove':
+        lo = s0 + 1 if s0 >= 0 else 0
+        # find function body starts: lines ending with '{' at col 0 containing '(' (for standalone) or s0
+        starts = [s0] if s0 >= 0 else [i for i, l in enumerate(L) if re.match(r'^[A-Za-z].*\)\s*\{\s*$', l) and not l.startswith(('struct', 'typedef', 'inline', 'extern "C" {'))]
+        for st in starts:
+            i = st + 1
+            blk = []
+            while i < len(L) and (DECL.match(L[i]) or L[i].strip().startswith(('/*', '*', '//')) and blk):
+                if DECL.match(L[i]):
+                    blk.append(i)
+                i += 1
+            if len(blk) < 2:
+                continue
+            for a in blk:
+                for b in blk:
+                    if a == b:
+                        continue
+                    M = L[:]
+                    line = M[a]
+                    M[a] = None
+                    if b < a:
+                        M[b] = line + '\n' + M[b]
+                    else:
+                        M[b] = M[b] + '\n' + line
+                    M = [x for x in M if x is not None]
+                    M = '\n'.join(M).split('\n')
+                    out.append(('declmove %d -> %d: %s' % (a + 1, b + 1, line.strip()[:40]), M))
+    if cmd == 'hoist':
+        starts = [s0] if s0 >= 0 else [i for i, l in enumerate(L) if re.match(r'^[A-Za-z].*\)\s*\{\s*$', l) and not l.startswith(('struct', 'typedef', 'inline', 'extern "C" {'))]
+        for st in starts:
+            e = next((i for i in range(st + 1, len(L)) if L[i].startswith('}')), len(L))
+            i = st + 1
+            while i < e and (DECL.match(L[i]) or not L[i].strip()):
+                i += 1
+            for j in range(i, e):
+                l = L[j]
+                m = re.match(r'^(\s+)((?:const\s+|unsigned\s+|struct\s+)*[A-Za-z_][\w:]*(?:\s*\*+\s*|\s+))([A-Za-z_]\w*)(\[[^\]]*\])?\s*(=\s*(.*))?;\s*(//.*|/\*.*)?$', l)
+                if not m or m.group(2).strip() in ('return', 'goto', 'delete', 'else', 'case', 'new'):
+                    continue
+                ty, nm, arr, init = m.group(2), m.group(3), m.group(4) or '', m.group(6)
+                for pos in ('top', 'bottom'):
+                    M = L[:]
+                    d = '    ' + ty.rstrip() + (' ' if not ty.rstrip().endswith('*') else '') + nm + arr + ';'
+                    if init is None:
+                        M[j] = ''
+                    else:
+                        if arr:
+                            continue
+                        M[j] = m.group(1) + nm + ' = ' + init + ';'
+                    if pos == 'top':
+                        M[st] = M[st] + '\n' + d
+                    else:
+                        M[i - 1] = M[i - 1] + '\n' + d
+                    M = '\n'.join(M).split('\n')
+                    out.append(('hoist %s line %d (%s)' % (pos, j + 1, l.strip()[:40]), M))
+    if cmd == 'unlever':
+        lo = s0 + 1 if s0 >= 0 else 0
+        for i in range(lo, e0):
+            l = L[i]
+            for m in re.finditer(r'\s*if \(!?[A-Za-z_0-9]+\) \{\s*\}', l):
+                M = L[:]
+                M[i] = l[:m.start()] + l[m.end():]
+                out.append(('rm if1 line %d: %s' % (i + 1, l.strip()[:50]), M))
+            if re.match(r'^\s*if \(1\) \{\s*$', l):
+                d = 0
+                for j in range(i, e0):
+                    d += L[j].count('{') - L[j].count('}')
+                    if d == 0:
+                        break
+                if d == 0 and L[j].strip() == '}':
+                    M = L[:]
+                    M[i] = ''
+                    M[j] = ''
+                    out.append(('rm if1-block line %d' % (i + 1), M))
+            for m in re.finditer(r'\bvolatile\s+', l):
+                M = L[:]
+                M[i] = l[:m.start()] + l[m.end():]
+                out.append(('rm volatile line %d: %s' % (i + 1, l.strip()[:50]), M))
+            if re.match(r'^\s+[^=()]*\bpad\w*\b[^()]*;', l) and not l.strip().startswith(('//', '/*', '*')):
+                M = L[:]
+                M[i] = ''
+                out.append(('rm pad line %d: %s' % (i + 1, l.strip()[:50]), M))
+            if re.match(r'^\s*\}\s*while \(0\);', l):
+                out.append(('(while0 at %d: manual)' % (i + 1), L[:]))
     return out
 
 
@@ -211,7 +295,7 @@ def init(ctx):
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('cmd', choices=['denaming', 'volatile', 'order', 'bbsplit', 'all'])
+    ap.add_argument('cmd', choices=['denaming', 'volatile', 'order', 'bbsplit', 'all', 'unlever', 'declmove', 'hoist'])
     ap.add_argument('--src', required=True)
     ap.add_argument('--fn', required=True)
     ap.add_argument('--target', required=True, help='target .o, relative to --wt (or absolute)')
