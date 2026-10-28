@@ -14568,6 +14568,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CXLVIII (agent-g 2026-10-28, run 192): **a never-homed parameter register between homed ones is the PAD of an 8-byte-aligned parameter (6126C: union with a double member, a1 = pad); a constant the target holds in an s-register is a direct global store with a literal, not an `int *flag` / `int one` local; a debug event loop as a member function with for(;;) + static long long guard hoists &g2 / 1 like the target (4D688); a value loaded before a DL append was named before the packet (E68); NCC donors of never-returning functions carry an as1 alignment pad in their symbol size (clip = code delta + pad; rm the NM object after a failed clip)**](#kit-cxlviii-agent-g-run-192) -- _No exact; NM 4D688 83.62 -> 96.59, 6126C 84.05 -> 93.81 (484 B, length away, flagged), bootup E68 90.87 -> 93.44, 5A2C4 90.21 -> 90.29 (frame 0xC0), E9FC address decode fix (flat); post0b clip 0x2eac8 -> 0x2eadc; pin D_4D688_g3; negatives 5A2C4 ring temps, 4A890 multi-role, 18F0 found-test shapes, 65EE4 NCC, 6808 field pointer, register-only rest._
 - [kit CL (agent-c 2026-10-28, run 185): **cfe gives every declared local a frame home in declaration order (unused ones too): solve frame / stack-slot residuals by declaring scalars in the target frame's one-word gaps and dropping extras (game_uso 0B3C frame 360 -> 336, raw 172 -> 3 words); split shifts + a named `xl` re-phase the NCC gbi macro ring (gui 4568); NCC named-pointer homes ignore declaration position (1DDC)**](#kit-cl-agent-c-run-185) -- _No exact; 0B3C 99.59 -> 99.83, gui 4568 91.79 -> 96.01; negatives 1DDC / 97EC / 591C / 3558 / 329C / F04 / 3714 / 2DE0._
 - [kit CLII (agent-c 2026-10-28, run 186): **game_uso 7C1C was C++: natural 6A30-class code beats the frame-exact cfe emulation (92.59 -> 95.12); an inline call's pooled return slot stays busy until the end of the full-expression, so a nested call returns through the next slot (`perp(XZ(p) - q)` -> s2 / sp+540); `(const Vec3 &)xz` into a by-value operator=; unnamed booleans land in the uopt spill area**](#kit-clii-agent-c-run-186) -- _No exact; deferred-temp order reversed vs target in every block (edgcpfe difference, no flag fixes it); set() param colours; 8CD8 C++ port lead (s0 vs target's no-s-reg allocation)._
+- [kit CLIV (agent-c 2026-10-28, run 187): **NCC never emits a jump table (4 or 8 dense labels both chain); the run-186 "8CD8 C++ emits the 4-entry table" claim was wrong, kit CXL stands; gui 329C's second MAX pool temp is coloured early by uopt PRIORITY (spr as an inline Spr::prep `this` moves it to t2 -- lead); cfe block-scope locals home below function-scope ones**](#kit-cliv-agent-c-run-187) -- _No exact, no source change; negatives for 329C, 250C8 fontId, 37938, 396FC._
 - [kit CLI (agent-g 2026-10-28, run 193): **cfe literal-spelling decode signals from immediate / `mtc1 zero` counts: a `mul.s` by a held 2.0f is `* 2` (cfe folds `* 2.0f` to add.s), a float store using the compare's zero register is `0.0f` not `0`, `x += a*b*c` gives the target's add / mul operand order; re-run lever-sweep after every decode fix (B75C 90.86 -> 93.31, length = target; 6808 gD de-named 94.24 -> 95.38)**](#kit-cli-agent-g-run-193) -- _No exact; negatives 6126C dispatch copy, E9FC / 6204 prologue (unique), 63964 temp layout, C234 V3 class, 8FC8 iz zeros, E68 split m, 65EE4 literal arg, 4E424 roles, 4C5E4 2.0f._
 - [kit CXLIX (agent-c 2026-10-28, run 184): **`scripts/decode-scan.py` -- project-wide mechanical scan of every <100 NM body for address decode errors (per-site %lo of pin + addend vs the USO target's baked word, by lui dataflow; double-added pins, hold-vs-fold splits, unpinned-symbol pin hints, `SYM + K` on non-zero pins), m2c negated float compares and leftovers; objdiff's fuzzy IGNORES relocated immediates, so address fixes are correctness-only**](#kit-cxlix-agent-c-run-184) -- _No exact, report.json flat; 3430 step loads read 0xCC8.. (were address 0), pin D_000019E8; the run-183 class is harvested: 1 new true double-add (bootup E9FC, agent-g unit), 5 negated compares in game_uso 591C (agent-g unit), the rest placement / pairing noise._
 - [kit LXXXVII (agent-c 2026-10-24, run 148): **alignment survey (negative) + the original-file-start map of game_libs, and three twin / NCC levers** -- no non-exact function in the ROM differs from its target only in nop count or position; units in game_libs start at gl = 4 (mod 16) (16-byte aligned in bootup.uso text), every infinite-loop epilogue sits at gl = 0x14 (mod 32), and the pad words after a final `jr ra` mark 40+ original unit ends (map inside); arcproc 125C EXACT by porting the exact mgrproc 1C90 match_imports C; gl 44CE8 under NCC (pool base rematerialised, the old count carried in the result variable to keep the frame at 32); gl 3E0F0 arg word read before `gl(tmp = o, x)`](#kit-lxxxvii-agent-c-run-148) -- _1 exact (arcproc_uso_func_0000125C, 556 bytes; 76.92 -> 77.00 % code on e5cf258f7); NM: gl 44CE8 91.28 -> 99.53 (new NCC NM donor), gl 3E0F0 93.88 -> 99.90; post0b NM clip unchanged (0x2e928)._
@@ -44565,7 +44566,8 @@ every copy chain and the pooled slots 852 / 540 / 508 without any emulation. Spe
 **3. 8CD8 as C++ (lead, not landed).** The same classes port 8CD8's cfe body (84.24, 14 guards, 4-entry jumptable) in
 ~60 lines (`Vec3 dir = XZ(b->pos) - a->pos;`, `s->v90 = (const Vec3 &)XZ(a->pos);`, `s->v84 += dir * dot;`,
 `return s->v84 - s->w->pos;` with `operator-(const Vec3 &, const Vec3 &)` returning XZ). Standalone 81.36, 2772 / 2836 B:
-our copy sites already match the target's (z -> f2 first, x -> f0), NCC does emit the 4-entry jumptable, but the target
+our copy sites already match the target's (z -> f2 first, x -> f0), [CORRECTED run 187, kit CLIV: NCC does NOT emit the
+4-entry jumptable -- the draft's switch is a `beqz / beq 1 / beq 2 / beql 3` chain; kit CXL stands], but the target
 uses NO callee-saved register (s stays in a1 with `sw a1,532(sp)` / `lw a1` around every alloc call, slot addresses
 rematerialised after calls) while ours puts s in s0 (the missing spill pairs are the 16 words). Removing branch B's pieces
 one at a time keeps s0; `Self *&s` homes it (+49 words). The cfe body gets the target's no-s-reg allocation, so it is
@@ -44573,3 +44575,77 @@ something in the C++ ucode, not the cost model. Next: find which construct makes
 
 **4. Other negatives.** BB8C (95.66): set-param order, ctor without set, named operator* result, friend operator* /
 operator-, set-forwarding operator=, `if (1) {}` after the world statement: flat or worse.
+
+## kit CLIV (agent-c 2026-10-28, run 187): NCC never emits a 4-entry jump table (the run-186 8CD8 claim was wrong; kit CXL stands); gui 329C's second MAX pool temp is coloured early by PRIORITY, not by ucode order; block-scope cfe locals home BELOW the function-scope ones; negatives (250C8 fontId, 37938, 396FC) <a name="kit-cliv-agent-c-run-187"></a>
+
+No exact, no source change. Docs only.
+
+**1. Jump-table verdict: negative. NCC (edgcpfe 7.1) lowers every `switch` to a compare chain.** Kit CLII (run 186)
+said the 8CD8 C++ port "does emit its 4-entry jumptable". It does not. The 2772-byte draft that kit described
+(`/tmp/claude-1000/r186/F2.cpp`, `switch (s->i9C = (s->i9C + 1) & 3) { case 0: ... case 1: ... case 2: case 3: break; }`,
+built with the project's NCC flags `-G 0 -non_shared -Wab,-r4300_mul -O2 -mips2 -32`) disassembles to:
+
+    93c:  30420003  andi  v0,v0,0x3
+    940:  1040000a  beqz  v0,96c
+    944:  ae02009c  sw    v0,156(s0)
+    948:  10410016  beq   v0,at,9a4      (at = 1)
+    950:  24010002  li    at,2
+    954:  1041001d  beq   v0,at,9cc
+    958:  24010003  li    at,3
+    95c:  5041001c  beql  v0,at,9d0
+
+No `sltiu`, no `jr` through a register, no `.rodata` section in the object. None of the run-186 8CD8 drafts (X1, Y1-Y3,
+E1, F1, F2, agg/p8 c_best) has a table. The target has `sltiu at,t8,4; beqz; sll; lui; addu; lw t9,256(at); jr t9`.
+Minimal test (`/tmp/claude-1000/r187/sw.cpp` and the same body as C):
+
+    struct S { char pad[0x9C]; int i; };
+    void sw4(S *s) { switch (s->i = (s->i + 1) & 3) { case 0: f0(); break; case 1: f1(); break;
+                                                      case 2: f2(); break; case 3: f3(); break; } }
+    void sw8(int x) { switch (x) { case 0: ... case 7: ... } }   /* 8 dense labels */
+
+NCC: sw4 = `beqz; beq 1; beq 2; beq 3`, sw8 = an 8-step `beq` chain (no table even for 8 dense labels). cfe: sw4 = the
+same chain, sw8 = `sltiu at,a0,8; beqz; ...; jr t6` with a 32-byte .rodata table. So the run-186 sentence was a
+misreading (most likely the TARGET's table was taken for ours in a side-by-side), and kit CXL's conclusion holds:
+4-entry tables (gl 76F0, game_uso 0B3C / 8CD8, titproc 116C, kernel 1ADC) cannot be produced by any compiler in tools/.
+Keep the phantom-5th-label shape. The kit CLII text is corrected in place.
+
+**2. gui 329C: why the second MAX temp is v1 (target t2) -- zdbug evidence.** `-Wo,-zdbug:5` on the NM donor (parse the
+`>>>active<<<{var|n} LR colour` / `forbidden:` / `- live bb -` blocks):
+- The second pool variable is edg temp M-48 (var 320), which is ALSO the gSPTexture `dl->n++` postfix temp: one LR over
+  BB0 and the rectangle BBs (14..32), colour 2 (v1), forbidden only [v0, s0]. With `next()` for the texture packet the
+  MAX temp becomes a FRESH temp (M-56, first ucode appearance at the yh MAX), still v1, still forbidden [v0, s0].
+- Its neighbours with LOWER ucode bit numbers (the t0 / a0 / a2 LRs of the rectangle's first block) are NOT in its
+  forbidden set, so they were coloured after it: uopt colours this function in PRIORITY order (the dump just lists LRs by
+  bit number). The pool temp carries the refs of four MAX/MIN results, so it ranks just after s0 / v0. The target's
+  t2 means it was coloured after the v1, a0-a3, t0 and t1 neighbours, i.e. it has a lower priority there (more BBs
+  or fewer refs per BB).
+- Lead (not landed): turning `spr` into an edg temp, as the `this` of an inline `Spr::prep(s32 &w_, s32 &h_)` holding
+  `w_ = w; h_ = h; switch (fmt) { case ...: CTX->load(tex, w_, h_); }`, does put the MAX temps in t2 (`move t2,zero`
+  x3) and gives BB0 the target's shape (spr t2, switch value s0, w / h through their homes). But the gSPTexture
+  `this` and the rectangle's CTX then share spr's variable (t2, target s0), and the frame loses a home: 78.78. Attempts
+  to give spr the SECOND temp of its statement (`CTX->prep2(arg0->spr, ...)` with the switch inside a Ctx member,
+  `arg0->getSpr()->prep()`, `CTX->dlp()->nextp()` for the texture packet) fail (67-78).
+- Negatives (all flat 98.76 or worse): x / y / fw / fh declaration orders, `t` removed (98.72), inline `MAXf()`
+  (+4 bytes), `MAX(yl, (s16)0)` (+4), MAX spelled `<` / `!` (95.61, -8 bytes) or with casts (flat), nextp() with a
+  `long` / `unsigned` index, `DL::n` as `long` / `unsigned`, every nextp spelling (flat), pre-increment / re-read
+  next() forms (87-92, +12..+48 bytes), `if (1) {}` at each of the nine statement points of the expanded rectangle
+  macro (flat or worse; note: expanding the macro over several LINES changes as1 scheduling by two words -- keep it on
+  one line when probing), `Spr *const &spr = (Spr *)arg0->spr` (homes the temp, 89.47). lever-sweep all: no hit.
+
+**3. cfe frame homes of block-scope locals.** In gl 250C8 (cfe) moving `u32 fontId` into a `case 1: { ... }` block
+gives it the LOWEST home (sp+44, under every function-scope local) and pushes all function-scope homes up by 4; with
+`pad` removed as well the function-scope homes stay +4 and the uopt temp area moves too. So block-scope declarations are
+homed after (below) the function-scope ones in cfe's frame. The target's fontId is at sp+36, the uopt temp area it
+shares with the `bytesRemaining` spill (sp+36 at the top of the function), so in the target fontId is an unnamed temp.
+But every de-named spelling (`ASYNC_ID(retMsg)` / `ASYNC_ID(asyncLoad->retMsg)` at each use, status call first) is
+612 bytes (target 600): uopt keeps retMsg live and spills the expression twice. `register u32 fontId` is inert.
+lever-sweep all: no hit. The retMsg web colour (target a1 + `move v0,a1`) is unchanged by all of these.
+
+**4. Smaller negatives.**
+- gl 37938 (NCC donor 98.49 standalone, 85 real words + one 8-byte alignment nop = 344 B): splitting the expression
+  (`{ const V3 &d = b - a; arg = d * o->k; }` or a named `V3 d`) reports 340 B but is 84 real words + the nop -- it
+  LOSES the copy chain's `addiu v0,sp,84` -- and the frame shrinks 216 -> 160 (97.04). Not a lead. Spellings of the final `s->m30` argument (`&s->m30`, `(char *)s + 0x30`,
+  a block-local copy, `+ 0`): flat; the target's `lw v1,200(sp); addiu a0,v1,48` is not reproduced. operator* / operator-
+  as friends, named results (`V3 r(...); return r;`), operator= returning `V3 &`: flat or worse.
+- gl 396FC: the residual (`or a0,a3` stolen into the range check's delay slot) re-checked: no arm reads a0 before
+  writing it, so as1's steal is legal in both; the difference is still unexplained (see the function's header).
