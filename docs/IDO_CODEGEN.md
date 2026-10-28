@@ -14592,6 +14592,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLXXXVI (agent-c 2026-10-28, run 204): **fresh eyes on agent-g's set: mgrproc 2B7C advances a3 IN PLACE instead of a held copy (97.69 -> 98.24, length = target); bootup 8BD4 skip test = one `||` expression on an int code + reference-returning V3::add for ctx->acc (97.95 -> 98.83); 3430's step = a uopt-hoisted 0.1f literal (as1 lab reproduces the prologue) re-materialised in f2 where we colour f24; NCC drops dead stores to a local volatile array**](#kit-clxxxvi-agent-c-run-204) -- _No exact; 1824 li-at hoist, E2D0 arg4 candidate, 24B8 C++ port negatives._
 - [kit CXC (agent-c 2026-10-28, run 206): **kit CLXXIX `+ 0` swept over agent-g's usual range: 493AC second-loop `(it.next() + 0)` 96.93 -> 97.18, 8FC8 `new WA + 0` / add() results 91.27 -> 91.44; zero effect in 18 other donors; 6126C copy-type grid (likely a uopt live-range split, not a source copy), 4E424 role grid, 50444 pos-home negatives**](#kit-cxc-agent-c-run-206) -- _No exact._
 - [kit CXCII (agent-c 2026-10-28, run 207): **a register copy in the first compare's delay slot can be a variable assigned from the loop TEST's CSE'd load: top-tested `while ((q = fmt, fmt = q + 1, *q) != 0) { c = *q; if (*q == 'd') ...` (6126C 99.35 -> 99.92); digit-arm, 4D688 old-n, C310 head, 54E78 FP colouring, C234 scale-copy negatives**](#kit-cxcii-agent-c-run-207) -- _No exact._
+- [kit CXCIV (agent-c 2026-10-28, run 208): **6126C EXACT: an un-forwarded temp is a self-referencing update of an earlier-block copy (`(ch = c, c >= '0') && ..` then `ch -= '0'; A = (u8)ch`); cfe `+ 0 * VAR` is zero code but a counted use for uopt colouring priority (`c = *q + 0 * *q`); zdbug:5 adjsave readout**](#kit-cxciv-agent-c-run-208) -- _Exact: gl_func_0006126C._
 - [kit CLXXXVIII (agent-c 2026-10-28, run 205): **a register copy in the FIRST compare's delay slot is the else block's first insn (as1 fills from the branch target): a block-local `u8 d = c` dispatch copy (int copies propagate away) + the range test on c gives 6126C 93.81 -> 99.35 at target length; NCC ignores volatile params; 4C5E4 un-named m78 + folded `0 * mC0` ring phase (87.22 -> 88.48)**](#kit-clxxxviii-agent-c-run-205) -- _No exact; 4E424 / 18F0 / CEB4 / 4A890 / 578B4 / 63964 / 50444 negatives._
 - [kit CLXXVIII (agent-c 2026-10-28, run 200): **37540 ported to C++ from its exact sibling 37348's donor kit (cfe 81.17 -> NCC 93.58, length = target): one inline reads the saved vector and clears x (refs = early stores, return = register), set() + compound `*=` for the store/re-read build; 8CD8 pads worth +0.07, no natural aggregate; 36694 n-CSE diagnosis**](#kit-clxxviii-agent-c-run-200) -- _No exact._
 - [kit CLXXI (agent-g 2026-10-28, run 202): **timproc_uso_b5 32C8 EXACT (1480 B): cfe NM body re-written as NCC on its exact sibling 2B74's donor shape (literal vec constants, rodata pin, `(f32)iz()` zero re-assigned on both alloc paths, cfe decl list); the last 2 colour words fell to a grid of PAIRED `if (1) {}` splits x statement order x line layout**](#kit-clxxi-agent-g-run-202) -- _Run negatives: 4A890 / E68 / 6126C / 18F0 / 65EE4 / 65494 / 578B4 / C310 / 4A308 / E2D0 / 31C0 / C234 / 90CC._
@@ -46817,3 +46818,51 @@ an s / fs register where the target rematerialises it per use: 46050 hoists 0xE4
 const / `+ 0` / `margin[0]`) and E4 operand orders are flat; a named `b3w` for 46050's B3 word before the B4 emit is
 +0.04 (not kept). gui 4568: the only non-register residue is the first MAX arm's delay slot; the last target word is
 past TRUNCATE_TEXT (known).
+
+## kit CXCIV (agent-c 2026-10-28, run 208): 6126C EXACT -- a "subtract into a temp, truncate into the variable" pair is a self-referencing update of a copy (`ch = c` earlier, `ch -= '0'; A = (u8)ch`), and a folded `+ 0 * x` in cfe still counts as a use of x for uopt's colouring priority <a name="kit-cxciv-agent-c-run-208"></a>
+
+_Exact: gl_func_0006126C (492 B, 99.92 -> 100). cfe C body on the build path, no donor._
+
+- **The tell.** Target digit arm `addiu v1,a0,-48; andi s8,v1,0xff` (c - '0' into a free caller-saved
+  register, then truncated into A in s8). Every direct spelling (`A = (u8)(c - '0')`, named block temps
+  `d = c - '0'; A = (u8)d`, `d = c; d -= '0'` in the same block, ...) is forwarded by uopt copy propagation
+  into A's register (`addiu s8,a0,-48; andi s8,s8,0xff`): a single-use temp whose operands are still valid at
+  the use is always substituted.
+- **What is not forwarded:** an update whose expression reads the variable it writes (`x = x - 48`): after the
+  store the expression `x - 48` means something else, so the def keeps its own register. If x's OLD value is a
+  copy of c made in an EARLIER block (`(ch = c, c >= '0') && (c < ':')` in the range test), copy propagation
+  rewrites the read to c (a0) while the def stays ch: `ch -= '0'` emits `addiu ch_reg, a0, -48`, and
+  `A = (u8)ch` is the andi. ch's live range is only the digit arm, so it takes v1 (free there). A copy in the
+  SAME block as the update is folded with it (`ch = c - '0'`, forwarded again).
+- **Colouring priority side effect, and the zero-code fix.** The copy `ch = c` is one more counted use of c
+  (the zdbug:5 dump shows the copy's block with 2 refs even though the copy itself is dead after
+  propagation), which lifts c's `adjsave` from 20 to 23.33 above the `*q` CSE expression's 21: c takes v1,
+  the expression a1, ch a0 (31 diff rows). Reading `*q` in the 'x' test raises the expression to 26 (ch
+  then lands on v1, but that compare reads v1, target a0). The match: a folded `+ 0 * *q` on c's assignment
+  (`c = *q + 0 * *q;`) -- zero code, but uopt counts it as a use of the expression, restoring expr > c with
+  every compare on c. Kit CLXXIX's note that cfe folds `+ 0 * Z` away before uopt is true for its `(int)(Z)`
+  inline-call forms; `0 * VAR` / `0 * *p` still adds a counted reference (also seen with `+ 0 * (c - '0')`,
+  which flipped c above the expression). Use it as a priority lever for two-candidate colour swaps in cfe.
+- **Reading the priorities:** `-Wo,-zdbug:5` with the dump cc prints, per live range, `>>>active<<<{expr|0} LR reg`
+  followed by `adjsave, hasstore: <priority>`, `forbidden: [...]`, the interference list and the per-block ref
+  counts (`- live bb - <bb> <refs> ...`). Comparing two variants' adjsave for the two swapped candidates
+  told directly which reference was flipping the order.
+- **USO jal binding:** the in-unit callee gl_func_00034458 resolved to its real address on the build path
+  (ROM words are `jal 0`); called through a blank alias `gl_func_00034458_6126C = 0x00000000` (pinned).
+- **Negatives this run:** 4A890 NCC donor -- holding the id cursor copy as a pointer later reassigned to the
+  list (`s = ids; end = s + n; ...; s = list`) is copy-propagated away (93.48 flat; the target keeps ids in s0
+  then reuses s0 for &list, and the byte size in s1). timproc_b5 CEB4 -- the D-grey load before the 1.0
+  materialisation in blocks 2/3: negated condition (95.07), a named `one` (flat), else-arm D reads without f
+  (78.95), chained stores (78.08).
+- **Re-scored with `functionRelocDiffs=none` (kit CLXXXIII):** 59E80 NCC donor -- a 4^5 grid over the BA
+  packets' `next()` spellings now prefers plain `next()` everywhere; the run-164 `nextD()` on 0xBA000602 was a
+  CLI-scoring pick (97.86 -> 98.48, length = target). Re-run any `next()`/inline-routing pick made before the fix.
+- **bootup 6808 (cfe, 94.88 -> 95.62):** the last two case-0 attach calls load a1 (obj+0x90 / +0x94) BEFORE a0
+  (the root import): read the field into the existing va / vb locals first. Left there: the target stores the
+  outgoing by-value word (8(sp)) before its home temp (store in the jal delay), ours the other way round; the
+  comma form `f(root, va, (t70.w = D, t70))` is only +0.01.
+- **Negatives (corrected scorer):** zero-lever-grid.py one round over the NCC donors 4F2DC, 50444, 4A890, 4BAF4,
+  48AEC: all flat. Kernel 18F0 (cfe, 89.19): `+ 0 * i` / `+ 0 * found` / `+ 0 * arg3` on the loop bound,
+  the found stores/test and the symbol index: flat (the i / remainder-temp register swap there is not this
+  priority pair). post1b 65EE4 (-Olimit 1 donor): data as `(B) + 0x10` vs `g.data` vs `g.base + 0x10` in the
+  first call: flat (the `lui t; ori a2,t` split is not source-steerable that way).
