@@ -14601,6 +14601,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLXXIX (agent-g 2026-10-28, run 203): **NCC folded `+ 0` on a pointer-valued inline-call result (or the inline's return) re-pools EDG temporaries = zero-code colour lever (41D40 99.61 -> 99.90, 42938 97.44 -> 97.60, gui 3714 96.43 -> 96.51); a `+ 0` site-sweep recipe over 30 NCC donors; negatives 3DF58 / 46790 / 3AE58 / 250C8 / 2D374 / 591C / 97EC / 1DDC / 0B3C**](#kit-clxxix-agent-g-run-203) -- _No exact._
 - [kit CLXXXI (agent-g 2026-10-28, run 204): **`scripts/zero-lever-grid.py` = rerunnable `+ 0` / folded `0 * inline()` / `(&X)[0]` site grid for NCC donors (30 donors: one hit, game_uso 3558 81.66 -> 85.86 via `&p->mtx + 0 * (int)(c.getOut())`); 41D40's last register is an EDG pool-slot merge (bottom array temp reuses the entry index vreg), 3E5E0's spill is the CB-level ctor `this` vreg; 2D374 / 97EC / 3AE58 / 0B3C / 591C / 396FC negatives**](#kit-clxxxi-agent-g-run-204) -- _No exact._
 - [kit CLXXXIII (agent-g 2026-10-28, run 205): **count the by-value copy hops: game_uso 8CD8 87.19 -> 89.48 (XZ return type, `Vec3 dir = xz-expr`, direct-init `XZ e(..)`, `kE0 * (250 * width)`); the report scores with `functionRelocDiffs=none` (CLI default differs on reloc-free cfe units: 30AF4 92.52 report = 91.73 CLI); 30AF4 92.52 -> 93.20 (if / else-if decode, direct fC store, wv/cp order); 3558 x,y,z operator= fixes two copy regions but loses the matrix juggle; 46050 / 454C4 constant-hoist pattern**](#kit-clxxxiii-agent-g-run-205) -- _No exact._
+- [kit CLXXXV (agent-g 2026-10-28, run 206): **corrected-metric re-sweep = 3 `hoist` hits (inner declaration -> function scope: 37540, 8CD8, 7C1C), 0 that the old metric missed, 0 zero-lever-grid hits on 27 NCC donors; two unused `V3` locals set 37540's frame to the target 0xC0; cfe `+ 0 * VAR` counted-use grid automated in-tree (2D374 `if (0 + 0 * i)`, 469A8 `+ 0 * arg1` to target length)**](#kit-clxxxv-agent-g-run-206) -- _No exact; NM 37540 95.72 -> 96.39, 469A8 94.24 -> 95.12, 2D374 99.67 -> 99.77, 8CD8 89.475 -> 89.499, 7C1C 95.239 -> 95.261._
 - [kit CLXXVII (agent-g 2026-10-28, run 202): **NCC `(&x)[0]` re-read = a load uopt will not CSE but ugen still reuses across the fall-through edge: a candidate (v1) becomes the target's ugen temp (t8 / t9); cfe folds the spelling away (NCC-only)**](#kit-clxxvii-agent-g-run-202) -- _EXACT game_libs_func_000307A8 (99.46 -> 100); negatives 41D40 / 97EC / 0B3C / 3AE58 / 46790 / 3DF58 / 37938 / 250C8 / 1DDC._
 - [kit CLXIX (agent-g 2026-10-28, run 201): **fixed lever-sweep `order` re-sweep over 50 bodies: order hits in 4 (2 kept, 2 false positives), bbsplit kept in B75C / C234 / DF14 / kernel 1ADC; a PAIR declaration grid beats single declmove (B75C 93.61 -> 93.93); four `order` false-positive classes (unqualified member / global stores, cast-deref writes, ALL-CAPS call macros); in-tree whole-file grid harness**](#kit-clxix-agent-g-run-201) -- _No exact; 32C8 zero/l134 colour, 578B4 sp50/ra, E2D0, 1ADC, 4C5E4 grids negative; 54E78 / 65494 / 6808-gD hits rejected (length away from / across the target)._
 - [kit CLIX (agent-g 2026-10-28, run 196): **timer-HUD family: the image pointer as the `this` of tiny Img members instead of a named inline local + 3 block pads (13B8 / 16F4 99.43 -> 99.91, 1340 98.47 -> 99.91); `mtc1 zero` count scan finds int-zero candidates: C234 zf (90.77 -> 91.66, length = target), 8FC8 `seti(0, 0, 0)` (90.90 -> 91.27); last 13B8 pair = edg pool-var itab-bit order**](#kit-clix-agent-g-run-196) -- _No exact; 578B4 declmove only 1000 / 13340 done (chunks timed out); 4A308 / 50444 / 63964 / 4B0A8 / 4B620 / 31C0 / 4C5E4 / 55A0 negatives._
@@ -46866,3 +46867,43 @@ _Exact: gl_func_0006126C (492 B, 99.92 -> 100). cfe C body on the build path, no
   the found stores/test and the symbol index: flat (the i / remainder-temp register swap there is not this
   priority pair). post1b 65EE4 (-Olimit 1 donor): data as `(B) + 0x10` vs `g.data` vs `g.base + 0x10` in the
   first call: flat (the `lui t; ori a2,t` split is not source-steerable that way).
+
+## kit CLXXXV (agent-g 2026-10-28, run 206): **re-sweep with the corrected `functionRelocDiffs=none` tools: the `hoist` lever (inner-block declaration -> function scope) gives three same-length NCC gains; two unused `V3` locals set a C++ donor's frame to the target size; the cfe `+ 0 * VAR` counted-use grid (kit CXCIV) automated as an in-tree sweep** <a name="kit-clxxxv-agent-g-run-206"></a>
+
+Agent-c's usual range (game_uso, gui_uso, game_libs_post / post0b below 0x48000). No exact; 5 functions up.
+
+**1. Corrected-metric re-sweep: hit counts.** `lever-sweep.py all` + `declmove` + `hoist` + `unlever` over 34 NM bodies /
+NCC donors at 85-99.95 % (plus 9 more at 70-99.8: 35B1C, 36F0C, 38A28, 396FC, 3B2EC, 3C43C, 40304, 415A4, game_uso 0B3C)
+and `zero-lever-grid.py` over the 27 NCC donors in the list. Hits at length = target: 3, all `hoist`:
+- gl 37540 `V3 vB4;` declared first in the function: 95.72 -> 96.32.
+- game_uso 8CD8 the else-arm `float dot` declared at function scope: 89.475 -> 89.499.
+- game_uso 7C1C the walk's `float m2` at function scope: 95.239 -> 95.261.
+Rejected (length away from target): 2E354 `volatile f32 sp78` / six declmoves (+8 / +12 bytes), 415A4 bbsplit (+4).
+zero-lever-grid: 0 hits on 27 donors. **Old metric vs corrected:** the same sweep re-run with the pre-65b59fb
+lever-sweep (old scoring) flags exactly the same variants (37540 95.61 -> 96.21, 8CD8, 7C1C, the same 2E354 rejects),
+so the corrected metric found **0 hits the old one missed** in this range; the three hoists were simply never run
+on these bodies in their current form (8CD8 / 7C1C changed in run 205). The scores differ (37540 base 95.61 old vs
+95.72 corrected) but the ranking did not.
+
+**2. Frame size from unused class locals (NCC).** 37540's frame was 0xA8 vs the target's 0xC0 (6 words) since run
+200. A `V3` with a user-declared `V3() {}` ctor takes frame slots even when unused (no code); a position grid of
+`V3 p1, p2;` / single pads over every statement line (211 + 666 probes, `lay.py`: objdiff % plus a count of matching
+`(sp)` offsets) put the frame at 0xC0 from several positions; the best (before `V3 v6C;`) is 96.32 -> 96.39, length
+= target. Plain or `volatile int q[N]` arrays do NOT grow the frame in 3B6A0's donor (0x40 vs 0x80; NCC drops them).
+37540 slot map after the frame fix: target vB4 0xB4, hz 0xB0, hy 0xAC, hx 0xA8 (a named home), v9C 0x9C, v90 0x90,
+v6C 0x6C, a 0x64, s 0x60; ours s 0xB0, a 0xAC (declared first), V3s below. Declaring the three V3s (or hz/hy/hx) at
+the top in target order fixes the order but costs code (92.95: an extra by-value temp), and `V3 h` for the saved
+v60 loses 6 points -- the remaining stack rows need the scalars s / a declared after the V3s, which the early uses
+forbid in this source shape.
+
+**3. cfe counted-use grid (`+ 0 * VAR`, kit CXCIV) as a sweep.** `g206/zvar.py SRC FN TARGET auto` reuses
+lever-sweep's in-tree `probe()` (asm-processor + cfe, report metric) and appends `+ 0 * V` for every scalar local /
+parameter at every assignment end and `if / switch / while` condition. gl 2D374: `if (0 + 0 * i) { f(&i); }` (the
+existing dead address-taken guard) 99.67 -> 99.77 at length = target: the t2 / t3 register rows now match, at the cost
+of the frame growing 0x28 -> 0x40 (3 sp rows) -- net up, flagged. gl 469A8: `char *p78 = temp_v1 + 0x78 + 0 * arg1;`
+94.24 -> 95.12 and 408 -> 412 bytes = target (post0b NM clip 0x2eadc -> 0x2eae0). 250C8 (110 probes), 31A74 (168),
+40304 (37): flat; 396FC onward not finished this run (the grid is ~1 s per in-tree probe per thread).
+
+**Negatives:** 0B3C without the phantom `case 4:` (or with `default:`) renumbers every t-register (99.83 -> 94.42;
+the 4-entry table stays out of reach, kit LXXVI); pairwise hoists on 7C1C (153) and 8CD8 (15): all below base;
+multi-name / no-init inner declarations hoisted (7C1C 5, 8CD8 2): flat or worse; 3B6A0 frame pads (73): no change.
