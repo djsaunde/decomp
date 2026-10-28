@@ -14553,6 +14553,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CXXXII (agent-c 2026-10-27, run 183): **jumptable bound-check delay census -- 82 target tables, 0 default heads stolen; 51AD8 / 396FC are the only defaults our as1 steals (needs a second predecessor; 38A28 has default holes); 35B1C is an NCC ctor (vptr + inlined member ctor, frame via p / a3p locals); 37938's symbol excludes its jr delay nop**](#kit-cxxxii-agent-c-run-183) -- _EXACT gl_func_0004EE44 (616 B, addendum 2: route the call's a1 argument through the variable that later holds the post-call reload -- dead-web reuse fixes a "scratch-pick" v0/a1 tie; a new local costs an 8-byte dead home), 81.95 -> 82.03 % code; 35B1C NCC lead 97.13 standalone (t slot + vptr-store order left); 250C8 / 4EE44 / 578B4 / flag / layout negatives; spelling-grid `@}@` typo trap._
 - [kit CXXXIII (agent-g 2026-10-27, run 184): **bootup 63B4 was C++ hiding in a "cfe body lifted under NCC" donor: inline `M3::xf(V3 &)` through `ctx->view->rot` (this-adjust tell), A's stores through an inline `set()`, the `+=` accumulates through an inline `addz()` member (the f14 reload), a POD record declared after exactly three named scalars; lever-sweep hits flip sign after structural changes -- re-run it after each one; 8BD4 (compound-assignment lvalue temps, operator+= members) and 24B8 (cfront virtual slot 13, one pooled s0 temp via inline members) C++ leads; 63964 arm-1 slot map**](#kit-cxxxiii-agent-g-run-184) -- _EXACT func_000063B4 (896 B, 82.05 -> 82.17 % code); new pins bu_63b4_c57c = func_0000057C, func_00000000_63b4_{ff,fpp,pq,p}; 8BD4 C++ 97.65 / 24B8 C++ 93.97 standalone (below their donors, not landed); 63964 / 2840 / E2D0 negatives; spelling-grid `}@|` brace trap. Addendum: timer-HUD family via sprite member objects + inline `Spr::width() { Img *i = img; return i->w; }` and every image read through members (13B8 / 16F4 89.18 -> 99.39, 1340 86.53 -> 98.47, mgrproc 23FC 98.70 -> 99.61 with no volatile pads left) and b5 C310 via an inline `Col::set(int, int, int, int)` (run-time /255 channels, 94.88 -> 95.99, new NM donor); gui 2DE0 frame words 94.54 -> 94.57; 8BD4 C++ port landed once its call returns `unsigned char` (97.77 -> 97.95, pin func_8bd4_c)._
 - [kit CXXXIV (agent-c 2026-10-27, run 174): **EDG for-init iterator lever: `for (Iter it(...); it.next(); )` keeps the init's pooled temps alive, so the entry copy of the condition gets fresh temps off the call-crossing s-register (41D40 99.17 -> 99.26, 49B3C 99.01 -> 99.33, 34890 98.10 -> 98.27); itab `vreg` temps = EDG's inline this / argument / return pool, reused across roles; 37938 boundary deferred (body has a stack-hole-order residual, 4096-combination toggle search negative)**](#kit-cxxxiv-agent-c-run-174) -- _No exact. Negatives: for-init on 493AC / 48AEC / 4B0A8 / 4B620 / 454C4 / 3DF58 and on 49B3C's array loop; 578B4 ra/t0, 250C8 fontId-as-CSE, 5F5F0 else-arm head probes._
+- [kit CXXXV (agent-g 2026-10-27, run 185): **NCC block-entry allocation: a block's named locals are placed at block ENTRY below the enclosing blocks' temporaries, so a nested `{` opened after the statements whose inline temps the target homes above a local group moves those homes (13B8 / 16F4 xoff / xb / x onto the target's 148 / 144 / 136); spill words sit right under the lowest edg slot (4 low = one vreg slot too many)**](#kit-cxxxv-agent-g-run-185) -- _No exact; 13B8 / 16F4 99.39 -> 99.43; deferred (`new` / ref-bound) vs immediate (inline) temps explain the 31C0 / 97EC slot swaps; full lever-sweep pass (6808 94.88 -> 96.00 FLAGGED length, 65494 79.53 -> 80.62, 3558, 7C1C, 90CC, E68, 0B3C, 8CD8, DF14, 1340, 80001ADC). Negatives: 63964 operator grid, 97EC bound-temp spellings, 32C8 zero-store moves, 1340 / 23FC / 2DE0 block placements, dead-local "begin" inlines._
 - [kit LXXXVII (agent-c 2026-10-24, run 148): **alignment survey (negative) + the original-file-start map of game_libs, and three twin / NCC levers** -- no non-exact function in the ROM differs from its target only in nop count or position; units in game_libs start at gl = 4 (mod 16) (16-byte aligned in bootup.uso text), every infinite-loop epilogue sits at gl = 0x14 (mod 32), and the pad words after a final `jr ra` mark 40+ original unit ends (map inside); arcproc 125C EXACT by porting the exact mgrproc 1C90 match_imports C; gl 44CE8 under NCC (pool base rematerialised, the old count carried in the result variable to keep the frame at 32); gl 3E0F0 arg word read before `gl(tmp = o, x)`](#kit-lxxxvii-agent-c-run-148) -- _1 exact (arcproc_uso_func_0000125C, 556 bytes; 76.92 -> 77.00 % code on e5cf258f7); NM: gl 44CE8 91.28 -> 99.53 (new NCC NM donor), gl 3E0F0 93.88 -> 99.90; post0b NM clip unchanged (0x2e928)._
 - [kit LXXXIV (agent-g 2026-10-24, run 155): **colour-pairing levers -- a void alias for a discarded call plus ONE local per register pair** -- gl 68DD4 (98.71, "colours only" for months) fell when the leading discarded K&R call went through a void alias (the dead v0 def pushed every later value one register up, kit IX) AND the two cursor reads were written with two int locals that each carry two roles (A = cursor then q2, B = value then cursor2), mirroring the target's register pairs; scripts/sibling-scan.py at 0.5 plus a longest-common-block scan found no new exact templates in agent-g units; twin NM port b3 13B8 <- arcproc 16F4 (+5.0); 5F984 NM donor takes the 5EB4C/5ED54 param copy; negatives for 5A2C4, D884, C310, BDEC, 2B7C, 23FC, 1824, 5F5F0, 525F0, E2D0, B154](#kit-lxxxiv-agent-g-run-155) -- _1 exact (gl_func_00068DD4, 340 bytes; 76.74 -> 76.78 % code with main's agent-c gains); NM: b3 13B8 80.36 -> 85.41, arcproc 16F4 85.36 -> 85.41, gl 5F984 90.11 -> 92.46 (post0b clip 0x2e904 -> 0x2e90c), gl 51448 95.00 -> 95.56, bootup 24B8 94.87 -> 95.21._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
@@ -43297,3 +43298,140 @@ also fixes the body.
 - kernel_000 func_80001594 (agent-g, same run): in-tree lever-sweep bbsplit `if (1) {}` after
   `e->unk0 = arg0[i].unkC;` 96.62 -> 96.80 (report.json, length unchanged; the in-tree sweep's base reads 96.05,
   so trust only the report).
+
+**kit CXXXIV addendum (same run).**
+- 37938 boundary, measured: adding the delay nop to `gl_func_00037938.s` (size 0x158) leaves the NM object's .text
+  unchanged. In the INCLUDE_ASM object the following `game_libs_func_00037A94` moves 0x363c -> 0x3640, because the
+  1-word `_pad.s` GLOBAL_ASM block is now 8-aligned after the 0x158 block (the pad-sidecar trap from the
+  MATCHING_WORKFLOW recipe). So the fix needs the full recipe: drop `_pad.s`, add `SUFFIX_BYTES_FORCE
+  gl_func_00037938=0x00000000` (plus the NON_MATCHING mirror, and a clip check because the NM layout loses the pad
+  block), then a full expected refresh. Reverted. Still deferred until the body itself is fixed.
+- Coordinator's kit CXXXIII rule (route every access through inline members) on 41D40 (element `c()` / `own()`
+  getters, an `Arr::clear()`) and 3AE58 (`Mesh::ent(i)` / `vert(e)`): 13..57 and 25..36 rows, all worse.
+- Batch lever-sweep over every NCC NM donor in game_libs_post / post0b: hits kept only where the length stays at
+  or moves toward the target and the change is a legal reorder. 33094: swapping the independent stores `b.y` / `b.z`
+  gives 87.00 -> 87.22 in the real NM object, committed. Rejected: 59E80's swap of two `PKT()` packet appends
+  (it reorders DL writes), 3B6A0 / 3BE1C / 36694 de-namings (length moves away from the target), and a 454C4
+  de-naming (+0.004). The 25C54 / 27804 donor hits do not reach the real objects (both are already exact
+  through their build path).
+- 4A9F0 (NCC): a spelling-grid over the put() body (named / unnamed grid root, `base + i` vs `i + base`, indexed vs
+  post-increment copies, idx types, source-pointer spellings) found `cells[i + base]` with the named root: 89.20 -> 89.58,
+  committed. The unnamed root `&(*(G214 **)..)->grid->cells[..]` drops the positional diff count 21 -> 16 but scores
+  87.58 in objdiff. Rank by objdiff, not by counting diff rows.
+- 46790 ring offset (the c/16 shift one slot early, the loop's high-nibble temps one slot late): moving the
+  `(u8)(c & 15)` burner in front of the shift needs a byte cast that folds. `(u8)(c / 16)` puts the shift in t9
+  and fixes the whole loop, but emits a real `andi` (+1 word). Burners that fold away completely (`x * 0`,
+  `(u8)ch` on the u8 parameter, `(... & 0)` in the term, hi / lo named split) emit nothing and burn no slot.
+  Still open; the target needs a zero-emission burner between the `sra` and the `sll`.
+- 48510: the `nv >= max590 - 1` operand order, `(int)` casts and a negated compare all give the same bytes
+  (uopt order); a named `m` changes the length. 4B2F4: computing `flags | 2` without the in-place `|=` costs 8
+  points (90.5); moving the `|=` after the slot read changes nothing.
+- 35B1C (kit CXXXII's "a def used before the vptr store with no code"): `if (p) {}` after the def costs +1 word
+  (308 -> 312). `*(int **)((char *)p + 8) = &D` folds back to 12(s4), and `+ ((int)p - (int)p)` / `+ (p != p)` in the
+  vptr RHS fold before scheduling. All give the same bytes, or are longer.
+- 4E424 (cfe, FP colouring): a 216-combination `#define`-role grid (which variable carries dy / the larger value /
+  the smaller value / the result / dz: y0, x0, x1, y1, z1 or fresh locals) is flat at the current 95.37. The target's
+  dy is f0 and the larger value sits in y0's f14 web, but spelling that directly costs 8 bytes. Trick worth reusing:
+  put the role alternatives on `#define ROLE var` lines, so one spelling-grid marker renames every use consistently.
+
+## kit CXXXV (agent-g 2026-10-27, run 185): NCC block-entry allocation -- a block's named locals are placed at block ENTRY, below the enclosing blocks' temporaries; a nested block opened at the right statement moves homes the 5040-order declaration grids could not (timer-HUD 13B8 / 16F4 99.39 -> 99.43); spill-area rule; negatives <a name="kit-cxxxv-agent-g-run-185"></a>
+
+**Result.** No exact (82.25 % code unchanged). NM (report.json): timproc_uso_b3_func_000013B8 and arcproc_uso_func_000016F4
+99.39412 -> 99.42941 (680 B each, length = target). Commit `a5d7aff61` on agent-g.
+
+**1. The allocation model, read off `-Wo,-zdbug:6` (`isvar M 4 -N vreg` lines = edg frame slots, offset from the frame top).**
+- Function-block named locals come first (declaration order, top-down), then the function block's own inline temps.
+- Each nested block (`if` body, plain `{ }`, loop body) allocates ITS named locals at block entry, then the temporaries
+  of its statements as they are met, then its own nested blocks. A C++ declaration in the middle of a block is still
+  allocated at that block's entry: moving `s32 xoff = ...` down to its first use changes nothing on its own (this is
+  why kit CXXXIII's 5040-order grid and "function / block / nested-block" placement were inert -- they never put a
+  block boundary AFTER the temporaries of earlier statements).
+- So: when the target homes a group of locals BELOW slots that only inline temporaries can explain (the target has
+  N vreg slots between the last function-scope local and the group, yours has the group right under the scalars),
+  open a nested block `{` at the statement where the group starts and close it at the end of the region that uses it.
+  13B8: `{` after `n = count(buf);`, `s32 xoff = ...; s32 xb = ...; s32 xa = ...; s32 x = ...;` inside, `}` after the
+  last draw call: xoff / xb / x homes 164 / 160 / 180 -> 160 / 156 / 148 (target 148 / 144 / 136).
+- The last three words came from three named panel pointers declared at the top of that block
+  (`Spr *pC = &arg0->sC, *pA = &arg0->sA, *pB = &arg0->sB;`, used for the width() calls of xoff and xb -- the
+  objdiff score is flat over which width sites use them, but dropping pB from xoff / xb puts the frame back up).
+  1340 shows the same "three extra words above the block" (count is the first local of ITS nested block: target
+  count / x / pos4 at 0x98 / 0x94 / 0x90); there the same pointers unused give the right relative layout but the
+  frame stays +16 (the nested block keeps one more temp than the target), so 1340 is not landed.
+- Inline-temp pooling (kit CXXXIV) is visible in the same dump: a `this` temp of an inline call in the enclosing block
+  is re-used by the nested block (`ustr` into the same `-N` slot), named inline locals (`Img *i`) are not.
+
+**2. Spill-area rule (ugen).** The spill slots sit directly under the lowest edg slot with ONE hidden word on top: lowest
+local at L -> spills at L-8, L-12, (hidden L-16), L-20 in 13B8 (s1 / s2 / - / a2). If your spills are exactly 4 low
+with the frame equal, you have ONE edg slot too many below your lowest named home -- count the nested block's vreg
+slots in the dump (13B8: 7 `Img *i` + one fresh `this` temp = 8; the target needs 7). Dropping the loop's
+`height()` named pointer (`return img->h;`) fixes the spill words but costs the loop's t0 image-pointer colour
+(98.94 < 99.04), so the extra slot is a fresh `this` temp the target took from the pool.
+
+**3. Left on 13B8 / 16F4 (22 rows):** spill words 4 low (above), the xoff-region int ring one register behind (sC / sA /
+sB image pointers t2 / t0 / t1 vs t3 / t1 / t2: in the coloring order the copy LR of xa's `i` must win t0 first), the
+loop's tim image load v0 vs t0. lever-sweep `all` after the restructure: no hits on either twin.
+
+**4. Negatives (this run).**
+- 63964: operator+ / operator* / operator= spelling grid (free vs member, named result, by-value parameters,
+  `V3 r = a; r += b;`): 36 combinations flat at 99.8929; the arm-1 slot map is the vreg-before-T2 problem of kit
+  CXXXIII and needs the block model above, not operator spellings.
+- 97EC: e / f bound temporaries -- nested block for f (99.75), `XZ e = ...` copy-init (same bytes), named `Vec3 d`
+  for either initializer (92.5 / 99.68), by-value operator* / XZ(Vec3) / operator-(Vec3) (90.9 / 83.0 / 95.2),
+  declaring e and f in one declaration (same bytes). The dump shows the three temps (f-bound, T1, e-bound) in the
+  ENCLOSING if-block's list, above e / f; the target has them in creation order.
+- 32C8 (cfe): moving the v104 zero stores before vF8 / uE8, `0.0f` literals, `if (1) {}` moves: 96.5-96.6 (< 99.52).
+- 1340 / 23FC with the nested-block lever: 1340 flat (98.18, frame +16 or +8), 23FC flat or 2 rows worse at every
+  block start between `t = ...` and the digit loop (its homes are already the 5040-grid optimum).
+- gui 2DE0: `{ Spr *spr = ...; s32 w = ...` after the gSPTexture statement puts w under the first statement's 5 temps
+  (frame 64 -> 80; target 104 needs 10 words above w) -- the remaining 4 words are not the first statement's.
+- Timer-HUD "begin" inlines with a named local (`void bs() { Spr *s = this; f(s); }`) or a dead `Img *i = img;` move
+  the spill words / ring toward the target (13B8 sC 99.23 standalone, 1340 98.28) but are dead code -- not landed.
+
+**kit CXXXV addendum (same run): deferred vs immediate temporaries, more negatives.**
+- Two kinds of edg slots show up in the `-zdbug:6` M list. Inline-expansion temps (`this`, inline locals, the pooled
+  return slot) are placed when met, in creation order. `new`-expression temps and temporaries bound to a
+  `const T &` constructor parameter are DEFERRED: they go on the enclosing block's list (prepended) and land right
+  under that block's named locals, in reverse creation order. 31C0: our KB new-temp sits at 116 above the Obj2
+  new-temp T (112) because both are deferred (list KB, T); the target has T at 116 and KB at 104 under the inline
+  Obj ctor's `this` (108) -- its KB temp was placed when met. 97EC is the same pattern: our deferred list puts
+  f-bound / T1 / e-bound at 204 / 192 / 180, the target has them in creation order. A static inline
+  `KB::make(o, a)` factory, a member `operator new` on KB, or `{ }` around the case body all leave the KB temp
+  deferred (31C0 flat at 9 rows); inline helpers returning the 97EC initializers (`vd(a, b, k)`, `pd(s)`) add the
+  return copies (944 / 968 B). The construct that makes these temps "immediate" is still unknown -- that is the open
+  question for both functions.
+- 1DDC: the two block-local references of arm 1 (`const M4 &mm`, `Out *o`) are named slots (+8 bytes); the
+  target's arm-1 region is 2 words smaller and its else arm holds a real `V3 e` (the current donor's `int e = 0`
+  compensates). Every spelling that removes the named references (direct `a0->src->mtx.getPos(m)`, `Body *b`,
+  `c.getOut()->goal.set(m)`, `c.out->goal.set(m)`, each with `V3 e` restored) loses the matrix-pointer colours
+  (99.52-99.84 < 99.97).
+- gui 4568 / 0F04 / 2DE0 share the gSPScisTextureRectangle MAX residue: the target keeps the MAX results in one
+  pool variable coloured t0 / a0 / s0, ours in v1. MAX / MIN as inline functions (plain, named result, if-return):
+  76-83 (< 91.79). 2DE0 with the w / h block after gSPTexture plus 1-5 dummy initialised locals reaches the target
+  frame (104) but not the s0 pool colour (size stays 1208 vs 1212), so its frame words are not the lever there.
+- (same run, late) Slot-reservation corollary: a function-scope local that is only ever register-coloured does NOT
+  reserve frame (C310: moving `char *e; Spr *hud;` or any other two register-only locals to the top in place of the
+  two volatile words shrinks the frame 200 -> 192, 95.83 -> 95.75), and statements before a nested block whose only
+  temporaries are compound-assignment lvalues (C310's `--*(s32 *)(arg0 + 0x2C0)`) add no slots either -- so a frame
+  word ABOVE all named locals cannot come from those; the C310 volatile pair stays. Trivial accessors
+  (`s32 width() { return w; }`, `format()`, `texture()`) and a nested `cellw() { return width() / 12; }` are fully
+  folded by edg (no this temp, no slot): only inlines with a named local or a computed object create temps.
+- (same run, end) lever-sweep pass over every agent-g NM body, re-sweeping after each kept hit (the CXXXIII rule held:
+  7C1C's second and third rounds found hits the first did not): 7C1C 92.53 -> 92.59 (load-pair swaps, `hit = 1`
+  before a call -- local, not address-taken -- and one load after a `p->y` store where p is `&mB` or a fresh
+  allocation), 3558 78.81 -> 79.09 (matrix-row sums k / t / mag), 6808 94.88 -> 96.00 (gD de-named like run 182's
+  gE + two global stores swapped; FLAG: length 2380 -> 2372 vs 2376, same distance), 90CC 99.247 -> 99.259 (BB
+  split), E68 / 0B3C / 8CD8 / DF14 / 1340 +0.005-0.04. Not taken: load-before-store swaps without a no-alias reason
+  (E68 `buf[]` vs the screen-width global), a member store moved past a virtual call (76F0), length-away hits
+  (B75C +0.72 at 2092, 591C +0.10, 3558 bbsplit / volatile, 8CD8 bbsplit).
+  Late in the run: gl 65494 (cfe) 79.53 -> 80.62 by loading the next node before the `it[1]` store (`it` is a
+  non-escaping local array -- the no-alias reason), kernel 80001ADC 50.59 -> 52.46 (BB split, length 444 -> 448
+  toward 536; the body is still a structural mis-decode 88 bytes short).
+- (same run, last) 13B8 7-item permutation grid inside the nested block (three panel pointers + xoff / xb / xa / x,
+  5040 probes): the landed order is the maximum (99.0412 standalone). 1340: a 1440-probe grid over the nested
+  block's declarations finds 98.1933 (> 98.1807) WITHOUT the volatile word, but only with the three panel pointers
+  declared and never used (dead initialised locals = a disguised pad; using them for the width() calls costs 976-988
+  bytes) and frame 0x160 vs 0x150 -- not landed. 1DDC else-arm declaration grid (720, `Ctx c` included) and 63964
+  declaration grids: current orders are the maxima.
+- (same run, final minutes) declaration-order grids: gui 2DE0 `s32 h, w` (5040 probes, 94.568 -> 94.591 report),
+  mgrproc 23FC `n / x / min / sec` (720, 99.610 -> 99.617), 3558 `e, stage, w, t, k, zero, pad1, mag` (720,
+  79.09 -> 79.22); flat: 8BD4, 97EC inner floats, 31C0 function locals, C310, 13B8 function-scope arrays.
