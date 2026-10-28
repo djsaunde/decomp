@@ -14590,6 +14590,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLXXXII (agent-c 2026-10-28, run 202): **33094 as real C++ on the 432BC V3 kit: `set(f32, f32, f32)` with member-expression arguments = the target's load-all-then-store order (edg evaluates arguments right to left), by-value operator= + `*=` / `+=` body-order grid (87.65 -> 93.62, length = target); 35B1C is a C++ ctor (data member with a ctor = cfront `new(4)` protocol, by-value operator==) matching every word but the vtable-store slot; 3DF58 unconstrained LRs coloured in bit order; negatives**](#kit-clxxxii-agent-c-run-202) -- _No exact._
 - [kit CLXXXIV (agent-c 2026-10-28, run 203): **faithful as1 lab = `NCC -S` listing -> as0 -> as1 by hand WITHOUT the driver's `-noglobal` (a plain `cc -c x.s` skips as1's reload elimination); with it, no order / label / `.loc` split of 35B1C's ugen block gives the target's vtable-store slot (only a `li at,-4` in an earlier block does, which ugen never emits) = capped; 33094's a-temp FP colours follow the inline parameter declaration order**](#kit-clxxxiv-agent-c-run-203) -- _No exact; corrects kit CXXXII's as1-input claim; 3AE58 pick() negatives._
 - [kit CLXXXVI (agent-c 2026-10-28, run 204): **fresh eyes on agent-g's set: mgrproc 2B7C advances a3 IN PLACE instead of a held copy (97.69 -> 98.24, length = target); bootup 8BD4 skip test = one `||` expression on an int code + reference-returning V3::add for ctx->acc (97.95 -> 98.83); 3430's step = a uopt-hoisted 0.1f literal (as1 lab reproduces the prologue) re-materialised in f2 where we colour f24; NCC drops dead stores to a local volatile array**](#kit-clxxxvi-agent-c-run-204) -- _No exact; 1824 li-at hoist, E2D0 arg4 candidate, 24B8 C++ port negatives._
+- [kit CLXXXVIII (agent-c 2026-10-28, run 205): **a register copy in the FIRST compare's delay slot is the else block's first insn (as1 fills from the branch target): a block-local `u8 d = c` dispatch copy (int copies propagate away) + the range test on c gives 6126C 93.81 -> 99.35 at target length; NCC ignores volatile params; 4C5E4 un-named m78 + folded `0 * mC0` ring phase (87.22 -> 88.48)**](#kit-clxxxviii-agent-c-run-205) -- _No exact; 4E424 / 18F0 / CEB4 / 4A890 / 578B4 / 63964 / 50444 negatives._
 - [kit CLXXVIII (agent-c 2026-10-28, run 200): **37540 ported to C++ from its exact sibling 37348's donor kit (cfe 81.17 -> NCC 93.58, length = target): one inline reads the saved vector and clears x (refs = early stores, return = register), set() + compound `*=` for the store/re-read build; 8CD8 pads worth +0.07, no natural aggregate; 36694 n-CSE diagnosis**](#kit-clxxviii-agent-c-run-200) -- _No exact._
 - [kit CLXXI (agent-g 2026-10-28, run 202): **timproc_uso_b5 32C8 EXACT (1480 B): cfe NM body re-written as NCC on its exact sibling 2B74's donor shape (literal vec constants, rodata pin, `(f32)iz()` zero re-assigned on both alloc paths, cfe decl list); the last 2 colour words fell to a grid of PAIRED `if (1) {}` splits x statement order x line layout**](#kit-clxxi-agent-g-run-202) -- _Run negatives: 4A890 / E68 / 6126C / 18F0 / 65EE4 / 65494 / 578B4 / C310 / 4A308 / E2D0 / 31C0 / C234 / 90CC._
 - [kit CLXXIII (agent-g 2026-10-28, run 203): **range-wide exact-sibling map (bytes x gap x ratio) is sparse: every pair >= 0.58 (D884/D14C, DF14/D550, 4B0A8/4E244, E2D0/63F34, 4A308/46DC0) is already ported and capped; 54E78 94.25 -> 98.22: a first-declared aggregate always sits at frame - 12 (needs a 4-byte home declared before it), and a literal 1.0f CSE's with folded i1() constants into one register**](#kit-clxxiii-agent-g-run-203) -- _No exact; lever sweeps over 15 donors saturated; 4A308 spill-slot probes negative._
@@ -46511,3 +46512,52 @@ Negatives this run (no exact):
 - 1DDC (99.97): a distinct final product temp (`a0->vel -= diff * sel`, `{ V3 e = ...; }`) gives the target's
   separate sp+328 slot but grows the frame by 8; a 144-cell declaration-order x `int e` position grid and dropping
   the two reference-block homes do not recover the 8 bytes (best 99.91).
+
+## kit CLXXXVIII (agent-c 2026-10-28, run 205): a register copy in the FIRST compare's delay slot is the else block's first insn -- block-local `u8 d = c` dispatch copy (6126C 93.81 -> 99.35, 484 -> 492 bytes = target); negatives on 4E424 / 18F0 / CEB4 / 4A890 / 578B4 / 63964 / 50444 / 4C5E4 <a name="kit-clxxxviii-agent-c-run-205"></a>
+
+**The tell.** In an if / else-if dispatch chain, the target's first `bne vN,at,ELSE` carries `or aK,vN,zero` in its
+delay slot, and every later test of the chain reads aK (`bnel aK,at` for the second one). as1 fills a plain
+branch's delay slot with the first instruction of the branch TARGET when that instruction is harmless on the
+fall-through path (the then-arm overwrites aK right away), and retargets the branch past it (the ELSE label
+then sits on the `addiu at,zero,K2`). So the copy is the first statement of the else block, not a copy at the
+loop head.
+
+**Spelling (gl_func_0006126C, printf-style formatter).** `if (c == 'd') {...} else { d = c; if (d == 'x') ... else
+if (d == 'f') ... else if ((c >= '0') && (c < ':')) { A = (u8)(d - '0'); ... } else ... }`:
+- `int d = c` (or a reused int / char * parameter, or `if (1)` around the copy, or `(d = c) == 'x'` in the condition) is
+  copy-propagated away: same 484-byte code as with no copy.
+- `u8 d` keeps it (the int -> u8 conversion is not a plain copy): d colours a0, the 'x' test turns into the
+  target's `bnel a0` with the 102 constant duplicated in its delay slot (+4 bytes), and the target length is reached.
+- The range test must read `c`, not d: that keeps c live past the copy, so c (v1) and d (a0) do not coalesce.
+  With all tests on d, d and c share one register (`andi v1,a1,0xff`, 488 bytes).
+- `s16 d` also reaches 492 bytes, but by coincidence (sll in the delay slot + a later sra), 95.10.
+- Left: the copy is `andi a0,v1,0xff` where the target has `or a0,v1,zero` (every no-op conversion I tried propagates;
+  every conversion that survives emits an extension), the range test on v1 (target a0), and the digit value goes
+  straight into s8 (target via v1).
+
+**Negatives this run (all spelling-grid, standalone, calibrated against the in-tree NM):**
+- 4E424 (95.37): all three subtractions written back into their parameters (x1 -= x0, y1 -= y0, z1 -= z0, then min /
+  mid in x0 / y0, max in zero) is 79 at 212 bytes; the current named-`b` shape stays the best.
+- kernel 18F0 (89.19): the peel's `bnezl found` + `b next` layout does not respond to nested vs continue skips,
+  `goto` to the store, `switch (found)`, `found != 1`, the `found` assignment as an expression or nested ifs,
+  `&= ~8` / `0xFFFFFFF7U` / `-9` mask spellings, or `&syms[i]` vs `syms + i` vs byte arithmetic. Every variant gives
+  identical code (89.19), so cfe / uopt normalise all of them.
+- timproc_b5 CEB4 (97.13): the empty then-arm that keeps `bc1f else; b join` -- negated conditions, `{}` else, goto
+  forms, and `f = 1.0f` / `a1 = a1` / `pad[0] = pad[0]` / `v[3] = v[3]` / all-four `v[i] = 1.0f` then-arms all fold to
+  `bc1t` or keep a store; only `v[0] = v[0]` / `v[1] = v[1]` / `v[3] = v[0]` / `pad[0] = 0` hold the shape (with a store).
+- 4A890 NCC donor (93.47): an id-cursor copy `s = ids` reused as the list pointer (`s = list` inside the if and after
+  it), and a non-volatile size: inert or worse (the target's s0 / s1 split does not appear).
+- 578B4 NCC donor (99.95): `(&arg2)[0] & 0x1FF`, `FW((&sp50)[0], 4)`, `(&FW(sp50, 4))[0]` and a 4-statement permutation
+  of the post-call DL-append lines do not swap the t0 / ra pair (kit CLXXVII's `(&x.f)[0]` does not reach a spill
+  reload's colour).
+- 63964 NCC donor (99.96): member vs free operator* / operator+, `V3 r; r.x = ...; return r;` bodies, a direct ctor
+  (no set()), and `n * va.y + va` / `va + va.y * n` / an explicit `V3 t = n * va.y` temp do not move X / T1 / T2 (8 / 12
+  bytes high).
+- 50444 NCC donor (91.83): NCC ignores `volatile` on a parameter (`float *volatile pos` gives the same code); an
+  `if (0) f(&pos)` escape homes EVERY parameter and drops s0 (+12 bytes).
+- 4C5E4 NCC donor (86.87): reading `m78` at both uses (no named `m`) makes the else arm word-for-word the target up to
+  registers (`lw a0,120(s0)`, `andi a3,a0,4` in the beqz delay, 836 bytes = target) but shifts the ugen ring by 3
+  from the first flag test on, so it scores 78.1. A folded `(m78 + 0 * mC0) & 4` re-phases the ring (KEPT: report 87.22 ->
+  88.48, objdiff diff 86.87 -> 88.12, length unchanged). The phantom's member load is CSE'd with the later mC0 stack-arg load and
+  hoisted into t5, so the sub load takes t4 (target t5). Phantoms on m104 / mB8 / m78 / mBC score 87.95 - 88.07, and
+  on `this` / `sub` / idx / m1B0 / mC4 they leave the shift. Moving the phantom into the sb / pf definitions is inert.
