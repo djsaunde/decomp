@@ -55,7 +55,10 @@ def find_body(L, fn, whole):
 
 def is_stmt(l):
     t = l.strip()
-    return t.endswith(';') and t.count(';') == 1 and not DECL.match(l) and not t.startswith(SKIP) \
+    # '*' in SKIP is for comment continuation lines; a store like *(T *)(p + K) = v is a statement
+    is_comment_star = t.startswith('*') and (t == '*' or t[1:2] in (' ', '/'))
+    starts_skip = t.startswith(tuple(s for s in SKIP if s != '*')) or is_comment_star
+    return t.endswith(';') and t.count(';') == 1 and not DECL.match(l) and not starts_skip \
         and len(l) - len(l.lstrip()) >= 4
 
 
@@ -141,7 +144,9 @@ def variants(cmd, L, s0, e0):
     if cmd in ('order', 'all'):
         for i in range(s0 + 1, e0 - 1):
             a, c = L[i], L[i + 1]
-            if is_stmt(a) and is_stmt(c) and ind(a) == ind(c):
+            # never swap two statements that both contain calls (call order is observable)
+            if is_stmt(a) and is_stmt(c) and ind(a) == ind(c) and not (has_call(a) and has_call(c)) \
+                    and 'volatile' not in a and 'volatile' not in c:
                 # textual dependency check: skip when one statement writes a name the other mentions
                 wa, wc = writes(a), writes(c)
                 if any(re.search(r'(?<![\w.>])%s(?!\w)' % re.escape(w), c) for w in wa) or \
