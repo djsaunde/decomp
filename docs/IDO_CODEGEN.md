@@ -14589,6 +14589,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLXXX (agent-c 2026-10-28, run 201): **sibling map over the agent-c range; the exact 64388 V3 kit (P3 base, set() ctor, free const-ref operators, named k) on 36694 (86.01 -> 90.67, length = target) and an operator-body ORDER grid inside one-line inline members (37540 += / ctor z, y, x: 93.58 -> 95.72; 3558 operator= z, y, x + += x, z, y: 79.23 -> 81.66); negative-result list**](#kit-clxxx-agent-c-run-201) -- _No exact._
 - [kit CLXXXII (agent-c 2026-10-28, run 202): **33094 as real C++ on the 432BC V3 kit: `set(f32, f32, f32)` with member-expression arguments = the target's load-all-then-store order (edg evaluates arguments right to left), by-value operator= + `*=` / `+=` body-order grid (87.65 -> 93.62, length = target); 35B1C is a C++ ctor (data member with a ctor = cfront `new(4)` protocol, by-value operator==) matching every word but the vtable-store slot; 3DF58 unconstrained LRs coloured in bit order; negatives**](#kit-clxxxii-agent-c-run-202) -- _No exact._
 - [kit CLXXXIV (agent-c 2026-10-28, run 203): **faithful as1 lab = `NCC -S` listing -> as0 -> as1 by hand WITHOUT the driver's `-noglobal` (a plain `cc -c x.s` skips as1's reload elimination); with it, no order / label / `.loc` split of 35B1C's ugen block gives the target's vtable-store slot (only a `li at,-4` in an earlier block does, which ugen never emits) = capped; 33094's a-temp FP colours follow the inline parameter declaration order**](#kit-clxxxiv-agent-c-run-203) -- _No exact; corrects kit CXXXII's as1-input claim; 3AE58 pick() negatives._
+- [kit CLXXXVI (agent-c 2026-10-28, run 204): **fresh eyes on agent-g's set: mgrproc 2B7C advances a3 IN PLACE instead of a held copy (97.69 -> 98.24, length = target); bootup 8BD4 skip test = one `||` expression on an int code + reference-returning V3::add for ctx->acc (97.95 -> 98.83); 3430's step = a uopt-hoisted 0.1f literal (as1 lab reproduces the prologue) re-materialised in f2 where we colour f24; NCC drops dead stores to a local volatile array**](#kit-clxxxvi-agent-c-run-204) -- _No exact; 1824 li-at hoist, E2D0 arg4 candidate, 24B8 C++ port negatives._
 - [kit CLXXVIII (agent-c 2026-10-28, run 200): **37540 ported to C++ from its exact sibling 37348's donor kit (cfe 81.17 -> NCC 93.58, length = target): one inline reads the saved vector and clears x (refs = early stores, return = register), set() + compound `*=` for the store/re-read build; 8CD8 pads worth +0.07, no natural aggregate; 36694 n-CSE diagnosis**](#kit-clxxviii-agent-c-run-200) -- _No exact._
 - [kit CLXXI (agent-g 2026-10-28, run 202): **timproc_uso_b5 32C8 EXACT (1480 B): cfe NM body re-written as NCC on its exact sibling 2B74's donor shape (literal vec constants, rodata pin, `(f32)iz()` zero re-assigned on both alloc paths, cfe decl list); the last 2 colour words fell to a grid of PAIRED `if (1) {}` splits x statement order x line layout**](#kit-clxxi-agent-g-run-202) -- _Run negatives: 4A890 / E68 / 6126C / 18F0 / 65EE4 / 65494 / 578B4 / C310 / 4A308 / E2D0 / 31C0 / C234 / 90CC._
 - [kit CLXXIII (agent-g 2026-10-28, run 203): **range-wide exact-sibling map (bytes x gap x ratio) is sparse: every pair >= 0.58 (D884/D14C, DF14/D550, 4B0A8/4E244, E2D0/63F34, 4A308/46DC0) is already ported and capped; 54E78 94.25 -> 98.22: a first-declared aggregate always sits at frame - 12 (needs a 4-byte home declared before it), and a literal 1.0f CSE's with folded i1() constants into one register**](#kit-clxxiii-agent-g-run-203) -- _No exact; lever sweeps over 15 donors saturated; 4A308 spill-slot probes negative._
@@ -46398,3 +46399,54 @@ tie is the crux; nothing found that creates the constant candidate earlier.
   falls to 2 (adj 4.5) and it outranks zero (f0); adding a second split after `a.set()` drops 2.0 to adj 3, which
   then loses the tie to n.x (f2). The target needs 2.0 strictly between 3 and zero's 4 -- not reachable with
   split placement alone (both lengths also move: 548 / 560). Row-0 statement permutations (24): flat.
+
+## kit CLXXXVI (agent-c 2026-10-28, run 204): fresh eyes on agent-g's game_libs.c / titproc / mgrproc / bootup 8BD4-55A0-24B8-E2D0 set: 2B7C advances its pointer IN PLACE (97.69 -> 98.24, length = target), 8BD4's skip test is one `||` expression and acc uses a reference-returning add (97.95 -> 98.83); 3430's step load is a hoisted 0.1f literal (as1 lab); negatives <a name="kit-clxxxvi-agent-c-run-204"></a>
+
+No exacts. Two NM gains (report.json): mgrproc_uso_func_00002B7C 97.69 -> 98.24, func_00008BD4 97.95 -> 98.83.
+
+**1. mgrproc 2B7C case 1: the "held" copy is the pointer itself advanced.** Target: `addiu v0,a3,0x490; lw a0,0x568(a3);
+jal D108; sw v0,92(sp)` then `lw v0,92(sp); addiu a2,v0,16`. Every separate `held = a3 + 0x490` spelling (plain,
+volatile, `char *volatile`, `held + 0xD8` for the call argument, assignment inside the argument) folds `held + 0x10`
+back to `a3 + 0x4A0` and spills a3 instead (692 words, target 696). `a3 += 0x490; D108(*(int *)(a3 + 0xD8));
+E608(.., a3 + 0x10)` gives the length and the v0/home-92 spill pair (the call argument still reads `216(a3)` after the
+add where the target reads `0x568` off the old base; reading the argument first / `held = a3; a3 += ..` are worse).
+The loop's counter / glyph s0<->s1 swap survives this, every loop spelling (subscript temp inline, `*s1++`,
+increment order, `<` vs `!=`) and dead `while (0)` ref boosts (all -0.3).
+  Under NCC, 2B7C's `volatile f32 one[4]` (four 1.0f stores, never read) is dead-store-eliminated entirely -- NCC
+drops stores to an unread local volatile ARRAY; four volatile scalars keep them (cfe keeps both).
+
+**2. bootup 8BD4 (NCC donor): one `||` expression for the 0x61/0x62/0x63 skip.** `skip = code == 0x61 || code ==
+0x62 || code == 0x63;` with `int code` (the call alias still returns unsigned char) is the target's `xori a0,v0,0x61;
+sltiu v1,a0,1; bnez v1; or a1,v0,zero / xori v0,v0,0x62 / xori v1,a1,0x63` chain word for word (the three `if (!skip)`
+statements kept the code in v0 and copied it to a0). Then `ctx->acc` accumulated through an inline `V3 &add(const V3
+&)` (returns *this) at both sites: the acc lvalue temp takes v0 with the target's `lwc1 0x93C; lwc1 0x940; addiu
+v0,v0,0x93C` order. A reference-returning `+=` on `ctx->vel` gives that block's target `this` in a0 too, but grows
+the frame by 8 (184 -> 192) -- left; also left: the second scaledBy result 16 bytes high. Operator-body orders,
+`this` copies, by-value args and inner-scope declarations of the two V3 results: flat or worse.
+
+**3. game_libs 3430: the step value is a uopt-HOISTED 0.1f literal (as1 lab).** Faithful lab (kit CLXXXIV) on the
+cfe `-S` listing of the current body: moving the single `l.s $f2` (step) to just after the preheader's `li $18,255`
+(after `li.s $f22,1.0` / `li.s $f20,10.625`) reproduces the target's first 22 words exactly (step load after the EC
+store, both constants inside the save sequence). That is where uopt puts a loop-invariant literal it hoists LAST,
+so the original wrote `0.1f` inside the loop; the four 0.1f words at .rodata 0xCC8/0xCEC/0xCF0/0xCF4 are ugen's
+re-materialisations of that one constant after the calls in cases 6/7/8 (uopt split its live range and gave it
+caller-saved f2). Every literal spelling here (`0.1f + x`, `x += 0.1f`, block-local `st = 0.1f`, `if (1) {}`)
+colours it callee-saved f24 instead (+sdc1/ldc1, frame 72): the residual is uopt's f24-vs-remat decision, not
+statement order. Externs stay the best (97.52).
+
+**4. Negatives / caps confirmed.**
+- mgrproc 1824 (98.52): the only non-table word is `li at,1` of the outer switch's `beq v0,1` macro -- as1 hoists it
+  above the `beqz v0` (into the 0x7EC increment block); the target keeps it after. Lab: the unedited listing, a label
+  or a `.loc` before the second `beq`, the increment after the switch load, an explicit `li $1,1`: all hoist.
+  Source forms of the increment (`+=`, `++`, comma, `if (1) {}`, value read first): identical.
+- E2D0 (99.54): the zdbug:6 trace shows `if (arg4) {}` makes arg4 a uopt candidate coloured 27 = f14 (after dot f0,
+  lim f2, -lim f12); without it arg4 is a ugen temp but 1.0f is materialised first (target: arg4 temp f16 loaded
+  first, 1.0 f8). Empty-test positions, `arg4 + 1.0f`, `(1.0f + arg4) * dot`, a pre-computed scale at four
+  positions: flat or worse. A C++ (NCC) body: 84.5.
+- bootup 24B8 as C++ with real virtual calls (`Del::on` at vtable slot 12 = 0x68/0x6C): 82.7 -- edg lowers each
+  `cam->fov += 2.0f` through an `&fov` pointer temp like the target, but as an unnamed v0 temp, not the multi-role
+  s0 variable; the cfe body under NCC 95.7 (cfe 97.05). Reloading cfg only at the end of each then-block: flat.
+- titproc 116C / game_libs 76F0: a 4-label switch under NCC (edg) does not table either (cfe/NCC, labels 0..3 or
+  1..4, with default); 76F0's 0x534..0x550 store permutations (120): best = current.
+- 2840: two-float struct `{z, x}`, `f32 d[2]`, struct pair, `f32 &` aliases of sp3C / sp38 under NCC: all worse
+  (struct members are register-promoted and spilled to the low spill area like scalars).
