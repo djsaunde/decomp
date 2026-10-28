@@ -50,6 +50,9 @@ def parse(text):
     for mk in markers:
         if any('@{' in s or '@[' in s or '}@' in s or ']@' in s for s in mk['alts']):
             sys.exit(f'nested marker inside {mk["label"]}: markers cannot nest; use named groups @{{=NAME ..}}@ instead')
+    for mk in markers:
+        if any(s.rstrip().endswith('@') for s in mk['alts']):
+            sys.exit(f'{mk["label"]}: an alternative ends in "@" (typo "@}}@" for "}}@" or "@]@" for "]@"?)')
     if any('@{' in c or '@[' in c or '@|' in c or '@;' in c for c in chunks):
         sys.exit('unbalanced marker: a stray @{ @[ @| or @; is outside any complete marker')
     return chunks, markers
