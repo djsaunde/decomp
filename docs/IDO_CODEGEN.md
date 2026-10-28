@@ -14573,6 +14573,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLV (agent-c 2026-10-28, run 188): **a jump-table target (`sltiu; lw jtbl; jr tN`) is cfe: retire any NCC NM donor for it (38A28 77.17 -> 84.59, plus record-store / report-arg decode fixes); one pinned symbol per format string keeps each arm's `lui a0`; cfe never colours a value live across a jump-table switch; 33094 frame homes (b above a + six words)**](#kit-clv-agent-c-run-188) -- _No exact; 38A28 length away (flagged); negatives 469A8 && args, 97EC nested block, 3558 zero / rotate grids, 2DE0 / 3714 / 329C / F04 sweeps, 2E354 1.0f, 31A74 (s8) re-extension (length crossed the target)._
 - [kit CLVI (agent-g 2026-10-28, run 195): **stale-lever audit (remove each `if (1) {}` / empty test / `volatile` / pad alone) over all 52 agent-g-range bodies at 90-99.99: zero gains, every lever still load-bearing; C310 NCC homes by declaration order (i, vals, ptrs, hud, cols, volatile pair last: 95.99 -> 96.02); timer-HUD family spill shift = the `height()` inline local's home; 4A308 frame 8 bytes short with all relative offsets right; an address-taken NCC param homes every param; NCC donors: declare a mid-body aggregate at the function top (54E78 `V3 a` 91.33 -> 93.79) and sweep declaration positions (declmove / hoist: 4F2DC, C234, 2B7C, 4A890)**](#kit-clvi-agent-g-run-195) -- _No exact; negatives 578B4 packet pointer, 32C8 zero / l134, 63964 member operators, E2D0 1.0f + arg4, 4E424 roles, 6126C switch / copy, 31C0 new-temp, 50444 volatile param._
 - [kit CLVIII (agent-c 2026-10-28, run 190): **gui sprite-rect family: per-packet append grid with 9 spellings (incl. `dl->n += 1` and local `DL *d`) lifts F04 97.44 -> 98.59 and 2DE0 94.59 -> 95.53 (length now = target); 2DE0 load() variant's &D const LR loses its split piece over the y tree (zdbug:5); int-zero `zf(lhs, 0)` sweep: BB8C 95.66 -> 98.33 (length now = target), 3B9C0 77.84 -> 78.62; 7C1C `out`-in-s0 / 3558 f20 zero / 37540-as-NCC negatives**](#kit-clviii-agent-c-run-190) -- _No exact; 329C / 3714 / 4568 9-spelling grids flat; spelling-grid duplicate-alternative race._
+- [kit CLIX (agent-g 2026-10-28, run 196): **timer-HUD family: the image pointer as the `this` of tiny Img members instead of a named inline local + 3 block pads (13B8 / 16F4 99.43 -> 99.91, 1340 98.47 -> 99.91); `mtc1 zero` count scan finds int-zero candidates: C234 zf (90.77 -> 91.66, length = target), 8FC8 `seti(0, 0, 0)` (90.90 -> 91.27); last 13B8 pair = edg pool-var itab-bit order**](#kit-clix-agent-g-run-196) -- _No exact; 578B4 declmove only 1000 / 13340 done (chunks timed out); 4A308 / 50444 / 63964 / 4B0A8 / 4B620 / 31C0 / 4C5E4 / 55A0 negatives._
 - [kit CLVII (agent-c 2026-10-28, run 189): **gui sprite-rect family: the CTX edg pool temp gets s0 only when it is ASSIGNED in the loader-call blocks (the `this` of an inline `Ctx::load()`); 3714's a1 is a colour-order cap vs the MAX value, not call-crossing; per-packet append spellings in the rectangle macro (RDPHALF_1 `n = dl->n; dl->n++`, RDPHALF_2 `n = dl->n++`)**](#kit-clvii-agent-c-run-189) -- _No exact; 329C 98.85 -> 99.06, 3714 96.10 -> 96.43; 2DE0 load() inline 96.42 but 1196 bytes (away, not landed)._
 - [kit CLI (agent-g 2026-10-28, run 193): **cfe literal-spelling decode signals from immediate / `mtc1 zero` counts: a `mul.s` by a held 2.0f is `* 2` (cfe folds `* 2.0f` to add.s), a float store using the compare's zero register is `0.0f` not `0`, `x += a*b*c` gives the target's add / mul operand order; re-run lever-sweep after every decode fix (B75C 90.86 -> 93.31, length = target; 6808 gD de-named 94.24 -> 95.38)**](#kit-cli-agent-g-run-193) -- _No exact; negatives 6126C dispatch copy, E9FC / 6204 prologue (unique), 63964 temp layout, C234 V3 class, 8FC8 iz zeros, E68 split m, 65EE4 literal arg, 4E424 roles, 4C5E4 2.0f._
 - [kit CXLIX (agent-c 2026-10-28, run 184): **`scripts/decode-scan.py` -- project-wide mechanical scan of every <100 NM body for address decode errors (per-site %lo of pin + addend vs the USO target's baked word, by lui dataflow; double-added pins, hold-vs-fold splits, unpinned-symbol pin hints, `SYM + K` on non-zero pins), m2c negated float compares and leftovers; objdiff's fuzzy IGNORES relocated immediates, so address fixes are correctness-only**](#kit-cxlix-agent-c-run-184) -- _No exact, report.json flat; 3430 step loads read 0xCC8.. (were address 0), pin D_000019E8; the run-183 class is harvested: 1 new true double-add (bootup E9FC, agent-g unit), 5 negated compares in game_uso 591C (agent-g unit), the rest placement / pairing noise._
@@ -44998,3 +44999,64 @@ is cheap: wrap every `X = 0.0f;` statement in a donor as `@{X = 0.0f; @|zf(X, 0)
   98.32539 (length 1008). Declaring / scoping the sub pointer differently (block-scoped, via `M4 *`, getPos
   non-const) does not move it from v1 / v0 to the target's a2. lever-sweep on the new 2DE0 and 3B9C0 donors finds
   no hits.
+
+## kit CLIX (agent-g 2026-10-28, run 196): timer-HUD family -- the image pointer as the `this` of tiny Img members (kit CLVII) fixes the spill shift (13B8 / 16F4 99.43 -> 99.91, 1340 98.47 -> 99.91); the int-zero inline lever on 8FC8 (90.90 -> 91.27) and bootup C234 (90.77 -> 91.66, length = target); edg pool-var bit order explains the last 13B8 t0 / t4 pair; negatives <a name="kit-clix-agent-g-run-196"></a>
+
+No exact. NM (report.json): timproc_b3 13B8 99.42941 -> 99.91177 (680 B), arcproc 16F4 99.42941 -> 99.91177 (680 B),
+timproc_b1 1340 98.47059 -> 99.90756 (952 B), timproc_b5 8FC8 90.89532 -> 91.27094 (6496 B; donor 6452 -> 6468, toward
+the target), bootup C234 90.76727 -> 91.65818 (2200 B; donor 2196 -> 2200 = target). No clip change, no pins, no new /
+retired donors.
+
+**1. Timer-HUD family (13B8 / 16F4 / 1340): drop the named inline locals, keep the copies.** Kit CLVI found the
+4-byte spill shift came from the named `Img *i` local of `Spr::height()`. Making the image pointer the `this` of tiny
+`Img` members instead (`struct Img { ... s32 gh() { return h; } s32 gw() { return w; } }`, `height() { return
+img->gh(); }`, panel widths through `pw() { return img->gw(); }`) keeps the dead register copies (`or ra,t3` ...: they
+are edg pool temps for the inline `this`) but drops four named homes. Three unreferenced `volatile s32 pad0, pad1,
+pad2;` in the nested block then put every spill word back on the target (100 / 96 / 88). tim's own width must keep
+the named local (`width() { Img *i = img; return i->w; }`: its copy is the target's v0). 1340 also needed 13B8's
+run-185 nested block (x / pos4 / posA1 / pos6 as block locals, panels named there) and loses its old `sp0` pad.
+23FC (mgrproc, same family) is flat or worse with any of these (h / vt through members, 0-2 pads).
+- What is left in 13B8 / 16F4: one t0 / t4 pair in the xoff sum (pB width vs the pA image copy). zdbug:5: edg pools
+  the inline `this` copies and int results into function-scope variables (-208 / -212 / -216 / -220), and the loop
+  re-uses one of them for tim's image. Writing the loop read as `arg0->tim.img->gh()` (no Spr `this` temp) moves
+  the pA copy onto the loop's variable, so it gets the target's t0, but the pB width / pB copy pair (both adjsave 2.0)
+  then colour in itab-bit order, copy first (t4 / t5 where the target has t5 / t4): same score. Flat: 4^6 per-site
+  width spellings (pw / named / named+gw / direct), Spr pointer declaration order (6), tim width / height spelling x
+  pad count (45), dead `while (0) { i = <pool expr>; }` at 11 positions x 8 bodies (88), lever-sweep all.
+  1340 left: the count spill (target 152, ours 172) and the same pair.
+
+**2. Int-zero inline (kit CLVIII) in more of this range.** Quick scan that finds candidates: count `mtc1 zero` in
+the target and in the donor object for every NCC donor; only 8FC8 (12 vs 7) and C234 (13 vs 11) differed.
+- bootup C234: the 0x93C / 0x940 / 0x944 stores as `zf(*(f32 *)(...), 0)` take their own f0 as in the target (the
+  0x968 store keeps f16): 90.47 -> 91.35 standalone, length 2196 -> 2200 = target. lever-sweep all after: no hit.
+- timproc_b5 8FC8: the WA / WC child `w->pos.set(0.0, 0.0, 0.0)` as `w->pos.seti(0, 0, 0)` (int params) is the
+  only kept form (90.41 -> 90.79 standalone, length toward the target). The target materialises three separate
+  zeros (f6 / f8 / f10, then x, y, z stores) in all three widget ctors; ours: one shared f0 (WA), the f20 0.0
+  candidate (WC), and three separate zeros only in WB, where the f20 candidate is not live. Flat or worse: zf per
+  component (re-reads `w` after every store through `float &`), a local `W16C *` + zf, `setd(double ...)`,
+  `setz(int)`, BB splits around the call; zf on f11C / the two 0x2A4 stores.
+- zf on every `X = 0.0f;` statement of the other donors in this range (singles / all subsets up to 6): no gain.
+
+**3. Negatives.**
+- 578B4: the declmove sweep is 13340 variants at ~70 s per 1000 with 30 jobs (alone on the machine). Only the first
+  1000 finished (no hit); the 1000-13340 chunks timed out at 590 s because they ran next to other probes. Run it
+  alone in 1500-variant chunks that print each result as it finishes. hoist: 0 variants (no mid-body
+  declarations). Re-using the packet pointer variable (temp_ra_8 / temp_t0_25) for the FD50 packet changes the spill
+  home only. The t0 still goes to the packet pointer.
+- 4A308: re-ordering v60 / entry, an `Ent` struct with member reads (93.3), an unnamed or split `int r`: no gain.
+  Current residue: entry / v60 v0 <-> v1 and the t3 spill 4 low (56 vs 60).
+- 50444: `float *const &pos` (wrong ABI, only to test) gives the target's entry home + `lw t7, 56(sp)` but needs a
+  dereference (+4 B). So the target loads pos into a ring temp from its home. Other spellings: a `const V3f &` / `V3f &`
+  / `const float (&)[3]` parameter, `S3(const V3f &)` / `S3(const float *)` ctors, a local copy: identical or worse.
+- 63964: the last-arm temporaries (actually arm 1: n*va.y at 172 / 184, operator= by-value at 156) sit 12 / 8
+  bytes high. Flat: block-local V3 / f32[3] / int[3] / volatile pads in arm 1, mulv / addv / avg / named-result
+  helpers, permutations of out / count / n and fin / va / vb, lever-sweep hoist / declmove.
+- 4B0A8: the AIter pool `this` (bit 24) has a3 forbidden by the cur() `Arr &r` LR (bit 81, a3); 4 cur() x 3 res() x
+  3 DL-temp spellings: flat. 4B620's s0 / s3 pair is the same pool-var colour order (pointer `this` pool vs int
+  count pool); lever-sweep all: no hit.
+- 31C0: the target loads the `new Obj2` temporary (116) in case 1 and `obj` (120) in case 0, ours does the
+  opposite (copy propagation of `obj = tmp`); declaration permutations (720): flat.
+- 4C5E4: frame 184 vs 208. Six end-of-body block volatiles give the frame (+0.03 only, not kept). The -4 bytes are
+  scheduling in the else arm.
+- 55A0: dropping `&it` (the home lever) lets `it` take an s-register and loses 36 bytes; the bbsplit sweep on that
+  form reaches 92.18 (base 96.76).
