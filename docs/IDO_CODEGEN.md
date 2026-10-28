@@ -14590,6 +14590,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLXXXII (agent-c 2026-10-28, run 202): **33094 as real C++ on the 432BC V3 kit: `set(f32, f32, f32)` with member-expression arguments = the target's load-all-then-store order (edg evaluates arguments right to left), by-value operator= + `*=` / `+=` body-order grid (87.65 -> 93.62, length = target); 35B1C is a C++ ctor (data member with a ctor = cfront `new(4)` protocol, by-value operator==) matching every word but the vtable-store slot; 3DF58 unconstrained LRs coloured in bit order; negatives**](#kit-clxxxii-agent-c-run-202) -- _No exact._
 - [kit CLXXXIV (agent-c 2026-10-28, run 203): **faithful as1 lab = `NCC -S` listing -> as0 -> as1 by hand WITHOUT the driver's `-noglobal` (a plain `cc -c x.s` skips as1's reload elimination); with it, no order / label / `.loc` split of 35B1C's ugen block gives the target's vtable-store slot (only a `li at,-4` in an earlier block does, which ugen never emits) = capped; 33094's a-temp FP colours follow the inline parameter declaration order**](#kit-clxxxiv-agent-c-run-203) -- _No exact; corrects kit CXXXII's as1-input claim; 3AE58 pick() negatives._
 - [kit CLXXXVI (agent-c 2026-10-28, run 204): **fresh eyes on agent-g's set: mgrproc 2B7C advances a3 IN PLACE instead of a held copy (97.69 -> 98.24, length = target); bootup 8BD4 skip test = one `||` expression on an int code + reference-returning V3::add for ctx->acc (97.95 -> 98.83); 3430's step = a uopt-hoisted 0.1f literal (as1 lab reproduces the prologue) re-materialised in f2 where we colour f24; NCC drops dead stores to a local volatile array**](#kit-clxxxvi-agent-c-run-204) -- _No exact; 1824 li-at hoist, E2D0 arg4 candidate, 24B8 C++ port negatives._
+- [kit CXC (agent-c 2026-10-28, run 206): **kit CLXXIX `+ 0` swept over agent-g's usual range: 493AC second-loop `(it.next() + 0)` 96.93 -> 97.18, 8FC8 `new WA + 0` / add() results 91.27 -> 91.44; zero effect in 18 other donors; 6126C copy-type grid (likely a uopt live-range split, not a source copy), 4E424 role grid, 50444 pos-home negatives**](#kit-cxc-agent-c-run-206) -- _No exact._
 - [kit CLXXXVIII (agent-c 2026-10-28, run 205): **a register copy in the FIRST compare's delay slot is the else block's first insn (as1 fills from the branch target): a block-local `u8 d = c` dispatch copy (int copies propagate away) + the range test on c gives 6126C 93.81 -> 99.35 at target length; NCC ignores volatile params; 4C5E4 un-named m78 + folded `0 * mC0` ring phase (87.22 -> 88.48)**](#kit-clxxxviii-agent-c-run-205) -- _No exact; 4E424 / 18F0 / CEB4 / 4A890 / 578B4 / 63964 / 50444 negatives._
 - [kit CLXXVIII (agent-c 2026-10-28, run 200): **37540 ported to C++ from its exact sibling 37348's donor kit (cfe 81.17 -> NCC 93.58, length = target): one inline reads the saved vector and clears x (refs = early stores, return = register), set() + compound `*=` for the store/re-read build; 8CD8 pads worth +0.07, no natural aggregate; 36694 n-CSE diagnosis**](#kit-clxxviii-agent-c-run-200) -- _No exact._
 - [kit CLXXI (agent-g 2026-10-28, run 202): **timproc_uso_b5 32C8 EXACT (1480 B): cfe NM body re-written as NCC on its exact sibling 2B74's donor shape (literal vec constants, rodata pin, `(f32)iz()` zero re-assigned on both alloc paths, cfe decl list); the last 2 colour words fell to a grid of PAIRED `if (1) {}` splits x statement order x line layout**](#kit-clxxi-agent-g-run-202) -- _Run negatives: 4A890 / E68 / 6126C / 18F0 / 65EE4 / 65494 / 578B4 / C310 / 4A308 / E2D0 / 31C0 / C234 / 90CC._
@@ -46616,3 +46617,39 @@ plain variables never move anything.
   (or turning it into `default: break;`) makes cfe lower the 4-case switch as a compare tree (and re-phases the whole
   t-register ring from the top of the function) -- the case-4 label is what buys the jump table. `1U` / `(s16)1`
   spellings of the 2714 / 2FC8 flag arguments do not stop the `or a1,t0,zero` reuse of the `tmp = 1` constant register.
+
+## kit CXC (agent-c 2026-10-28, run 206): kit CLXXIX's folded `+ 0` swept over agent-g's usual range (two keepers), 6126C copy-type grid and 4E424 / 50444 negatives <a name="kit-cxc-agent-c-run-206"></a>
+
+_No exact. 493AC 96.93 -> 97.18, timproc_b5 8FC8 91.27 -> 91.44 (both at the same length)._
+
+- **Where `+ 0` moves edg temp pooling (NCC only).** One site at a time over every NCC NM donor in the range, scored
+  with objdiff against the target unit (sites: each `return <expr>;`, each RHS of an assignment or initialiser,
+  each call of an inline that returns a pointer, each `new T(...)` / `x->f(...)` expression):
+  - 493AC: the SECOND iterator loop's test `while ((it.next() + 0))` (96.56 -> 96.81 local); a `+ 0` on the first
+    loop's test, inside `next()`'s `return &(*a)[++idx]`, or anywhere else changes nothing. In-tree 96.93 -> 97.18.
+  - 8FC8: `(WBase *)new WA + 0` on the m5C widget assignment (+0.13), then greedily the `B *r = c->add(...) + 0`
+    loop result and the two `e2` / `e3 = d->add(...) + 0` initialisers (+0.01 each, kept: each round re-swept on
+    top of the previous). In-tree 91.27 -> 91.44. Discarded-result statement calls (`a->add(...) + 0;`) are worth
+    another +0.009 each; not kept (a statement with no effect only to steer the pool).
+  - Zero effect at every site (base unchanged): 59E80, 48AEC, 4B0A8, 4B620 (the `it.next()` site in 4B620 LOSES 1.9),
+    4BAF4, 4C5E4, 4D688, 54E78, 4A890, 4F2DC, 4A308, 63964, 65494, timproc_b5 C310, bootup C234 / 55A0 / 90CC /
+    31C0 / 8BD4. So the lever is rare outside donors with pooled new-temps / iterator returns.
+- **6126C (99.35, one word `andi a0,v1,0xff` vs target `or`): copy-type grid negative.** The block copy `d = c` was
+  tried with c in {int, s16, u16, u32, u8} x d in {u8, int, u32, u16, s16}, the range test on c or d, the 'x' / 'f'
+  tests on c or d, and the digit arm as `A = (u8)(d - '0')` / `c = d - '0'; A = (u8)c;` / `A = (u8)(c = d - '0')`,
+  under cfe and as an NCC port (NCC permutes the s-registers, 98.0), plus a `switch` (cases sorted into a compare
+  tree, 83.3) and `d = (&c)[0]` / `*&c` under NCC. Every same-width copy is propagated (484 bytes); only u8 d keeps
+  the copy (andi); `s16 c` + `u32 d` keeps an `or` but colours it v0 and the 'x' test goes back to v1 (98.42).
+  The target's digit arm also computes `d - '0'` into v1 before the andi into s8, i.e. c's register is dead and
+  reused -- consistent with a uopt live-range SPLIT of c at the else block rather than a source copy. Probing the
+  split point (not done) is the next step: the plain-c body splits c into a0 only for the digit arm.
+- **4E424 (95.37): role grid negative.** The target computes `dy` into f0 (the y1 load register) and `dz` into f2,
+  keeps the max in f14 (y0's web) and the result in zero's f16. Every assignment of the six roles (dx / dy / dz /
+  min / max / result over params and fresh locals, 1350 + 4496 decl-order variants, four abs() spellings) tops out
+  at the existing 95.37; reassigning the stack params y1 / z1 sends them to callee-saved f20+ (a modified
+  non-FP-register param gets an s-register, as x1 = fs0 shows in the target too); fresh dy / dz locals add a
+  split copy (204 bytes).
+- **50444 (91.83): the target homes `pos` (a2) in the prologue and reloads it into t7 after the warning call**
+  (memory variable, while uv stays a register candidate spilled in the call's delay slot). Not reproduced:
+  `S3(const float *)`, `S3(float *const &)` (makes every param memory-homed, 80.2), `S3(const F3 &)` over
+  `*(F3 *)pos` (83.9), and `(&pos)[0][k]` re-reads (frame 0x28, m loses s0, 88.8 - 90.1).
