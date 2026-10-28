@@ -14558,6 +14558,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CXXXVIII (agent-c 2026-10-28, run 175): **per-site base-0 alias globals were ONE struct read through a local base pointer `g` (same-base accesses keep store / load order, a g-relative read is not loop-hoisted: both 33EB8 "caps"); one variable reused for buf / flags and every ring-register read is the target's s0 web; do-while + `if / else` min decode fixes; 4FD00 / 54E78 as real C++ with POD V3, by-value `set(V3)`, an inline-local short-vector sum**](#kit-cxxxviii-agent-c-run-175) -- _No exact; NM 4FD00 80.29 -> 95.51, 334E8 74.48 -> 96.20, 33BE4 80.70 -> 96.66, 33EB8 90.83 -> 98.70, 54E78 86.62 -> 91.07 (all lengths = target); new NM donors game_libs_ncc_4FD00_nm.cpp / game_libs_ncc_54E78_nm.cpp; post0b clip 0x2ea9c -> 0x2eabc; 37540 C++ draft (length away), frame-residual negatives._
 - [kit CXXXIX (agent-g 2026-10-28, run 187): **cfe keeps a dead `addiu vN,vN,K` after folded accesses when the pointer variable is advanced FIRST and the load / store go through it (`tv += 0xA58; msk = *tv & ~m; *tv = msk;`) -- game_uso 0B3C's two "NCC this-adjust" words without a C++ port, so the flagged `goto adv` tail lands at length; a field read once before two branch tests is the target's hoisted f0 load (591C)**](#kit-cxxxix-agent-g-run-187) -- _No exact; NM 0B3C 95.11 -> 99.59 (length = target; addendum: named block floats on one line, `char *ob[1]` fed from the v1 variable re-aligns the t-ring, base-first `((s32 *)(seg + K))[i]`, switch selector through an existing variable), 591C 94.36 -> 94.79 (toward target); negatives: B75C zero-store literal grid, unfolded RMW pointer spellings (6808 / 591C), 0B3C obj-in-v1 and fresh call-arg `1`._
 - [kit CXL (agent-g 2026-10-28, run 188): **the 4-entry jump table (`sltiu 4`: 76F0, 0B3C, 8CD8, 116C, 80001ADC) is unreachable from every compiler in tools/** -- cfe 5.3 and 7.1 split clusters of <5 labels (both binaries), edgcpfe 5.3 and 7.1 lower every switch to `equ`/`tjp` chains (no `xjp` writer), uopt/ugen never shorten a table; the exact 2FB74 has a same-shape 4-label chain in the same segment, so the table units came from another front end -- keep the phantom 5th label on an existing arm; side finding: `switch (x & M)` over 0..M drops the sltiu/beqz bound check](#kit-cxl-agent-g-run-188) -- _No exact; NM game_uso 8CD8 83.97 -> 84.24 (guard + chain -> phantom-label table switch, masked index stored through memory)._
+- [kit CXLI (agent-c 2026-10-28, run 176): **source LINE layout picks as1's jal delay-slot filler (`if (c) { base = &D; call(base, fmt);` on one line) and a preheader's order (`cpsrc = src; cpdst = &dst;`); a parameter copied into a LOCAL after another statement moves its entry s-register copy; under cfe every named scalar has a frame-counted vreg home, so a CSE'd address-constant macro + literal magic shrink the frame; mis reused for 8 - mis, loop-cursor init order = colour tie-break, fresh reads before naming `cur`**](#kit-cxli-agent-c-run-176) -- _EXACT gl_func_000334E8 (708 B), gl_func_00033BE4 (724 B), gl_func_00033EB8 (712 B), all cfe on the build path; 82.251 -> 82.532 % code; NM 37540 79.80 -> 81.17 (volatile flags word re-read in a beqzl delay slot, length = target); negatives 6126C / 4F2DC / 4FD00 / 469A8 / 2D374, 31A74 frame lead._
+- [kit CXLII (agent-g 2026-10-28, run 189): **a multi-role variable lands in the target's callee-saved register only when its FIRST role is in the web: route the first call's argument intermediate through it (bootup 24B8 `s0 = (char *)((cfg->0x10 & 0x400) != 0); f((int)s0, ..)` -> arg0 s1, var s0); saved-register-set scan finds these; gl 3430's four "step" words are ONE 0.1f literal in caller-saved f2 (live-range split + per-load literals), our cfe colours it f24; no volatile spelling gives per-site `lui; lw lo(rX)` store-then-reload (b5 D884 / DF14)**](#kit-cxlii-agent-g-run-189) -- _No exact; NM bootup 24B8 95.21 -> 97.05 (length = target); negatives 65EE4 layout / args, 18F0, 97EC temp order, 3558 NCC zeros, 8CD8 real-C++ probe 76.9, gui 2DE0 NCC multi-role var, lever-sweep no-hits (0B3C, 591C, 8CD8, 7C1C, BB8C, 65494)._
 - [kit LXXXVII (agent-c 2026-10-24, run 148): **alignment survey (negative) + the original-file-start map of game_libs, and three twin / NCC levers** -- no non-exact function in the ROM differs from its target only in nop count or position; units in game_libs start at gl = 4 (mod 16) (16-byte aligned in bootup.uso text), every infinite-loop epilogue sits at gl = 0x14 (mod 32), and the pad words after a final `jr ra` mark 40+ original unit ends (map inside); arcproc 125C EXACT by porting the exact mgrproc 1C90 match_imports C; gl 44CE8 under NCC (pool base rematerialised, the old count carried in the result variable to keep the frame at 32); gl 3E0F0 arg word read before `gl(tmp = o, x)`](#kit-lxxxvii-agent-c-run-148) -- _1 exact (arcproc_uso_func_0000125C, 556 bytes; 76.92 -> 77.00 % code on e5cf258f7); NM: gl 44CE8 91.28 -> 99.53 (new NCC NM donor), gl 3E0F0 93.88 -> 99.90; post0b NM clip unchanged (0x2e928)._
 - [kit LXXXIV (agent-g 2026-10-24, run 155): **colour-pairing levers -- a void alias for a discarded call plus ONE local per register pair** -- gl 68DD4 (98.71, "colours only" for months) fell when the leading discarded K&R call went through a void alias (the dead v0 def pushed every later value one register up, kit IX) AND the two cursor reads were written with two int locals that each carry two roles (A = cursor then q2, B = value then cursor2), mirroring the target's register pairs; scripts/sibling-scan.py at 0.5 plus a longest-common-block scan found no new exact templates in agent-g units; twin NM port b3 13B8 <- arcproc 16F4 (+5.0); 5F984 NM donor takes the 5EB4C/5ED54 param copy; negatives for 5A2C4, D884, C310, BDEC, 2B7C, 23FC, 1824, 5F5F0, 525F0, E2D0, B154](#kit-lxxxiv-agent-g-run-155) -- _1 exact (gl_func_00068DD4, 340 bytes; 76.74 -> 76.78 % code with main's agent-c gains); NM: b3 13B8 80.36 -> 85.41, arcproc 16F4 85.36 -> 85.41, gl 5F984 90.11 -> 92.46 (post0b clip 0x2e904 -> 0x2e90c), gl 51448 95.00 -> 95.56, bootup 24B8 94.87 -> 95.21._
 - [kit XII (agent-c 2026-10-20, run 112): a spilled PLAIN local beats `T * volatile` for a memory-resident constructor web (volatile spends a phantom t-ring temp and shifts the frame homes; timproc_b1 097C EXACT); `(void)&x;` is a NO-OP in IDO cfe (never makes x address-taken); bit test as sign test `(x << 15) < 0`, not `(u32)(x << 15) >> 31` (dead srl temp = t-ring +1) + inline field re-reads for ring temps (h2hproc 17A0 EXACT); per-call-site void-callee sweep (37AF0, 4C300 EXACT; some fns need two calls voided together) and an `if (1) {}` position sweep (372D4 +1.6, 432BC +1.0)](#kit-xii-agent-c-run112) -- _Automate both sweeps: rewrite one statement-level call / insert one adder after each statement end, rebuild only the NM .o, score the disassembly; a per-site no-change does not rule out a pair (201B8: sites 3+4 only together). A `(void)&x` probe that changes nothing means cfe dropped it, not that address-taken is inert._
@@ -43777,3 +43779,160 @@ labels 0..4 (hbound < M), unsigned `x % 4`, a named `y = x & 3` (also stored), a
 check at -O1). So a target table WITHOUT a bound check after an `andi` is `switch (x & M)` over 0..M plus enough
 phantom labels to reach 5. A table of 4 or 5 entries cannot be told apart in .text. 8CD8's target keeps the check
 after `andi 3`, which matches the assignment-operand form.
+
+## kit CXLI (agent-c 2026-10-28, run 176): source LINE layout picks as1's jal delay-slot filler and the entry param-move order; a parameter copied into a LOCAL after another statement moves its s-register copy; a CSE'd address constant instead of a named base drops a frame word -- three allocator exacts (334E8 / 33BE4 / 33EB8) <a name="kit-cxli-agent-c-run-176"></a>
+
+EXACT gl_func_000334E8 (708 B), gl_func_00033BE4 (724 B), gl_func_00033EB8 (712 B), all game_libs_post cfe, C on the
+build path (no donor). report.json matched code 82.251 -> 82.532 %. Every step was found by reading the residual rows
+(`scripts/rdiff.py --raw --pins`) and asking which C shape the target's ORDER implies; objdiff fuzzy went DOWN on two
+correct intermediate steps (it charges reorders heavily), so judge such steps by diff words and commit them only once
+the score is up again.
+
+**1. Line layout chooses the jal delay slot (33BE4 / 33EB8 last 4 words).** The debug arm
+`if (flags & 1) { base = &D; call(base, fmt); }` was `lui s1; lui a1; addiu a0,s1,0; jal; addiu a1,a1,lo` in ours and
+`lui s1; lui a1; addiu a1,a1,lo; jal; addiu a0,s1,0` in the target. The ugen trace (`-Wc,-d` on the dump compiler)
+is the same for both orders (`la s1; move a0,s1; la a1; jal`); as1 merges the dead `la s1` + `move` into
+`addiu a0,s1,lo` and then picks the delay-slot instruction -- and that pick follows the SOURCE LINE numbers.
+Writing `if (flags & 1) { base = (u8 *)&D_00000000; call(base, &fmt);` on ONE line (the `}` may stay on the next)
+gives the target; any single other join does not (an exhaustive 512-way line-join search on a 10-line reduction:
+exactly the masks joining `{`, `base =` and the call match). Types, prototypes, `base =` placement, a macro base,
+string literals and casts were all inert (uopt canonicalises them). Rule: when a jal delay slot holds the "wrong"
+one of two independent argument setups and every expression spelling is inert, search line joins of the statements
+feeding that call. spelling-grid marker for a join: append `@{\n@| }@` to a line (newline vs space).
+- The same lever fixed 33BE4's copy-loop preheader (`lui a0; addiu a0; or v1,s5` vs ours `lui a0; or v1,s5; addiu
+  a0`): `cpsrc = src; cpdst = &dst;` on one line.
+
+**2. A parameter copied into a local after another statement = the target's entry move order.** Target entry
+`or s0,a1` ... `or s4,a1` (rem) before the `beqz`, `or s5,a0` (src) in its delay slot; ours copied the a0 parameter
+first. Params coloured into s-registers get their moves at the entry in our order; a LOCAL `s32 src;` with
+`rem = flags; src = src0;` (parameter renamed `src0`) makes the move a body statement, emitted after `rem`. 33EB8
+took the same fix (`dst = dst0`); the extra local costs one frame word there, so its unused `pad[4]` became `pad[3]`
+(frame 80 = target).
+
+**3. Decode fixes that moved colours (33BE4 96.66 -> 99.89; 334E8 the same set).**
+- `mis` is REUSED for `8 - mis` (`mis = 8 - mis; if ((u32)mis < chunk) chunk = mis;`): the target keeps mis / 8-mis
+  in a0 / v1, which is only reachable when the second value is in mis's web (a separate temp coloured v1 first).
+- `mis = src & 7;` belongs INSIDE `if (chunk != 0)` (the target's `or s2,s4` precedes the `andi`).
+- copy loop: init `cpsrc` first and bump `cpsrc` before `cpdst` -- uopt colours equal-priority loop variables in
+  first-appearance order (dump `-Wo,-zdbug:6`: cnt v0, then the first-seen cursor v1, the next a0).
+- the ring bump is `*(s32 *)(g + 8) += chunk;` with the call re-reading `*(g + 8)`; and the segment-end test compares
+  two fresh reads, naming `cur` only inside the arm -- the old `cur = G->8; if (G->2C == cur)` joined cur's web with
+  the earlier a2 argument and coloured it a2 (target: ring temp t4, `or a2,t4` in the bne delay slot).
+
+**4. 334E8 frame 112 -> 104 = two fewer named locals; under cfe every named scalar local gets a vreg home that
+counts toward the frame.** The `-Wo,-zdbug:5` itab shows `M 3 -N vreg` homes for every declared scalar (buf -8, then
+one word per scalar in declaration order); the frame's local area spans down to the lowest home, rounded to 8.
+334E8 had 15 words (buf + 13 scalars) -> 112; the target 104 allows 13. The two that go: `base` (a `#define base
+((u8 *)&D_00000000)` -- uopt hoists the one address constant into s1 exactly as the named variable was) and the
+block magic `sent` (a literal; uopt still hoists 0x12340002 into s3). Removing `cur` instead re-joins its web with
+avail (avail coloured a2, wrong). Then `src = (s32)p; rem = 8; call(base);` on one line is the entry order (lever 1).
+Note `#undef base` after the function.
+
+**Negatives (same run).** 6126C: the char copy `or a0,v1` at the dispatch head is not a separate dispatch variable
+(copy-propagated), not a type conversion (u8/char/u16/u32), not a switch (69-76, worse); all four reads through the
+old-pointer copy without `if (arg3) {}` stay 496. 4F2DC: kit CXXXIX's advanced-pointer form (`cam += 0x70;` then
+`+0x30` fields) reproduces the target's dead `addiu v1,v1,112` and replaces the `if (1) {}` length fix, but loses
+6 points of schedule (store/mul interleave not found in a 730-probe perm search); line joins +0.08 only. 4FD00 NCC:
+block scopes / one SV local / sum2 helper / line joins all inert or worse for the shared SV home. 469A8: advanced
+pointers for p100 / p78 / pDC inert, the 0x158 / &D+0x254 store swap worse (needs a C++ port).
+- (end) 31A74 frame lead (not landed): under the vreg-home rule (section 4) the target frame 24 (ra at 20) leaves NO
+  room for a named local, yet the target keeps acc / ratio in f0 apart from v (f12). Dropping lp / lim and folding
+  acc into r: 1 local, frame still 32; folding r into the parameter v: frame 24 = target but everything coalesces into
+  f12 (89.14 < 90.38); a fourth float parameter or `register f32 r` do not help. The f0 ratio without a home is the
+  open question (expression-only form? a by-value helper?).
+- (end) 2D374: swapping the 0x35C / 0x358 stores gives the target store order but z stays f12 (target f0, fr f2);
+  99.645 -> 99.615, reverted; `if (z) {}` / `if (fr) {}` and the z / fr / half statement order are inert.
+- (end) 36694 C++ lead (not landed, 82.15 standalone vs cfe-lift NM 84.03, length 712 = target): `V3 Obj::proj(V3 p,
+  V3 n)` (a1 = unused this, hidden return in a0) with inline by-value-returning `operator*(f32)` / `operator/(f32)`
+  (local `V3 r; ... return r;` = the target's local + return-copy pairs), `operator-(V3 o)` BY VALUE (the third
+  copy, sp+228), v's components read into scalars x / y / z (the target's px spill to sp+24), `r.x = x ...` then
+  `return (r * (f32)1) / sqrtf(len2);`. Reproduces every temp copy chain; missing 32 bytes of frame (target 240) and
+  the slot order (o 228 > r 216 > len2 212 > 188 / 172 > 140 / 120 > v 92 > 72 > 60 > 48); declaration-order
+  variants inert. Template at the top of this note is enough to restart.
+
+## kit CXLII (agent-g 2026-10-28, run 189): a multi-role variable is coloured into a callee-saved register only when its FIRST role is in the web -- route the first call's argument intermediate through it (bootup 24B8: arg0 -> s1, var -> s0 as the target); the four 0.1f "step" words in gl 3430 are one literal kept in caller-saved f2 by a live-range split; volatile never reproduces per-site `lui; lw lo(rX)` <a name="kit-cxlii-agent-g-run-189"></a>
+
+No exact. One NM gain: bootup_uso func_000024B8 95.21 -> 97.05 (report.json, 700 B, length = target 175 words).
+Fuzzy 99.0399 -> 99.0415 %.
+
+**1. 24B8: the target's extra saved register is the reused pointer variable, and its first role is a call
+argument.** The NM body already reused ONE `char *s0` for cfg / vtable descriptor / FP field pointers (agent-c),
+but our build kept arg0 in s0 and the variable in v1 / a3 / a1 (frame and every later s-register off). The target's
+first s0 write is in the gate block before the first call: `lw s0,16(v0); andi s0,s0,0x400; ... sltu a0,zero,s0`
+-- the `(cfg->0x10 & 0x400) != 0` argument is computed IN the variable. Writing
+`s0 = (char *)((FW(v0, 0x10) & 0x400) != 0); f((int)s0, (*(u32 *)(v0 + 0x10) & 0x1000) != 0, ...)` makes uopt
+colour the whole web s0 and arg0 s1 (95.03 -> 96.58 objdiff, 173 -> 175 words, same as the target). Spellings
+that lose: `s0 = (char *)FW(v0, 0x10)` + `((int)s0 & 0x400) != 0` (the raw field load is CSE'd with the second,
+u32-typed read of the same word -> one load, 94.37); `s0 = (char *)(FW & 0x400)` + `s0 != 0` (95.03). Then the
+`t0` latch and `k` as ONE int variable: 96.87 (objdiff), 97.05 in report.json.
+Rule: when the target holds a value in an s-register that is dead before every call (no crossing) and our build
+has that value in a temp, look for the earliest instruction writing that s-register: that expression belongs to the
+same source variable as the later roles.
+Negatives (24B8): restoring `s0 = cfg` inside the ramp block (95.07), dropping the `if (1) {}` after
+`s0 = v1 + 0x14C` (one 95.74, both 94.50), `t0 = 0` in an else of the gate (93.33), the second argument through
+the v1 variable (96.67), `r = 0` after the s0 statement (inert). Left: the latch var colours v1 (target t0, which
+shifts the whole t-ring by one: t2 vs t3 ...), the first ramp pointer is a v0 temp (target s0), the cfg temp a0 (target v0).
+Scan used to find it (cheap, all units): compare the prologue's saved-register set (`sw sN` / `sdc1 fN` in the first
+40 words) of expected vs build/non_matching for every NM function. Only three differ in agent-g's units: 24B8 (target
++s0, fixed), gui 2DE0 (target +s0: ctx, switch value and the first MAX temp in one register; an NCC `s32 v` / `Ctx *v`
+carrying CTX and the switch value scores 91.5-92.7 vs 94.50, not landed) and game_uso 3558 (target +f20 zero).
+
+**2. gl_func_00003430: the "step" words are one 0.1f literal.** The target loads `lwc1 $f2,0xCC8` before the loop
+(after the 0xEC store, after the 1.0f / 10.625f mtc1s) and reloads f2 from 0xCEC / 0xCF0 / 0xCF4 at the end of
+cases 6 / 7 / 8, each right after that case's last call, with no f2 use in those cases: that is uopt's live-range
+split of a constant in a caller-saved register (reload = rematerialisation; as1 emits a fresh literal per load, in
+code order, which is why the pool has 0xCC8, the jump table at 0xCCC, then 0xCEC..0xCF4). The NM body models it with
+a `step` variable re-assigned from four externs. With the plain literal (no step variable, `0.1f + FF(s0,0x88)` in
+case 3; 7 spellings incl. `(f32)0.1`, `+=`) cfe colours the constant into a new callee-saved f24 (zdbug:5: LR const
+0.1 adjsave 1.33, forbidden v-regs, assigned 32 = f24; 1.0 -> f22, 10.625 -> f20) -- the target split it instead,
+so the target LR's adjsave x span was below f24's first-use cost (or its cost higher). Not landed; the lead is the
+allocator inputs for that LR (BB count / span), not the spelling. Also: `FW(arg0,0xEC) = 1;` before the step load
+puts the load after the store as the target but the constants follow it (at-chain order), 97.41 -> lower.
+
+**3. timproc_b5 D884 / DF14 flag word (`G.f4 &= ~0x80000; &= ~1; |= 2; &= ~0x20000; |= 0x2000`).** The target has
+per-site `lui tN,0; lw tN,4(tN)` loads, `lui at,0; sw 4(at)` stores sharing one `at` between some pairs, and every
+load after the preceding store (= same symbol for as1). Probed under cfe 7.1, cfe 5.3 and NCC, standalone: volatile
+array element, volatile struct member, volatile member of a plain struct, volatile cast of an element, a volatile
+SCALAR extern -- all hoist the address into one register (`lui v0; addiu v0; lw 4(v0)` / `sw 4(v0)`); per-site
+DISTINCT volatile scalars emit `lui; addiu; lw 0(rX)` (no lo fold). Non-volatile: mixing direct-member and cast
+accesses, or s32 / u32 types, keeps every store (no DSE) but forwards the stored value into the next load (one load
+total). No spelling in our compilers gives store-then-reload with folded lo16s -- with kit CXL's table result, a
+second sign that these timproc units came from another compiler build.
+
+**4. Negatives / no-hit sweeps.** lever-sweep `all` (no landable hits): game_uso 0B3C, 591C (one hit moves a load
+across a call, +4 bytes: rejected), 8CD8, the 7C1C / BB8C NCC donors, gl 65494 donor. gl 65EE4 (-O2 -Olimit 1
+donor): the whole three-block body on one source line per block is already the best layout (512-mask line-join
+search; one statement per line scores 78.2 vs 88.7 standalone); argument spellings (`&G` casts, `G.base` vs
+`*(int *)((char *)&G + 0x28)` / `((int *)&G)[10]` / `(B)`, data / base field types, data constant forms) are inert
+at length (the offset spellings drop 24 bytes); cfe 5.3 = 7.1, NCC = cfe, -O1 adds three moves. kernel 18F0: store
+block as `continue` / `if (found)` / `found != 0` / `found == 1`, the ~8 mask as `0xFFFFFFF7` / `-9` / hoisted
+local, `&syms[i]` / char-offset / `syms +` addressing -- all byte-identical output; bitfield structs 47-72 (worse);
+5.3 = 7.1. game_uso 97EC: a nested block for f (or for the tail) swaps the two bound temporaries but drops f and its
+temp below every other slot (frame +8, 99.75); copy-init `XZ e = XZ(..)` / `= ..` inert; a by-value `XZv(Vec3)`
+ctor for e changes FP colours (98.56). game_uso 3558 NCC donor: 288-way grid over the zero spellings (variable,
+`0.0`, `(float)0.0`, `0.0f` for side / w.y / else factor / the zero init) all identical (NCC const-propagates every
+one); note the donor is 1024 bytes (+16), not "251 of 252 words" as its header says. game_uso 8CD8 as real C++
+(Vec3 with class-scope operator new, derived XZ / XZD / Perp ctors for every alloc guard, sub2 / sub3 by-value
+return chains for the word-copy stages, `switch (s->phase = s->phase & 3)` with two arms): 76.90 standalone at +72
+bytes after a 293-probe grid over the copy-chain depth per site, vs the cfe body's 84.23; the first guard's
+`addiu a0,sp,504; bnezl a0` (this in a0, o3 reload in the delay slot) is not reproduced (ours this in v1, bnez).
+Not landed.
+- (end) 37540 NM 79.80 -> 81.17, length 760 -> 764 = target: the target re-reads `o->2C->0x10` on BOTH paths of
+  the first flag test (`beqzl t9,L; lw t0,16(v0)` -- the reload in the likely-delay slot on the not-taken path, while
+  `o->2C` itself is reused there). Ours CSE'd the flags word across the test (`beqzl; andi t6,v0,8`). Reading it as
+  `((volatile s32 *)FW(o, 0x2C))[4]` gives the reload with the offset folded; `*(volatile s32 *)(FW(o, 0x2C) + 0x10)`
+  computes the address separately (`addiu v0,v0,16; lw 0(v0)`) and overshoots the length by 8. Tell: a field load in a
+  branch-likely delay slot that repeats a load the fall-through already did = a volatile (hardware-style) word.
+  post0b NM clip 0x2eabc -> 0x2eac0.
+
+**kit CXLII addendum (same run): where the other s-register mismatches point.** A second scan (count of
+instructions WRITING each s-register, expected vs NM build) flags timproc_b5 8FC8 (target s1 48 / s0 29 writes, ours
+30 / 39) and game_uso 7C1C (s2 8 vs 5). 8FC8's first divergence is the WA constructor: target `this` = s1 and
+`w = new W16C(..)` = s0, then after `addChild(w)` the target reloads `lw s0,264(s1)` (this->w) INTO THE SAME s0,
+stores the three pos zeros through it from fresh `mtc1 zero` (not the shared f20) and leaves a dead
+`addiu s0,s0,180` (= &w->pos) in the next jal's delay slot -- kit CXXXIX's "pointer advanced first, accesses through
+it" cfe shape, i.e. one C variable for the new result, the reloaded member and the advanced pos pointer (cfront-style
+temp reuse). Ours colours this s0 / new-temp s1 (the reload is a separate v1 temp, so the temp's web is smaller and
+loses the s0 tie). NCC spellings of the pos store (`V3 &p = w->pos`, `W16C *t = w`, `V3 *p = &w->pos`,
+`char *p += 0xB4`, field stores, an inline `setPos` on B2 or W16C) all score 89.2-89.7 vs 90.41 standalone. Lead:
+this region (and likely the whole unit) wants a cfe body with explicit reused temporaries, not edg's.
