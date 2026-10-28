@@ -14591,6 +14591,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLXXXIV (agent-c 2026-10-28, run 203): **faithful as1 lab = `NCC -S` listing -> as0 -> as1 by hand WITHOUT the driver's `-noglobal` (a plain `cc -c x.s` skips as1's reload elimination); with it, no order / label / `.loc` split of 35B1C's ugen block gives the target's vtable-store slot (only a `li at,-4` in an earlier block does, which ugen never emits) = capped; 33094's a-temp FP colours follow the inline parameter declaration order**](#kit-clxxxiv-agent-c-run-203) -- _No exact; corrects kit CXXXII's as1-input claim; 3AE58 pick() negatives._
 - [kit CLXXXVI (agent-c 2026-10-28, run 204): **fresh eyes on agent-g's set: mgrproc 2B7C advances a3 IN PLACE instead of a held copy (97.69 -> 98.24, length = target); bootup 8BD4 skip test = one `||` expression on an int code + reference-returning V3::add for ctx->acc (97.95 -> 98.83); 3430's step = a uopt-hoisted 0.1f literal (as1 lab reproduces the prologue) re-materialised in f2 where we colour f24; NCC drops dead stores to a local volatile array**](#kit-clxxxvi-agent-c-run-204) -- _No exact; 1824 li-at hoist, E2D0 arg4 candidate, 24B8 C++ port negatives._
 - [kit CXC (agent-c 2026-10-28, run 206): **kit CLXXIX `+ 0` swept over agent-g's usual range: 493AC second-loop `(it.next() + 0)` 96.93 -> 97.18, 8FC8 `new WA + 0` / add() results 91.27 -> 91.44; zero effect in 18 other donors; 6126C copy-type grid (likely a uopt live-range split, not a source copy), 4E424 role grid, 50444 pos-home negatives**](#kit-cxc-agent-c-run-206) -- _No exact._
+- [kit CXCII (agent-c 2026-10-28, run 207): **a register copy in the first compare's delay slot can be a variable assigned from the loop TEST's CSE'd load: top-tested `while ((q = fmt, fmt = q + 1, *q) != 0) { c = *q; if (*q == 'd') ...` (6126C 99.35 -> 99.92); digit-arm, 4D688 old-n, C310 head, 54E78 FP colouring, C234 scale-copy negatives**](#kit-cxcii-agent-c-run-207) -- _No exact._
 - [kit CLXXXVIII (agent-c 2026-10-28, run 205): **a register copy in the FIRST compare's delay slot is the else block's first insn (as1 fills from the branch target): a block-local `u8 d = c` dispatch copy (int copies propagate away) + the range test on c gives 6126C 93.81 -> 99.35 at target length; NCC ignores volatile params; 4C5E4 un-named m78 + folded `0 * mC0` ring phase (87.22 -> 88.48)**](#kit-clxxxviii-agent-c-run-205) -- _No exact; 4E424 / 18F0 / CEB4 / 4A890 / 578B4 / 63964 / 50444 negatives._
 - [kit CLXXVIII (agent-c 2026-10-28, run 200): **37540 ported to C++ from its exact sibling 37348's donor kit (cfe 81.17 -> NCC 93.58, length = target): one inline reads the saved vector and clears x (refs = early stores, return = register), set() + compound `*=` for the store/re-read build; 8CD8 pads worth +0.07, no natural aggregate; 36694 n-CSE diagnosis**](#kit-clxxviii-agent-c-run-200) -- _No exact._
 - [kit CLXXI (agent-g 2026-10-28, run 202): **timproc_uso_b5 32C8 EXACT (1480 B): cfe NM body re-written as NCC on its exact sibling 2B74's donor shape (literal vec constants, rodata pin, `(f32)iz()` zero re-assigned on both alloc paths, cfe decl list); the last 2 colour words fell to a grid of PAIRED `if (1) {}` splits x statement order x line layout**](#kit-clxxi-agent-g-run-202) -- _Run negatives: 4A890 / E68 / 6126C / 18F0 / 65EE4 / 65494 / 578B4 / C310 / 4A308 / E2D0 / 31C0 / C234 / 90CC._
@@ -46708,3 +46709,59 @@ new through `reg2()` / `reg3()` inlines or straight into the call. The direct re
   edg (NCC) never emits for a direct stack object or a by-value return (checked), so an NCC port is not the lever.
 - 396FC: kit CLXXXVIII's delay-slot tell does not apply (the stolen insn is the DEFAULT block's first insn, and no
   table arm reads a0 before writing it in either object).
+
+## kit CXCII (agent-c 2026-10-28, run 207): a dispatch copy in the first compare's delay slot can be a variable assigned from the loop TEST's CSE'd load (6126C 99.35 -> 99.92); negatives on 6126C's digit arm, 4D688 old-n copy, timproc_b5 C310 head, 54E78 FP colouring, bootup C234 scale split <a name="kit-cxcii-agent-c-run-207"></a>
+
+_No exact. 6126C 99.35 -> 99.92 (length unchanged)._
+
+- **The tell (6126C, printf-style formatter).** The target loads the format char into v1 at the loop bottom
+  (`lbu v1; bnezl v1, head`), tests `== 'd'` on v1, and copies v1 into a0 with a plain `or a0,v1,zero` in that
+  test's delay slot; every later test and the digit arm read a0, and v1 is reused as a scratch value in the digit
+  arm. Kit CLXXXVIII read this as a block copy `u8 d = c` in the else block (andi, not or) and run 206 as a uopt
+  live-range split. Neither: the zdbug:6 dump shows the plain body never splits c. The two registers are two
+  different candidates:
+  - v1 = the CSE expression `*q` from the loop test, and
+  - a0 = the VARIABLE c assigned from it at the top of the body.
+  Spelling: top-tested `while ((q = fmt, fmt = q + 1, *q) != 0) { c = *q; if (*q == 'd') ... else if (c == 'x')
+  ... }`. IDO rotates the loop (the bottom keeps the load + test, the head the first compare), the first test
+  reads the expression (so it stays on v1), and `c = *q` is the `or`. Every same-width source copy
+  (`d = c`, `int d`, `(&c)[0]`, ...) is copy-propagated away, which is why the old grids never found an `or`.
+- **Colouring order matters.** With all four tests on c, c (more refs) colours first and takes v1, pushing the
+  expression to a1 (95.30). Reading `*q` in the FIRST test raises the expression's priority so it takes v1 and c
+  falls to a0 (v0 is q's register, live across). The other tests reading c or `*q` makes no difference.
+- **Left on 6126C (2 words): the digit arm.** Target `addiu v1,a0,-0x30; andi s8,v1,0xff` (c - '0' in its own
+  candidate, then truncated into A); every spelling gives `addiu s8,a0,-0x30; andi s8,s8,0xff`. Negative grid
+  (standalone, 99.56 plateau): `A = (u8)(c - '0')`, `(c - '0') & 0xFF`, `0xFF & (c - '0')`, `(int)(u8)`,
+  `(u8)(u32)`, `(u8)(c + -'0')`, named int / u8 / u16 / s16 / u32 block temps (`d = c - '0'; A = (u8)d`, `A = d = ...`),
+  `d = c; d -= '0'`, A typed int / u32 / s16 (u8 / char A goes to memory, 89.6), A assigned after or inside both
+  arms of the next-char `if` (87.9 / 89.5), and `c -= '0'` (c's new value stays in a0, and with the 'x' test on c
+  it costs 99.52). Any no-op temp is copy-propagated. The target needs a candidate for `c - '0'` that is
+  not merged into A; I could not find the source shape that creates it.
+- **4D688 (NCC donor, 96.95): the old-n copy of `n++ & 1`** goes to v0 (target a0; the target uses neither v0 nor v1
+  anywhere in the function). zdbug:6 shows the LR coloured `1` (lowest free). Inert: `int o = n++; if (o & 1)`,
+  `o = n; n = o + 1`, `(n++ + 0) & 1`, `1 & n++`, `(unsigned)n++`, `!= 0`, `& 1U`, `(&n)[0]++`; `n++ % 2` and
+  `(n += 1, n - 1)` are worse.
+- **timproc_b5 C310 (NCC donor, 95.85): the head `--*(s32 *)(arg0 + 0x2C0) < 0`** is decremented in v0 (a
+  candidate) where the target uses ring temps t7/t8, which shifts the temp ring for the next 40 words. `-= 1`,
+  `= x - 1`, a named pointer, `+ 0`, array indexing, `(&*p)[0]`, the 0x2BC update spelling and an `if (1) {}` split
+  all give identical code.
+- **54E78 (NCC donor, 98.17): p.n.y colours f0 before the 0.0f / 2.0f constants** (target: zero f0, two f2,
+  n.y f14). A named `ny` copy collapses the code (536 bytes, 85.4) and a named `two` is inert.
+- **bootup C234 (NCC donor, 94.76, 1 word short): the missing word is a `mov.s fv0,fa0`.** The target loads the
+  0x968 scale straight into f12, compares it there, multiplies x and y by f12 (y's product goes back into f12)
+  and z by a copy in f0 made before the y product; the divisor `(f32)count` before it is in f2 (target)
+  where we use f0, so f0 is unavailable to both in the target. Inline helpers `mul(V3 &, const V3 &, f32)` (held or direct
+  products, 94.59 / 89.90) or by-value `V3 mul(const V3 &, f32)` (+40 / +44 bytes) do not produce the copy.
+- **6126C range test as `c - '0'` comparisons** (to give `c - '0'` a second use, hoping for its own candidate):
+  `(c - '0') >= 0 && (c - '0') < 10` and the mixed forms fold to different compares (484 / 488 bytes, 90.5 /
+  93.4); `c <= '9'` is the same code as `c < ':'`.
+- **zero-lever-grid.py (main a4e926425) over the NCC donors in this range, one round:** 4D688, bootup C234 / 55A0,
+  65494, timproc_b5 C310, 4F2DC, 50444, 54E78 -- no site of `+ 0`, `+ 0 * (int)(inline())` or `(&x)[0]` moves
+  any of them (all tie the baseline).
+- **Same tell elsewhere in the range (objdump scan of every NM function for `beq/bne rX,at,..` with `or rY,rX,zero` in
+  the delay slot): only game_libs.c 76F0's switch 3** (`beq v1,1 -> case 1` + `or v0,v1` in its delay slot, `beql v0,2`, with
+  v1 also holding the case-1 reload and the post-switch `!= 2` read). `temp = self->unk4DC; switch (temp)` or
+  `switch (temp = self->unk4DC)` (temp has other defs) does produce the copy, but the wrong way round
+  (expression v0, copy a1; the case-1 reload stays in t2): 94.69 -> 93.08 on my scorer. The if-chain
+  `if (self->unk4DC == 1) .. else if (temp == 2)` (90.1) and a goto chain that copies the switch layout (90.6) are
+  worse. Not kept.
