@@ -145,7 +145,10 @@ def variants(cmd, L, s0, e0):
         for i in range(s0 + 1, e0 - 1):
             a, c = L[i], L[i + 1]
             # never swap two statements that both contain calls (call order is observable)
+            mem = lambda s: (lhs(s) or '').startswith('*') or '->' in (lhs(s) or '') or '[' in (lhs(s) or '')
+            # never swap two calls, a call with a memory store (the callee may read it), or volatile accesses
             if is_stmt(a) and is_stmt(c) and ind(a) == ind(c) and not (has_call(a) and has_call(c)) \
+                    and not (has_call(a) and mem(c)) and not (has_call(c) and mem(a)) \
                     and 'volatile' not in a and 'volatile' not in c:
                 # textual dependency check: skip when one statement writes a name the other mentions
                 wa, wc = writes(a), writes(c)
