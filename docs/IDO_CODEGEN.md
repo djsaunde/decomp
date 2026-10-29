@@ -14631,6 +14631,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCXL (agent-c 2026-10-29, run 230): **cfront-style cfe port of game_uso 7C1C, 27.7 -> 98.52 (beats the 96.35 NCC donor, length = target): objdiff fuzzy is alignment-bound -- fix length first; `(unsigned)((hit != 0) == 0) ||` keeps both CSE spills; one function-wide tx / ty / tz trio for every inline set() (roles moved by reuse, rotated trio at three sites) and sa / sc for operator- / perp; 16 `if (1) {}` raise firstUseCost so a pooled &local stops taking s3; `vp = &b->pos; do { loads } while (0);` keeps the reference temp coloured (as1 sinks its `addiu` past the loads, so it looks dead); a flag re-read after the arms' constant stores reproduces the forwarded v0; as1 line ties for result / mode constants**](#kit-ccxl-agent-c-run230) -- _NM gain +2.17 on 4284 B; left: b->width f14 vs f0, perp colours, ugen t-ring one late from the loop's t164 site._
 - [kit CCXLI (agent-c 2026-10-29, run 231): **game_uso 7C1C EXACT (98.52 -> 100): `cc -S` shows ugen's pre-schedule temps (an invisible `addu tN; move v1, tN` guard costs a ring slot); trailing firstUseCost blocks can reject short address-constant LRs too -- one `if (1) {}` at the loop-body top fixed the t-ring; empty blocks around a straight-line site give a CSE its own live unit (width f0 beside tz f0); a fourth shared float temp (reuse an unused float, a new decl shifts the frame); one-line member copies; folded-use grid for colouring order**](#kit-ccxli-agent-c-run231) -- _exact +4284 B._
 - [kit CCXLII (agent-g 2026-10-29, run 232): **a target `mov.s` copy = a copy taken BEFORE its source variable is overwritten by a later result (`t = s; x*s; s = y*s; z*t`: uopt cannot propagate it; plain copies are always propagated); compare constant off the hoisted temp (`t = K*sum; if (a < t + 4.0f)`); repeated scaled sums through one shared float temp; NCC frame fit by declaration gaps (every used scalar takes a word, structs top-down); post-increment on a deref costs two bottom edg homes above the spill area**](#kit-ccxlii-agent-g-run232) -- _bootup C234 98.17 -> 99.62 (length = target, colours + one spill slot left)._
+- [kit CCXLIII (agent-c 2026-10-29, run 232): **cfe-shape triage before a cfront-style port: cfe folds `x * 2.0f` to `add.s x,x` (edg keeps `mul.s` + literal), cfe CSEs by-value struct-parameter field loads that edg reloads inside one block, edg's DL append temps re-read `ctx->dl` and rotate a0/a3/v0; cfe struct-return copy-out tail needs an explicit result pointer + one exit; 4C5E4 NCC frame = target via six used argument locals; 36694 temp homes: first-declared named V3 takes the frame top**](#kit-ccxliii-agent-c-run232) -- _post0b 46050 / 4C5E4 / 36694 / 3B9C0 all edg-shaped; 4C5E4 88.69 -> 88.73 (every frame offset = target)._
 - [kit CCXIII (agent-g 2026-10-29, run 216): **post0b 454C4 95.95 -> 99.95, length = target: build on the structurally-right BB lever, then re-test old micro-levers (drop the named element pointer -> sixth s-reg; drop the folded `& 0xFF`); `if (rec) {}` breaks an adjsave tie; `cur = nxt; if (nxt)` keeps an inline iterator member out of the candidates (ring temp t7 vs v0 web); a ternary sharing edg's int temp with post-increments separates when assigned in the same full expression as the inline call**](#kit-ccxiii-agent-g-run-216) -- _Open: e copy-propagated as the shared pointer temp (5 words); 3C43C homes = function-scope five + k / ABS3 temps / dd; 3558 per-row adds inert._
 - [kit CCXIV (agent-c 2026-10-29, run 218): **a RoData float read as `D + off` / an extern alias is often a compiler LITERAL: read the ROM word (bootup.uso RoData = ROM 0xD9FE44); a run of identical values around a jump table = one constant rematerialised (one literal word per `l.s`). As a literal uopt hoists / colours / reloads it after calls -> game_libs 3430 (0.1f in f2 + three trailing `if (1) {}`) and timproc_b5 CEB4 (0.3f + `if (1) {}` per white arm) EXACT via donors pinned `<fn>_rodata` = the pool's ROM offset; C310 NM 96.45 -> 99.89 (`== 1` = register-held 1 shared with the `= 1` store, field-form counters)**](#kit-ccxiv-agent-c-run-218) -- _CCXII address-form scan (size>0 FUNC symbols only): no further hit; 4F2DC literal +0.19; 6204/E9FC, 8BD4, 1824, 4C5E4, 4A308 / C310 spill-slot gap negatives._
 - [kit CCX (agent-g 2026-10-29, run 214): **each object of a class with an inline constructor is an edg labelled BB; above ~19 BBs uopt splits a held callee-saved constant (game_uso 3558's $f20 zero web: hold, live else muls, w.y reload) -- a constructor-less Vec3 / aggregate Ctx restores it; a Vec3 local is a uopt register candidate only when no member call or reference parameter is bound to it (free by-value mk() keeps the op- copy chain)**](#kit-ccx-agent-g-run-214) -- _3558 85.86 -> 89.21 (frame 256 = target, all homes on the target map); vb split / va.y f20 residual and negatives listed._
@@ -49364,3 +49365,53 @@ words; only register colours and one spill slot left). Four commits on src/bootu
    with the 0x968 scale in f2 (target f12); the tail row temps above. Negatives: lever-sweep bbsplit (132) / order
    (203) / declmove (20), commute / hoist on every new base; post0b 54E78 (a zero / two local, removing either
    `if (1) {}` -> length 556 / 560), 37938 final reload v0 vs v1 (named / hoisted m30 pointer, `if (1) {}` moves).
+
+## kit CCXLIII (agent-c 2026-10-29, run 232): cfe-shape triage of the big post0b NCC donors (46050 / 4C5E4 / 36694 / 3B9C0) -- all four are edg-shaped, not cfront/cfe-shaped; the tells (cfe folds `x * 2.0f` to `add.s`, cfe CSEs by-value struct-parameter field loads that edg reloads, edg-vs-cfe DL temp colours); 4C5E4 NCC frame = target via home-keeping argument locals; 36694 temp-home order needs a named first-declared V3 <a name="kit-ccxliii-agent-c-run232"></a>
+
+_No exact. report.json (non_matching build): post0b gl_func_0004C5E4 88.69 -> 88.73 (836 B). 36694 / 3B9C0 / 46050
+unchanged (90.68 / 94.27 / 92.27)._
+
+1. **Triage before porting an NCC donor to cfront-style C (kits CCXXV..CCXLI).** Write the donor as C89 (`this_` as
+   the parameter, inline members expanded) and compile it once with cfe; then check these tells against the target:
+   - **`x * 2.0f` becomes `add.s x, x` under cfe** (front-end strength reduction); edg/NCC keeps `mul.s` with a
+     `lui at,0x4000` literal. A target with `mul.s` by 2.0 is edg-compiled -- 4C5E4's viewport block (`fw = x * 2`,
+     `fh = y * 2`) is (cfe port 75.7 / 202 words vs NCC 88.69 / 208 of 209).
+   - **By-value struct parameter fields:** cfe/uopt load `n.x` once and keep it (even with `&n` escaped to a call, a
+     `V3 *_a = &n` alias, a do-while reference block or a `if (1) {}` split); edg reloads `lwc1 fN, 0x104(sp)` for the
+     inlined `operator*(const V3 &a, f32)` after the dot product used the same fields. A target that RE-LOADS a stack
+     parameter's fields inside one basic block is edg-shaped (36694: cfe 78.6 with the return tail and every copy
+     chain right, NCC 90.68).
+   - **DL append temps:** `&ctx->dl->buf[ctx->dl->n++]` under cfe loads `buf` before the `n` store; the target (and
+     edg) re-reads `ctx->dl` after the store. The cfe spelling `(_c = ..., _i = _c->dl->n++, &_c->dl->buf[_i])` fixes
+     the order (46050 cfe 59.0 -> 82.9) but the per-append pointer temp still rotates a0 / a3 / v0 like edg ucode
+     temps, which cfe never reproduces (NCC 92.27).
+   - **cfe keeps struct assignment copies** (`B = A; C = B;` of local V3s) as word block moves with address
+     registers, exactly like edg -- that part is NOT a tell. cfe's struct-return lowering: a single shared copy-out
+     tail (`addiu v0, src; lw t1, ret(sp); copy`) needs an explicit result pointer and one exit:
+     `V3 *f(V3 *_result, ...) { V3 *rp; ... rp = &E; ... rp = &r; *_result = *rp; return _result; }`.
+   - Every used scalar keeps a frame word under cfe too (a new used `f32` between two V3 temporaries moves the lower
+     one down 4 / 8 bytes), so cfe frame homes are tunable the same way as NCC (kit CCXLII item 4).
+2. **4C5E4 NCC frame fit (88.69 -> 88.73).** Frame 184 -> 208 and the zero-quad buffer at sp+0xB4 / the 0x15C spill at
+   sp+0x48 (= target) from six used argument locals in the zero-quad arm: `float buf[4]; int one = 1, za = 0, zb = 0,
+   e1 = 8, e2 = 8, e3 = 8;` passed in place of the literals (the target's three separate `addiu tN, zero, 8` stay).
+   Five locals gave 208 with the spill at 0x4C; placing them before `buf` puts buf at 0xA0; a seventh local anywhere
+   moves the frame to 216. Then (88.72 -> 88.73) five argument locals (`za` passed twice) plus a used
+   `unsigned c3 = 0x03800010;` declared AFTER the second Gfx pointer `p` (`p->w0 = c3;`) move p's call-spanning home
+   from sp+0x4C to the target's sp+0x50 with frame / buf / spill unchanged: every frame offset now = target. A home
+   that sits one word LOW is fixed by a used scalar declared after it (homes are allocated top-down).
+3. **4C5E4 negatives:** the second `lui at,0x4000` (the target materialises 2.0 twice but 4.0 once -- 832 vs 836
+   bytes) did not appear under `float two` locals, `2.0` / `2` spellings, any `if (1) {}` around the fw / fh lines or
+   store-order perms (48); removing the `0 * mC0` fold in the else arm gives length 209 = target and the mC0 load in v0
+   at the target's place, but the ugen ring then includes t5 (no uopt variable in t5; the target's `sb` is t5 and t3 is
+   never used), 78.6; 87 folded-use placements on that base all keep the ring or re-hoist mC0.
+4. **36694 temp homes.** Target homes: C (operator-'s V3 operand) at the frame TOP, then r / l, then A / B (operator*
+   result / return temp), E / D, t lowest. Edg allocates the first-declared named V3 at the top: `V3 proj = n * dot;`
+   declared first puts C at the top (frame 232, 177 words, 89.79) but then edg elides E (D copies straight into t).
+   The by-value `operator-(const V3 &a, V3 b)` (or a member `operator-(V3) const`) reproduces the whole A -> B -> C /
+   D -> E -> t chain word-for-word up to registers (90.53 / 90.54, frame 256), still below the const-ref donor. The
+   target's two `mov.s` (py / pz copies in f18 / f2 that the flip then overwrites, kit CCXLII item 1) appear with
+   `f32 ry = py, rz = pz;` before `if (0.0f < l)` and `ry = py * -1.0f` in the flip, but the function then grows to
+   182 words (two `mtc1 zero`, t reloaded), 87.4. Function-scope `V3 t; t = ...` is always 183 words (n loads CSE'd).
+5. **46050 / 3B9C0:** w1 `Y | X` order evaluates y first like the target but swaps the `or` operands (91.62); `Y + X`
+   (disjoint fields, same value) scores 92.48 but emits `addu` where the target has `or` -- not kept. Edg canonicalises
+   every xl / yl spelling (`u32` casts, `<< 2`, `4 *`, `+ 0`: flat). Commute sweep (`|+*&`, 21 variants) flat.
