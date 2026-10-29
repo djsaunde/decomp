@@ -14609,6 +14609,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCXVIII (agent-g 2026-10-29, run 219): **post0b 36F0C EXACT: an inline's by-value float parameter is a uopt variable (f0), a `const f32 &` parameter read is an ugen ring temp (f4 / f6 / f10 / f8); a forwarded store goes direct through a kept-parameter accessor result (`Cam *n = gc0(c)` = the pooled v0 temp, no interference); replace-function-body.py names objcopy-renamed section symbols (redefine-sym C++ donors' `.rodata` relocs -> `<func>_rodata`)**](#kit-ccxviii-agent-g-run-219) -- _35B1C NCC ctor frame fixed (pad block), vptr-store order still open; 591C var-bound colours, 2E354 literals cost length, 40304 / 37938 negatives._
 - [kit CCXIX (agent-g 2026-10-29, run 220): **a global read through `&D` / a held `int *` is a direct variable access (folded `lui; lw %lo`, never hoisted); read as an ARRAY element (`extern int D_x[]; D_x[0]`) its address becomes a loop-invariant web held in an s-register across calls -> post0b 46050 89.71 -> 92.20 at target length (real-C++ appends + stock gSPTextureRectangle); gui 2DE0 95.53 -> 96.65 (329C-shape port, &D live-range residual)**](#kit-ccxix-agent-g-run-220) -- _inverse const-ref sweep negative on 3B2EC / 37938 / 41D40 / 454C4 / 7C1C / 33094; 3C43C r-home vs counted use._
 - [kit CCXX (agent-g 2026-10-29, run 221): **a target global RMW kept in ONE register (`lw v0; and v0,v0; ori v0,v0; sw v0`) is a local's chain (`x = G; x &= m; x |= k; G2 = x;` on a dead / dummy-home local), v0 only where nothing else in the block claims it; a target `addiu rX,base,K; lw/sw 0(rX)` field RMW = the if (1) pointer-mutation barrier (C and NCC member); a folded counted use stretches its operand's live range -- re-sweep the operand (E68 `0 * *cfg` -> `0 * arg3` restores the s0/s1 param colours)**](#kit-ccxx-agent-g-run-221) -- _bootup 6808 96.61 -> 98.34, post0b 493AC 97.18 -> 97.33, E68 94.54 -> 94.57; negatives 18F0 bitfield / mask, 4C5E4 inline setvp, 65EE4 aliases / prototypes, 5A2C4 stacked if (1), C234 literals, 6808 v1 sites._
+- [kit CCXXI (agent-g 2026-10-29, run 222): **uopt's v0 interference is BLOCK-granular: a short local web never colours v0 in the block right after a call (dead int return, or a return stored in that block) nor in the block holding the final return copy; `do { RMW } while (0)` (macro body) gives the web its own block and v0 back (if (1) {} / goto-label / bare label after the store are merged away); a flag store scheduled before the epilogue's `or v0,sN` is the tell; one name = one live range across all its webs**](#kit-ccxxi-agent-g-run-222) -- _bootup 6808 98.34 -> 99.98 (all four flag RMWs v0, p+0x30 pointer RMW, int-cast held base kills the sw a1 home, `a3 = 6` with no copy = a 3-arg call (decode fix), comma-form by-value arg store order); open: 8-byte frame region; negatives 18F0 mask + layouts, 65EE4 512 line layouts, 493AC void aliases, 55A0 `it` escape._
 - [kit CCXIII (agent-g 2026-10-29, run 216): **post0b 454C4 95.95 -> 99.95, length = target: build on the structurally-right BB lever, then re-test old micro-levers (drop the named element pointer -> sixth s-reg; drop the folded `& 0xFF`); `if (rec) {}` breaks an adjsave tie; `cur = nxt; if (nxt)` keeps an inline iterator member out of the candidates (ring temp t7 vs v0 web); a ternary sharing edg's int temp with post-increments separates when assigned in the same full expression as the inline call**](#kit-ccxiii-agent-g-run-216) -- _Open: e copy-propagated as the shared pointer temp (5 words); 3C43C homes = function-scope five + k / ABS3 temps / dd; 3558 per-row adds inert._
 - [kit CCXIV (agent-c 2026-10-29, run 218): **a RoData float read as `D + off` / an extern alias is often a compiler LITERAL: read the ROM word (bootup.uso RoData = ROM 0xD9FE44); a run of identical values around a jump table = one constant rematerialised (one literal word per `l.s`). As a literal uopt hoists / colours / reloads it after calls -> game_libs 3430 (0.1f in f2 + three trailing `if (1) {}`) and timproc_b5 CEB4 (0.3f + `if (1) {}` per white arm) EXACT via donors pinned `<fn>_rodata` = the pool's ROM offset; C310 NM 96.45 -> 99.89 (`== 1` = register-held 1 shared with the `= 1` store, field-form counters)**](#kit-ccxiv-agent-c-run-218) -- _CCXII address-form scan (size>0 FUNC symbols only): no further hit; 4F2DC literal +0.19; 6204/E9FC, 8BD4, 1824, 4C5E4, 4A308 / C310 spill-slot gap negatives._
 - [kit CCX (agent-g 2026-10-29, run 214): **each object of a class with an inline constructor is an edg labelled BB; above ~19 BBs uopt splits a held callee-saved constant (game_uso 3558's $f20 zero web: hold, live else muls, w.y reload) -- a constructor-less Vec3 / aggregate Ctx restores it; a Vec3 local is a uopt register candidate only when no member call or reference parameter is bound to it (free by-value mk() keeps the op- copy chain)**](#kit-ccx-agent-g-run-214) -- _3558 85.86 -> 89.21 (frame 256 = target, all homes on the target map); vb split / va.y f20 residual and negatives listed._
@@ -48239,3 +48240,52 @@ post0b 493AC 97.18 -> 97.33, bootup E68 94.54 -> 94.57 (report-equivalent in-tre
      code. 0x128 is an imported object (1.07e21), not a literal.
    - Declaration moves in 6808 (46 variants) and objdiff fuzzy: sp offsets do not count, so home-layout fixes
      only matter for an exact.
+
+## kit CCXXI (agent-g 2026-10-29, run 222): uopt's v0 interference is BLOCK-granular -- a short local web never gets v0 in the block right after a call (dead int return OR a return consumed by a store in that block) or in the block that holds the final `return x` copy; wrapping the web in `do { ... } while (0)` (a macro body) gives it its own block and the v0 colour back; the target's flag-store-before-`or v0,s0` epilogue order is the same tell <a name="kit-ccxxi-agent-g-run-222"></a>
+
+Found on bootup 6808 (98.34 -> 99.98 NM over the run) with the coloring dump (`-Wo,-zdbug:5`, zsum-style parse of the
+`>>>active<<<` records: lr / reg / priority / live-bb list; reg 1 = v0, 2 = v1, ... 6 = a3, 7 = t0, 14.. = s0..).
+
+- Four global flag RMWs (`x = G; x &= m; x |= k; G2 = x;`, kit CCXX) sit right after calls. Only the first one
+  (after a branch join) coloured v0; the other three came out v1 even with FRESH per-site locals or block-scope
+  locals. The dump shows the precoloured `isvar R 2vreg` record (the physical v0) live in the blocks where a call
+  result is used (`*gD = f(...)` -> `sw v0,0(s4)`) and in the block with the final return copy; the flag web in
+  the same block conflicts with it at block granularity, although the two never overlap in the instruction
+  stream. A call whose int return is discarded blocks v0 the same way in the block that follows it (moving the
+  first flag site behind a `func();` statement flipped it v0 -> v1; void-aliasing that call flipped it back).
+- `do { x = G; x &= m; x |= k; G2 = x; } while (0);` puts the RMW in its own block (the loop labels survive;
+  `if (1) {}`, `goto L; L:`, a bare label, `switch (0) { default: ; }` after the store do NOT split -- uopt
+  merges them). With all four sites wrapped and on ONE dummy-home local (g00), all four colour v0 and no void
+  alias is needed; at the end the flag store now precedes `or v0,s0,zero` like the target (the return copy is in
+  a later block). `return` inside `do { return res; } while (0);` / `goto out; out: return res;` also split the
+  return block (same effect on the last site).
+- A variable is ONE live range across all its webs here (g0 = {x40 site, site 3, site 5, site 7} coloured as a
+  unit): one site whose web touches a call argument (`f(g0 * 4)`, v0 blocked by that call's def) drags every
+  other site of the same name to v1. Keep the v1-target web (x40) alone on its own name.
+- Tell: target `lw v0; op v0; sw v0` RMW right after a `jal` / `sw v0,0(sN)` of the call result, or a flag store
+  scheduled BEFORE the epilogue's `or v0,sN,zero`, while ours has v1 and the return move hoisted = the original
+  had a block boundary there (macro `do { } while (0)` body).
+- Also: the `addiu v0,s1,48; lw/sw 0(v0)` field RMW after the flag = `g00 = (int)p; if (1) { g00 += 0x30; }
+  *(int *)g00 |= 0x40;` on the same dummy-home local (the block lines up word for word; +1 word, a verified
+  decode fix).
+- DECODE FIX via colouring: target `addiu a3,zero,6; beq a3,v1` + `sw a3,0(s5)` + a jal with NO `or a3` copy, ours
+  v1 + `or a3,v1` = the call takes THREE args, not four: a3 is just the lowest free register for the compare
+  constant (v0 blocked by the preceding call's dead return, v1 = the compared word, a0..a2 = the call's args); a 4th
+  argument makes a3 refuse the constant (t0 / v1 + move). Also drop a bbsplit `if (1) {}` right after that call: it
+  hid the dead-return v0 block, so the compared word took v0 instead of the target's v1. 99.74 -> 99.98.
+- A target with NO `sw a1,K(sp)` arg home where ours has one: a folded counted use `0 * *arg1` keeps arg1 live
+  across calls. The int-cast held base `gD = (char **)(int)D_bu_776C;` (kit-documented unfold) keeps &sym in s4
+  without it; also a folded use on a global read (`G | K + 0 * G`) turns the read into a v0 candidate where the
+  target has a ugen t9 temp (prologue t-ring +1). 99.47 -> 99.74.
+- A by-value 4-byte struct arg whose target order is `sw a2,8(sp)` (arg slot) BEFORE the jal and the local home
+  store in its delay = `f(a, b, (t.w = G, t))` (comma form); plain `t.w = G; f(a, b, t);` puts the home store first.
+- Frame residual (6808 now 12 words = t78..t6C and v4C homes +4): target = op's spill word at 72 directly under a
+  4-byte-larger cfe area; ours keeps an 8-byte region at 72..79 even with op volatile (then op lives in its own
+  home). Adding a cfe word above t78 + one above v4C with `volatile int op;` last gives every home the target's
+  offset RELATIVE TO THE FRAME TOP but frame 248 (the 8-byte region stays). Not the struct by-value args, e4/e0, the
+  v4C copy or the switch head; chunk-blanking only moved it with the 7-arg call / case 0 (args / saves). Open.
+- Other negatives this run: kernel 18F0 (mask local / -9 / u32 mask const-propagated; `if (found)` / else /
+  goto / while-break layouts identical; pointer-walk loops 72-75%); 65EE4 -Olimit donor (literal data
+  constants, arg-assignment, chained stores, all 512 one-line/next-line layouts of the block: max = base);
+  per-call void aliases on the 493AC NCC donor (25 calls) inert; 55A0 `it` without the escape `&it` takes s0 and
+  arg1 gets coloured (90.3).
