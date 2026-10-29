@@ -14616,6 +14616,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCXXV (agent-c 2026-10-29, run 222): **a C++ ctor that can only be exact through cfe (switch -> jumptable) written as cfront-style C: `this` IS the parameter (`if (arg0 || (arg0 = new))`), inline members as one-line statement macros, inline temporaries as a FEW reused function-scope pointers (one per site spills everything, frame 0x280) whose choice per expansion picks s0 / s1; locals in the target's frame order; a run of stored ctor results on ONE source line (comma) moves the stores behind the next call's arguments; virtual calls through a held vtable local**](#kit-ccxxv-agent-c-run-222) -- _NM: timproc_uso_b5_func_00008FC8 93.39 (NCC donor) -> 96.01 (new cfe donor timproc_uso_b5_8FC8_nm.c, jumptable included), length 6492 of 6496. Open: per-site triple `mtc1 zero`, sites 2 / 3 loop-counter colouring, site-3 EE6C address CSE._
 - [kit CCXXVI (agent-c 2026-10-29, run 223): **a t-register that never appears as a temp in the build is held by a uopt-allocated VARIABLE (move that local's role, not the statements); a named RoData extern read in a loop gets its address hoisted into an s-register; per-line sweep of which reused cfront temporary each inline expansion uses; a dead `addiu aN,aN,0xb4` = the seti pointer variable read again later; one-line store pairs; a store-only extern alias stops an address CSE; an unused int-returning K&R callee inside a loop takes v0 from the loop's induction pointer (declare it void)**](#kit-ccxxvi-agent-c-run-223) -- _NM: timproc_uso_b5_func_00008FC8 96.01 -> 98.88, length 6492 -> 6496 = target. Negatives: site 1 / 2 triple `mtc1 zero`, site 2 / 3 counter in s0; 8CD8 4-entry table not ported._
 - [kit CCXXVII (agent-g 2026-10-29, run 225): **a target delay-slot instruction from the TAKEN block (branch falls through to a return) = that statement starts the next block: move it to just before its first use (31A74 `sel += 63`); split `x / K1 + K2` into `t = x / K1; t += K2` to load x before the literal; a kept dead first store to a homed float is what a volatile home produces; a volatile copy on a target stack word can be a SPILL slot -- delete the scratch locals (a spilling function gives named locals frame words) and let uopt spill**](#kit-ccxxvii-agent-g-run-225) -- _NM: game_libs 30AF4 93.55 -> 96.98 (frame 0x38, spill + homes on target, 2132 -> 2116 of 2112), 31A74 91.55 -> 95.28, 2E354 93.90 -> 93.94. Leads not kept (length +4): volatile sp78 (2E354 first `swc1 sum,0x78`), separate char-array alias for the else arm's G+0x14 web; 2D374 {fr, z, i} = target code up to registers but frame 0x30; NCC 41D40 / 454C4 variants <= base._
+- [kit CCXXVIII (agent-c 2026-10-29, run 224): **cfe passes float literal TEXT to uopt: `0.f` / `.0f` / `0.00f` are three distinct constant candidates (while `0` / `0.0` / `(f32)0` are one and `0.0f` / `0.0F` another) -- respell the stores of a coloured shared constant to get the target's per-use `mtc1 zero` (NCC normalises literals: neutral); void-prototype scan over all 83 non-exact NM sources + the inverse v0-use check: no further gains**](#kit-ccxxviii-agent-c-run-224) -- _NM: timproc_uso_b5_func_00008FC8 98.88 -> 99.03 (length 6496 -> 6512: the 4 words are the pre-existing sites 2/3 counter spill pairs). Negatives: 42938 / 5A2C4 void aliases, literal sweeps on 19 cfe functions, 8FC8 loop counter, E2D0 / 24B8 keep and home variants._
 - [kit CCXIII (agent-g 2026-10-29, run 216): **post0b 454C4 95.95 -> 99.95, length = target: build on the structurally-right BB lever, then re-test old micro-levers (drop the named element pointer -> sixth s-reg; drop the folded `& 0xFF`); `if (rec) {}` breaks an adjsave tie; `cur = nxt; if (nxt)` keeps an inline iterator member out of the candidates (ring temp t7 vs v0 web); a ternary sharing edg's int temp with post-increments separates when assigned in the same full expression as the inline call**](#kit-ccxiii-agent-g-run-216) -- _Open: e copy-propagated as the shared pointer temp (5 words); 3C43C homes = function-scope five + k / ABS3 temps / dd; 3558 per-row adds inert._
 - [kit CCXIV (agent-c 2026-10-29, run 218): **a RoData float read as `D + off` / an extern alias is often a compiler LITERAL: read the ROM word (bootup.uso RoData = ROM 0xD9FE44); a run of identical values around a jump table = one constant rematerialised (one literal word per `l.s`). As a literal uopt hoists / colours / reloads it after calls -> game_libs 3430 (0.1f in f2 + three trailing `if (1) {}`) and timproc_b5 CEB4 (0.3f + `if (1) {}` per white arm) EXACT via donors pinned `<fn>_rodata` = the pool's ROM offset; C310 NM 96.45 -> 99.89 (`== 1` = register-held 1 shared with the `= 1` store, field-form counters)**](#kit-ccxiv-agent-c-run-218) -- _CCXII address-form scan (size>0 FUNC symbols only): no further hit; 4F2DC literal +0.19; 6204/E9FC, 8BD4, 1824, 4C5E4, 4A308 / C310 spill-slot gap negatives._
 - [kit CCX (agent-g 2026-10-29, run 214): **each object of a class with an inline constructor is an edg labelled BB; above ~19 BBs uopt splits a held callee-saved constant (game_uso 3558's $f20 zero web: hold, live else muls, w.y reload) -- a constructor-less Vec3 / aggregate Ctx restores it; a Vec3 local is a uopt register candidate only when no member call or reference parameter is bound to it (free by-value mk() keeps the op- copy chain)**](#kit-ccx-agent-g-run-214) -- _3558 85.86 -> 89.21 (frame 256 = target, all homes on the target map); vb split / va.y f20 residual and negatives listed._
@@ -48577,3 +48578,40 @@ into v1 (target re-forms `lui at` per store).
    Open on 2D374: {fr, z, i} with `&i` kept gives the target code word for word up to registers but
    frame 0x30 / i at 0x24 (target 0x28 / 0x1c); {c, d, i} gives the target frame but z is then a
    literal (`mtc1 zero` sinks to the store).
+
+## kit CCXXVIII (agent-c 2026-10-29, run 224): cfe passes FLOAT LITERAL TEXT to uopt -- each spelling of the same value (`0`, `0.f`, `.0f`, `0.00f`, ...) is its own constant candidate, so a coloured shared constant (one `mtc1 zero, f0` feeding three stores) becomes three uncoloured per-use `mtc1 zero` by respelling; void-prototype (CCXXVI) scan over 83 non-exact functions: no other gains <a name="kit-ccxxviii-agent-c-run-224"></a>
+
+1. **Literal spelling = constant identity (cfe only).** In timproc_b5 8FC8 the target writes a kid position
+   with three `mtc1 zero, ftN` (three ring temps) and three `swc1` at sites 1 and 2; ours had ONE
+   `mtc1 zero, fv0`. The `-Wo,-zdbug:6` trace showed the int-literal zero (`FF(p,0) = 0`) as one constant
+   live range (bitpos 616) split into three pieces: pieces at sites 1/2 coloured 24 (f0), the last piece
+   (site 3) `not colored (-ve save)` -- which is why site 3 already matched. `0` / `0.0` / `(f32)0` /
+   `0u` / `0L` / `(short)0` / `'\0'` all produce the SAME candidate (and the same bytes); `0.0f` / `0.0F`
+   join the `0.0f` call-argument candidate (fs0 here, length -20). But `0.f`, `.0f`, `0.00f`, `0e0f`,
+   `00.0f`, `0.000f`, `0e1f`, ... are each a DISTINCT candidate: writing the three stores as
+   `FF(p,0) = 0.f; FF(p,4) = .0f; FF(p,8) = 0.00f;` leaves every candidate with one use per site, none
+   is coloured and ugen materialises a fresh `mtc1 zero` per store in the temp ring -- sites 1 and 2 then
+   match word for word (98.88 -> 99.03). Same bytes semantically; plain C literals.
+   Probes on this: per-store unique spellings across all 9 stores = same result as one macro with three
+   spellings; temps (`f32 z = 0`) are copy-propagated back; int / double variables holding 0 emit a
+   real `cvt.s.w` / `cvt.s.d` (cfe + uopt never fold the conversion of a propagated constant -- unlike
+   NCC's int inline parameter, kit CXIX); BB splits / statement order around the stores never change
+   the colouring. **NCC (edg) normalises literals** -- respelling is neutral on 63964 / C310 / 90CC.
+   A sweep script (respell each float literal alone, all occurrences of a value unique, pairs) over 19
+   cfe-unit functions (24B8, E2D0, 31A74, 396FC, 40304, 415A4, 4E424, mgr 1824 / 2B7C, game_uso B3C /
+   591C, 76F0, ...) found no other gain: most functions have no coloured shared constant.
+2. **Void-prototype scan (CCXXVI follow-up).** Discarded-result calls through a non-void (or K&R int)
+   prototype in every non-exact NM source (unit NM bodies, cfe and NCC donors), each callee swapped to a
+   per-site `void` alias with the same parameter list (all sites / single sites): neutral on 8FC8
+   (8 callees, singly and together), 90CC (80 sites), E2D0, 6204, E9FC, 2840, 34890, 3AE58, 3E5E0,
+   41D40, 46050, 578B4, 0F04 (-), 3714, mgr 1824 / 2B7C, 35B1C, 396FC, 40304, 415A4, 51AD8, 31A74, and
+   on agent-g's 55A0 / C234 / 4BAF4 / E68 / 2D374; negative on 42938 (sites 0 / 2) and 5A2C4. The inverse
+   (target reads v0 after a call our prototype declares void, or vice versa) was checked from the
+   objdiff rows of all 83 functions: no site disagrees. The CCXXVI effect needs the dead v0 to compete
+   with a loop induction value; a straight-line discarded call never moves colouring.
+3. **8FC8 still open:** sites 2/3 loop counter (target s0, P a temp; ours P = the reused `t` in s0 and
+   the counter spilled). Freeing s0 from P (no P variable / block-local P) gives s0 to `w` instead and
+   the counter stays spilled; function-scope counters at every declaration position, dead `while (0)`
+   multipliers, `register`, if-uses and P/SETI variable role swaps are all <= base. The body is 4 words
+   long since this kit: exactly those spill / reload pairs (the old target length was two errors
+   cancelling).
