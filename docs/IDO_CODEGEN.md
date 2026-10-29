@@ -14593,6 +14593,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CXC (agent-c 2026-10-28, run 206): **kit CLXXIX `+ 0` swept over agent-g's usual range: 493AC second-loop `(it.next() + 0)` 96.93 -> 97.18, 8FC8 `new WA + 0` / add() results 91.27 -> 91.44; zero effect in 18 other donors; 6126C copy-type grid (likely a uopt live-range split, not a source copy), 4E424 role grid, 50444 pos-home negatives**](#kit-cxc-agent-c-run-206) -- _No exact._
 - [kit CXCII (agent-c 2026-10-28, run 207): **a register copy in the first compare's delay slot can be a variable assigned from the loop TEST's CSE'd load: top-tested `while ((q = fmt, fmt = q + 1, *q) != 0) { c = *q; if (*q == 'd') ...` (6126C 99.35 -> 99.92); digit-arm, 4D688 old-n, C310 head, 54E78 FP colouring, C234 scale-copy negatives**](#kit-cxcii-agent-c-run-207) -- _No exact._
 - [kit CXCIV (agent-c 2026-10-28, run 208): **6126C EXACT: an un-forwarded temp is a self-referencing update of an earlier-block copy (`(ch = c, c >= '0') && ..` then `ch -= '0'; A = (u8)ch`); cfe `+ 0 * VAR` is zero code but a counted use for uopt colouring priority (`c = *q + 0 * *q`); zdbug:5 adjsave readout**](#kit-cxciv-agent-c-run-208) -- _Exact: gl_func_0006126C._
+- [kit CXCVI (agent-c 2026-10-28, run 209): **50444 EXACT: brute `+ 0 * (int)(X)` site x identifier sweep over cfe bodies and NCC donors (reject uninitialised X); in NCC the counted use kept a parameter in its memory home; `(m->n += 1) >= max` vs `++m->n` swaps v0 / v1; 578B4 / 4D688 / 4A308 negatives**](#kit-cxcvi-agent-c-run-209) -- _Exact: gl_func_00050444._
 - [kit CLXXXVIII (agent-c 2026-10-28, run 205): **a register copy in the FIRST compare's delay slot is the else block's first insn (as1 fills from the branch target): a block-local `u8 d = c` dispatch copy (int copies propagate away) + the range test on c gives 6126C 93.81 -> 99.35 at target length; NCC ignores volatile params; 4C5E4 un-named m78 + folded `0 * mC0` ring phase (87.22 -> 88.48)**](#kit-clxxxviii-agent-c-run-205) -- _No exact; 4E424 / 18F0 / CEB4 / 4A890 / 578B4 / 63964 / 50444 negatives._
 - [kit CLXXVIII (agent-c 2026-10-28, run 200): **37540 ported to C++ from its exact sibling 37348's donor kit (cfe 81.17 -> NCC 93.58, length = target): one inline reads the saved vector and clears x (refs = early stores, return = register), set() + compound `*=` for the store/re-read build; 8CD8 pads worth +0.07, no natural aggregate; 36694 n-CSE diagnosis**](#kit-clxxviii-agent-c-run-200) -- _No exact._
 - [kit CLXXI (agent-g 2026-10-28, run 202): **timproc_uso_b5 32C8 EXACT (1480 B): cfe NM body re-written as NCC on its exact sibling 2B74's donor shape (literal vec constants, rodata pin, `(f32)iz()` zero re-assigned on both alloc paths, cfe decl list); the last 2 colour words fell to a grid of PAIRED `if (1) {}` splits x statement order x line layout**](#kit-clxxi-agent-g-run-202) -- _Run negatives: 4A890 / E68 / 6126C / 18F0 / 65EE4 / 65494 / 578B4 / C310 / 4A308 / E2D0 / 31C0 / C234 / 90CC._
@@ -46907,3 +46908,42 @@ of the frame growing 0x28 -> 0x40 (3 sp rows) -- net up, flagged. gl 469A8: `cha
 **Negatives:** 0B3C without the phantom `case 4:` (or with `default:`) renumbers every t-register (99.83 -> 94.42;
 the 4-entry table stays out of reach, kit LXXVI); pairwise hoists on 7C1C (153) and 8CD8 (15): all below base;
 multi-name / no-init inner declarations hoisted (7C1C 5, 8CD8 2): flat or worse; 3B6A0 frame pads (73): no change.
+
+## kit CXCVI (agent-c 2026-10-28, run 209): 50444 EXACT -- the kit CXCIV `+ 0 * x` counted use swept over cfe bodies and NCC donors (a brute site x identifier grid); in NCC it can decide whether a parameter keeps its memory home; `(m->n += 1) >= max` vs `++m->n >= max` swaps the v0 / v1 pair <a name="kit-cxcvi-agent-c-run-209"></a>
+
+_Exact: gl_func_00050444 (488 B, 91.94 -> 100), NCC donor `game_libs_ncc_50444.cpp` over an empty placeholder in both trees._
+
+- **The sweep.** One variant per (site, identifier): append ` + 0 * (int)(X)` before the `;` of every `= E;` /
+  `return E;` and wrap every `if (E)` / `while (E)` as `((E) + 0 * (int)(X))`, X over every identifier in the
+  body (out-of-scope ones just fail to compile). Score with objdiff `-c functionRelocDiffs=none`, keep only
+  same-length (or toward-target) gains, then REJECT every hit whose X is not yet assigned on all paths to the
+  site (an uninitialised read, same class as an empty test on an uninitialised local) -- a lot of the biggest
+  hits are exactly that (kernel 1594 `0 * i` before the loop, 76F0 `0 * var_v0` / `0 * temp` on a path where
+  temp is conditionally set, 24B8 `0 * pad` on the volatile pad, 4BAF4 `0 * iz` before iz). In float context
+  the term is not folded (code emitted: CEB4 / E2D0 only lose).
+- **50444 (NCC).** `return m->n - 1 + 0 * (int)(pos);` -- pos was a register candidate in ours; the extra
+  counted use makes uopt keep it in its memory home (`sw a2,0x38(sp)`, base reloaded into t7 per use) as in
+  the target: 91.94 -> 98.30, every t-register then in phase. Then a spelling grid: operator== written
+  argument-member first (`o.x == x && o.y == y && ...`, the key from its home loaded first, 98.73) and the
+  count bump `if ((m->n += 1) >= max)` instead of `if (++m->n >= max)`: the element pointer and the count take
+  v0 and the == results v1 (was swapped) -- 100. (`m->n++; if (m->n >= max)` and `m->n = m->n + 1;` are 99.10.)
+- **Gains (report.json):** bootup 6808 95.62 -> 95.65 (`gD = D_bu_776C + 0 * *arg1`), E68 93.44 -> 93.97
+  (`m = E68_MGR + 0 * *cfg`, 3008 -> 3016 B toward 3036), B75C 93.929 -> 93.933, game_libs.c 76F0 94.998 ->
+  95.023 (`vt = self->vt + 0 * temp` inside the arm where temp is set); NCC 48AEC 96.88 -> 97.24
+  (`Flags::test` returns `(v & m) + 0 * (int)(v)`, `dlcall`'s t `+ 0 * (int)(dl)`), 4BAF4 95.70 -> 96.33
+  (`ctx = ... + 0 * w`, `w = spr->w + 0 * y`), 4F2DC 94.89 -> 95.26 (`p = ... + 0 * (int)(cam)`), timproc_b5 C310
+  96.02 -> 96.25 (`return i->w + 0 * (int)(i)` in an inline accessor).
+- **Flat under the full sweep (corrected scorer):** 4A308 (spill word 0x38 vs 0x3C; also r as top-level /
+  block / s64 / u32, extra block locals), 4B620, 4B0A8 (also `+= 1` / `++` spellings of next() / inc()), 63964,
+  54E78, 59E80, 493AC (only a +12-byte hit), 48510, 4B2F4, 4A9F0, 5F5F0, bootup 8BD4 / 55A0 / 90CC, kernel 1ADC,
+  game_libs.c 3430, mgrproc 2B7C, 24B8 (apart from the rejected pad hit), timproc_b5 D884 (only shorter).
+- **578B4 (99.99, 9676 B):** the last residual is one DL pointer spilled across the call (sp50, target ra / ours
+  t0) and the following arg2 reload (target t0 / ours ra). A line-restricted sweep (1027 variants, 13
+  identifiers over the s2_508 arm) and sp50 renamed onto temp_t0_25 / temp_a0 / temp_v0_4, `temp_ra_8 &=` and
+  an early `temp_ra_8 = arg2` copy: all flat.
+- **4D688 (97.86, NCC):** apart from the static-guard addresses and the 5-word pad, the only difference is the
+  edg post-increment temp of `if (n++ & 1)` (target a0, ours v0; v1 is used nowhere in the function). zdbug:6
+  shows the temp coloured after k (a1) and this (s0) with v0 free; the LRs that land on a0 here are the named
+  pointers passed as a0 (e, c, p), i.e. a copy-to-argument preference, which the target temp would need from
+  somewhere. Ten spellings (inline odd() / post(int &), named t, `(n += 1) - 1`, `% 2`, decl orders) and the
+  full counted-use sweep: flat.
