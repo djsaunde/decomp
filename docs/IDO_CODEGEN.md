@@ -50260,3 +50260,10 @@ documented 4-entry jump table, kits CXL / CCXXXV). Negatives: post0b 41D40, 3793
    store after the sel clamp (12 forms incl. CCXXXIV goto blocks) gives the target's block layout except
    `sb`/`swc1` swapped around the jal (97.16, objdiff ranks it below the 97.73 base). kernel 18F0: `~8`
    spellings flat. game_uso B3C: lever-sweep bbsplit (120) flat.
+5. **Constant-count scan (leads).** Counting `addiu/ori X, zero, K` per constant in target vs build over every
+   85-99.99 % non-exact: game_libs 76F0 materialises `2` ten times in the target vs five in the build (the
+   kit-90 const-web residual; candidate for this lever, agent-c's unit); post0b 415A4 materialises 1030 twice
+   (t1 for the first +0x28 store, a hoisted v0 that is ORed with 6 and then 0x400 at run time, two stores
+   only). There, `a28 = 1030; a28 |= 6; a28 |= 0x400;` gives the two `ori`s but keeps the middle store (+8
+   bytes); a local `m = 1030` (int or unsigned) is constant-folded by uopt (-12 bytes); `(a28 | 6u) | 0x400u`
+   is re-associated by cfe into one `ori 0x406`. The target's value is a constant uopt did NOT fold.
