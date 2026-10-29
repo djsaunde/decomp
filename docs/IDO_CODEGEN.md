@@ -14603,6 +14603,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLXXIX (agent-g 2026-10-28, run 203): **NCC folded `+ 0` on a pointer-valued inline-call result (or the inline's return) re-pools EDG temporaries = zero-code colour lever (41D40 99.61 -> 99.90, 42938 97.44 -> 97.60, gui 3714 96.43 -> 96.51); a `+ 0` site-sweep recipe over 30 NCC donors; negatives 3DF58 / 46790 / 3AE58 / 250C8 / 2D374 / 591C / 97EC / 1DDC / 0B3C**](#kit-clxxix-agent-g-run-203) -- _No exact._
 - [kit CLXXXI (agent-g 2026-10-28, run 204): **`scripts/zero-lever-grid.py` = rerunnable `+ 0` / folded `0 * inline()` / `(&X)[0]` site grid for NCC donors (30 donors: one hit, game_uso 3558 81.66 -> 85.86 via `&p->mtx + 0 * (int)(c.getOut())`); 41D40's last register is an EDG pool-slot merge (bottom array temp reuses the entry index vreg), 3E5E0's spill is the CB-level ctor `this` vreg; 2D374 / 97EC / 3AE58 / 0B3C / 591C / 396FC negatives**](#kit-clxxxi-agent-g-run-204) -- _No exact._
 - [kit CLXXXIII (agent-g 2026-10-28, run 205): **count the by-value copy hops: game_uso 8CD8 87.19 -> 89.48 (XZ return type, `Vec3 dir = xz-expr`, direct-init `XZ e(..)`, `kE0 * (250 * width)`); the report scores with `functionRelocDiffs=none` (CLI default differs on reloc-free cfe units: 30AF4 92.52 report = 91.73 CLI); 30AF4 92.52 -> 93.20 (if / else-if decode, direct fC store, wv/cp order); 3558 x,y,z operator= fixes two copy regions but loses the matrix juggle; 46050 / 454C4 constant-hoist pattern**](#kit-clxxxiii-agent-g-run-205) -- _No exact._
+- [kit CXCI (agent-g 2026-10-28, run 209): **the zdbug:5 `- live bb -` last column is a call-argument register preference: such an LR takes that register or the next free argument register above it and stays uncoloured (never v0/v1) when a0..a3 are forbidden; steer it by passing a variable as the N-th argument, strip it with `k = x; x = 0;` before the call -- post0b 38A28 EXACT (donor splice, jumptable pin 0x1A1C); zero-use-sweep goto / member / aggregate / macro fixes; 2E354 +0.5, 591C +0.01**](#kit-cxci-agent-g-run-209) -- _One exact (38A28 93.33 -> 100); 2E354 93.29 -> 93.79, 591C 99.894 -> 99.903; 591C site-4 destinations still a0._
 - [kit CLXXXIX (agent-g 2026-10-28, run 208): **uopt priority ties break toward the lower LR number; an LR's span includes its live-through "default" blocks -- 591C scratch site fixed by moving the anti-fold guard above the dispatch (prefetch 8/6 -> 8/4) and an empty do-while in the copy body (destination 10/4 -> 10/5); 38A28 case-0x65 value through key**](#kit-clxxxix-agent-g-run-208) -- _No exact; 591C 99.85 -> 99.89, 38A28 92.59 -> 93.33; chain site-4 destinations still a0._
 - [kit CLXXXVII (agent-g 2026-10-28, run 207): **cfe `+ 0 * VAR` as a uopt priority lever read in the zdbug:5 list (one counted use per block / dominance path, int contexts only, defined variables only; a use extends the LR and blocks its register); 591C 99.73 -> 99.85, 38A28 84.62 -> 92.49 at target length, 30AF4 93.20 -> 93.55**](#kit-clxxxvii-agent-g-run-207) -- _No exact; 591C left = copy destinations a0 vs a1._
 - [kit CLXXXV (agent-g 2026-10-28, run 206): **corrected-metric re-sweep = 3 `hoist` hits (inner declaration -> function scope: 37540, 8CD8, 7C1C), 0 that the old metric missed, 0 zero-lever-grid hits on 27 NCC donors; two unused `V3` locals set 37540's frame to the target 0xC0; cfe `+ 0 * VAR` counted-use grid automated in-tree (2D374 `if (0 + 0 * i)`, 469A8 `+ 0 * arg1` to target length)**](#kit-clxxxv-agent-g-run-206) -- _No exact; NM 37540 95.72 -> 96.39, 469A8 94.24 -> 95.12, 2D374 99.67 -> 99.77, 8CD8 89.475 -> 89.499, 7C1C 95.239 -> 95.261._
@@ -47119,3 +47120,62 @@ counted uses of `code` in any case / the default call: flat.
 **6. Checked, nothing found:** 41D40 (NCC, 99.90): 62 next()/condition spellings, the bottom copy's array temp stays a1
 (target v1). 97EC (NCC): declarator / copy-init forms of e / f don't reorder the two edg temp homes. 0B3C: the 4-entry
 table is the known cfe cap (kit CXL); `default:` instead of the phantom `case 4:` drops the table.
+
+## kit CXCI (agent-g 2026-10-28, run 209): **the `- live bb -` 4th column is a CALL-ARGUMENT register preference: an LR that is moved into an argument register colours that register, else the next free argument register above it, and is left UNCOLOURED (never v0 / v1) when a0..a3 are all forbidden -- post0b 38A28 EXACT by steering two preferences (default's third argument through the case cursor `p` -> a2; selector copied and killed before the call -> no preference -> v0); zero-use-sweep fixes (goto-aware def check, member names / labels / aggregates, multi-line macros) give 591C +0.01 and post 2E354 93.29 -> 93.79** <a name="kit-cxci-agent-g-run-209"></a>
+
+_One exact: gl_func_00038A28 (post0b, 324 B) 93.33334 -> 100.0 (donor splice, jumptable pinned at RoData +0x1A1C).
+report.json: game_uso_func_0000591C 99.89387 -> 99.90302 (4372 = target), gl_func_0002E354 93.28882 -> 93.7937
+(NM 3692 -> 3688 bytes, target 3684); 83.42 -> 83.46 % code, 3195 -> 3196 exact. post0b NM clip unchanged 0x2eacc. (CXC was already taken by agent-c run 206.)_
+
+**1. Reading the column.** In the zdbug:5 dump each `- live bb - <bb> <refs> <x> <reg>` row's last number is the
+register the LR's value is passed in at a call in that block (same numbering as the colour column: 3 = a0, 4 = a1,
+5 = a2, 6 = a3), 0 = none. An LR with such a preference does not take the lowest free register: it takes the preferred
+one, or the next free ARGUMENT register above it (38A28: `code`, preference a1, forbidden [a0 a1 a2] -> a3; key,
+preference a1, forbidden [v0 a0 a1] -> a2). With a0..a3 all forbidden it is NOT given v0 / v1 / a t-register: it stays
+uncoloured (`>>>active<<<{1015|0} 0 -1`, a stack home + reloads, +4..+20 bytes) even though the forbidden set printed
+only a-registers. So a target that holds a call argument's source value in v0 had no preference on that LR.
+
+**2. Steering it.**
+- To put an LR in aN, give it a use as the N-th argument of a call inside its live range. 38A28's default called
+  `report(fmt, code, o->0xC)`; writing `p = *(int **)(o + 0xC); report(fmt, x, p);` gave the case cursor variable `p`
+  (one LR over every case arm) preference a2, so all case cursors coloured a2 and the key value (preference a1, a1
+  forbidden by the param) moved up to a3 -- the target's pair. The case-0x64 cursor was a different register in the
+  target (a3), i.e. a different variable: that arm reads its cursor through `key` (`key = c->4; c->4 = key + 4;
+  o->0x20 = *(int *)key;`).
+- To REMOVE a preference, end the web at a plain copy before the call and kill the original:
+  `key = code; code = 0; report(fmt, key, p);`. The dead `code = 0` keeps uopt from propagating the copy, so the selector
+  web stops at the copy (no argument use, colours v0 = lowest free) and the copy's web (`key`, already a3 elsewhere)
+  supplies a1 via `or a1,v0,zero` in the delay slot -- the target's exact shape. `x | 0` and `+ 0` are folded and do
+  not do this; a second named variable for the copy (`k = code; code = 0;`) also works but needs its own frame slot.
+- Side facts from the same function: the selector as a plain `switch (*(int *)c)` expression (no named variable) gave
+  97.2 on its own but still got the a1 preference through the default's `*(int *)c`; the p assignment and the call
+  had to share ONE source line for as1 to order `lui a0; addiu a0; lw a2,12(s0)` (separate lines: `lw a2` between the
+  lui / addiu, 94.9 -> 99.8 on one line); `int code = 0;` or `pad[5]` restored the 64-byte frame when the variable
+  was dropped.
+
+**3. Landing.** cfe jumptable in post0b = the 52CD4 / 3AC5C donor recipe (docs/MATCHING_WORKFLOW.md#post0b-jumptable-
+donor-52cd4): donor `game_libs_o2_38A28.c` (in the C_FILES filter-out), `GAMELIBS_38A28_DONOR` + `private
+REPLACE_FUNC_BODY +=` after the post0b `:=` line, placeholder body in post0b.c, pin `gl_func_00038A28_rodata =
+0x00001A1C;` (the target's `lw t6,0x1A1C(at)`). The three message addresses were already pinned (D_0001EC6C ...); the
+callbacks are `jal 0` in the ROM (0-pinned gl_func_00000000). ROM byte-identical, verify-blocks 6/6.
+
+**4. scripts/zero-use-sweep.py fixes (monorepo, uncommitted).** Run 208's "284 / 461 --exprs variants failed" were
+script bugs, not compiler limits: (a) member names (`.y`, `->x`) and goto labels were taken as variables (`+ 0 *
+(int)(y)`: 604 of 638 failures on 591C); (b) aggregate copies (`*(Tri3i *)&a = ...`, `stage = *p` with Vec3) got a
+`+ 0 * x` appended; (c) an `=` inside a condition (`if (!((v0 = x) & 1)) goto L;`) was taken as a statement; (d) Vec3
+locals were in the vocabulary; (e) `--exprs` read `a * x` as a dereference `*x`; (f) multi-line `#define`s with braces
+broke the other-function reduction (fell back to whole-file compiles: post 2E354). Also: (g) the def check rejected
+EVERY local of a function containing `goto` -- it now rejects only when a label sits between the assignment and the
+site (591C, 0B3C and 2E354 were effectively unswept for locals); (h) variants are built in the workers from a
+(kind, pos, text) edit instead of holding every 800 KB file text in the parent (the 3500-variant 591C run sat at 6 GB).
+591C after the fixes: 3363 local variants, none above base; `*a0` on the proximity accel gate condition flips one
+mul.s operand order (99.894 -> 99.903, kept). 0B3C: 2618 variants, flat. 2E354: three greedy rounds (arg0 on the 0x32
+countdown store 93.63, `*arg0` on the recomposed (u32) conversion 93.79 at 3688 toward 3684). The third round's only
+hits (94.01) were `+ 0 * (int)(D_E354_1C330[temp_v1_2])`, a float-table read at an index the table may not cover --
+not kept. Variants that moved AWAY from the target length (3704) were skipped as the policy says.
+
+**5. Negatives.** 591C chain site-4 destinations (still a0, target a1): the destination LR has no argument preference
+and is coloured early (2.5) with only [v0 v1] forbidden, so a0 is lowest free; nothing in the target holds a0 there.
+A destination use in the alloc call (`alloc(0xC + 0 * (int)dst)`) is copy-propagated (flat); making the copy
+`(Vec3 *)((int)p | 0)` drops 8 bytes (97.2). 250C8: moving the FinishAsyncLoad locals into the `bytesRemaining == 0`
+block: flat. 41D40 / 3DF58 / BB8C: the remaining register swaps are not argument-preference cases (no call in the LR).
