@@ -14642,6 +14642,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCLI (agent-c 2026-10-29, run 236): **a call-crossing pointer and a later value that both take ra in the target are ONE variable kept non-propagated by a folded read (its LR then reaches the later t0 users); adjsave = refs / units-with-refs, so an `if (1) { stmt; }` wrap that adds one ref unit drops a variable below an equal-adjsave tie group; a `lw tN; andi ra,tN` scratch load = the source copied into its own non-propagated variable first**](#kit-ccli-agent-c-run236) -- _post0b gl_func_000578B4 99.9855 -> 100 EXACT (9676 bytes, +1.27% code); new 0 pin gl_578b4_c34458 for the blank USO jals._
 - [kit CCLII (agent-c 2026-10-29, run 237): **`v0 * 1 == K` = const-first bne with no extra LR (uopt input swaps ==/!= when the left operand is not an isvar); a nested float selector's inner join temp in the wrong register = route the inner arms through an existing dead named float whose LR already has the target colour (`fsel = c3 ? A : (scale = c2 ? B : C, scale)`); a folded read on a `new` result keeps the named pointer off edg's new-temp**](#kit-cclii-agent-c-run237) -- _game_uso game_uso_func_0000591C 99.977 -> 100 EXACT (4372 bytes, +0.57% code, cfe donor); bootup 31C0 99.955 -> 99.965; 454C4 / 1DDC / 63964 / C310 / 51AD8 negatives._
 - [kit CCLIII (agent-g 2026-10-29, run 237): **NCC homes a block's named locals in declaration order BELOW its edg temporaries, which are homed in REVERSE creation order; temporaries that the target has in creation order are named locals assigned inside the ctor argument (`XZ e(pe = (a - b) * k)`), placed above / below the remaining temporaries with a nested block**](#kit-ccliii-agent-g-run237) -- _game_uso game_uso_func_000097EC 99.974 -> 100 EXACT (924 bytes, NCC donor); 41D40 / 37938 / 3AE58 / 46790 / 40304 / 250C8 / 3B2EC / 3E5E0 negatives._
+- [kit CCLIV (agent-g 2026-10-29, run 238): **edg's pointer temp pool picks a rotated loop condition copy's colour; a for-increment of nested zero-code inline calls (`me()->me()`) holds pool slot 1 while the BOTTOM copy is emitted, moving it to slot 2; a donor promotion's old `.s` may carry `.late_rodata` that must move to the preceding INCLUDE_ASM**](#kit-ccliv-agent-g-run238) -- _post0b gl_func_0003B2EC 99.916 -> 100 EXACT (948 bytes, NCC donor); game_uso verify-blocks lo16=7 -> 0; 3BE1C NM 98.34 -> 98.56 (cellOf on caller cx / cz); 41D40 / 34890 / 3E5E0 negatives._
+- [kit CCLV (agent-c 2026-10-29, run 238): **NCC frame homes: an inline's scalar locals declared BEFORE its result V3 are homed above it; one variable instead of two drops a home; `V3 &v = x; v += w;` for a member +=; a DEAD nested pool allocation `if (0) { *a.me()->me() += *b.me(); }` homes edg's pointer-temp pool slots above the next statement's temporaries; array-indexed loop pointers (uopt IVs) move the spill slot up**](#kit-cclv-agent-c-run238) -- _bootup func_00008BD4 98.83 -> 100 EXACT (836 B) and post1b gl_func_00063964 99.964 -> 100 EXACT (1120 B), NCC donors; 4B0A8 NM 99.56 -> 99.83 (CCLIV hold on a while-loop); 31C0 99.965 -> 99.975; C310 / 454C4 / 59E80 / 1DDC / 4B2F4 / 4B620 negatives._
 - [kit CCXIII (agent-g 2026-10-29, run 216): **post0b 454C4 95.95 -> 99.95, length = target: build on the structurally-right BB lever, then re-test old micro-levers (drop the named element pointer -> sixth s-reg; drop the folded `& 0xFF`); `if (rec) {}` breaks an adjsave tie; `cur = nxt; if (nxt)` keeps an inline iterator member out of the candidates (ring temp t7 vs v0 web); a ternary sharing edg's int temp with post-increments separates when assigned in the same full expression as the inline call**](#kit-ccxiii-agent-g-run-216) -- _Open: e copy-propagated as the shared pointer temp (5 words); 3C43C homes = function-scope five + k / ABS3 temps / dd; 3558 per-row adds inert._
 - [kit CCXIV (agent-c 2026-10-29, run 218): **a RoData float read as `D + off` / an extern alias is often a compiler LITERAL: read the ROM word (bootup.uso RoData = ROM 0xD9FE44); a run of identical values around a jump table = one constant rematerialised (one literal word per `l.s`). As a literal uopt hoists / colours / reloads it after calls -> game_libs 3430 (0.1f in f2 + three trailing `if (1) {}`) and timproc_b5 CEB4 (0.3f + `if (1) {}` per white arm) EXACT via donors pinned `<fn>_rodata` = the pool's ROM offset; C310 NM 96.45 -> 99.89 (`== 1` = register-held 1 shared with the `= 1` store, field-form counters)**](#kit-ccxiv-agent-c-run-218) -- _CCXII address-form scan (size>0 FUNC symbols only): no further hit; 4F2DC literal +0.19; 6204/E9FC, 8BD4, 1824, 4C5E4, 4A308 / C310 spill-slot gap negatives._
 - [kit CCX (agent-g 2026-10-29, run 214): **each object of a class with an inline constructor is an edg labelled BB; above ~19 BBs uopt splits a held callee-saved constant (game_uso 3558's $f20 zero web: hold, live else muls, w.y reload) -- a constructor-less Vec3 / aggregate Ctx restores it; a Vec3 local is a uopt register candidate only when no member call or reference parameter is bound to it (free by-value mk() keeps the op- copy chain)**](#kit-ccx-agent-g-run-214) -- _3558 85.86 -> 89.21 (frame 256 = target, all homes on the target map); vb split / va.y f20 residual and negatives listed._
@@ -50052,3 +50054,104 @@ now spliced over a placeholder on both paths (old NM-only block removed)._
    1s with `cur * 1 == 1` = same; the 5-entry jump table (target 4) needs the dummy `case 4` -- without it the four
    case bodies are merged into a compare chain (94.4). game_uso BB8C: the operator=(V3) by-value parameter temp is
    8 bytes low (target 164, here 156); `double k` in the inner block puts it at 164 but shifts every other temp +8.
+
+## kit CCLIV (agent-g 2026-10-29, run 238): post0b 3B2EC EXACT (948 bytes) -- edg's POINTER TEMP POOL decides which colour a rotated loop's duplicated condition gets: a for-INCREMENT of nested zero-code inline calls (`me()->me()`) holds pool slot 1 while edg emits the BOTTOM copy of the condition, so the bottom `*list++` old-value copy lands in slot 2 (sharing the colour of the body's other slot-2 temp) <a name="kit-ccliv-agent-g-run238"></a>
+
+_One exact: game_libs_post0b gl_func_0003B2EC 99.91561 -> 100 (948 B), NCC donor src/game_libs/game_libs_ncc_3B2EC.cpp
+(was `_nm`) spliced over a placeholder on both paths. Plus a game_uso verify-blocks fix (item 4)._
+
+1. **Diagnosis with the zdbug:5 dump.** 3 words: the `or rX,s3,zero` old-value copy of `*list++` at the two
+   `continue` delay slots and the loop bottom (target t4, ours v0); the entry copy is v0 in both. The dump
+   (`>>>active<<<{var|..} LR colour`, colours 1 = v0, 2 = v1, 3 = a0, 4 = a1, 5 = a2, ..., 11 = t4) shows
+   edg's pooled pointer temps are function-wide vregs in allocation order (-84 = slot 1, -88 = slot 2, ...),
+   shared by every inline call's `this` / parameter / ternary temp of pointer size. Ours: both condition
+   copies use slot 1 (v0); slot 2 is the inline `Col::face()` ternary temp (t4). Target: bottom copy = slot 2.
+2. **Why a hold in the increment works.** edg rotates `for (; c; inc)` into `c; loop: body; inc; c`, and emits
+   the bottom `c` while the increment's temps are still allocated. `me()->me()` (with
+   `Obj *me() { return this; }`) keeps the outer call's `this` temp in slot 1 while the inner call is
+   evaluated; it emits no code. One `me()`, `this`, `list`, `col->grid` and other one-level increments
+   leave the pool alone (99.92); increments that call real inlines (`this->list(cell)`,
+   `col->face(0)`, `cellOf(p)`) emit code (89-91). The opposite hold, a for-INIT that keeps slot 1 (kit CCLIII
+   item 5), moves the ENTRY copy to slot 2 instead.
+3. **Recipe.** When a loop's duplicated condition (or any short pooled temp) has the wrong colour and the
+   colour is the one another pool slot has, dump the vars (`isvar M 4 -NNvreg`) and actives; find which slot
+   the target's register belongs to; then hold the lower slots at that program point with nested zero-code
+   inline calls (increment for the bottom copy, init for the entry copy, or a comma expression in place). The
+   member must not take the address of a register-promoted local (`it.me()` on a by-value iterator puts `it`
+   in memory: 34890 -16 bytes).
+4. **game_uso verify-blocks lo16=7 after the 97EC exact.** 97EC's `.s` carried 4 `.late_rodata` words
+   (+0x110..+0x120: A7D8 / AB98 0x7F7FFFFF floats and 2 zero words). A C placeholder + donor no longer
+   INCLUDE_ASMs the `.s`, so every later C fn's `%lo` slid by -0x10 (7 sites, 0xC588..0x118CC in the block;
+   ROM cmp still identical because the ROM takes the extracted block). Moved the words to the end of the
+   preceding INCLUDE_ASM (8CD8.s, after its own jumptable): lo16=0. **`.s` edits are not prerequisites of
+   the unit's `.o`** -- touch the `.c` (a stale object made "97EC alone 6/6" a false pass). Check every
+   donor promotion's old `.s` for a `.late_rodata` block.
+5. **Negatives (all flat or lower).** post0b 41D40: cond {next(), next() + 0, me()->next(), ...} x incr
+   {none, me(), me()->me(), me()->me()->me(), free me2(&it)} x next() {+ 0, plain} (60 probes, best =
+   base 99.90; `next()` without `+ 0` plus a me()->me() increment fixes the bottom copy but breaks the entry
+   copy). 34890: id(id(o)) holds in the increment / condition / make() (-16 bytes or lower), `make(int h,
+   O *o)` (h at the top slot but no longer register-kept: 89.17), O::mk(int h) member (same 98.75); the
+   top vreg -12 is never coloured here, target colours h there. 3E5E0: the new-result spill slot is vreg
+   -24 (sp+32, target -12 = sp+44) because the named `x` of the first block takes -12; a kept inline
+   `log1(int x)` moves it to -20 (99.34), x as a plain argument / not kept loses the read order (95.89),
+   moving `node` / `it` declarations or into a block flat.
+6. **post0b 3BE1C NM 98.34 -> 98.56 (3B2EC twin).** `cellOf(const V3 &p, int &cx, int &cz)` writing query()'s
+   own `int cx, cz;` (declared anywhere at function level before the call; inside the loop or a nested block
+   scores lower) instead of cellOf's locals: 98.505; then a zero-use hit `(cc->grid == 0) + 0 * (int)(col)`:
+   98.556. Open: the target loads `cc = col` into s1 BEFORE the face() call (face's `this` copy is s1, the
+   gl call's a0 is s1, then `ok = 1` reuses s1); `cc = col; f = cc->face(i)` gets s1 but drops 4 bytes
+   (98.07); the frame is 256 here vs 240 (q at 188, cx / cz at 132 / 128 in the target: q is homed above
+   cellOf's results). The me()->me() increment loses here (97.99).
+
+## kit CCLV (agent-c 2026-10-29, run 238): two EXACTs from NCC FRAME HOMES -- bootup 8BD4 (836 B: an inline's scalar locals declared BEFORE its result V3 are homed above it; one variable instead of two for |x| drops a home; `V3 &v = ...; v += w;` for a member +=) and post1b 63964 (1120 B: a DEAD nested pool allocation `if (0) { *a.me()->me() += *b.me(); }` homes edg's pointer-temp pool slots above the next statement's temporaries); IV conversion moves a uopt spill slot; 4B0A8 / 31C0 gains <a name="kit-cclv-agent-c-run238"></a>
+
+_Two exacts: bootup func_00008BD4 98.83 -> 100 (836 B), post1b gl_func_00063964 99.964 -> 100 (1120 B), both NCC donors
+spliced over placeholders on both paths. NM: post0b 4B0A8 99.56 -> 99.83, bootup 31C0 99.965 -> 99.975._
+
+Method for every case below: list the `addiu rX, sp, K` / `K(sp)` offsets per statement in target and build (diff
+of `objdump --no-show-raw-insn` with branch targets made function-relative), then the zdbug:5 dump's isvar list
+(`isvar M 4 -N` = frame-top-relative homes, `vreg` = register candidates that still own a home word) to name the
+vregs at the offsets that differ. NCC homes every named local, inline local and edg temporary, used or not.
+
+1. **8BD4: inline-local declaration order places the result temp.** The second `scaledBy(*dir, -amt)` result was
+   16 bytes high (sp+80, target 64). Each inline expansion homes its own locals in declaration order, so
+   `V3 r; f32 hx = ..., hy, hz;` puts r above the three scalars. A second inline for that one call site with
+   `f32 hx, hy, hz; V3 r; hx = d.x * s; ...` (scalars FIRST) moves r 3 words down. The fourth word: the else
+   arm's `f32 t = f970; f32 q = t < 0 ? -t : t;` is two homes; `f32 q = f970; q = q < 0.0f ? -q : q;` is one,
+   which keeps the frame at 184 with r at -120 = target. Separately, `b->ctx->vel += impA` (void member +=) took
+   v1 with the second load scheduled before the `addiu` (`lwc1 f4,184(v1)`); the named reference
+   `{ V3 &v = b->ctx->vel; v += impA; }` gives the target's `lw a0; lwc1 180(a0); addiu a0,a0,180; lwc1 4(a0)`
+   (98.85 -> 100 together with the two frame fixes). Notes: putting r last in BOTH expansions breaks the first
+   one; a ref-returning `operator+=` instead of the reference grows the frame; the first-expansion FP colours
+   only line up when the second inline uses separate declarations (`f32 hx, hy, hz;`), not `f32 hx = ...`.
+2. **63964: edg's pointer-temp pool slots are homed where they are first allocated.** Arm 1's temps (operator*
+   ctor / copy, operator+ result) were 4-8 bytes high with two 2-word gaps between them; the dump showed the gap
+   words were pool vregs (the inline `this` / reference temps, used by every arm), first allocated INSIDE arm 1.
+   Allocating them earlier with dead code that emits nothing: `V3 *me() { return this; }` and, after the
+   normalise call, `if (0) { *va.me()->me() += *vb.me(); }`. Nesting matters: `va += vb` (one slot) moves one word;
+   `*va.me() += *vb.me()` two (99.971); `*va.me()->me() += *vb.me()` (three live at once) = 100. `out = va`,
+   `out.cp(va)`, gx(const V3 &) style free inlines, or `va.me()->me()` alone change nothing (no new slot / no
+   simultaneous liveness). This is kit CCLIV's pool, used for HOMES rather than colours.
+3. **4B0A8 (post0b): CCLIV's increment hold works for a while-loop too.** `while (it.next())` ->
+   `for (; it.next(); it.me()->me()->me())` gives the bottom copy of next() the target's a0 / v1 / v0 (one or two
+   `me()` do not); the three hold homes replace the four volatile pads (frame kept): 99.56 -> 99.83. The IBase ctor
+   `this` (t0, target a3) follows the same pool: holds inside the iterator declaration
+   (`iter(me()->...->ap(s))`) move it to v1 (1 hold) / a0 (3-4 holds), never a3.
+4. **31C0: a conversion temp sits above the new-temp.** `(Obj *)new Obj2` makes a derived-to-base conversion temp
+   created after the new-temp and homed above it; without the conversion (`(Obj *)((int)new Obj2 + 0 * ...)`) the
+   new-temp is the first temporary (target sp+0x74), and a named `Obj2 *p = this;` in the inline Obj2 ctor gives
+   the word between it and the Obj2 `this` temp (sp+0x6C): 99.965 -> 99.975. Left: the KB new-temp reuses the
+   new-temp's slot (target sp+0x68 = the M-ctor `this` slot) and the WA / KB arguments read obj's home; dead pool
+   allocations, KB ctor / new spellings, named k, declaration-initialised obj: no change.
+5. **C310 (timproc_b5): array-indexed loop pointers are uopt IVs and move the f0 spill slot.** The spill slot sits
+   right below the lowest home; `pv++` / `pp++` / `fb += 6` named pointers each own a home, `vals[i]` / `ptrs[i]` /
+   `base + i * 6` become uopt IVs without one (frame unchanged), so the spill moves 80 -> 92 (target 96) and with
+   `for (i = 0; i != 5; i++)` the fb init / IV increment order match the target too (score-neutral, 99.89). One
+   more home must go with the frame kept at 200; volatile-pad count, width() spellings, compound-assignment forms:
+   the frame drops to 192 instead. Not committed.
+6. **Negatives.** 454C4: split variables / assignment-in-condition (all copy-propagated), CCLIV holds in a for-
+   increment (97.18), dead pool allocations at three positions (flat). 59E80 ClipRatio constants (named, local,
+   `(u16)-3`, BB levers): flat or worse. 1DDC: `V3 e` + dead pool allocations before the ref read / call / at the top
+   move the return slot the wrong way; ref-read / getPos spellings flat. 4B2F4: `(flags | 2)` inline instead of
+   `flags |= 2` loses flags' a2 LR (91.7). 4B620: CCLIV holds flat. mgrproc 1824's remaining displacement is the
+   documented external jump table.
