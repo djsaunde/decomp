@@ -14632,6 +14632,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCXLI (agent-c 2026-10-29, run 231): **game_uso 7C1C EXACT (98.52 -> 100): `cc -S` shows ugen's pre-schedule temps (an invisible `addu tN; move v1, tN` guard costs a ring slot); trailing firstUseCost blocks can reject short address-constant LRs too -- one `if (1) {}` at the loop-body top fixed the t-ring; empty blocks around a straight-line site give a CSE its own live unit (width f0 beside tz f0); a fourth shared float temp (reuse an unused float, a new decl shifts the frame); one-line member copies; folded-use grid for colouring order**](#kit-ccxli-agent-c-run231) -- _exact +4284 B._
 - [kit CCXLII (agent-g 2026-10-29, run 232): **a target `mov.s` copy = a copy taken BEFORE its source variable is overwritten by a later result (`t = s; x*s; s = y*s; z*t`: uopt cannot propagate it; plain copies are always propagated); compare constant off the hoisted temp (`t = K*sum; if (a < t + 4.0f)`); repeated scaled sums through one shared float temp; NCC frame fit by declaration gaps (every used scalar takes a word, structs top-down); post-increment on a deref costs two bottom edg homes above the spill area**](#kit-ccxlii-agent-g-run232) -- _bootup C234 98.17 -> 99.62 (length = target, colours + one spill slot left)._
 - [kit CCXLIII (agent-c 2026-10-29, run 232): **cfe-shape triage before a cfront-style port: cfe folds `x * 2.0f` to `add.s x,x` (edg keeps `mul.s` + literal), cfe CSEs by-value struct-parameter field loads that edg reloads inside one block, edg's DL append temps re-read `ctx->dl` and rotate a0/a3/v0; cfe struct-return copy-out tail needs an explicit result pointer + one exit; 4C5E4 NCC frame = target via six used argument locals; 36694 temp homes: first-declared named V3 takes the frame top**](#kit-ccxliii-agent-c-run232) -- _post0b 46050 / 4C5E4 / 36694 / 3B9C0 all edg-shaped; 4C5E4 88.69 -> 88.73 (every frame offset = target)._
+- [kit CCXLIV (agent-g 2026-10-29, run 233): **t-ring one slot off = a value that is a ugen expression temp in one compile and a coloured local in the other: store a compare directly (`*p = (a < b);`) to move a 0/1 local out of v0 into the ring; a target `mfc1 v0` index = a named variable (re-use an existing local, a fresh one is copy-propagated); a new float temp in a dead local's declaration slot keeps the NCC frame**](#kit-ccxliv-agent-g-run233) -- _bootup C234 99.62 -> 99.82; post0b 493AC 97.33 -> 99.18 (a named context pointer -> member store + member re-read, forwarded as a ugen temp; the alias-safe statement order keeps the length); post0b 4BAF4 96.82 -> 97.03 (four volatile reloads through one local via comma operators = one coloured register); negatives: 0x968 scale-block colours, counter v1, spill slot sp+0x3C, tail load order; 54E78 / 3BE1C / 55A0 surveyed._
+- [kit CCXLV (agent-c 2026-10-29, run 233): **an unhoisted in-loop `sll n,2; sll 4; addu p` step is uopt strength reduction of an indexed pointer -- write `&buf[i * (n * 4)]`, not `p += n * 4` (PRE hoists that); `*(T *)(int)&g[1]` holds a global field's address with the +4 folded (sym+4); one `(int)&` global read adds a held address as a register-pressure lever; loop-counter reuse gives a shared colour (check merge-sweep lifetimes by hand)**](#kit-ccxlv-agent-c-run-233) -- _bootup E68 94.59 -> 96.72 (3020 -> 3032 of 3036); negatives 5A2C4 decl permutations / merges, 24B8, 4B2F4 flags single-def forms._
 - [kit CCXIII (agent-g 2026-10-29, run 216): **post0b 454C4 95.95 -> 99.95, length = target: build on the structurally-right BB lever, then re-test old micro-levers (drop the named element pointer -> sixth s-reg; drop the folded `& 0xFF`); `if (rec) {}` breaks an adjsave tie; `cur = nxt; if (nxt)` keeps an inline iterator member out of the candidates (ring temp t7 vs v0 web); a ternary sharing edg's int temp with post-increments separates when assigned in the same full expression as the inline call**](#kit-ccxiii-agent-g-run-216) -- _Open: e copy-propagated as the shared pointer temp (5 words); 3C43C homes = function-scope five + k / ABS3 temps / dd; 3558 per-row adds inert._
 - [kit CCXIV (agent-c 2026-10-29, run 218): **a RoData float read as `D + off` / an extern alias is often a compiler LITERAL: read the ROM word (bootup.uso RoData = ROM 0xD9FE44); a run of identical values around a jump table = one constant rematerialised (one literal word per `l.s`). As a literal uopt hoists / colours / reloads it after calls -> game_libs 3430 (0.1f in f2 + three trailing `if (1) {}`) and timproc_b5 CEB4 (0.3f + `if (1) {}` per white arm) EXACT via donors pinned `<fn>_rodata` = the pool's ROM offset; C310 NM 96.45 -> 99.89 (`== 1` = register-held 1 shared with the `= 1` store, field-form counters)**](#kit-ccxiv-agent-c-run-218) -- _CCXII address-form scan (size>0 FUNC symbols only): no further hit; 4F2DC literal +0.19; 6204/E9FC, 8BD4, 1824, 4C5E4, 4A308 / C310 spill-slot gap negatives._
 - [kit CCX (agent-g 2026-10-29, run 214): **each object of a class with an inline constructor is an edg labelled BB; above ~19 BBs uopt splits a held callee-saved constant (game_uso 3558's $f20 zero web: hold, live else muls, w.y reload) -- a constructor-less Vec3 / aggregate Ctx restores it; a Vec3 local is a uopt register candidate only when no member call or reference parameter is bound to it (free by-value mk() keeps the op- copy chain)**](#kit-ccx-agent-g-run-214) -- _3558 85.86 -> 89.21 (frame 256 = target, all homes on the target map); vb split / va.y f20 residual and negatives listed._
@@ -49415,3 +49417,120 @@ unchanged (90.68 / 94.27 / 92.27)._
 5. **46050 / 3B9C0:** w1 `Y | X` order evaluates y first like the target but swaps the `or` operands (91.62); `Y + X`
    (disjoint fields, same value) scores 92.48 but emits `addu` where the target has `or` -- not kept. Edg canonicalises
    every xl / yl spelling (`u32` casts, `<< 2`, `4 *`, `+ 0`: flat). Commute sweep (`|+*&`, 21 variants) flat.
+
+## kit CCXLIV (agent-g 2026-10-29, run 233): bootup C234 99.62 -> 99.82, post0b 493AC 97.33 -> 99.18, post0b 4BAF4 96.82 -> 97.03 -- a target value in the ugen t-RING (t0 / t1 / t2 shifted one slot from the build) means the target computed it as an EXPRESSION TEMP, not a coloured local: store the compare directly (`*p = (a < b);`, not `v = 0; if (a < b) v = 1; *p = v;`); conversely a target `mfc1 v0` / low-register index means a NAMED (coloured) variable -- reuse an existing local (a new one would cost an NCC home); a float temp that takes a dead local's home slot keeps the frame; negatives for the div-block / tail / spill-slot residuals <a name="kit-ccxliv-agent-g-run233"></a>
+
+1. **ugen ring vs uopt colouring (the C234 t0 / t1 / t2 rows).** The build had `or v0,zero,zero` / `addiu v0,zero,1` /
+   `sw v0,0xA50(s0)` (a 0/1 local `var_t0` coloured by uopt into v0) where the target had the same three words in
+   `t0`, and every later ugen temp in the next blocks one ring slot higher (target `lw t1,0x938` / `addiu t2,70`,
+   build `t0` / `t1`). The m2c name `var_t0` was the tell: v0..a3 were free, so a coloured LR would have taken v0;
+   t0 is the next free slot of ugen's local temp ring. Writing the store as `*(s32 *)(arg0 + 0xA50) = (D_930 <
+   (f64) x);` makes the 0/1 an expression (ugen emits the same branchy set-on-compare with `or tN,zero,zero` /
+   `addiu tN,zero,1` in the ring) -- and shifts every later ring temp by one, which is the evidence it is right.
+   The removed local's home must be kept (NCC homes every USED local in declaration order): here its slot was
+   re-used by item 3. `? 1 : 0` spellings and `var = (cmp) ? 1 : 0` were worse (they grow the code by a word).
+2. **The reverse: a coloured index.** After item 1 the build's `trunc.w.s; mfc1 t4; sll t5,t4,2` was one ring slot
+   too high against the target's `mfc1 v0; sll t4,v0,2`: the target's float-to-int index was a NAMED variable
+   (uopt colours it v0, so it leaves the ring). `var_v0 = (s32)((f32) var_v0 + f * 3.0f); call(..., tbl[var_v0], 2);`
+   (re-using the block's own 0/1/2 local; a fresh local `var_t0` was copy-propagated away, no change). 99.44 -> 99.72.
+   Rule: diff the t-ring offset block by block; each place where it jumps by one is one value that is a ugen temp in
+   one compile and a coloured variable in the other.
+3. **Float temp in a dead local's slot.** The tail `x = a * K1 + b * K2 + c * K3` triple needed 0x934 held in a
+   variable (de-named macro gave f12/f14/f16 in the wrong order); a new `f32 temp_f14;` declaration shifted every
+   lower home by one word, but changing the now-unused `s32 var_t0;` declaration (item 1) to `f32 temp_f14;` in
+   place kept the frame: 99.78 -> 99.82. Also the scaled plane sum moved from `temp_f2_3` into `temp_f0`
+   (the target's `mul.s $f0`), which only paid once the tail stopped sharing `temp_f2_3`.
+4. **Negatives (C234 residual 98 colour words + 1 spill slot):** (a) the 0x968 scale block: target divisor
+   `cvt.s.w $f2`, scale f12, x product f2 vs build f0 / f2 / f12 -- every name for the divisor (13 locals; uopt
+   CSEs `(f32) n` into its own ucvt LR whatever it is assigned to), for the copy (10) and for the scale (6), and
+   `if (1) {}` positions (33) are flat; (b) the post-increment counter (`lw v1` in the target, v0 build): named
+   copies, `++x > 0x97`, `0x97 <= x++` flat or worse; (c) the `arg0 + 0xDC` spill slot (target sp+0x3C, build
+   sp+0x34; 0x38 / 0x3C stay unused in the build): declaration moves (84), removing the two unused decls, moving the
+   assignment (15 positions), `char *const` and assignment-in-call all keep sp+0x34; (d) lever-sweep denaming /
+   volatile / bbsplit / order (14 + 39 + 136 + 195) flat; (e) tail load order `0x3C4` before `0x934` (target):
+   permuting the four tail definitions (24), lazy definition, operand swaps flat.
+5. **Other targets surveyed (no gain):** post0b 54E78 (98.66) is FP colouring only -- the 0.0f / 2.0f constants
+   take f0 / f2 in the target and f2 / f14 in the build (k = dot * 2 colours first); dropping or moving its two
+   `if (1) {}` splits changes the length. post0b 3BE1C (98.34): frame 0xF8 vs 0xF0 -- de-naming `off` gives the
+   target frame (98.31) but the inner homes (q[] at sp+188 target vs sp+144) and the t-ring still differ.
+   bootup 55A0 (97.27, NCC): no jumptable; frame 0x170 vs 0x180 and the t-ring dominate.
+6. **post0b 4BAF4 96.82 -> 97.03 (same family, other direction).** The viewport clip test re-reads the half-extents
+   0xB8 / 0xBC four times (volatile reads) and the target keeps all four reloads in ONE coloured register (a3), with
+   the centre 0xC0 loaded before 0xB8; the build had each volatile read as its own ugen ring temp (t8 / t9). Assigning
+   each volatile read to one local inside the test, `(e = vol(0xB8), c0 + e < x) || (e = vol(0xBC), c4 + e < y) || ...`
+   (comma operators keep the short-circuit order and the four reads), gives the shared register and the target load
+   order (96.82 -> 96.91); `e` took the unused `volatile int pad1` home so the frame stayed 0xF0 (a new declaration
+   lost fuzzy). With the ring now one slot lower, the old folded `w = spr->w + 0 * y` was surplus (x / y back in
+   a0 / a1, 97.00) and the ctx folded use reads `spr->h` (97.03). Left: e in v0 (target a3, colored after the 0xC0
+   centre), iz / GS base t4 / t5 swapped, the two MAX zero-inits hoisted together (one word out of place).
+7. **Kernel 18F0 (89.19) negative:** the target's `bnezl found, store; b next` shape is not produced by `if (found)
+   { store }`, `if (!found) continue;`, nested ifs for the three tests or `x = x & ~8` (all canonicalise to the
+   same 488 bytes); the skip test as an if-block instead of `continue` loses 8 bytes.
+8. **C234 spill-slot bisect (diagnosis only, for the next run):** deleting code blocks from a scratch copy shows the
+   `arg0 + 0xDC` spill lands at the target's sp+0x3C only when the 0x9A0 `== 0x64 / == 0x63` chain (A5C stores,
+   var_v0 = 2 / 1) is gone (frame then 0x100); removing the 0x348 test, the abs block, the D_000081C0 call or the
+   whole bu_c234_sv block does not move it. So the two unused words above the spill are claimed while colouring
+   that chain (its de-named `lh 0x9A0` CSE is lr 58 in v1); a `switch`, a named s16 copy (temp_v0_2) and store /
+   assignment order inside the chain keep sp+0x34.
+9. **post0b 493AC 97.33 -> 99.18 (the biggest gain of the run, same lever).** Target: `lui t6; lw t6,0x214(t6);
+   sw t6,0x6c(s3); lw t8,0xc(t6); ...; sw t6,0xe0(sp)` -- the per-object context pointer lives in a ugen ring temp
+   inside one block; the build held it in a named local `Ctx *g` (coloured v0, every later ring temp one slot off).
+   Writing it as a member store and re-reading it through the member, `o->ctx6C = *(Ctx **)K; o->n8A =
+   o->ctx6C->count(); rec.ctx = o->ctx6C;`, lets uopt forward the stored value (no reload) without making it a
+   variable -- but only while no store that may alias intervenes: `rec.ctx = o->ctx6C` AFTER the `rec.n58C / f594 /
+   f590` stores reloads it (`lw t1,108(s3)`, +1 word), so it goes first (6 of 60 orders keep the length). The removed
+   local's home is kept with `Ctx *g = 0;` (else every home below moves 4 bytes), and `int cnt = 0;` moved after the
+   `gl_func(&rec)` call (the target's `or s5,zero,zero` sits after the `addiu a0,sp,224`): 99.15 -> 99.18.
+   Negatives: the five first-loop `it.cur()` as `ref()` (32 combos), plain `it.next()` (fixes the next() result to
+   v0 but swaps s1 / s2: 98.93), a second `AIter it2` (in the pad6..8 homes or new: 94.4, +16 bytes), lever-sweep
+   order / bbsplit / denaming / volatile flat. Left: it.a v1 vs a2 in the first loop, s2 vs v0 next() result,
+   3 / 32 constant ring order.
+
+## kit CCXLV (agent-c 2026-10-29, run 233): an unhoisted in-loop `sll n,2; sll 4; addu p` step is uopt STRENGTH REDUCTION of an indexed pointer (`&buf[i * (n * 4)]`), not a `p += n * 4` increment; `*(T *)(int)&g[1]` holds a global's field address (sym+4 folded) in a register; reading one global through `(int)&` adds a held address that raises loop pressure; loop-counter reuse <a name="kit-ccxlv-agent-c-run-233"></a>
+
+_bootup func_00000E68 (3036 B, cfe NM body) 94.59 -> 96.72 (report.json), length 3020 -> 3032 of 3036. No exact._
+
+1. **Strength reduction vs a hand increment.** E68 phase 3 (one `gSPVertex(&vtx row)` per outer iteration) had
+   `vp += n * 4;` at the loop bottom: uopt PRE hoists `n << 6` out of the loop (and, under pressure, keeps it in a
+   caller-saved register saved around the call / spills it). The target recomputes `sll t8,n,2; sll t7,t8,4;
+   addu s5,s5,t7` inside the loop and never hoists it. The two shifts (not one `<< 6`) are the tell: the `* 16`
+   is the element scaling uopt's strength reduction applies to an INDEX expression. `func(&vp[i * (n * 4)])`
+   (vp = buf, no increment) reproduces it exactly; `&buf[i * n * 4]` / `buf + i * n * 4` (multiply order
+   `(i*n)*4`) do not (92.2, multu kept), nor do `vp += n << 2`, `vp = &vp[n * 4]`, a named `nn = n * 4`,
+   for-increment / while forms (all still hoisted). With it the whole phase-3 block lines up word-for-word up to
+   registers. Rule: an in-loop pointer step built from a loop-invariant count, with an unfolded scale shift, is
+   `&base[i * (count)]` with the counter i -- write the index, let uopt reduce it.
+2. **Holding a global field's address.** The target keeps `&dims.h` (`lui/addiu sym+4`) in s8 for the phase-3
+   loop test. `*(s32 *)((int)h + 4)` holds the base and adds a separate `addiu +4` (one extra word);
+   `*(s32 *)(int)&import_8001FFA0_h[1]` (also `((int)&h[1] + 0)`, `(int)(h + 1)`) folds the +4 into the %lo
+   and holds the field address like the target (95.17 -> 95.31). Plain `h[1]` / `*(h + 1)` fold into the lw
+   and hold nothing.
+3. **One `(int)&` read as a pressure lever.** E68 phase 2 spills the loop-invariant `((ult + 31) << 2) & 0xfff`
+   to sp+0x54 in the target but keeps it in s8 here. Spelling the LoadTextureTile width read (only that one of
+   12 global read sites) `*(s32 *)(int)&w` hoists its address into an s-register -- one more live value -- and
+   uopt then spills the invariant exactly like the target (95.31 -> 96.42, +12 bytes toward the target). The
+   target itself re-reads w with a folded lui/lw there, so this is a pressure proxy for a value we have not
+   identified (see 5); keep it only because it raises the score.
+4. **Loop-counter reuse.** The target's phase-1 column counter has phase 2's j colour (s3): writing the column
+   loop with `n` (assigned again before phase 3) gives s3 (96.42 -> 96.54; reusing `j` gives 96.49). A pair
+   sweep that renames one local into another (`e17.py`: every A->B over the body) also proposes merges whose
+   lifetimes overlap (k2 -> tlut "gained") -- check every hit's lifetimes by hand.
+5. **Residual (E68).** The target's manager pointer is one variable split by uopt into t0 (entry) / v0 (phase 2)
+   / s1 (phase 3) because phase 2 holds the vidx*2+6 / +2 / +4 reduction temps in s0-s2; ours keeps m in s0
+   whole and those temps in t4 / ra / s1. Any separate phase-2 manager variable (m2, mm copies, with the home
+   count kept by shrinking padq) makes uopt hoist `m2->dl` into a register (85-86). The target's two dead
+   copies `or a3,t5` / `or t0,s0` after the cull packet are copies of the cull's vs*2 / ve*2 reduction temps.
+   Also after the structural fixes: lever-sweep found one more bbsplit (after the phase-3 gSPVertex, +0.07), a
+   now-harmful run-182 `if (1) {}` at vertex 1 (unlever, +0.16) and vertex 2 s-before-t (+0.02).
+6. *Negatives this run.* post0b 5A2C4: lever-sweep all, 720-way decl permutations of sp38 / sp34 / sp30 / sp2C /
+   pad2 (spill slots are uopt's, decl order is inert), local-merge sweep: flat. bootup 24B8 lever-sweep + merge
+   sweep flat. post0b 4B2F4 (NCC): `ori t5,a2,2` (target keeps flags) is not reached by any single-def form
+   (fresh local, block local, reused counters: 91.7, the pre-call a2 hold is lost) nor by passing flags to the
+   pack call (95.9).
+10. **Same-run negatives on near-exact post0b donors (for the next run):** 41D40 (99.90, 2 rows: the loop-latch
+   next() array load in a1, target v1 -- trace: the edg temp lr 41 interferes with the entry copy's v1 temp; 40
+   next() / condition spellings, a while form, BB levers and zero-use sweep flat); 37938 (99.88, the final `c.out`
+   reload v0 vs target v1: five argument spellings flat); 3AE58 (99.26, the inline `pick()` result `lhu v1` vs the
+   target's ring `lhu t6`: return-type / member / reference spellings flat or worse); 3DF58 (99.06, loop var n and
+   the next() temp swap v0 / a1: condition, next() body and while forms flat); 2E354 (94.23, the (u8)(u32)float block
+   in a2 / f2 vs the target's ring t3 / f8: de-naming var_f4 / temp_f18 flat, dropping var_v0 adds a word).
