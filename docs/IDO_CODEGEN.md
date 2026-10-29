@@ -14627,6 +14627,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCXXXVI (agent-g 2026-10-29, run 229): **591C head axis: x component in `scale` computed first, stores Z, Y, X with the bbsplit after the first (99.973 -> 99.977); the last 591C row is a z / fsel colouring-priority swap (every move tried transfers the error); cfe keeps a `p = &t; if (p || (p = new))` stack-temp guard and gives every declared local a frame home; first cfront-style cfe ports of 97EC (95.16) and 7C1C (24.9, b in s4)**](#kit-ccxxxvi-agent-g-run229) -- _NM: game_uso_func_0000591C 99.973 -> 99.977._
 - [kit CCXXXVII (agent-c 2026-10-29, run 229): **a CSE'd address in a1 where the target has a2 = a coloured web missing from its interference: the following pointer-walk clear loop as a ONE-LINE index loop on the existing `i` (`for (i = 0; i < 135; i++) { a[i] = 0; b[i * 0x9C + 0x72] = 0; }`) lets i's web overlap it and it takes a2 (uopt still emits the pointer loop); splice a donor over a C stub when the INCLUDE_ASM body defines labels inside the range; `-Olimit 1` = pure ugen (0 LRs): its `lui a2; ori a2,a2` constant only comes from a call argument or a register variable in a single-call function**](#kit-ccxxxvii-agent-c-run229) -- _EXACT: kernel func_80001594 99.82 -> 100 (+544 B). Negatives: 65EE4 (ugen arg order / a2 constant), E2D0, C310, 24B8, 4B2F4, 578B4, 4B0A8._
 - [kit CCXXXVIII (agent-g 2026-10-29, run 230): **591C priorities read exactly (z 23/5, fsel 50/12, shared join temp 30/9); a dead `if (z) {}` in z's span fixes the z / fsel order on the fsel-site version (99.39 -> 99.81), but the shared selector join temp then takes f2 at all ten sites: the target also needs an f2 LR inside some selector's join blocks; 97EC named in-expression temps fix f's home but not T1 / e (block temps sit above named locals)**](#kit-ccxxxviii-agent-g-run230) -- _No fuzzy change; negatives listed (690 statement-position variants, 0x204-site spellings, 22 97EC layouts)._
+- [kit CCXXXIX (agent-g 2026-10-29, run 231): **FP operand order (`a * b` vs `b * a`, sum-term order) and a compare operand moved into a temp on the line before the `if` (as1 line order) are big unswept levers: C234 95.07 -> 98.17, 3558 89.98 -> 91.56, 2E354 93.94 -> 94.23 (reuse a dead temp: a fresh cfe local grew the frame), B75C 94.01 -> 94.37; re-drop stale folded `0 * X` terms (4BAF4 96.36 -> 96.82); NCC frame slots = used locals in decl order, spills at the bottom**](#kit-ccxxxix-agent-g-run231) -- _Sweeps: /tmp/claude-1000/g231/commute.py, hoist.py, dropfold.py, join.py. No exact._
+- [kit CCXL (agent-c 2026-10-29, run 230): **cfront-style cfe port of game_uso 7C1C, 27.7 -> 98.52 (beats the 96.35 NCC donor, length = target): objdiff fuzzy is alignment-bound -- fix length first; `(unsigned)((hit != 0) == 0) ||` keeps both CSE spills; one function-wide tx / ty / tz trio for every inline set() (roles moved by reuse, rotated trio at three sites) and sa / sc for operator- / perp; 16 `if (1) {}` raise firstUseCost so a pooled &local stops taking s3; `vp = &b->pos; do { loads } while (0);` keeps the reference temp coloured (as1 sinks its `addiu` past the loads, so it looks dead); a flag re-read after the arms' constant stores reproduces the forwarded v0; as1 line ties for result / mode constants**](#kit-ccxl-agent-c-run230) -- _NM gain +2.17 on 4284 B; left: b->width f14 vs f0, perp colours, ugen t-ring one late from the loop's t164 site._
 - [kit CCXIII (agent-g 2026-10-29, run 216): **post0b 454C4 95.95 -> 99.95, length = target: build on the structurally-right BB lever, then re-test old micro-levers (drop the named element pointer -> sixth s-reg; drop the folded `& 0xFF`); `if (rec) {}` breaks an adjsave tie; `cur = nxt; if (nxt)` keeps an inline iterator member out of the candidates (ring temp t7 vs v0 web); a ternary sharing edg's int temp with post-increments separates when assigned in the same full expression as the inline call**](#kit-ccxiii-agent-g-run-216) -- _Open: e copy-propagated as the shared pointer temp (5 words); 3C43C homes = function-scope five + k / ABS3 temps / dd; 3558 per-row adds inert._
 - [kit CCXIV (agent-c 2026-10-29, run 218): **a RoData float read as `D + off` / an extern alias is often a compiler LITERAL: read the ROM word (bootup.uso RoData = ROM 0xD9FE44); a run of identical values around a jump table = one constant rematerialised (one literal word per `l.s`). As a literal uopt hoists / colours / reloads it after calls -> game_libs 3430 (0.1f in f2 + three trailing `if (1) {}`) and timproc_b5 CEB4 (0.3f + `if (1) {}` per white arm) EXACT via donors pinned `<fn>_rodata` = the pool's ROM offset; C310 NM 96.45 -> 99.89 (`== 1` = register-held 1 shared with the `= 1` store, field-form counters)**](#kit-ccxiv-agent-c-run-218) -- _CCXII address-form scan (size>0 FUNC symbols only): no further hit; 4F2DC literal +0.19; 6204/E9FC, 8BD4, 1824, 4C5E4, 4A308 / C310 spill-slot gap negatives._
 - [kit CCX (agent-g 2026-10-29, run 214): **each object of a class with an inline constructor is an edg labelled BB; above ~19 BBs uopt splits a held callee-saved constant (game_uso 3558's $f20 zero web: hold, live else muls, w.y reload) -- a constructor-less Vec3 / aggregate Ctx restores it; a Vec3 local is a uopt register candidate only when no member call or reference parameter is bound to it (free by-value mk() keeps the op- copy chain)**](#kit-ccx-agent-g-run-214) -- _3558 85.86 -> 89.21 (frame 256 = target, all homes on the target map); vb split / va.y f20 residual and negatives listed._
@@ -49157,3 +49159,121 @@ _No exact, no fuzzy change landed. game_uso_func_0000591C stays at 99.97713 and 
   `&= (m = ~8)` in signed or unsigned form, or bitfields (bitfields give byte RMW). The peel's found test
   is `bnezl found, store` + `b next` in the target but `beqz` in ours. `if (found) {}`, `goto`, and the
   `continue` / else forms all compile to identical code.
+
+## kit CCXXXIX (agent-g 2026-10-29, run 231): FLOAT OPERAND ORDER and TEST OPERANDS ON THEIR OWN LINE are the big unswept levers on FP-heavy near-misses (bootup C234 95.07 -> 98.17, game_uso 3558 89.98 -> 91.56, 2E354 93.94 -> 94.23, B75C 94.01 -> 94.37); stale folded uses are worth re-dropping (4BAF4 96.36 -> 96.82) <a name="kit-ccxxxix-agent-g-run231"></a>
+
+_No exact. report.json (non_matching build): bootup C234 95.07 -> 98.17 (2200 B), game_uso 3558 89.98 -> 91.56 (1008 B),
+post0b 4BAF4 96.36 -> 96.82 (1692 B), bootup B75C 94.01 -> 94.37 (2096 B), post 2E354 93.94 -> 94.23 (3684 B),
+post0b 4C5E4 88.67 -> 88.69 (836 B); the same commute sweep over older agent-g donors: game_uso 8CD8 89.51 -> 90.41
+(2836 B, `speed * kDC`), post0b 3BE1C 97.60 -> 98.16 (1568 B, `cx + cz * w`), post0b 54E78 98.22 -> 98.66 (552 B: run
+200's y-first `dot()` is stale, x first again). Leads not taken (other owners / length): post0b 469A8 95.12 -> 95.36
+(`FW(0x204) * 4 + FW(0x240)`), game_libs 76F0 95.02 -> 95.80 with a hoisted `D_76F0[0x34/4]` test operand but
+2308 -> 2312 bytes (try an existing temp)._
+
+1. **A compare operand on its own line (as1 line order, kit CCXXXIV) on an NCC donor (bootup C234).** The target loads
+   `spCC.f0` AFTER the whole plane-distance expression it is compared with (`lwc1 ft2, 0xf0(sp)` right before the
+   `c.lt.s`); as one `if (spCC.f0 < (...)) ` line the load is ready first and issues first. Moving the right-hand side
+   into a temp assigned on the line before the `if` (`t = 4.0f + K * (...); if ((spCC.f0 < t) || ...)`) gives the load
+   a later line: 95.45 -> 96.59. An existing f32 local works (any of five scored the same); a NEW NCC local scored
+   0.06 lower (it costs a frame slot). Same trick, in-tree cfe (post 2E354): `temp_v1 = o->m48; if (temp_v1 == 0)`
+   at two sites and `temp_f0 = D[0x172C/4]; if (temp_f0 < o->mC)`, reusing temps that are assigned before every
+   later read: 93.94 -> 94.23 with the 0x80 frame kept. A fresh cfe local scored similarly but grew the frame
+   0x80 -> 0x88 (it took a home): reuse an existing dead temp instead.
+2. **Operand order inside FP expressions is a separate lever from statement order (C234, 3558, B75C, 4C5E4).** ugen
+   emits an operand's loads in tree order and as1 only breaks ties by line, so `a * b` vs `b * a` and the order of the
+   terms of a sum change the load / multiply sequence and the colouring. C234 after item 1: each product written
+   `member * spCC.field` (the target loads the member first) -> 96.75, the scale `K * (sum)` -> 97.49,
+   `4.0f + K * (sum)` -> 98.17 (`(K * sum) + 4.0f` 97.49; the other sum-term orders 94.6 - 97.4). 3558 (three greedy
+   rounds): `len2() = y*y + x*x + z*z`, the z row `m02*vx + m22*vz + m12*vy`, `k2 = f118 * (mag - fB8)`. B75C:
+   `(f64)ptr * 0.015 + (f64)o->A70` product first, `temp_f14 * o->m3D0`. These change FP rounding order in principle,
+   which is the point: the target's own order is the one that compiles to its bytes.
+   Sweep: `/tmp/claude-1000/g231/commute.py --src <donor or src/*.c> --fn F --target expected/...o [--out best.cpp]`
+   (adjacent swaps in every top-level `*` / `+` chain of a parenthesised group or assignment rhs, all permutations for
+   3-4 term chains; skips address arithmetic and comma lists; `--out` writes the best variant for greedy rounds on a
+   standalone donor). `/tmp/claude-1000/g231/hoist.py` (item 1 with a new local, discovery only: rediscovers the
+   C234 hit on the old donor), `/tmp/claude-1000/g231/dropfold.py` (drop each `+ 0 * X` term / `if (x) {}`),
+   `/tmp/claude-1000/g231/join.py` (k-line joins). All reuse lever-sweep.py's probe (standalone and in-tree).
+3. **Re-drop stale folded uses (post0b 4BAF4).** Agent-c's run-209 `+ 0 * w` on the ctx load was a gain then; after
+   run 211's `+ 0 * (int)(spr->w)` it is a loss: dropping it gives 96.36 -> 96.82. Run dropfold.py after every
+   structural change to a donor that carries folded terms.
+4. **C234 pool load above the 0x9A2 store (line order).** `o->m9D0 = D_bu_ro_pool[0x920/4];` written before
+   `o->m9A2 = 0;` makes the pool `lwc1` issue before the four spCC stores as in the target (store order unchanged):
+   95.07 -> 95.45. A temp for the pool value on an earlier line moved the load too but cost the `at` order / frame.
+5. **NCC frame slots (C234 negative / mechanism).** NCC gives a frame slot to every USED local in declaration order
+   (descending addresses); unused ones (never referenced) get none, and an unused struct gets none either. A uopt
+   spill (the target's `sw a1, 0x3c(sp)`) goes to a temp area at the bottom, not to the variable's declared slot.
+   Moving `sp40` last, block-scope `hx/hy/hz` to function scope and 5 / 2 / 2 scalars between the structs reproduces
+   the target's struct offsets (sp40 0x40, sp54 0x54, sp68 0x68, sp7C 0x7c, sp8C 0x8c) with frame 0xf8, but spB4 /
+   spCC stay 4 high and the spill lands at 0x34 (target 0x3c), and the score drops (98.17 -> 98.15): objdiff
+   weighs sp-offset rows lightly, so frame fitting is not worth it until the colouring rows are gone.
+   Negatives: line joins (k = 2 / 3) on C234 / B75C / 2E354 / 3558 / 46050, the hoist sweep on 3B9C0 / 36694 /
+   48AEC / 4C5E4 / 46050 / 3558 / 2DE0 / 55A0 / E68 / 5A2C4, the commute sweep on E68 / 5A2C4 / 46050 / 48AEC /
+   493AC / 4F2DC / 2DE0 / 55A0 / kernel 18F0, dropfold on all of them; 46050 dsdx / dtdy / s / t named before the
+   texrect macro (91.4 - 92.2, base 92.23).
+
+## kit CCXL (agent-c 2026-10-29, run 230): game_uso 7C1C cfront-style cfe port 27.7 -> 98.52 (NCC donor was 96.35) -- `hit != 0` / its negation as spilled CSE values, shared set() temporaries, firstUseCost empty blocks for an un-held &local, a do-while block that keeps a reference temp coloured (as1 then sinks the `addiu` past the loads), a flag re-read after its stores (forwarded value), as1 line ties <a name="kit-ccxl-agent-c-run230"></a>
+
+_NM: game_uso_func_00007C1C 96.35 -> 98.52 (4284 B), length = target (1071 words, opcode-identical; only register
+colours and the t-ring are left). Donor src/game_uso/game_uso_7C1C_nm.c (cfe -O2), wired as GAMEUSO_7C1C_NM_DONOR
+(was the NCC donor). Started from agent-g's /tmp/claude-1000/g229/cf/c7c7.c (27.7, frame 0x3B0, 1055 words)._
+
+objdiff's fuzzy is ALIGNMENT-bound on a port this size: c7c7 at 27.7 was structurally almost right, and one change
+that fixed a 9-word gap in the loop head jumped it to 85.9. Get the length and block shape right before colours.
+Scorer: compile standalone, `objdiff-cli diff -1 expected/... -2 x.o -c functionRelocDiffs=none` (0.2 s / variant,
+so coordinate descent over per-site macro choices with 6 threads covers ~150 variants in ~10 s).
+
+1. **`!hit` and `if (hit)` the target spills as two CSE values** (`sltu v0, zero, hit; sltiu t7, v0, 1; sw t7, 80(sp);
+   sw v0, 84(sp)` at the loop top, `bnez t8` / `beqz t1` on them later). cfe folds `!(hit != 0)` to `hit == 0`
+   (27.7, flat). `(hit != 0) == 0` in the loop test with `if (hit != 0)` in the body: hit != 0 becomes one CSE,
+   the `== 0` folds into a branch (85.9). `(unsigned)((hit != 0) == 0) || ...` keeps the negation as a value:
+   both CSEs materialise and spill exactly like the target. The second spill word grows the frame by 8: move
+   unused-home locals (n, pb at the bottom) into a placeholder gap instead.
+2. **cfront's inline parameter temporaries are FUNCTION-WIDE shared variables.** Vec3::set(a, b, c) behind every
+   operator* as `tx = v.x * s; ty = v.y * s; tz = v.z * s; r.x = tx; ...` (one tx / ty / tz for all twelve sites)
+   took the products from ugen temps to the target's coloured f12 / f2 / f0 (85.9 -> 89.0); the operator* `this`
+   through a pointer (`vp = &(V); tx = vp->x * s`) is needed or uopt propagates the loads into the stores. Which
+   colour each role gets is the priority order of the three variables (permuting the names changes nothing):
+   roles are moved by reusing the variables elsewhere (the sqrt result in tx, the threshold in ty: METV / THRV
+   macros swept). The operator- / perp temporaries are a second pair (sa / sc: the target's f0 / f2 at those
+   sites, while XZ(const Vec3 &) sites keep tx / tz = f12 / f0). Three third-level sites want the rotated trio
+   (x / y / z -> ty / tz / tx: 98.33 -> 98.42).
+3. **A pooled &local that the target re-forms with `addiu tN, sp, K` at every use but ours holds in a fresh s3
+   (P3 here) = firstUseCost** (0.25 x basic blocks, kit run 111). Sixteen `if (1) {}` before `return result;`
+   (fifteen are not enough) push the s3 cost over P3's savings: s3 gone, prologue exact, 91.4 -> 93.0.
+4. **Per-site ctor pointers assigned at the full-expression start.** In the loop the target sets the XZ / sub /
+   perp temporaries' pointers (`addiu v1, sp, 0x170; addiu a2, sp, 0x134; addiu a1, sp, 0x140`) before the first
+   guard and spills two of them around the first alloc call: `p = &t170; pC = &t134; pB = &t140;` then guards on
+   pB / pC, and the copies out of each temp read the temp BY NAME (`R = t140;`), not through the guard pointer
+   (the alloc result). Pointer homes (pB 0x2AC, pC 0x1DC) taken from placeholder arrays.
+5. **Pattern `lw v0, b_home; lwc1 56(v0); lwc1 48(v0); ...; addiu v0, v0, 48` (b in memory) is a coloured
+   reference temp that as1 rescheduled**: the source is `vp = &b->pos; tx = vp->x; tz = vp->z;` with vp colouring
+   v0, and as1 sinks the `addiu` below the dependent loads by adjusting their offsets (load-delay fill), so it
+   looks dead. In plain form uopt propagates vp into the loads (`lw t2; lwc1 56(t2)`, one word short and one
+   ugen temp more, which shifts the t-ring). Putting the uses in their own block keeps vp a value:
+   `vp = (V); do { tx = vp->x; tz = vp->z; } while (0);` -- 95.39 -> 96.64 for the two XZ(b->pos) sites, 96.92
+   with the loop's operator-(..., b->pos), length = target. The same block trick on perp (`do { sa = v.z;
+   sc = -v.x; } while (0)`) gives the target's coloured perp temps: 96.93 -> 98.24.
+6. **A constant store whose register is the flag's register = the flag is RE-READ after the stores.** Target:
+   `addiu v0, zero, 1; sw v0, 0xa4(a1)` and later `bne v0, at` -- with `active = 1; s->active = 1;` cfe/uopt
+   materialise the store constant in a separate temp hoisted above the compare (one extra word, every later
+   t-register one late). The arms only store (`s->active = 1;` / `s->active = 0;`) and `active = s->active;`
+   follows them: uopt forwards the stored value into v0. `active = s->active` before the first test too (else v1).
+7. **as1 line ties again (kit CCXXXIV):** `result.x = d.x; result.z = d.z;` on one line gives the target's z-first
+   loads; `mode = c ? 2 : 1` as a four-line if / else materialises 2 before 1 (target `addiu t0, zero, 2;
+   addiu t1, zero, 1`); `b = n;` after the hitC copy; the final compare needs a folded use
+   `+ 0 * (int)(n1.z + n2.z)` (unit normals) to colour like the target (94.78 -> 95.39).
+
+Last step: a joint 2-D grid over the perp temporaries (single-coordinate descent was flat) -- main perp `sc = v.z;
+sa = -v.x`, loop perp `ty = v.z; tz = -v.x`: z takes the target's f0 at both, 98.42 -> 98.46 (x still f2).
+Then the final compare's folded use moved onto what the target colours (the first sum in f12, n0.z in f2):
+`+ 0 * (int)(n0.x * n2.x + n0.z * n2.z + n0.z)` 98.46 -> 98.52 (sum and n0.x still swap f12 / f0).
+
+Left (98.52): b->width loads into f14 at the four operator*(width) sites (target f0, so z goes to f14): MULW /
+MULX named-width spellings, commuted products (`s * v.x`), sa / sc trios: flat. The main-path third-level
+mode-1 site wants x in f14. The perp x / z colours (target f12 / f0 main, f14 / f0 loop; ours f0 / f2 with sa /
+sc, other pairs lower). From the loop's t164 site on, every ugen int temp is one register late (target `lw t2,
+960(sp)`, ours t3) although the preceding 70 words are identical -- no uopt LR holds a t-register (coloring trace),
+so it is ugen's own choice; not found. Sweeps run flat at the end: line joins / splits, `if (1) {}` after every
+line, METV / THRV / M2V / DOTV roles, per-site XZ / SUB / perp / MULS macro variants incl. do-while forms,
+agent-g's commute.py (23 variants outside macros). Files: /tmp/claude-1000/c230/ (cd.py coordinate descent over
+`{{a||b}}` slots, sw.py join / split / bb sweeps, ringn.py ring-normalised diff, best_*.c snapshots).
