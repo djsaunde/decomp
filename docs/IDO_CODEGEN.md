@@ -14594,6 +14594,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CXCII (agent-c 2026-10-28, run 207): **a register copy in the first compare's delay slot can be a variable assigned from the loop TEST's CSE'd load: top-tested `while ((q = fmt, fmt = q + 1, *q) != 0) { c = *q; if (*q == 'd') ...` (6126C 99.35 -> 99.92); digit-arm, 4D688 old-n, C310 head, 54E78 FP colouring, C234 scale-copy negatives**](#kit-cxcii-agent-c-run-207) -- _No exact._
 - [kit CXCIV (agent-c 2026-10-28, run 208): **6126C EXACT: an un-forwarded temp is a self-referencing update of an earlier-block copy (`(ch = c, c >= '0') && ..` then `ch -= '0'; A = (u8)ch`); cfe `+ 0 * VAR` is zero code but a counted use for uopt colouring priority (`c = *q + 0 * *q`); zdbug:5 adjsave readout**](#kit-cxciv-agent-c-run-208) -- _Exact: gl_func_0006126C._
 - [kit CXCVI (agent-c 2026-10-28, run 209): **50444 EXACT: brute `+ 0 * (int)(X)` site x identifier sweep over cfe bodies and NCC donors (reject uninitialised X); in NCC the counted use kept a parameter in its memory home; `(m->n += 1) >= max` vs `++m->n` swaps v0 / v1; 578B4 / 4D688 / 4A308 negatives**](#kit-cxcvi-agent-c-run-209) -- _Exact: gl_func_00050444._
+- [kit CXCVIII (agent-c 2026-10-28, run 210): **counted-use sweep made permanent (`scripts/zero-use-sweep.py`, maybe-unset filter) + `--exprs` (`*p`, `p->f`, `v[i]`): parameter / member dereferences moved 1ADC, 24B8 (3 greedy rounds), E68, 4C5E4; 4A308 / 24B8 frame-slot and self-referencing-update negatives; 4E424 decode read**](#kit-cxcviii-agent-c-run-210) -- _No exact; 1ADC 93.54 -> 94.32, 24B8 97.05 -> 98.91, E68 93.97 -> 94.54, 4C5E4 88.48 -> 88.65._
 - [kit CLXXXVIII (agent-c 2026-10-28, run 205): **a register copy in the FIRST compare's delay slot is the else block's first insn (as1 fills from the branch target): a block-local `u8 d = c` dispatch copy (int copies propagate away) + the range test on c gives 6126C 93.81 -> 99.35 at target length; NCC ignores volatile params; 4C5E4 un-named m78 + folded `0 * mC0` ring phase (87.22 -> 88.48)**](#kit-clxxxviii-agent-c-run-205) -- _No exact; 4E424 / 18F0 / CEB4 / 4A890 / 578B4 / 63964 / 50444 negatives._
 - [kit CLXXVIII (agent-c 2026-10-28, run 200): **37540 ported to C++ from its exact sibling 37348's donor kit (cfe 81.17 -> NCC 93.58, length = target): one inline reads the saved vector and clears x (refs = early stores, return = register), set() + compound `*=` for the store/re-read build; 8CD8 pads worth +0.07, no natural aggregate; 36694 n-CSE diagnosis**](#kit-clxxviii-agent-c-run-200) -- _No exact._
 - [kit CLXXI (agent-g 2026-10-28, run 202): **timproc_uso_b5 32C8 EXACT (1480 B): cfe NM body re-written as NCC on its exact sibling 2B74's donor shape (literal vec constants, rodata pin, `(f32)iz()` zero re-assigned on both alloc paths, cfe decl list); the last 2 colour words fell to a grid of PAIRED `if (1) {}` splits x statement order x line layout**](#kit-clxxi-agent-g-run-202) -- _Run negatives: 4A890 / E68 / 6126C / 18F0 / 65EE4 / 65494 / 578B4 / C310 / 4A308 / E2D0 / 31C0 / C234 / 90CC._
@@ -47026,3 +47027,51 @@ spilled at sp+60). A 120-way declaration grid over {r, p, key, `volatile int pad
 interference for chosen LRs), `grid.py` + `batch.py` (line-anchored counted-use grid scored in-tree; 0.7 s a probe,
 which makes a 4000-variant grid on a 4 KB cfe body a few minutes -- lever-sweep's in-tree probe path was ~20x
 slower here).
+
+## kit CXCVIII (agent-c 2026-10-28, run 210): the counted-use sweep made permanent (`scripts/zero-use-sweep.py`, with a maybe-unset filter) and extended to dereference / member / index expressions (`--exprs`): five functions up in agent-g's range, all from `+ 0 * (int)(*p)`-style terms; self-referencing-update and frame-slot negatives <a name="kit-cxcviii-agent-c-run-210"></a>
+
+_No exact. kernel 1ADC 93.54 -> 94.32, bootup 24B8 97.05 -> 98.91, bootup E68 93.97 -> 94.54, post0b 4C5E4 88.48 -> 88.65 (report.json)._
+
+- **Tool.** `scripts/zero-use-sweep.py` (MATCHING_WORKFLOW "zero-use-sweep") = run 209's brute grid with a textual
+  def check: a site x identifier pair is generated only if X is a parameter, a non-local, or a local set by a plain
+  assignment / initialiser that dominates the site textually (same or enclosing block, not a brace-less if/else
+  body, no switch label of its block in between, not the site's own statement; `goto` functions skipped).
+  `--exprs` adds `*p`, `p->f`, `a.b`, `v[i]`; the check applies to the base identifier.
+- **What the expression forms found that identifiers did not** (every hit is the dereference of a parameter or of
+  a dominating pointer -- the value of the identifier itself was already swept flat in run 209):
+  - kernel 1ADC: `*p = (*p & 0xFC000000) | (... + (*p & 0x3FFFFFF)) + 0 * (int)(*p);` on the type-1 store
+    (p set unconditionally at the top of the loop body): 93.54 -> 94.32, length = target.
+  - bootup 24B8: `+ 0 * (int)(*arg0)` in three places, found one round at a time (the sweep is greedy: re-run
+    on the new body after each kept hit): `s0 = v1 + 0x14C + 0 * (int)(*arg0)`, the `0x10 & 8` test, and the
+    0x134 pointer: 97.05 -> 98.25 -> 98.82 -> 98.91; round 4 flat. (Run 209's +1.2 hit here was the
+    uninitialised `pad`; the parameter dereference gives the same first step legally.)
+  - bootup E68: `if (1 + 0 * (int)(import_8001FFA0_h[1])) {}` on the run-182 block split (a global read):
+    93.97 -> 94.54, 3016 -> 3020 bytes toward the target's 3036.
+  - post0b 4C5E4 (NCC): `+ 0 * (int)(idx)` (a member) on the `e->m60` call result, then (round 2) `+ 0 * (int)(mC0)`
+    on the flag arm's `f`: 88.48 -> 88.60 -> 88.65, same length; round 3 flat.
+- **Probe vs report:** titproc 116C `if ((... != 0) + 0 * (int)(*s0))` scored +0.02 in the scratch probe and
+  was flat in report.json; reverted. Confirm every hit with refresh-report.
+- **Rejected:** 493AC `+ 0 * (int)(padN)` (well-defined -- the pads are arrays, so it is their address -- but
+  1936 -> 1948 bytes, away from the target); 65494 `count` / `D_00000000[0]` hits (1336 -> 1344 / 1352, past the
+  target length); 4A890 `+ 0 * (int)(n)` (+0.03, 344 -> 348 toward 352, but a post0b length change for a
+  negligible gain: skipped to keep the clip alone).
+- **Flat under `--exprs`:** NCC 4A308, 63964, 4D688, 54E78, 59E80, 4B620, 4B0A8, bootup 8BD4 / 55A0 / 31C0 / C234,
+  578B4 (also line-restricted to the sp50 arm), 8FC8 (only shorter / worse); cfe E2D0, mgrproc 2B7C, kernel 1594 /
+  18F0, game_libs.c 3430, post0b 4E424, timproc_b5 CEB4, post1b 65EE4 (`-Olimit 1`).
+- **4A308 frame (negative, mapped):** without the block-local `r` the whole frame shifts 8 down (120); with it, col
+  stays at 0x40 and the arg3*8 spill lands at 0x38 with a 4-byte hole at 0x3C. 180 placements of
+  `volatile int / char / double / int[2]` pads (each block, before / after col, with and without r, pairs) never put
+  the spill at 0x3C under col at 0x40; volatile arrays are dropped by NCC (no frame change).
+- **24B8 frame (negative):** the target's `k = r` reload is from 0x4C (the frame top, a uopt spill slot, not r's
+  home): all 120 orders of {s0..p block, pad, tb, r, k} are flat.
+- **Self-referencing update (kit CXCIV (a)) tries:** 4D688 old-n copy (`int t = n` in the switch-head block then
+  `n = t + 1` / `t &= 1` / `n++` in case 'd', and `(n += 1, n - 1)`): all worse or flat. 4B0A8 `next()` (`idx += 1`,
+  `idx = idx + 1`, a copy updated in place, `idx += 1` in the index): flat or worse. E2D0 `arg4 += 1.0f; dot *= arg4`:
+  worse. 578B4 the sp50 DL pointer and `temp_ra_8` as one variable: worse.
+- **4E424 decode read (negative):** the target computes y1 - y0 and z1 - z0 IN y1's / z1's registers (f0 / f2) and
+  holds b in y0's f14, which reads as `y1 = y1 - y0; z1 = z1 - z0; ... y0 = max` -- but every one of the 14
+  combinations of {y0, y1, dy} x {z1, dz} x {b, y0, y1} except the current body puts the stack-passed y1 / z1 in
+  callee-saved fs1 / fs2 or adds moves (60-81 %); the current body (95.37) stays.
+- **Not finished (timeouts):** timproc_b5 D884 (4091 variants) and bootup B75C (5000) hit the 25-minute cap before
+  scoring; DF14, 6808, 5A2C4 not reached. Run them with `--lines` around the residual or a lower `--maxv`
+  (note `--maxv` keeps the FIRST N variants, i.e. the early sites only).
