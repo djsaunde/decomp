@@ -14624,6 +14624,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCXXXIII (agent-g 2026-10-29, run 228): **game_libs 2D374 EXACT: a value that takes the wrong caller-saved register although nothing in its block interferes = register PREFERENCE: write it into the variable whose earlier web already holds the target register (`fr = D_358;` post-call) and give that web priority (`if (fr) {}` before its store) so it colours first; read the `-Wo,-zdbug:5` dump (live bb / interfere lists) before placing a post-call `if (1) {}`: in game_libs 2D374 the 0x4E010000 call DOES end the uopt block (the 0x358 reload is alone in bb38 with an empty interference list), so CCXXXII's across-the-call range is not the cause of its f0 (target f2); CCXXVIII float-literal respelling is cfe-only (NCC donors score exactly base for every float spelling); 7C1C's target repeats x=f12 / z=f0 at every ctor site with a function-wide f24 zero = cfront shared inline-param temporaries, NCC body at a local optimum**](#kit-ccxxxiii-agent-g-run-228) -- _EXACT: game_libs_func_0002D374 99.91 -> 100 (+676 B). NM: game_uso 591C 99.903 -> 99.973 (alloc-guard pointers routed through child_flags' a1 web; a zero-code child_flags read keeps v0 busy so the counter colours v1); gl_func_00031A74 95.28 -> 97.16 (kit CCXXXIV goto block). Automatic call-splitter + literal sweep over 17 non-exact functions: nothing above base. The 4-entry jumptable (B3C / 1ADC) is not reachable from cfe._
 - [kit CCXXXIV (agent-c 2026-10-29, run 227): **as1 issues equal-ready instructions in source-LINE order (lower line first): a store that must precede a call but follow the call's stack-argument store gets a later line from a straightened goto block (`goto Z; C: call(...); goto E; Z: if (1) {} v.z = a; goto C; E: ;` -- the `if (1) {}` keeps the block's own line); a loop-preheader load issued one slot early goes behind on the `do {` line (`x = *p; do {`); a `.c` donor prerequisite of the matching object needs that object's TRUNCATE_TEXT / SUFFIX_BYTES_FORCE `private`; pin from the target relocs (NM pins can be reloc-blind wrong)**](#kit-ccxxxiv-agent-c-run227) -- _EXACT: bootup func_000090CC 99.904 -> 100 (+8424 B). C310 preheader s6/s4 swap is uopt order, not as1 lines (57 layouts at base)._
 - [kit CCXXXV (agent-c 2026-10-29, run 228): **as1-order scan (same per-block instruction multiset, different order) over the 81 non-exact functions: a load that must issue after the loop-setup addresses goes on the loop header's line (`b = *p; a = q; for (...) {` on one line; 4B2F4 98.37 -> 99.36); prologue `lui a0` / `sw ra` (6204 / E9FC), critical-path priority (mgrproc 2B7C), call-site home stores (5F5F0), hoisted constants (59E80), FP load order (4E424) and the 51AD8 delay-slot steal are NOT line ties; NCC keeps a goto block with `if (1) {}` as real branches; the 4-entry jump table (titproc 116C, kernel 1ADC, game_uso B3C) is not produced by any 4-label switch under 7.1 / 5.3 / NCC**](#kit-ccxxxv-agent-c-run228) -- _NM: game_libs_func_0004B2F4 98.37 -> 99.36; kernel func_80001594 96.80 -> 99.82 (a CSE'd address issues at its earliest use's line: move ALL early uses together; loop-entry and loop-body statements on one line)._
+- [kit CCXXXVI (agent-g 2026-10-29, run 229): **591C head axis: x component in `scale` computed first, stores Z, Y, X with the bbsplit after the first (99.973 -> 99.977); the last 591C row is a z / fsel colouring-priority swap (every move tried transfers the error); cfe keeps a `p = &t; if (p || (p = new))` stack-temp guard and gives every declared local a frame home; first cfront-style cfe ports of 97EC (95.16) and 7C1C (24.9, b in s4)**](#kit-ccxxxvi-agent-g-run229) -- _NM: game_uso_func_0000591C 99.973 -> 99.977._
 - [kit CCXIII (agent-g 2026-10-29, run 216): **post0b 454C4 95.95 -> 99.95, length = target: build on the structurally-right BB lever, then re-test old micro-levers (drop the named element pointer -> sixth s-reg; drop the folded `& 0xFF`); `if (rec) {}` breaks an adjsave tie; `cur = nxt; if (nxt)` keeps an inline iterator member out of the candidates (ring temp t7 vs v0 web); a ternary sharing edg's int temp with post-increments separates when assigned in the same full expression as the inline call**](#kit-ccxiii-agent-g-run-216) -- _Open: e copy-propagated as the shared pointer temp (5 words); 3C43C homes = function-scope five + k / ABS3 temps / dd; 3558 per-row adds inert._
 - [kit CCXIV (agent-c 2026-10-29, run 218): **a RoData float read as `D + off` / an extern alias is often a compiler LITERAL: read the ROM word (bootup.uso RoData = ROM 0xD9FE44); a run of identical values around a jump table = one constant rematerialised (one literal word per `l.s`). As a literal uopt hoists / colours / reloads it after calls -> game_libs 3430 (0.1f in f2 + three trailing `if (1) {}`) and timproc_b5 CEB4 (0.3f + `if (1) {}` per white arm) EXACT via donors pinned `<fn>_rodata` = the pool's ROM offset; C310 NM 96.45 -> 99.89 (`== 1` = register-held 1 shared with the `= 1` store, field-form counters)**](#kit-ccxiv-agent-c-run-218) -- _CCXII address-form scan (size>0 FUNC symbols only): no further hit; 4F2DC literal +0.19; 6204/E9FC, 8BD4, 1824, 4C5E4, 4A308 / C310 spill-slot gap negatives._
 - [kit CCX (agent-g 2026-10-29, run 214): **each object of a class with an inline constructor is an edg labelled BB; above ~19 BBs uopt splits a held callee-saved constant (game_uso 3558's $f20 zero web: hold, live else muls, w.y reload) -- a constructor-less Vec3 / aggregate Ctx restores it; a Vec3 local is a uopt register candidate only when no member call or reference parameter is bound to it (free by-value mk() keeps the op- copy chain)**](#kit-ccx-agent-g-run-214) -- _3558 85.86 -> 89.21 (frame 256 = target, all homes on the target map); vb split / va.y f20 residual and negatives listed._
@@ -48993,3 +48994,47 @@ The last two 90CC rows (cfe donor 99.904) were as1 reorders. Both closed by sour
 - **Shared open shape.** titproc 116C (`sltiu at, t6, 4` vs our 5) has the same 4-entry jump table as kernel
   1ADC and game_uso B3C: IDO 7.1 / 5.3 at -O1 / -O2 / -O3 and NCC all lower a 4-label switch (int / unsigned /
   short / char / long long selector, with and without default, break or return arms) to a compare chain.
+
+## kit CCXXXVI (agent-g 2026-10-29, run 229): 591C head store order (99.973 -> 99.977), the last 591C row is a coloring-priority swap, and first cfront-style cfe ports of 97EC / 7C1C <a name="kit-ccxxxvi-agent-g-run229"></a>
+
+- **591C head scaled axis (99.973 -> 99.977).** A 144-cell grid (which of `x / z / scale` holds each
+  component x compute order x store order x where the `if (1) {}` goes): the x component goes in `scale` and is
+  computed first, the stores run Z, Y, X, and the bbsplit sits after the first store. That fixes the head
+  `lwc1 0x318 / 0x320` order and the `0x148 / 0x150` stores, and it also flips the `bne v1, v0` operand
+  order at the `0x4c4` test far below (the head temps change the global colouring order).
+- **The last 591C row (the 0x204 selector outer: target f12, ours f2) is a two-LR priority swap, not a
+  spelling.** The `z` variable (one LR: head Y component, scratch / delta Z sites, the 0x204 selector)
+  colours f2 just before `fsel` (f12) in the constrained order. Moving the 0x204 selector into `fsel` fixes
+  that site but drops z's priority below fsel, so the two swap EVERYWHERE (99.39). Moving it into
+  `f12v` / `x` / `scale` / a fresh local / a direct `if ((...) <= metric_a)` (the cfe temp gets a frame
+  home, +8) does the same or worse. Compensating moves (each tail selector group moved from fsel to z, each
+  f2v / yaw_raw group moved to z, pairwise combinations of the 14 tail groups, all 47 def-to-last-use
+  groups of every float local, z's non-tail groups moved to f2v / dot / ...) either move the f2 error to
+  the moved selector or let the shared selector join temp drop from f14 to f2: z's tail use is what makes
+  the join temp interfere with f2. `if (1) {}` after any of 224 statements, 153 call / literal variants
+  and 149 line joins on the fsel-site version all leave the swap. Still open.
+- **cfe keeps a stack-temp ctor guard.** `p = &t; if (p || (p = new12(12))) { ... }` (statement or
+  comma-expression form) keeps `bnez; jal new; beqz v0` in cfe -O2, as in the edg / cfront targets. The
+  folded form is `q = &t; p = q; if (p != 0 || (p = new12(12)) != 0)`: there the guard and the call disappear.
+  No `p = 0; if (1) { p = &X; }` hack is needed in a cfront-style port.
+- **cfe gives every declared local a frame home, register-coloured or not.** So the target frame bounds the
+  number of named locals. In the 7C1C port, eleven scalars dropped into the target's 44-byte gap above the
+  pooled slot gave frame 0x3B0 exactly. Fill the remaining gaps with `int gN[k];` placeholders while porting,
+  then swap real temporaries in.
+- **97EC cfe port (95.16; the NCC donor is 99.974).** Every edg temporary home put at its target address by
+  declaration order (the NCC donor's only residual is two swapped edg temp homes). `vp = &s->w->vel` is
+  bound BEFORE the guard: it is the reference argument, spilled across the alloc call to its home 0xEC.
+  `Self **ps = &s` keeps s in memory as in the target, 80 -> 90.9; with it in a register uopt colours it into
+  a3 and splits it around every call. `kk = s->k` binds operator*'s float argument. The other's-position
+  `this` goes through the shared ctor pointer `p` (target v1, `addiu v1, v1, 0xb4` after the folded loads).
+  Left: the FP colours of the ctor-argument values differ at every site (target a/b x f12 z f0, e x f2
+  z f14, f x f0 z f12, operator* f2 / f12 / f14), and one shared tx / tz or one pair per site cannot give
+  that. Files: /tmp/claude-1000/g229/cf/c97g.c (best), c97k.c (one pair per site).
+- **7C1C cfe port, first pass (24.9 vs the NCC donor's 96.35).** /tmp/claude-1000/g229/cf/c7c5.c is
+  the NCC donor's semantics in cfront form: the pooled return slots are ONE function-scope `Vec3 R`
+  (s1, 0x354) for first-level results, plus P2 (0x21C) / P3 (0x1FC) for nested operator* levels and
+  the loop's perp. Each operator* expansion has its own r / V pair, every home is at its target address, and
+  the frame is 0x3B0. The structure lines up block for block. The score is low because `b` colours s4 (the
+  target keeps it in its home 0x3BC; the target's `lw t6, 0x3bc(sp)` is the first t-register use), so the
+  ugen temp ring is one register short everywhere. Next step: get b out of registers (cf. the 97EC `&s`
+  escape), then the per-site ctor-argument colours.
