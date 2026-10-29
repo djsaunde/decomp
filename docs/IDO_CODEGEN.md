@@ -14606,6 +14606,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCXV (agent-g 2026-10-29, run 217): **uopt copy-propagates a named variable into an NCC pooled edg temp only up to the first bb that redefines that temp (an inline expansion reusing it): moving one `if (1) {}` before dir[0] puts dir[0] in the c->next() block (454C4 99.95 -> 99.96); CCXIV literals: 3C43C 1e6 (96.78 -> 98.24), 36F0C 0.8 (93.31 -> 94.42); a dead pooled redefinition (`it.cd()`) gives the target's e / temp split and a natural flags reload without volatile, but flips the pointer / int pool colours**](#kit-ccxv-agent-g-run-217) -- _3C43C homes = 8 scalars + uopt's unroll remainder var; 4A308 spill slot, 37938 reload, 3B2EC latch copy, 97EC negatives._
 - [kit CCXVI (agent-c 2026-10-29, run 219): **post0b 4A308 EXACT: the target's extra frame words BELOW the spill come from writing a once-assigned local (`entry`, recomputed after a call) as an expression macro with a dead `char *entryd = 0;` keeping its home (frame 120 -> 128, spill sp+56 -> sp+60); literal-pool scan of the agent-c range (target `lwc1/ldc1 OFF(lui 0)` resolved through the ROM / label relocs and compared with the NM object's loads): no decode error and no new exact; offsets 0x0..0xC / 0x30 are imported objects, not RoData; B75C's 0x8C8..0x910 pool as literals +0.01. 4A308 / C310's missing frame bytes are ugen temp-area words between the saves and the spill (ours 16 / target 24 bytes in 4A308; a two-arm memory-homed short pair adds 8), not args / struct returns / block pads**](#kit-ccxvi-agent-c-run-219) -- _NM: B75C 93.94 -> 93.95, 6808 96.56 -> 96.61 (bbsplit); E2D0, 51AD8, 65EE4 (aliases 67.98 < -Olimit 89.73), lever-sweep negatives._
 - [kit CCXVII (agent-g 2026-10-29, run 218): **post0b 36F0C 94.42 -> 99.73 (968 B = target): decl order c / p / v + a named `f64 h = 100.0` = target frame 136; a nested `?:` clamp has two result temps (outer `mov.s` copy), an if / return inline clamp one; `f32 d = dist;` before a store run hoists the load like the target; `if (&c == 0) return;` (folded) = memory-resident local without volatile; kept-parameter inline setters (`if (0) { n = 0; }`) make each reload its own v0 web; literal scan of game_uso / gui / post0b < 0x48000 exhausted (3B9C0 1e-5 decode fix)**](#kit-ccxvii-agent-g-run-218) -- _40304 0.01 literal negative, 7C1C / BB8C value-only; 35B1C = cfront-style C++ ctor (NCC word-for-word except frame 72 vs 80 + vptr store order); 3C43C homes, 415A4 double-ori, 37540 s-home negatives._
+- [kit CCXVIII (agent-g 2026-10-29, run 219): **post0b 36F0C EXACT: an inline's by-value float parameter is a uopt variable (f0), a `const f32 &` parameter read is an ugen ring temp (f4 / f6 / f10 / f8); a forwarded store goes direct through a kept-parameter accessor result (`Cam *n = gc0(c)` = the pooled v0 temp, no interference); replace-function-body.py names objcopy-renamed section symbols (redefine-sym C++ donors' `.rodata` relocs -> `<func>_rodata`)**](#kit-ccxviii-agent-g-run-219) -- _35B1C NCC ctor frame fixed (pad block), vptr-store order still open; 591C var-bound colours, 2E354 literals cost length, 40304 / 37938 negatives._
 - [kit CCXIII (agent-g 2026-10-29, run 216): **post0b 454C4 95.95 -> 99.95, length = target: build on the structurally-right BB lever, then re-test old micro-levers (drop the named element pointer -> sixth s-reg; drop the folded `& 0xFF`); `if (rec) {}` breaks an adjsave tie; `cur = nxt; if (nxt)` keeps an inline iterator member out of the candidates (ring temp t7 vs v0 web); a ternary sharing edg's int temp with post-increments separates when assigned in the same full expression as the inline call**](#kit-ccxiii-agent-g-run-216) -- _Open: e copy-propagated as the shared pointer temp (5 words); 3C43C homes = function-scope five + k / ABS3 temps / dd; 3558 per-row adds inert._
 - [kit CCXIV (agent-c 2026-10-29, run 218): **a RoData float read as `D + off` / an extern alias is often a compiler LITERAL: read the ROM word (bootup.uso RoData = ROM 0xD9FE44); a run of identical values around a jump table = one constant rematerialised (one literal word per `l.s`). As a literal uopt hoists / colours / reloads it after calls -> game_libs 3430 (0.1f in f2 + three trailing `if (1) {}`) and timproc_b5 CEB4 (0.3f + `if (1) {}` per white arm) EXACT via donors pinned `<fn>_rodata` = the pool's ROM offset; C310 NM 96.45 -> 99.89 (`== 1` = register-held 1 shared with the `= 1` store, field-form counters)**](#kit-ccxiv-agent-c-run-218) -- _CCXII address-form scan (size>0 FUNC symbols only): no further hit; 4F2DC literal +0.19; 6204/E9FC, 8BD4, 1824, 4C5E4, 4A308 / C310 spill-slot gap negatives._
 - [kit CCX (agent-g 2026-10-29, run 214): **each object of a class with an inline constructor is an edg labelled BB; above ~19 BBs uopt splits a held callee-saved constant (game_uso 3558's $f20 zero web: hold, live else muls, w.y reload) -- a constructor-less Vec3 / aggregate Ctx restores it; a Vec3 local is a uopt register candidate only when no member call or reference parameter is bound to it (free by-value mk() keeps the op- copy chain)**](#kit-ccx-agent-g-run-214) -- _3558 85.86 -> 89.21 (frame 256 = target, all homes on the target map); vb split / va.y f20 residual and negatives listed._
@@ -48083,3 +48084,60 @@ Standalone NCC loop, objdiff `-c functionRelocDiffs=none`; every step below was 
    in two separate `ori` from its own 1030 constant (two 1030 materialisations, two stores): `|=` twice keeps
    three stores, a local `f` folds to 0x406. 37540: the s home position is not decl-order driven (all orders
    92.93 at 776 B once the decls are hoisted).
+
+## kit CCXVIII (agent-g 2026-10-29, run 219): post0b 36F0C EXACT -- an inline's BY-VALUE float parameter is a uopt variable (f0 first) while a CONST-REFERENCE parameter read is an ugen temp (the f4 / f6 / f10 / f8 ring); a kept-parameter accessor `Cam *n = gc0(c)` gives a pooled v0 web that no setter web interferes with; replace-function-body.py now names objcopy-renamed section symbols; 35B1C is a C++ constructor (same residual); 591C / 2E354 / 40304 / 37938 negatives <a name="kit-ccxviii-agent-g-run-219"></a>
+
+**1. 36F0C closed (99.73 -> 100, 968 B, ROM byte-identical).** Run 218 left the six tail stores
+(`c->pos = w`, `c->tgt->m.t = pos`) with every value in f0 where the target cycles f4 / f6 / f10 / f8. The setters
+were `static inline void spy(Cam *n, f32 v) { if (0) { n = 0; } n->pos.y = v; }`. Once one parameter of an inline
+is kept (the dead `n = 0`), edg makes a parameter temp for EVERY parameter, and the float one is a uopt variable:
+f0 is its first colour, for every call. Written `const f32 &v` the value is read through the (constant-folded)
+reference inside the inline: an ordinary load into the ugen temp ring, exactly the target's registers. The same
+change on the x setter reloads w.x from the stack (an indirect load is never forwarded from the `w += pos` store),
+where the target keeps the add result in f4. The target's x store is a DIRECT `n->pos.x = w.x` (forwarded), with n in
+v0: `Cam *n = gc0(c);` (`static inline Cam *gc0(Cam *n) { if (0) { n = 0; } return n; }`) taken right after
+`pos += v` and before `w += pos`. A plain `Cam *n = c; if (0) { n = 0; }` gets the same shape but colours a1: the
+zdbug:5 dump shows its LR interfering with the pooled edg temp that carries tm()'s / the setters' kept parameter (LR
+in v0 across the whole tail); the accessor's return value IS that pooled temp, so it lands in v0 with no
+interference. The accessor's frame word also replaces run 218's named `f64 h = 100.0` step (frame 136 kept).
+Rule: in an NCC donor where a value that the target keeps in the temp ring comes out in f0 (or f2 / f12 / f14) through
+an inline, make that parameter a const reference; if the target also forwards the value from an earlier store, do
+the store directly through a kept-parameter accessor result instead of an inline call.
+
+**2. Infra: replace-function-body.py and objcopy-renamed C++ donors.** `objcopy --redefine-sym` (needed to rename a
+mangled member such as `update__7FreeCamFv`) rewrites the donor's section symbols with st_name 0, so the splicer saw
+an empty name and bound the donor's `.rodata` literal relocs to an anonymous symbol (`*ABS*`, %lo 0 in the ROM).
+STT_SECTION symbols with no name now take the section header's name, so the reloc is renamed `<func>_rodata` as for
+every other donor (36F0C: `gl_func_00036F0C_rodata = 0x19E8`). Side effect, NM-only: redefine-sym'd NM donors with
+literals now score their literal loads properly (bootup 31C0 99.86 -> 99.96, post0b 4D688 97.84 -> 97.86, b5 8FC8
+91.51 -> 91.56); no ROM byte changes.
+
+**3. post0b 35B1C (97.40) is a C++ constructor.** `if (o != 0 || (o = alloc(0x10)) != 0) { o->vt = &D; placement
+member at o+4 with an (o+4 != 0) test ... }` is the edg ctor protocol; `struct Node { Node *next; Key k; int x8;
+Node(List *, Key, int); virtual void f(); }` (cfront layout puts the vptr after the members = 0xC) with
+`struct Key { int v; Key() { v = 0; } }` reproduces the body word-for-word with frame 0x48; a dead
+`{ volatile int pad0, pad1; }` after the `Node *s0;` decl gives the target's 0x50 (97.38). The one residual is the
+same as the C body's: the target issues the vptr store after `addiu v1,s4,4; addiu at,zero,-4`. Not moved by
+mem-initializers (`: x8(a3)`, `: k()`), Key ctor spellings (`: v(0)`, out-of-class inline, `if (0) {}`), or (C body)
+comma-operator orders of the vptr store against p / q.
+
+**4. Negatives.** game_uso 591C (99.90): the head scaled-axis block loads +4 / +8 / +0 where the target loads
++0 / +4 / +8; reordering the three products moves the loads but the colours are var-bound (x f0, scale f14, z f2;
+the target needs the x product in f14): swapping the vars' roles (99.21) or fresh block locals (frame +8, 99.03)
+lose; `0x10000 == v0` and the 0x54 counter through `t0` are flat. post 2E354 (93.79): RoData 0x16E0 / 0x1724 /
+0x1728 / 0x172C are the literals 0.6f / 1.6f / 1.6f / 0.8f, but as literals the cfe body grows to 3700 B (88.5):
+the frame (0xA0 vs 0x80) is the real gap there. post0b 40304 (99.82, cfe): the 1/32767 literal colours f18 (target
+f14); `(1/32767) * v[6]`, d before c, a named kt literal, folded terms on d: flat or worse. post0b 37938 (99.88):
+the final reload through `kn(c.getOut())`, an `m30(Node *)` accessor, a block `Node *n`, `+ 0` terms: flat (v0).
+
+**5. gui 2DE0 (95.53) with the exact-length 329C shape.** Porting the 329C donor's body shape wholesale (texture
+append through `nextp()`, `t = spr->fmt` + `switch (arg0->spr->fmt)`, the three loader calls as `CTX->load()`, decl
+order spr / x / y / fw / fh / t / w / h, rect appends `next()` / `nC()` / `nD()`) plus `volatile s32 q0..q3;` at
+the top (frame 0x58 -> the target's 0x68) gives 96.53 (96.65 with `switch (spr->fmt)`, no named t, and five
+pads), every block word-for-word up to registers (pool variable in
+s0, the loader-call &D rematerialisations, the float x / y block) -- but 1196 bytes against 1212, so it was NOT
+kept. The missing 4 words: the target keeps the `&D_00000000` address CSE (t3) live up to the RDPHALF_2 append and
+rematerialises `lui t3 / addiu t3` at the ends of the dtdy MAX / MIN arms (`lw s0,0(t3)` after the join); ours ends
+that LR at the RDPHALF_1 append and loads the last CTX in the direct `lui s0,%hi / lw s0,%lo(s0)` form. A 6^4 grid of
+append spellings (nextp / next / nC / nD / nextc / nexta) does not extend it (best at 1212: 93.85). Next step:
+whatever extends the &D address LR across the dtdy arms (scratch: /tmp/claude-1000/g219/d2.cpp).
