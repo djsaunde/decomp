@@ -49168,7 +49168,10 @@ post0b 4C5E4 88.67 -> 88.69 (836 B); the same commute sweep over older agent-g d
 (2836 B, `speed * kDC`), post0b 3BE1C 97.60 -> 98.16 (1568 B, `cx + cz * w`), post0b 54E78 98.22 -> 98.66 (552 B: run
 200's y-first `dot()` is stale, x first again). Leads not taken (other owners / length): post0b 469A8 95.12 -> 95.36
 (`FW(0x204) * 4 + FW(0x240)`), game_libs 76F0 95.02 -> 95.80 with a hoisted `D_76F0[0x34/4]` test operand but
-2308 -> 2312 bytes (try an existing temp)._
+2308 -> 2312 bytes (try an existing temp). A zero-use-sweep re-run after these changes found new folded uses:
+post0b 3B9C0 93.96 -> 94.27 (`+ 0 * (int)(self)` on the ok clear), 3BE1C 98.16 -> 98.34 (v1, v0 on the ok clear, vc on
+hi), 46050 92.23 -> 92.27 (arg2 / o on the two cursor reads): re-run zero-use-sweep after every operand-order
+change (493AC's hit, `pad0`, is 1936 -> 1948 bytes: not taken)._
 
 1. **A compare operand on its own line (as1 line order, kit CCXXXIV) on an NCC donor (bootup C234).** The target loads
    `spCC.f0` AFTER the whole plane-distance expression it is compared with (`lwc1 ft2, 0xf0(sp)` right before the
