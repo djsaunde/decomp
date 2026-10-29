@@ -14612,6 +14612,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCXXII (agent-g 2026-10-29, run 223): **cfe temporaries take a frame word under the lowest named home: a call result inside a compound expression (`(T)func() + 0 * x`) and a struct-valued comma argument (`f(a, (s.w = X, s))`) each allocate one (shared) temp; find it with `-zdbug:6` `isvar` offsets; `f(a, va + 0 * (s.w = X), s)` keeps the comma's arg-slot-store-before-jal order without a temp**](#kit-ccxxii-agent-g-run-223) -- _bootup 6808 EXACT (99.98 -> 100, cfe donor, + dead `int gE = 0;` home); B75C 93.95 -> 94.00 (frame = home count: m2c spNN below the lowest home are spill slots); 2D374 frame says <= 4 named locals (negative); 55A0 NCC donor inert to the same edits._
 - [kit CCXXI (agent-g 2026-10-29, run 222): **uopt's v0 interference is BLOCK-granular: a short local web never colours v0 in the block right after a call (dead int return, or a return stored in that block) nor in the block holding the final return copy; `do { RMW } while (0)` (macro body) gives the web its own block and v0 back (if (1) {} / goto-label / bare label after the store are merged away); a flag store scheduled before the epilogue's `or v0,sN` is the tell; one name = one live range across all its webs**](#kit-ccxxi-agent-g-run-222) -- _bootup 6808 98.34 -> 99.98 (all four flag RMWs v0, p+0x30 pointer RMW, int-cast held base kills the sw a1 home, `a3 = 6` with no copy = a 3-arg call (decode fix), comma-form by-value arg store order); open: 8-byte frame region; negatives 18F0 mask + layouts, 65EE4 512 line layouts, 493AC void aliases, 55A0 `it` escape._
 - [kit CCXXIII (agent-c 2026-10-29, run 221): **an address constant the target re-forms per inline-ctor row but the build hoists into s0 across rows is busted by per-row extern aliases (timproc_b5 8FC8 91.56 -> 91.82, with a `B *const &o` row-ctor parameter; then an explicit per-row base vptr, held-`this` inline setters, kept loop guards, do-while flag chains and stacked if (1) splits: 93.39; 8FC8's 5-entry jump table keeps the NCC donor non-exact); kit CCXXI's do-while v0 lever needs a fresh name for the RMW chain (bootup 90CC 99.45 -> 99.48 on the dummy-home var_t1)**](#kit-ccxxiii-agent-c-run-221) -- _negatives: 63964 operator / scalar / pad forms (the arm-1 gap is the scalar's parameter temp), 31C0 operator new / volatile distributions, C310 below-spill words come from the ring loop, E2D0 `&arg4`, 578B4 sp50, 48510 compare spellings, 90CC lui-s0 sites._
+- [kit CCXXIV (agent-g 2026-10-29, run 224): **count the target frame word by word (saves end, spill words, home area; homes from the target's sp offsets; cfe packs chars at byte granularity) and re-declare the cfe locals to fit: m2c `spNN = v` before a call is v spilled to ITS home (declare v there, drop spNN), a `spNN` below the homes is a spill slot, zero-use temps still take homes, disjoint same-type temps merge -> game_libs 2E354 frame 0xA0 -> 0x80 with all seven homes on target; a frame pad declared LAST sits under the homes (bootup E68 homes on target); a 1 / 2 / default pick as a switch, `u8 == 1U` for a fresh `li at,1`**](#kit-ccxxiv-agent-g-run-224) -- _No exact; NM 2E354 93.79 -> 93.90, E68 94.57 -> 94.59; negatives 2D374 (<= 2 named words fit frame 40 but lose the 256-block schedule; sibling block locals do not share frame space), B75C sp1C spill-slot order, 5A2C4 pad sizes, 591C colour renames, B3C 4-case table, 30AF4 sv copy._
+- [kit CCXXV (agent-c 2026-10-29, run 222): **a C++ ctor that can only be exact through cfe (switch -> jumptable) written as cfront-style C: `this` IS the parameter (`if (arg0 || (arg0 = new))`), inline members as one-line statement macros, inline temporaries as a FEW reused function-scope pointers (one per site spills everything, frame 0x280) whose choice per expansion picks s0 / s1; locals in the target's frame order; a run of stored ctor results on ONE source line (comma) moves the stores behind the next call's arguments; virtual calls through a held vtable local**](#kit-ccxxv-agent-c-run-222) -- _NM: timproc_uso_b5_func_00008FC8 93.39 (NCC donor) -> 96.01 (new cfe donor timproc_uso_b5_8FC8_nm.c, jumptable included), length 6492 of 6496. Open: per-site triple `mtc1 zero`, sites 2 / 3 loop-counter colouring, site-3 EE6C address CSE._
 - [kit CCXIII (agent-g 2026-10-29, run 216): **post0b 454C4 95.95 -> 99.95, length = target: build on the structurally-right BB lever, then re-test old micro-levers (drop the named element pointer -> sixth s-reg; drop the folded `& 0xFF`); `if (rec) {}` breaks an adjsave tie; `cur = nxt; if (nxt)` keeps an inline iterator member out of the candidates (ring temp t7 vs v0 web); a ternary sharing edg's int temp with post-increments separates when assigned in the same full expression as the inline call**](#kit-ccxiii-agent-g-run-216) -- _Open: e copy-propagated as the shared pointer temp (5 words); 3C43C homes = function-scope five + k / ABS3 temps / dd; 3558 per-row adds inert._
 - [kit CCXIV (agent-c 2026-10-29, run 218): **a RoData float read as `D + off` / an extern alias is often a compiler LITERAL: read the ROM word (bootup.uso RoData = ROM 0xD9FE44); a run of identical values around a jump table = one constant rematerialised (one literal word per `l.s`). As a literal uopt hoists / colours / reloads it after calls -> game_libs 3430 (0.1f in f2 + three trailing `if (1) {}`) and timproc_b5 CEB4 (0.3f + `if (1) {}` per white arm) EXACT via donors pinned `<fn>_rodata` = the pool's ROM offset; C310 NM 96.45 -> 99.89 (`== 1` = register-held 1 shared with the `= 1` store, field-form counters)**](#kit-ccxiv-agent-c-run-218) -- _CCXII address-form scan (size>0 FUNC symbols only): no further hit; 4F2DC literal +0.19; 6204/E9FC, 8BD4, 1824, 4C5E4, 4A308 / C310 spill-slot gap negatives._
 - [kit CCX (agent-g 2026-10-29, run 214): **each object of a class with an inline constructor is an edg labelled BB; above ~19 BBs uopt splits a held callee-saved constant (game_uso 3558's $f20 zero web: hold, live else muls, w.y reload) -- a constructor-less Vec3 / aggregate Ctx restores it; a Vec3 local is a uopt register candidate only when no member call or reference parameter is bound to it (free by-value mk() keeps the op- copy chain)**](#kit-ccx-agent-g-run-214) -- _3558 85.86 -> 89.21 (frame 256 = target, all homes on the target map); vb split / va.y f20 residual and negatives listed._
@@ -48397,3 +48399,84 @@ No exact. report.json-equivalent objdiff (NM objects after a full rebuild): boot
    0x160 but the score is lower. Left: the function-wide s0/s1 swap of the pooled pointer webs (target np / i / w in s0,
    ours in s1 / a2 / v1), the S70-row o (target v1 with call saves at sp+0xE0), the three separate `mtc1 zero` of
    the w->pos zeroing, and the final 5-entry jump table (NCC cap).
+
+## kit CCXXIV (agent-g 2026-10-29, run 224): count the target frame word by word and re-declare the cfe locals to fit -- m2c `spNN` names that are dead copies of another variable's home or of a spill slot go, unused m2c temps go, disjoint same-type temps merge, char locals pack into one word; a frame pad declared LAST sits under the homes; 2E354 frame 0xA0 -> 0x80 with every home on target, then a 1 / 2 / default pick as a switch <a name="kit-ccxxiv-agent-g-run-224"></a>
+
+No exact. NM game_libs gl_func_0002E354 93.79 -> 93.90 (3684 B), bootup func_00000E68 94.57 -> 94.59 (3036 B).
+
+1. *Reading the target frame* (cfe, game_libs 2E354). Target `addiu sp,-0x80`, saves s0/ra at 0x20/0x24 (end
+   0x28), one spill word at 0x2C, so the home area is 0x30..0x7F = 20 words. The home offsets come straight from
+   the target's sp accesses: sp7D at frame-3 (byte), sp78 -8, sp6B -21 (byte), sp64 -28, sp60 -32, a `sw v0` home
+   at -40, sp50 -48. cfe allocates chars at BYTE granularity downward (two u8s before sp7D put it at -3; the three
+   bytes under sp6B take three more u8s), then the next word-aligned slot. Fill the gaps (three words between sp78
+   and sp6B, one each around the -40 home) with other locals and leave exactly the remaining count below sp50.
+2. *Which m2c names to drop.* `sp58 = var_v0;` before a call was the target's `sw v0,0x58(sp)` = var_v0 spilled to
+   ITS home: declare var_v0 in the -40 slot and delete sp58. `sp2C = (s32)(s8)var_v0;` (target `sw a1,0x2C(sp)`)
+   was a spill slot below the homes: delete. Locals with zero uses (temp_f14, var_at, temp_t9_2, temp_v1_6 here)
+   still take a home -- delete them. Then merge one pair of same-type temps with disjoint live ranges (var_a2_3
+   into var_t9 scored best of 11 pairs; temp_v0_7 into anything scored lower). Result: frame and all seven homes on
+   target (fuzzy +0.04 only: objdiff scores sp offsets loosely, but the frame must be right for an exact).
+3. *Pad placement* (bootup E68). A `volatile int pad[4]` declared mid-list shifts every later home down by 16;
+   declared after the last local it lands below the named homes. E68: target ult at frame-40 and i/head at -184
+   (ours -56 / -200 with the pad in the middle); moved last -> every frame-relative home matches, frame unchanged.
+4. *Small levers that stuck in 2E354:* a `v == 1 -> 0, v == 2 -> 1, else 2` pick written as a `switch` (target:
+   `beq v1,at(1); beq v1,at(2); b; li 2` with one `b` block per case -- an if/else chain emits a bne tree);
+   `o->0x1C == 1U` gets the target's fresh `li at,1` instead of sharing the stateB / stateD constant register
+   (kit VI unsigned-compare rule, applied to a u8 load); operand order `o->0x60 + o->0x28` follows the target's
+   load order.
+5. *Negatives.* 2D374: the target frame (40) has room for only two named words above the spill slot that holds
+   i at 0x1C; every variant with <= 2 named locals (no `&i` escape) reaches frame 40 but loses the 256-block
+   schedule (best 93.18), {z, fr, i, d} with the escape is 99.53 at frame 48; block-scoped sibling locals do NOT
+   share frame space in cfe. B75C: m2c sp1C is a target spill slot (0x1C), de-naming it makes uopt spill the
+   0x3C4 load like the target but the spill slots come out in a different order (92.47). 5A2C4: the four
+   0x2C..0x38 words are spill slots in both builds (pad sizes change nothing); 591C: renaming the three scaled-axis
+   temps to the target's colours costs 0.7 (their other uses decide); B3C: the jump table's 5th entry (`case 4`)
+   cannot go (4 cases -> compare chain); 30AF4 sv copy forms flat.
+
+## kit CCXXV (agent-c 2026-10-29, run 222): a C++ ctor that only matches through cfe (its switch is a jumptable) can be written as cfront-style C -- `this` IS the parameter, inline members are statement macros, and the inline temporaries are a FEW reused function-scope pointers; then frame-order locals, one-line comma runs and held vtable locals; timproc_uso_b5 8FC8 NM 93.39 (NCC) -> 96.01 (cfe, jumptable included) <a name="kit-ccxxv-agent-c-run-222"></a>
+
+Target: timproc_uso_b5_func_00008FC8 (6496 B), the timing-screen master constructor. The NCC donor
+(timproc_uso_b5_ncc_8FC8_nm.cpp) reached 93.39 but NCC lowers the 5-case tail switch to compares, so
+only cfe can ever be exact. The m2c C body was 86.64. New donor: src/timproc_uso_b5/timproc_uso_b5_8FC8_nm.c
+(IDO 7.1 cfe -O2), spliced over the NM object (Makefile TIMB5_8FC8_NM_DONOR, filtered out of C_FILES);
+its jumptable reloc is renamed timproc_uso_b5_func_00008FC8_rodata (pinned to RoData +0x324).
+
+Steps, standalone objdiff (each kept only when length did not move away from 6496):
+1. **Transcribe the NCC donor as cfront would emit it.** `void **f(void **arg0, ...)` with
+   `if (arg0 || (arg0 = (void **)alloc(0x60)))` testing the PARAMETER (gives the target's early
+   `move s2,a0` in the prologue; a `char *self = arg0` copy moves it into the bnez delay slot: +0.15).
+   Inline members (B::add, the S70 / Panel / W16C ctors with the nested `if (bp || (bp = alloc()))`
+   base check, V3::seti, attachKids, the 0x80000 restore) as one-line statement macros.
+2. **Inline temporaries must be a few REUSED function-scope pointers.** One block-scope variable per
+   expansion site (the literal cfront shape) gave frame 0x280 with everything spilled (77.6): uopt
+   gives up colouring that many candidates. Five shared pointers (w / _wp / n / t / _at) -> 85.8 -> 90.7
+   once the macros were mapped onto them (`#define _np w`-style aliases swept with spelling-grid).
+3. **Which shared pointer each expansion uses picks s0 / s1.** The panel-tail `add()` through `t`
+   (+0.3), the first S70 row's `add()` with `_at` / `w` (+0.2): sweep the variable per expansion.
+4. **Switch arm with fallthrough written as duplicated stores + break** (`case 1: e2 = 0; e3 = 0;
+   break;`, all `0.0f` so they use the held f20 zero) and the third tail-call zero argument `0.0f`
+   (not `(f32)0.0`): 93.36 -> 94.31.
+5. **Declare the locals in the target's frame order** (read homes from the target's sp offsets):
+   per-site V3 temporaries v2a..v3b at the top (0x154..0x130), the row pointers, items, the tail
+   block's locals hoisted to function scope (e2 home 0xF0), the spilled n pointer's home (0xE0),
+   v1a / v1b, sb1 0xC0, a NAMED site-1 loop counter (its spill home 0xBC), the two by-value V3 copy
+   buffers as `s32 t1[10]; s32 t2[4];` (0x94 / 0x84), sb2 0x80, sb3 0x68: frame 0x150 -> 0x160 and
+   all homes on target (+0.07). Block-scope `int x` / `int fl` chain temps -> the shared `_x`.
+6. **A run of ctor calls whose results are stored (`kid[i] = new Kid(...)`) on ONE source line as a
+   comma expression** moves each result store behind the next call's argument setup (`lui; lui;
+   addiu; addiu; sw v0; or a0; jal`), as in the target: 94.49 -> 95.35; the saved-bit load and the
+   flag chain joined onto the same line: 95.60. Line layout alone does it (statements on one line
+   score the same as the comma form for the flag part); a coordinate sweep over every line break in
+   the body found two more joins (+0.17) and then converged.
+7. **Virtual calls through a held vtable local** (`w = FP(obj, 0x28); (*(fn *)(w + 0x5C))(*(s16 *)(w +
+   0x58) + obj, ...)`): the target keeps the vtable pointer in s1; +0.19. Writing it as a comma
+   expression `(w = ..., fn)(...)` instead is -9 (evaluation order changes).
+
+Negatives / open: the per-site three `mtc1 zero` (target ft1..ft3 then three swc1) stay one shared
+mtc1 under every spelling (int 0, 0.0, (float)0, (f32)0.0, per-store `if (1) {}`, int / float locals);
+the item loop's vtable through `t` removes the DF_320 hoist and lines the loop up word-for-word but
+the function then ends 8 bytes short (6488) because the missing mtc1s are no longer offset, so it
+was NOT kept (u: 6492); sites 2 / 3 want the loop counter in s0 and the seti / element pointer in a
+caller-saved temp (dead `addiu a1,a1,0xb4` survives in the target) -- block-scope pointers, an outer
+counter and a fresh pointer for the element all lose; the site-3 0x80000 restore CSEs the EE6C address
+into v1 (target re-forms `lui at` per store).
