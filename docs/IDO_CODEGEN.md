@@ -14603,7 +14603,9 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCIX (agent-c 2026-10-29, run 216): **post0b 4A890 walks a copy, end from the parameter = the target's entry `or s0,a2` (93.48 -> 94.73); D884 / DF14 EE6C flag chain is non-volatile (IDO volatile always emits `la; lw 0(reg)`), every cfe/NCC spelling forwards, CSEs or lets as1 hoist; bootup C234 as C++ gets frame + top homes exact (NCC home order: function scope first, then source order) but scores below the C body**](#kit-ccix-agent-c-run-216) -- _negatives listed for 4A890 s1 size, D884 flag forms, C234 operator spellings._
 - [kit CCXI (agent-g 2026-10-29, run 215): **the BB-count lever runs both ways: when the target rematerialises a constant per site and saves fewer callee-saved regs than ours, ADD a BB (`if (1) {}`) -- post0b 454C4 loses its hoisted 255.0f / 0x03000000 with one; 3558's va / vb are memory (address-taken) in the target; 3C43C's extra frame is named-scalar vreg homes**](#kit-ccxi-agent-g-run-215) -- _454C4 structurally closer (masked diff 44 -> 13) but objdiff 95.95 -> 95.68, not committed; 3558 / 3C43C / 36694 / 7C1C / 3B9C0 negatives._
 - [kit CCXII (agent-c 2026-10-29, run 217): **a chain of destructive `lui rd; lw rd,%lo(sym)(rd)` reads and `lui at` stores on ONE symbol (reads after each store, `$at` shared by two stores) = as1 output for an address uopt left uncoloured: per-PAIR aliases (store + following load share one; each reused after a call), u32 stores / s32 loads -> timproc_b5 D884 + DF14 EXACT**](#kit-ccxii-agent-c-run-217) -- _as1 reorders loads across stores of different symbols and shares `$at` only for equal symbol+addend; uopt holds any twice-used global address in a register unless the web crosses a call; volatile always gives lui/addiu/0(reg)._
+- [kit CCXV (agent-g 2026-10-29, run 217): **uopt copy-propagates a named variable into an NCC pooled edg temp only up to the first bb that redefines that temp (an inline expansion reusing it): moving one `if (1) {}` before dir[0] puts dir[0] in the c->next() block (454C4 99.95 -> 99.96); a dead pooled redefinition (`it.cd()`) gives the target's e / temp split and a natural flags reload without volatile, but flips the pointer / int pool colours**](#kit-ccxv-agent-g-run-217) -- _3C43C homes = 8 scalars + uopt's unroll remainder var; 4A308 spill slot, 37938 reload, 3B2EC latch copy, 97EC negatives._
 - [kit CCXIII (agent-g 2026-10-29, run 216): **post0b 454C4 95.95 -> 99.95, length = target: build on the structurally-right BB lever, then re-test old micro-levers (drop the named element pointer -> sixth s-reg; drop the folded `& 0xFF`); `if (rec) {}` breaks an adjsave tie; `cur = nxt; if (nxt)` keeps an inline iterator member out of the candidates (ring temp t7 vs v0 web); a ternary sharing edg's int temp with post-increments separates when assigned in the same full expression as the inline call**](#kit-ccxiii-agent-g-run-216) -- _Open: e copy-propagated as the shared pointer temp (5 words); 3C43C homes = function-scope five + k / ABS3 temps / dd; 3558 per-row adds inert._
+- [kit CCXIV (agent-c 2026-10-29, run 218): **a RoData float read as `D + off` / an extern alias is often a compiler LITERAL: read the ROM word (bootup.uso RoData = ROM 0xD9FE44); a run of identical values around a jump table = one constant rematerialised (one literal word per `l.s`). As a literal uopt hoists / colours / reloads it after calls -> game_libs 3430 (0.1f in f2 + three trailing `if (1) {}`) and timproc_b5 CEB4 (0.3f + `if (1) {}` per white arm) EXACT via donors pinned `<fn>_rodata` = the pool's ROM offset; C310 NM 96.45 -> 99.89 (`== 1` = register-held 1 shared with the `= 1` store, field-form counters)**](#kit-ccxiv-agent-c-run-218) -- _CCXII address-form scan (size>0 FUNC symbols only): no further hit; 4F2DC literal +0.19; 6204/E9FC, 8BD4, 1824, 4C5E4, 4A308 / C310 spill-slot gap negatives._
 - [kit CCX (agent-g 2026-10-29, run 214): **each object of a class with an inline constructor is an edg labelled BB; above ~19 BBs uopt splits a held callee-saved constant (game_uso 3558's $f20 zero web: hold, live else muls, w.y reload) -- a constructor-less Vec3 / aggregate Ctx restores it; a Vec3 local is a uopt register candidate only when no member call or reference parameter is bound to it (free by-value mk() keeps the op- copy chain)**](#kit-ccx-agent-g-run-214) -- _3558 85.86 -> 89.21 (frame 256 = target, all homes on the target map); vb split / va.y f20 residual and negatives listed._
 - [kit CCVII (agent-c 2026-10-29, run 215): **an inline operator's parameter temp (`v * -h`, CSE'd with a named `w = -h`) is a zero-code FP phantom holding f0 across the products; trade its home for a register-neutral one (dot()'s const-ref pointer)**](#kit-ccvii-agent-c-run-215) -- _post1b 65494 EXACT (99.91 -> 100); 63964 arm-1 temp-pool negatives; 65EE4 is not C++._
 - [kit CCVI (agent-g 2026-10-29, run 212): **a NM donor's last word scored as INSERT = the `.s` stops at `jr ra`: gui 4568's delay slot sat in the tail bin (yaml boundary + renamed force-added bin; grow expected .text by appending at EOF, objcopy --update-section drops relocs), post0b 37938's delay nop was emitted by an 8-byte 1-word `_pad.s` block (-> all-zero suffix + NM clip -4 + symbol trim); the NCC reused edg temp is one uopt LR, which pins 3B2EC's cursor copy and 37938's final reload to v0**](#kit-ccvi-agent-g-run-212) -- _4568 96.01 -> 96.53, 37938 98.71 -> 99.88; 3B2EC / 37938 / 97EC colour and temp-order negatives listed._
@@ -47817,3 +47819,121 @@ ternary temps (inline function / if-assign / comma statement: worse); out-of-loo
 code; `getPos(vb)` puts vb in memory (target-like stores) but va.x / va.y stay in registers (84.6, 992 bytes).
 CCXII scan (lui-at count per function, game_uso / gui_uso / post / post0b < 0x48000): no uncoloured-address-web
 candidate (the 2E354 / 30AF4 / 46050 / 8CD8 count differences are float / GBI constants).
+
+## kit CCXIV (agent-c 2026-10-29, run 218): a RoData float read through `D + off` / an extern alias is often a compiler LITERAL -- check the ROM word and its neighbours; as a literal, uopt treats it as a constant (hoisted, register-allocated, rematerialised after calls, one fresh literal word per `l.s`): game_libs 3430 and timproc_b5 CEB4 EXACT; C310 96.45 -> 99.89 (`== 1` held constant); the CCXII address-form scan has no further hit <a name="kit-ccxiv-agent-c-run-218"></a>
+
+**The literal tell.** USO code reads a pooled float as `lui at,0; lwc1 fN,OFF(at)` whether the source was a
+literal or a RoData global, so NM bodies spell many of them `*(f32 *)((char *)&D_00000000 + OFF)` or a
+pinned `extern f32 D_xxx`. Read the word at RoData+OFF in the ROM (bootup.uso RoData = ROM 0xD9FE44:
+it holds 0.1f at 0xCC8 / 0xCEC / 0xCF0 / 0xCF4 / 0xCF8; timproc_b5's RoData is the expected object's
+`.rodata`). A run of IDENTICAL values (four 0.1f around a jump table, four 0.3f at timproc 0x390..0x39C,
+five 0.17f at bootup 0x59C..0x5AC, -1500.0f twice at 0x530 / 0x534) is a literal pool: as1 emits a new
+literal word for every `l.s`, so each rematerialisation of one source constant gets its own address, in
+emission order, and the function's switch tables sit between them (`.rodata` order = first use). The
+spelling decides codegen: a memory read stays where the statement is; a literal is a constant uopt can
+hoist into the test block, colour and order with the other constants, keep in a caller-saved register
+and reload after calls, or hold in a callee-saved one. Landing a literal needs a donor (the in-unit
+`.rodata` cannot be placed): REPLACE_FUNC_BODY renames the donor's `.rodata` reloc `<fn>_rodata`; pin it
+to the ROM address of the donor's `.rodata` +0 (an unused leading literal included -- CEB4's pool starts
+at 0x390 although the first read is 0x394, like the ROM).
+
+1. *game_libs 3430 (97.52 -> 100, 1220 bytes, cfe donor `game_libs_o2_3430.c`).* The NM body had a
+   variable `step` loaded from `D_..._cc8` and reassigned from CEC / CF0 / CF4 in cases 6-8. The real code
+   has no variable: case 3 adds the literal 0.1f, which uopt keeps in caller-saved f2 and rematerialises
+   after the calls of cases 6 / 7 / 8 (the three "reassignments" were those reloads), and since the first
+   load is a hoisted constant it follows the f22 / f20 (1.0f / 10.625f) constants in the prologue -- the
+   order no placement of a memory load could produce (store-first, `if (1) {}`, for-init: all tried).
+   With 0-2 BBs the literal is held in callee-saved f24 instead; THREE trailing `if (1) {}` (kit run 111's
+   firstUseCost lever) flip it to f2 + reloads: 100. Donor `.rodata` = literal +0, 8-entry table +4,
+   literals +0x24..+0x2C, pinned `gl_func_00003430_rodata = 0xCC8`.
+2. *timproc_b5 CEB4 (97.13 -> 100, 428 bytes, cfe donor `timproc_uso_b5_CEB4.c`).* The grey colour is the
+   literal 0.3f (four 0x3E99999A words at 0x390). As a literal it is hoisted with 1.0f into each test
+   block; an `if (1) {}` closing each white arm puts 0.3f ahead of 1.0f (target f0 / f2 and order), and in
+   block 1 the same lever replaces the old `v[0] = v[0];` self-assignment that kept the `bc1f else; b join`
+   shape (the white arm's stores are redundant with the init and vanish, the join's `lw a1` fills the
+   delay slot). Pinned `timproc_uso_b5_func_0000CEB4_rodata = 0x390`.
+3. *timproc_b5 C310 NM (96.45 -> 99.89).* The target's loop test is `bnel t0,t4` against a register-held 1
+   (`li t0,1` rematerialised at the loop top) that is the same constant web as the ring reset's `= 1`: write
+   `== 1` (the old `- 1 == 0` avoided an s8 hold that the current body no longer gets) and put the reset
+   after the `+= 2`. Both ring counters field-form (`-= 1;` / `+= 1;` then the test) so load and adjust are
+   ugen temps; `*(f32 *)(e + 0x10C) == 0.0f` (field first: `mtc1 zero` / `lwc1` order, no nop); the min
+   selection in mv2 with a folded `mv = mv2 + 0 * (int)(*arg0)` copy (target `move v0,v1`) and an
+   emission-free `if (m) {}` (m v0 / selection v1). Left: the `arg1 + 0x230` hoist one slot early and the
+   shared colour-value spill at 80 (target 96: the target has 16 more bytes between the saves and the
+   spill, like 4A308's 8 below its spill word -- unexplained).
+4. *Literal swaps that are neutral or small:* post0b 4F2DC far / best = -1e5 / 1e5 literals (0x1BA8 /
+   0x1BAC; 95.26 -> 95.45, committed); 5F5F0's 0x205C / 0x2060 are 10000.0f / 1e-7f literals (identical
+   code); bootup C234's 0x920 / 0x924 / 0x928 / 0x94C are 1e5 / 335 / -335 / 0.4 (identical code); 55A0's
+   0.2f / 0.17f pool (slightly worse in the current NM donor). An automated literal sweep needs the per-USO
+   RoData base and the body's spelling; most NM bodies here read pools through other forms.
+
+Scan (`/tmp/claude-1000/c218/hiscan.py`, throwaway): for every non-exact function in post0b >= 0x48000,
+bootup_uso, timproc_b5, post1b, kernel, game_libs.c, titproc, mgrproc, arcproc, compare the count of `lui`
+and of `lui at` between the target and the NM object. **Use only FUNC symbols with size > 0** when splitting
+the disassembly: bootup_uso expected objects carry zero-size FUNC `D_XXXX` labels inside functions (C234
+looked like 15 vs 36 `lui` until they were skipped). Result: the only count differences in range are
+timproc_b5 8FC8 (242/238, a 1121-word structural residual), game_libs.c 76F0 (a switch-range decode
+difference, `sltiu 5` vs `sltiu 4`), bootup E68 (colouring), post0b 4C5E4 (a float constant, below). No
+function shows the CCXII per-access `lui at` chain on one symbol, so the D884/DF14 recipe has no further
+hit here. Equal counts do not prove equal placement, but every listed near-miss checked by hand (6204, E9FC,
+CEB4, 3430, 8BD4, 5F5F0, 1824) has its residual elsewhere (3430 / CEB4 were literals, items 1-2 above):
+
+- **post0b 4C5E4**: target `lui at,0x4000; mtc1` TWICE (2.0f into f4 and f8 for `C8 * 2` / `CC * 2`) but
+  4.0f ONCE (f18 for both `* 4`); ours holds 2.0f in one register for both. A per-use rematerialised
+  constant next to a shared one -- not an address form. Open.
+- **game_libs.c 3430** (before the literal fix): with the `step` variable, every placement keeps the
+  hoisted f22 / f20 constants after the step load (`cc -S` shows them inserted at the end of the loop
+  preheader; as1 cannot lift them over step's `lui at`). Solved by item 1.
+- **bootup 6204 / E9FC** (`lui a0` before `sw ra`): NCC gives the same `sw ra; lui a0` as cfe; -O1/-O3/
+  -mips1/-g3, int/void/varargs/K&R callee, fn-pointer, local copy, array decl, struct return: all
+  `sw ra` first. Still open.
+- **timproc_b5 CEB4** (before the literal fix): with the D load, `one` locals, chained stores, the load in
+  the else arm, inverted conditions: none move 1.0f after the load. Solved by item 2; with the literal,
+  arm ORDER sets the hoist order (an inverted condition gets 0.3f first but swaps the block layout), the
+  `if (1) {}` in the white arm gets both.
+- **bootup 8BD4 NCC donor**: a reference-returning `V3::operator+=` alone does not move vel's temp to a0 in
+  the current donor (frame 184 -> 192, 98.83 -> 97.75); decl order / inner-scope / initialised nnA: inert.
+- **mgrproc 1824**: 3 raw words = the external-rodata jump table displacement (`lw t8,1464(at)`) and the
+  as1 `addiu at,zero,1` hoist -- unchanged.
+
+## kit CCXV (agent-g 2026-10-29, run 217): uopt copy propagation of a named variable into an NCC POOLED edg temp stops at the first basic block that also (re)defines that pooled temp -- post0b 454C4 99.95 -> 99.96; a dead pooled-temp redefinition reproduces the target's e / temp split exactly but flips the colouring <a name="kit-ccxv-agent-g-run-217"></a>
+
+One committed gain (454C4 99.95 -> 99.96, 2028 bytes = target). Standalone NCC loop, objdiff `-c functionRelocDiffs=none`.
+
+1. *The rule (454C4, `while ((e = it.next()) != 0)`, e = copy of the inline next()'s pooled return temp).*
+   A `bbsplit` sweep that adds one `if (1) {}` after each loop statement shows e -> temp substitution reaching
+   exactly up to the LAST bb split before the gSPLight block: e.g. splits before AND after dir[0] give dir[0] the
+   temp (a3), one split before dir[0] gives it e (a2). The gSPLight block holds `c->next()`, whose inline
+   expansion reuses the same pooled pointer temp; replacing `c->next()` by a direct `&c->dl->buf[c->dl->count++]`
+   does not change this, but a block with `c->next()` and no call blocks substitution and a block with only the
+   call does not. So: no substitution inside a block that redefines the pooled temp. Split placement only, no
+   new code: `if (1) {}` moved from after dir[0] to before it = dir[0] reads e as in the target, 99.95 -> 99.96.
+   A store / volatile store / extra `if (1) {}` between the two flag tests does NOT stop it.
+2. *Dead pooled redefinition = the target's pattern, wrong colours.* A discarded call to a second LIter member
+   with an if / return body (`LElem *cd() { if (cur) return cur->data; return 0; }`, `it.cd()` in the second
+   test's condition: zero code, loads dead) stops substitution right after the first test: test 1 reads the
+   temp, test 2 + colour + dir loads read e, and the flags reload appears with a NON-volatile `flags` member
+   (so the target's reload is this split, not `volatile`). Only LIter members returning a pointer (LElem* /
+   Node*) do it; Ctx / Obj inlines (other `this`), single-expression inlines and the named-local `r` form do not.
+   But the colouring flips (98.20): the pointer pool LR (lp / dl / next() return, bitpos 0) is no longer live in
+   the colour block, so v1 (taken there by the constrained c0 temp) is no longer forbidden for it; it takes v1,
+   the int pool (count) a3, e a1, the colour temp a2 -- target a3 / v1 / a2 / a1. Saturated grids: cd() body /
+   placement / return type x decl order x bb levers x `if (rec) {}` (2304 probes), cd() at other sites, zero-use
+   of e after the loop, lights() / next() spellings (`int i = lp->count++` 99.37, colour shift elsewhere),
+   `while (0)` / folded-ternary seeds for an earlier int-pool bit (both change the entry schedule, 88-91),
+   `0 * (int)it.cd()` in the colour block (the temp lands back in a3 but the loads are emitted, +16 B).
+3. *3C43C vreg homes identified* (`-zdbug:6` isvar + first ustr): n -160, i -164, best -168, lim -172, row -176,
+   k -180, the CONDITION's ABS3 ternary temp -184 (the `lim = ABS3(..)` ternary stores into lim directly), dd
+   -188, and uopt's loop-unroll remainder `(n - i) & 1` -192 (a uopt-created variable with a vreg home; the target
+   unrolls the same way). Target has 5 homes, so only 4 source scalars if the unroll var is there. `(dd =
+   ABS3(..)) < lim` keeps the ternary temp; if / else or `lim = d; if (lim < 0) lim = -lim;` do not remove a home;
+   row as a macro recomputes the chain (984 B).
+4. *4A308 t3 spill slot*: the target's sp+60 = frame-68 is our block-scope `r` home; `return gl(...)` without r
+   puts the spill at frame-68 but the frame shrinks by 8 (the target keeps two more words BELOW the spill);
+   volatile pads always take slots above the spill.
+5. *37938 final reload (v0 vs v1)*: with the arg-statement `if (1) {}` the c.out reload does not share a block with
+   the copy-chain pointer (v0 free); without it they interfere but the reload colours first (v0, pointer v1);
+   `c.out->m30` direct turns it into an a0-preferring LR.
+6. *3B2EC latch copy (v0 vs t4)*: for-increment / comma / pre-loop `i = *list, list++` forms all leave the latch
+   post-increment copy in v0 (it is its own LR, not tied to the pre-loop copy); a dead `this->list(cell)` is not
+   removed (+12..28 B). 97EC temp homes: e / f / a / b decl orders and pm / cr / t orders inert.
