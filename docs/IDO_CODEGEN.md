@@ -50038,4 +50038,17 @@ now spliced over a placeholder on both paths (old NM-only block removed)._
    99.2537, the ring shift is not in those expressions), 40304 (13 dead-anchor orders, 10 `if (1) {}` placements
    around d / q[3]: K1 stays f18), 250C8 (fontId scope / decl position / re-read forms), 3B2EC (`*list++` spellings,
    s16 i), 3E5E0 (K / CB ctor forms; offset map: reg0 / reg1's new-result temp is vreg -12 in the target, -24 here,
-   i.e. two fewer variables are declared before it -- see the follow-up below if any).
+   i.e. two fewer variables come before it; dropping the `x` block / the kept `a` parameter / member-function
+   reg0 / named new results / loop forms never split reg0's temp from the loop's: all three spill to one slot).
+5. **Leads left open.** post0b 3B2EC: the `*list++` old-value copy is ONE edg pooled temp (vreg -88 here) for the
+   rotated loop's entry copy and its bottom / continue copies; target entry v0, bottom t4. A for-init that holds a
+   pointer temp for the whole loop (`for (this->list(cell); (i = *list++) != -1; )`, also `gc()->grid`,
+   `list += nop()`) FLIPS it (entry t4, bottom v0: 99.87) -- the pooled var the copy lands in decides which web joins
+   the t4 LR; a hold that puts the BOTTOM web there is the open lead. post0b 3C43C (98.26): frame 0x100 vs 0xE0 --
+   the target has 5 scalar homes (48..67) where NCC gives n / i / best / lim / row + the ABS3 ternary's pooled temp
+   + dd + a uopt int temp, and r lives in s0 (target: reloaded from its home); dd removed = frame 0xF8 but 96.43;
+   cfe lift of the same body 96.04 (860 bytes). game_uso B3C (99.83): the const-1 LR (t0) spans the 2714 / 2FC8 call
+   region (target re-materialises `addiu t0,1` after it and the call args are literal `addiu a1,zero,1`); literal
+   1s with `cur * 1 == 1` = same; the 5-entry jump table (target 4) needs the dummy `case 4` -- without it the four
+   case bodies are merged into a compare chain (94.4). game_uso BB8C: the operator=(V3) by-value parameter temp is
+   8 bytes low (target 164, here 156); `double k` in the inner block puts it at 164 but shifts every other temp +8.
