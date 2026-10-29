@@ -14629,6 +14629,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCXXXVIII (agent-g 2026-10-29, run 230): **591C priorities read exactly (z 23/5, fsel 50/12, shared join temp 30/9); a dead `if (z) {}` in z's span fixes the z / fsel order on the fsel-site version (99.39 -> 99.81), but the shared selector join temp then takes f2 at all ten sites: the target also needs an f2 LR inside some selector's join blocks; 97EC named in-expression temps fix f's home but not T1 / e (block temps sit above named locals)**](#kit-ccxxxviii-agent-g-run230) -- _No fuzzy change; negatives listed (690 statement-position variants, 0x204-site spellings, 22 97EC layouts)._
 - [kit CCXXXIX (agent-g 2026-10-29, run 231): **FP operand order (`a * b` vs `b * a`, sum-term order) and a compare operand moved into a temp on the line before the `if` (as1 line order) are big unswept levers: C234 95.07 -> 98.17, 3558 89.98 -> 91.56, 2E354 93.94 -> 94.23 (reuse a dead temp: a fresh cfe local grew the frame), B75C 94.01 -> 94.37; re-drop stale folded `0 * X` terms (4BAF4 96.36 -> 96.82); NCC frame slots = used locals in decl order, spills at the bottom**](#kit-ccxxxix-agent-g-run231) -- _Sweeps: /tmp/claude-1000/g231/commute.py, hoist.py, dropfold.py, join.py. No exact._
 - [kit CCXL (agent-c 2026-10-29, run 230): **cfront-style cfe port of game_uso 7C1C, 27.7 -> 98.52 (beats the 96.35 NCC donor, length = target): objdiff fuzzy is alignment-bound -- fix length first; `(unsigned)((hit != 0) == 0) ||` keeps both CSE spills; one function-wide tx / ty / tz trio for every inline set() (roles moved by reuse, rotated trio at three sites) and sa / sc for operator- / perp; 16 `if (1) {}` raise firstUseCost so a pooled &local stops taking s3; `vp = &b->pos; do { loads } while (0);` keeps the reference temp coloured (as1 sinks its `addiu` past the loads, so it looks dead); a flag re-read after the arms' constant stores reproduces the forwarded v0; as1 line ties for result / mode constants**](#kit-ccxl-agent-c-run230) -- _NM gain +2.17 on 4284 B; left: b->width f14 vs f0, perp colours, ugen t-ring one late from the loop's t164 site._
+- [kit CCXLI (agent-c 2026-10-29, run 231): **game_uso 7C1C EXACT (98.52 -> 100): `cc -S` shows ugen's pre-schedule temps (an invisible `addu tN; move v1, tN` guard costs a ring slot); trailing firstUseCost blocks can reject short address-constant LRs too -- one `if (1) {}` at the loop-body top fixed the t-ring; empty blocks around a straight-line site give a CSE its own live unit (width f0 beside tz f0); a fourth shared float temp (reuse an unused float, a new decl shifts the frame); one-line member copies; folded-use grid for colouring order**](#kit-ccxli-agent-c-run231) -- _exact +4284 B._
 - [kit CCXIII (agent-g 2026-10-29, run 216): **post0b 454C4 95.95 -> 99.95, length = target: build on the structurally-right BB lever, then re-test old micro-levers (drop the named element pointer -> sixth s-reg; drop the folded `& 0xFF`); `if (rec) {}` breaks an adjsave tie; `cur = nxt; if (nxt)` keeps an inline iterator member out of the candidates (ring temp t7 vs v0 web); a ternary sharing edg's int temp with post-increments separates when assigned in the same full expression as the inline call**](#kit-ccxiii-agent-g-run-216) -- _Open: e copy-propagated as the shared pointer temp (5 words); 3C43C homes = function-scope five + k / ABS3 temps / dd; 3558 per-row adds inert._
 - [kit CCXIV (agent-c 2026-10-29, run 218): **a RoData float read as `D + off` / an extern alias is often a compiler LITERAL: read the ROM word (bootup.uso RoData = ROM 0xD9FE44); a run of identical values around a jump table = one constant rematerialised (one literal word per `l.s`). As a literal uopt hoists / colours / reloads it after calls -> game_libs 3430 (0.1f in f2 + three trailing `if (1) {}`) and timproc_b5 CEB4 (0.3f + `if (1) {}` per white arm) EXACT via donors pinned `<fn>_rodata` = the pool's ROM offset; C310 NM 96.45 -> 99.89 (`== 1` = register-held 1 shared with the `= 1` store, field-form counters)**](#kit-ccxiv-agent-c-run-218) -- _CCXII address-form scan (size>0 FUNC symbols only): no further hit; 4F2DC literal +0.19; 6204/E9FC, 8BD4, 1824, 4C5E4, 4A308 / C310 spill-slot gap negatives._
 - [kit CCX (agent-g 2026-10-29, run 214): **each object of a class with an inline constructor is an edg labelled BB; above ~19 BBs uopt splits a held callee-saved constant (game_uso 3558's $f20 zero web: hold, live else muls, w.y reload) -- a constructor-less Vec3 / aggregate Ctx restores it; a Vec3 local is a uopt register candidate only when no member call or reference parameter is bound to it (free by-value mk() keeps the op- copy chain)**](#kit-ccx-agent-g-run-214) -- _3558 85.86 -> 89.21 (frame 256 = target, all homes on the target map); vb split / va.y f20 residual and negatives listed._
@@ -49280,3 +49281,41 @@ so it is ugen's own choice; not found. Sweeps run flat at the end: line joins / 
 line, METV / THRV / M2V / DOTV roles, per-site XZ / SUB / perp / MULS macro variants incl. do-while forms,
 agent-g's commute.py (23 variants outside macros). Files: /tmp/claude-1000/c230/ (cd.py coordinate descent over
 `{{a||b}}` slots, sw.py join / split / bb sweeps, ringn.py ring-normalised diff, best_*.c snapshots).
+
+## kit CCXLI (agent-c 2026-10-29, run 231): game_uso 7C1C EXACT (98.52 -> 100) -- `cc -S` shows ugen's PRE-SCHEDULE temps (an invisible `addu tN; move v1, tN` costs a ring slot), the firstUseCost empty blocks can also reject short address-constant LRs (one `if (1) {}` at the loop top brings them back), empty blocks around a straight-line site give a CSE its own live unit, a fourth shared temp, one-line copies, folded-use colouring order <a name="kit-ccxli-agent-c-run231"></a>
+
+_EXACT: game_uso_func_00007C1C 98.52 -> 100 (4284 B, ROM byte-identical, verify-blocks 6/6). Donor
+src/game_uso/game_uso_7C1C.c (cfe -O2), REPLACE_FUNC_BODY on both paths over a C placeholder that re-emits the
+RoData +0xFC float; new pin game_uso_func_00007C1C_rodata = 0. Scratch: /tmp/claude-1000/c231/ (lv.py =
+parallel per-line variant scorer, rows.py = diff-row counter, sS.sh = `cc -S`)._
+
+1. **`cc -S` is ugen's output BEFORE as1** (same flags, `-S -o x.s`): it shows the temps ugen allocated in
+   source order, including ones as1 / the peephole later folds away. The "every t-register one late from the
+   t164 site" ring shift was `addu $10, $sp, 296; move $3, $10; bne $10, $0` at the t128 ctor guard: ugen spent
+   t2 on the guard address and the final code shows only `addiu v1, sp, 296; bnez v1`. In the target the
+   address was a uopt-coloured value (`addu $2 ...; bne $2, 0` -- note `0`, not `$0`, for a coloured operand),
+   which costs no ring slot. Grep `move $3, $N` in the -S output to find such invisible ring consumers.
+2. **The firstUseCost empty blocks reject more than the LR they target.** With 0..10 trailing `if (1) {}` the
+   t164 / t128 guard addresses are coloured (uopt LRs 794 / 795 `assigned 1`) but P3 takes s3; with >= 11 P3
+   splits as wanted and the two address LRs flip to `split out` / `not colored (-ve save)` at the same count.
+   A per-line source sweep could not move them (uopt normalises every pointer spelling); the zdbug:6 diff
+   between n = 10 and n = 11 named them. Diagnostic removals in the loop head (the hoisted `pC = &t134` /
+   `pB = &t140` spilled pointers) recoloured them, and ONE `if (1) {}` at the top of the loop body did it
+   cleanly: 98.52 -> 99.81, every int t-register right. Sweep empty blocks at loop tops / after macro lines too
+   (sw.py's bb mode only inserted after lines ending in `;` / `}`, so it never tried the loop top).
+3. **Two values in one register inside ONE straight-line block = the original had a block boundary there.**
+   Target mode arm: tz products in f0 at the 250 / 0.5 sites AND the width load in f0 at the middle
+   operator*(width) site, all without a branch. uopt interference is per live unit (basic block), so tz and the
+   width CSE can share f0 only in different blocks: `if (1) {}` before the width site and after its P2 copy
+   (no code) gives the width load its own unit -> f0 (99.81 -> 99.93 with item 4).
+4. **A fourth shared float temp.** The products at the width sites went z -> f14 in the target while tz is f0
+   elsewhere: z through an otherwise unused placeholder float (m2) that is ALSO x at the main mode-1
+   third-level site and x of the loop perp (both f14 in the target) -- every f14 row is one variable. A NEW
+   `float` declaration shifts the frame (99.55); reuse an existing unused float local. The main perp then
+   wants tx / tz (f12 / f0) instead of sc / sa (99.93 -> 99.95).
+5. **One-line member copies:** `hitC.x = R.x; hitC.y = R.y; hitC.z = R.z;` on one line gives the target's
+   z-first load schedule (as1 renames within a line); three lines keep x-first.
+6. **Folded-use colouring order:** the final compare wanted n0.x f0, n0.z f2, first sum f12 (ours sum f0). A
+   grid over `+ 0 * (int)(S2 + k*n0.x + j*n0.z [+ n0.x * n0.z])` (22 of 48 exact) -- extra n0.x / n0.z uses
+   raise their priority above the sum. Shipped `+ 0 * (int)(S2 + n0.x + n0.z + n0.x * n0.z)` (unit normals,
+   the int conversion is in range). Assigning the sum to a temp on the line before (kit CCXXXIX) was flat here.
