@@ -14621,8 +14621,9 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCXXX (agent-g 2026-10-29, run 226): **a small int constant the target holds in a register across compares and a store (`beq v1,v0` / `sw v1`) while ours uses `at` immediates = an UNSIGNED constant web: type the compared/stored globals u32 (keep per-use temp stores int-typed via `*(s32 *)&g = K`); `if (0) { f(&i); }` homes an address-taken local without the two cfe temp words of `if (0 + 0 * i)`**](#kit-ccxxx-agent-g-run-226) -- _NM: game_libs 30AF4 96.98 -> 97.86, 2116 -> 2112 B = target length. Negatives: 30AF4 &gl_state pre-switch base, 31A74 store/arg order (volatile hoists the address), 2D374 frame-correct spelling scores lower, 2E354 literal respell shortens._
 - [kit CCXXXI (agent-g 2026-10-29, run 227): **an `if (0) { f(&i); }`-homed local is still a coloured LR (needregsave / needreglod): its post-call reload takes the web's colour (a3 when the a1 argument preference is forbidden); a target reload into an ugen temp = that piece split out uncoloured -- one more read `if (i) {}` right after the last call gives the split; the home is the declaration slot counted from the frame top, frame ends at the lowest homed local**](#kit-ccxxxi-agent-g-run-227) ; and a float CONSTANT that loses f0 to a short variable gets it back with one more counted use (`if (k) {}`) in a block it already spans -- _NM: game_libs 2D374 99.77 -> 99.79 at the target frame (0x28, i at 0x1c), then 99.91 (constant f0 / fr f2 = target). Left: the post-call 0x358 reload in f0 (target f2)._
 - [kit CCXXXII (agent-c 2026-10-29, run 226): **`lui sN, %hi(g); lw v0, %lo(g)(sN)` = the global was loaded into the s-variable the NEXT statement overwrites and copied on (as1 folds the copy into the load, the lui keeps sN); bootup 90CC is cfe, not edg (`addu a0, delta, ptr` with one base load; every edg int-cast spelling reloads the base); an empty `if (1) {}` closing the inner `if (arg2 == 6) { if/else }` gives arg1's dead reload its own join block and removes the as1 join copy plus two address hoists at once; `temp_f0 = 0;` (not `0.0f`) keeps one coloured f0 zero; re-test old splitters after a structural lever; a call does not end a uopt block -- a value that refuses v0 although nothing visible uses v0 = another variable's v0 range in the same block across a call: `if (1) {}` right after the call**](#kit-ccxxxii-agent-c-run-226) -- _NM: bootup func_000090CC 99.48 -> 99.904 (new cfe donor bootup_uso_90CC_nm.c, 2106 words = target, 4 rows left: one d148 preheader load slot, vpos.z / arg-5 store order). Negatives: 78 single void aliases, splitter sweeps in three regions._
-- [kit CCXXXIII (agent-g 2026-10-29, run 228): **game_libs 2D374 EXACT: a value that takes the wrong caller-saved register although nothing in its block interferes = register PREFERENCE: write it into the variable whose earlier web already holds the target register (`fr = D_358;` post-call) and give that web priority (`if (fr) {}` before its store) so it colours first; read the `-Wo,-zdbug:5` dump (live bb / interfere lists) before placing a post-call `if (1) {}`: in game_libs 2D374 the 0x4E010000 call DOES end the uopt block (the 0x358 reload is alone in bb38 with an empty interference list), so CCXXXII's across-the-call range is not the cause of its f0 (target f2); CCXXVIII float-literal respelling is cfe-only (NCC donors score exactly base for every float spelling); 7C1C's target repeats x=f12 / z=f0 at every ctor site with a function-wide f24 zero = cfront shared inline-param temporaries, NCC body at a local optimum**](#kit-ccxxxiii-agent-g-run-228) -- _EXACT: game_libs_func_0002D374 99.91 -> 100 (+676 B). Automatic call-splitter + literal sweep over 17 non-exact functions: nothing above base._
+- [kit CCXXXIII (agent-g 2026-10-29, run 228): **game_libs 2D374 EXACT: a value that takes the wrong caller-saved register although nothing in its block interferes = register PREFERENCE: write it into the variable whose earlier web already holds the target register (`fr = D_358;` post-call) and give that web priority (`if (fr) {}` before its store) so it colours first; read the `-Wo,-zdbug:5` dump (live bb / interfere lists) before placing a post-call `if (1) {}`: in game_libs 2D374 the 0x4E010000 call DOES end the uopt block (the 0x358 reload is alone in bb38 with an empty interference list), so CCXXXII's across-the-call range is not the cause of its f0 (target f2); CCXXVIII float-literal respelling is cfe-only (NCC donors score exactly base for every float spelling); 7C1C's target repeats x=f12 / z=f0 at every ctor site with a function-wide f24 zero = cfront shared inline-param temporaries, NCC body at a local optimum**](#kit-ccxxxiii-agent-g-run-228) -- _EXACT: game_libs_func_0002D374 99.91 -> 100 (+676 B). NM: game_uso 591C 99.903 -> 99.973 (alloc-guard pointers routed through child_flags' a1 web; a zero-code child_flags read keeps v0 busy so the counter colours v1); gl_func_00031A74 95.28 -> 97.16 (kit CCXXXIV goto block). Automatic call-splitter + literal sweep over 17 non-exact functions: nothing above base. The 4-entry jumptable (B3C / 1ADC) is not reachable from cfe._
 - [kit CCXXXIV (agent-c 2026-10-29, run 227): **as1 issues equal-ready instructions in source-LINE order (lower line first): a store that must precede a call but follow the call's stack-argument store gets a later line from a straightened goto block (`goto Z; C: call(...); goto E; Z: if (1) {} v.z = a; goto C; E: ;` -- the `if (1) {}` keeps the block's own line); a loop-preheader load issued one slot early goes behind on the `do {` line (`x = *p; do {`); a `.c` donor prerequisite of the matching object needs that object's TRUNCATE_TEXT / SUFFIX_BYTES_FORCE `private`; pin from the target relocs (NM pins can be reloc-blind wrong)**](#kit-ccxxxiv-agent-c-run227) -- _EXACT: bootup func_000090CC 99.904 -> 100 (+8424 B). C310 preheader s6/s4 swap is uopt order, not as1 lines (57 layouts at base)._
+- [kit CCXXXV (agent-c 2026-10-29, run 228): **as1-order scan (same per-block instruction multiset, different order) over the 81 non-exact functions: a load that must issue after the loop-setup addresses goes on the loop header's line (`b = *p; a = q; for (...) {` on one line; 4B2F4 98.37 -> 99.36); prologue `lui a0` / `sw ra` (6204 / E9FC), critical-path priority (mgrproc 2B7C), call-site home stores (5F5F0), hoisted constants (59E80), FP load order (4E424) and the 51AD8 delay-slot steal are NOT line ties; NCC keeps a goto block with `if (1) {}` as real branches; the 4-entry jump table (titproc 116C, kernel 1ADC, game_uso B3C) is not produced by any 4-label switch under 7.1 / 5.3 / NCC**](#kit-ccxxxv-agent-c-run228) -- _NM: game_libs_func_0004B2F4 98.37 -> 99.36._
 - [kit CCXIII (agent-g 2026-10-29, run 216): **post0b 454C4 95.95 -> 99.95, length = target: build on the structurally-right BB lever, then re-test old micro-levers (drop the named element pointer -> sixth s-reg; drop the folded `& 0xFF`); `if (rec) {}` breaks an adjsave tie; `cur = nxt; if (nxt)` keeps an inline iterator member out of the candidates (ring temp t7 vs v0 web); a ternary sharing edg's int temp with post-increments separates when assigned in the same full expression as the inline call**](#kit-ccxiii-agent-g-run-216) -- _Open: e copy-propagated as the shared pointer temp (5 words); 3C43C homes = function-scope five + k / ABS3 temps / dd; 3558 per-row adds inert._
 - [kit CCXIV (agent-c 2026-10-29, run 218): **a RoData float read as `D + off` / an extern alias is often a compiler LITERAL: read the ROM word (bootup.uso RoData = ROM 0xD9FE44); a run of identical values around a jump table = one constant rematerialised (one literal word per `l.s`). As a literal uopt hoists / colours / reloads it after calls -> game_libs 3430 (0.1f in f2 + three trailing `if (1) {}`) and timproc_b5 CEB4 (0.3f + `if (1) {}` per white arm) EXACT via donors pinned `<fn>_rodata` = the pool's ROM offset; C310 NM 96.45 -> 99.89 (`== 1` = register-held 1 shared with the `= 1` store, field-form counters)**](#kit-ccxiv-agent-c-run-218) -- _CCXII address-form scan (size>0 FUNC symbols only): no further hit; 4F2DC literal +0.19; 6204/E9FC, 8BD4, 1824, 4C5E4, 4A308 / C310 spill-slot gap negatives._
 - [kit CCX (agent-g 2026-10-29, run 214): **each object of a class with an inline constructor is an edg labelled BB; above ~19 BBs uopt splits a held callee-saved constant (game_uso 3558's $f20 zero web: hold, live else muls, w.y reload) -- a constructor-less Vec3 / aggregate Ctx restores it; a Vec3 local is a uopt register candidate only when no member call or reference parameter is bound to it (free by-value mk() keeps the op- copy chain)**](#kit-ccx-agent-g-run-214) -- _3558 85.86 -> 89.21 (frame 256 = target, all homes on the target map); vb split / va.y f20 residual and negatives listed._
@@ -48875,6 +48876,38 @@ So no cfe spelling tried gives a 4-word table. B3C keeps its harmless `case 4: b
 rows short. The other two B3C rows are a constant 1 call argument that the target materialises (`addiu a1,
 zero, 1`) and ours takes from the t0 web of the `1 == x` compares.
 
+**5. The preference lever, applied again: game_uso 591C NM 99.903 -> 99.973.**
+- Alloc-guard destination pointers: target `or a1, a2` / `or a1, v0`, ours a0. Fix: route the destination
+  through `child_flags`, the variable whose web at the previous site (`child_flags = sub + 180` source
+  pointer) is already a1: `child_flags = (int *)p; if (child_flags != 0 || (child_flags = (int *)alloc(12))
+  != 0) { ((Vec3 *)child_flags)->y = 0.0f; ... }`. Two sites, +0.046.
+- The 0x54 counter: target v1, ours v0. A fresh block-scope `cnt` with no other change still took v0. With
+  `if (child_flags) {}` after the counter store, child_flags' v0 range reaches the counter's block and the
+  counter colours v1 (+0.023). Placed before the load, the keep-alive is inert. An `if (v0) {}` keep-alive
+  also fixes the counter, but it moves child_flags off v0 (net loss).
+- The general recipe: when a value takes the wrong register, find the variable that holds the target
+  register just before or after, and either reuse that variable (same register) or extend its range into
+  the value's block with a zero-code read (forbids that register).
+
+**6. Kit CCXXXIV goto block on gl_func_00031A74 (95.28 -> 97.16).** The mode==1 `cb(0x1000A00, ACC = acc)`
+became `goto Z; C: cb(0x1000A00, acc); return; Z: if (1) {} ACC = acc; goto C;`. The argument `mfc1` is now
+issued before the store's `lui at`, and as1 copies it into the join branch's delay slot as in the target.
+Without the `if (1) {}` it is inert. The same form on the tail store (`goto ... return;`) adds 4 words of
+branches with the `if (1) {}` and is inert without it. The tail's sel-spill `sb` / store order is still open
+(line splits and statement moves are inert). Also inert: post0b 35B1C's `&D` store (statement order, line
+joins, goto block).
+
+**7. Automatic CCXXXIV join sweep (adjacent `;` statements joined one pair at a time, NCC donors included:
+the issue order is as1's, so edg bodies respond too).** Run over 30 non-exact functions; gains:
+- game_uso 3558 (NCC): 89.21 -> 89.98, from the `side` stores joined with the 072EE8 call line.
+- post0b 46050 (NCC): 92.20 -> 92.23, from `charw = ...; lineh = ...;`.
+- game_uso 7C1C (NCC): 96.331 -> 96.347, from `result.z = d.z; result.x = d.x;`.
+- post0b 415A4 (C): 94.49 -> 94.59, from `t->a8 = 320; t->aC = 240;` (the order swapped as well as joined).
+
+Flat (no join scored above base): 31A74, 250C8, 30AF4, 2E354, 40304, 35B1C, 5A2C4, 591C, B3C,
+bootup E68 / B75C, and the NCC donors 41D40, 37938, 3B9C0, 4BAF4, 36694, 4C5E4, 97EC, 1DDC, 48AEC, 4F2DC, 493AC,
+3E5E0, 3AE58, 46790, 3DF58, 34890, 3B2EC, 454C4, BB8C, gui 329C / F04, bootup C234 / 55A0.
+
 ## kit CCXXXIV (agent-c 2026-10-29, run 227): bootup 90CC EXACT (8424 bytes) -- as1 issues equal-ready instructions in SOURCE-LINE order; a store that must precede a call can be given a line AFTER the call's line with a goto block <a name="kit-ccxxxiv-agent-c-run227"></a>
 
 The last two 90CC rows (cfe donor 99.904) were as1 reorders. Both closed by source layout alone.
@@ -48919,3 +48952,32 @@ The last two 90CC rows (cfe donor 99.904) were as1 reorders. Both closed by sour
   target relocs, not the old NM pins: `bu_90cc_d148_18` was 0 (fine for the reloc-blind NM score) and must be
   0x160 (`func_00000148 + 0x18`) for ROM bytes. Compute each pin as target symbol + target addend - donor
   addend from the HI16/LO16 immediates of both objects (a per-function script, /tmp/claude-1000/c227/pins.py).
+
+## kit CCXXXV (agent-c 2026-10-29, run 228): as1-order scan over the 81 non-exact functions; the line tie works on a hoisted loop-entry load (4B2F4 98.37 -> 99.36), not on prologue / priority / spill / delay-slot reorders <a name="kit-ccxxxv-agent-c-run228"></a>
+
+- **Scan.** objdump both objects (target `expected/`, base `build/non_matching/`), cut blocks after each
+  branch delay slot, key each instruction by mnemonic + non-register operands (lui/addiu/ori immediates and
+  non-sp load/store offsets wildcarded), and flag blocks whose key multiset is equal but whose order differs.
+  Equal-length functions only. 13 functions have such a block; most are not as1 line ties.
+- **Hit (NCC donor game_libs_func_0004B2F4).** The matrix loop's preheader: target `addiu t2` (row bound) /
+  `addiu a0` (a) before `lw t1, 0xE4(t3)` (b); ours loaded b first. `b = ...;` then `a = ...;` each on its
+  own line: b's line is lower, so it goes first. Swapping the two lines or joining only the two did nothing;
+  joining b, a AND the `for (i = 0; ...) {` line onto one line (the bound / a addresses carry the `for` line)
+  ties them and as1 then issues b last: 98.37 -> 99.36, registers only left. Same as the CCXXXIV `do {` case:
+  when a load must issue after loop-setup addresses, put it on the loop header's line.
+- **Not line ties (each probed with joins / goto blocks, all at base or worse):**
+  - bootup 6204 / E9FC `lui a0` before `sw ra`: one-line function, goto block with `if (1) {}`, return
+    value, array extern, varargs prototype, local pointer, NCC (`extern "C"` and a member function) -- the
+    prologue ra save always issues first. Not reachable through lines.
+  - mgrproc 2B7C `lw a3, 0xD4(a0)` above the four volatile 1.0f stores: same-line, after-line and goto-block
+    layouts change nothing (the load heads the switch's critical path: priority, not a tie); putting the
+    load after the stores in source makes uopt read it from s4. A copy `self = arg0` coalesces.
+  - post0b 5F5F0 `sw a1, 0xA0(sp)` (home store) after the v[] stores before the normalise call: NCC does not
+    straighten a goto block that holds `if (1) {}` (real branches, 58.7); without it the home store moves
+    further down (98.54). One-line `v[..]; call(v);` = base.
+  - post0b 59E80 early `li 3` / `li 0xFFFD` (ClipRatio constants): a 28-variant NCC join sweep is all base.
+  - post0b 4E424 FP load order y1 / z0 / z1: 8 layouts of the three subtractions all base (colouring).
+  - post0b 51AD8 delay slot (default arm's `lui a0, 2` stolen into the bound-check `beqz`): not a reorder.
+- **Shared open shape.** titproc 116C (`sltiu at, t6, 4` vs our 5) has the same 4-entry jump table as kernel
+  1ADC and game_uso B3C: IDO 7.1 / 5.3 at -O1 / -O2 / -O3 and NCC all lower a 4-label switch (int / unsigned /
+  short / char / long long selector, with and without default, break or return arms) to a compare chain.
