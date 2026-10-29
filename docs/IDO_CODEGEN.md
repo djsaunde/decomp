@@ -14609,7 +14609,9 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCXVIII (agent-g 2026-10-29, run 219): **post0b 36F0C EXACT: an inline's by-value float parameter is a uopt variable (f0), a `const f32 &` parameter read is an ugen ring temp (f4 / f6 / f10 / f8); a forwarded store goes direct through a kept-parameter accessor result (`Cam *n = gc0(c)` = the pooled v0 temp, no interference); replace-function-body.py names objcopy-renamed section symbols (redefine-sym C++ donors' `.rodata` relocs -> `<func>_rodata`)**](#kit-ccxviii-agent-g-run-219) -- _35B1C NCC ctor frame fixed (pad block), vptr-store order still open; 591C var-bound colours, 2E354 literals cost length, 40304 / 37938 negatives._
 - [kit CCXIX (agent-g 2026-10-29, run 220): **a global read through `&D` / a held `int *` is a direct variable access (folded `lui; lw %lo`, never hoisted); read as an ARRAY element (`extern int D_x[]; D_x[0]`) its address becomes a loop-invariant web held in an s-register across calls -> post0b 46050 89.71 -> 92.20 at target length (real-C++ appends + stock gSPTextureRectangle); gui 2DE0 95.53 -> 96.65 (329C-shape port, &D live-range residual)**](#kit-ccxix-agent-g-run-220) -- _inverse const-ref sweep negative on 3B2EC / 37938 / 41D40 / 454C4 / 7C1C / 33094; 3C43C r-home vs counted use._
 - [kit CCXX (agent-g 2026-10-29, run 221): **a target global RMW kept in ONE register (`lw v0; and v0,v0; ori v0,v0; sw v0`) is a local's chain (`x = G; x &= m; x |= k; G2 = x;` on a dead / dummy-home local), v0 only where nothing else in the block claims it; a target `addiu rX,base,K; lw/sw 0(rX)` field RMW = the if (1) pointer-mutation barrier (C and NCC member); a folded counted use stretches its operand's live range -- re-sweep the operand (E68 `0 * *cfg` -> `0 * arg3` restores the s0/s1 param colours)**](#kit-ccxx-agent-g-run-221) -- _bootup 6808 96.61 -> 98.34, post0b 493AC 97.18 -> 97.33, E68 94.54 -> 94.57; negatives 18F0 bitfield / mask, 4C5E4 inline setvp, 65EE4 aliases / prototypes, 5A2C4 stacked if (1), C234 literals, 6808 v1 sites._
+- [kit CCXXII (agent-g 2026-10-29, run 223): **cfe temporaries take a frame word under the lowest named home: a call result inside a compound expression (`(T)func() + 0 * x`) and a struct-valued comma argument (`f(a, (s.w = X, s))`) each allocate one (shared) temp; find it with `-zdbug:6` `isvar` offsets; `f(a, va + 0 * (s.w = X), s)` keeps the comma's arg-slot-store-before-jal order without a temp**](#kit-ccxxii-agent-g-run-223) -- _bootup 6808 EXACT (99.98 -> 100, cfe donor, + dead `int gE = 0;` home); B75C 93.95 -> 94.00 (frame = home count: m2c spNN below the lowest home are spill slots); 2D374 frame says <= 4 named locals (negative); 55A0 NCC donor inert to the same edits._
 - [kit CCXXI (agent-g 2026-10-29, run 222): **uopt's v0 interference is BLOCK-granular: a short local web never colours v0 in the block right after a call (dead int return, or a return stored in that block) nor in the block holding the final return copy; `do { RMW } while (0)` (macro body) gives the web its own block and v0 back (if (1) {} / goto-label / bare label after the store are merged away); a flag store scheduled before the epilogue's `or v0,sN` is the tell; one name = one live range across all its webs**](#kit-ccxxi-agent-g-run-222) -- _bootup 6808 98.34 -> 99.98 (all four flag RMWs v0, p+0x30 pointer RMW, int-cast held base kills the sw a1 home, `a3 = 6` with no copy = a 3-arg call (decode fix), comma-form by-value arg store order); open: 8-byte frame region; negatives 18F0 mask + layouts, 65EE4 512 line layouts, 493AC void aliases, 55A0 `it` escape._
+- [kit CCXXIII (agent-c 2026-10-29, run 221): **an address constant the target re-forms per inline-ctor row but the build hoists into s0 across rows is busted by per-row extern aliases (timproc_b5 8FC8 91.56 -> 91.82, with a `B *const &o` row-ctor parameter; 8FC8's 5-entry jump table keeps the NCC donor non-exact); kit CCXXI's do-while v0 lever needs a fresh name for the RMW chain (bootup 90CC 99.45 -> 99.48 on the dummy-home var_t1)**](#kit-ccxxiii-agent-c-run-221) -- _negatives: 63964 operator / scalar / pad forms (the arm-1 gap is the scalar's parameter temp), 31C0 operator new / volatile distributions, C310 below-spill words come from the ring loop, E2D0 `&arg4`, 578B4 sp50, 48510 compare spellings, 90CC lui-s0 sites._
 - [kit CCXIII (agent-g 2026-10-29, run 216): **post0b 454C4 95.95 -> 99.95, length = target: build on the structurally-right BB lever, then re-test old micro-levers (drop the named element pointer -> sixth s-reg; drop the folded `& 0xFF`); `if (rec) {}` breaks an adjsave tie; `cur = nxt; if (nxt)` keeps an inline iterator member out of the candidates (ring temp t7 vs v0 web); a ternary sharing edg's int temp with post-increments separates when assigned in the same full expression as the inline call**](#kit-ccxiii-agent-g-run-216) -- _Open: e copy-propagated as the shared pointer temp (5 words); 3C43C homes = function-scope five + k / ABS3 temps / dd; 3558 per-row adds inert._
 - [kit CCXIV (agent-c 2026-10-29, run 218): **a RoData float read as `D + off` / an extern alias is often a compiler LITERAL: read the ROM word (bootup.uso RoData = ROM 0xD9FE44); a run of identical values around a jump table = one constant rematerialised (one literal word per `l.s`). As a literal uopt hoists / colours / reloads it after calls -> game_libs 3430 (0.1f in f2 + three trailing `if (1) {}`) and timproc_b5 CEB4 (0.3f + `if (1) {}` per white arm) EXACT via donors pinned `<fn>_rodata` = the pool's ROM offset; C310 NM 96.45 -> 99.89 (`== 1` = register-held 1 shared with the `= 1` store, field-form counters)**](#kit-ccxiv-agent-c-run-218) -- _CCXII address-form scan (size>0 FUNC symbols only): no further hit; 4F2DC literal +0.19; 6204/E9FC, 8BD4, 1824, 4C5E4, 4A308 / C310 spill-slot gap negatives._
 - [kit CCX (agent-g 2026-10-29, run 214): **each object of a class with an inline constructor is an edg labelled BB; above ~19 BBs uopt splits a held callee-saved constant (game_uso 3558's $f20 zero web: hold, live else muls, w.y reload) -- a constructor-less Vec3 / aggregate Ctx restores it; a Vec3 local is a uopt register candidate only when no member call or reference parameter is bound to it (free by-value mk() keeps the op- copy chain)**](#kit-ccx-agent-g-run-214) -- _3558 85.86 -> 89.21 (frame 256 = target, all homes on the target map); vb split / va.y f20 residual and negatives listed._
@@ -48289,3 +48291,94 @@ Found on bootup 6808 (98.34 -> 99.98 NM over the run) with the coloring dump (`-
   constants, arg-assignment, chained stores, all 512 one-line/next-line layouts of the block: max = base);
   per-call void aliases on the 493AC NCC donor (25 calls) inert; 55A0 `it` without the escape `&it` takes s0 and
   arg1 gets coloured (90.3).
+
+## kit CCXXII (agent-g 2026-10-29, run 223): cfe TEMPORARIES take a frame word under the lowest named home -- a call result inside a compound expression (`(T)func() + 0 * x`) and a struct-valued comma argument (`f(a, (s.w = X, s))`) each make cfe allocate a temp (shared by all such sites, one word), so a "4 bytes too many below the struct ring" residual is a temp, not padding; bootup 6808 EXACT <a name="kit-ccxxii-agent-g-run-223"></a>
+
+EXACT bootup func_00006808 (99.9798 -> 100, 2376 B, IDO 7.1 -O2 cfe donor `bootup_uso_o2_6808.c` spliced over an empty
+placeholder; jumptable reloc `func_00006808_rodata = 0x5B4`; reloc-free `lui 0` globals base-0 pins; the six
+`func_00000188+0x3C` flag RMWs pinned 0x188). report.json 84.558 -> 84.869 % code.
+
+1. *Diagnosis with `-Wo,-zdbug:6`* (dump cc, diagnosis only). Grep the function's section for `isvar` lines and sort
+   by offset: every named home appears at its frame-top-relative offset (`M 510 -120` = memory, `-132vreg` = register
+   candidate). The residual word showed up as `{ 84|0} 36 isvar M 510 -164vreg` -- one var BELOW v4C, the last
+   declared local. Its stores (`ustr{84|0} {R2}` right after the first call; later `ustr{84|0} {t70}` /
+   `{t6C}`) identify it: cfe saved the call result of `t = (char *)func_00000000(0) + 0 * (int)(*arg1)` (the other
+   operand must be evaluated after the call) and reused the same temp as the value of the comma arguments
+   `(t70.w = X, t70)`. Temps are allocated after ALL homes, block-scope ones included (a block-scope v4C still went
+   above it), and are shared across sites of the same size.
+2. *Frame model that fell out* (cfe, bootup, 9 saves, 7-arg call): saves end at 72; then the uopt spill word sits
+   directly under the lowest home / temp; frame = round8(72 + homes + temps + spills). With one temp, adding the
+   missing named home (`int gE = 0;` after gD, so the t78..t6C ring moves to the target offsets) gave 72+168+4+4 =
+   248; without the temp, 240 and every offset matches.
+3. *Keeping the order the comma gave.* The comma form existed because it put the by-value arg-slot store BEFORE the
+   jal and the home store in the delay slot (`sw a2,8(sp); jal; sw a2,0x70(sp)`); a plain `t70.w = X;` statement
+   gives home-first. Temp-free spelling with the same order: do the member store inside an EARLIER argument,
+   `func(import, va + 0 * (t70.w = X), t70)` (also `import + 0 * (...)` in arg 1): the store is evaluated with the
+   arguments, after cfe has queued the struct arg. Negatives (all keep home-first or add a temp): t70 assigned
+   before / after `va`, `*(int *)&t70 = X`, `*(S4 *)&t70` arg, `(0, t70)`, a named int or struct `tq` relay
+   (`tq = t70` is a struct copy = temp), a typed function-pointer cast or `(void (*)())` cast (temp), volatile
+   t70, `t70 = *(S4 *)&D` (block copy via addiu), a 4th arg / assignment-as-arg (`t70 = X` struct value = temp).
+4. *How to find more:* a target whose lowest home sits one word lower than ours with the spill directly under it
+   while ours has an unexplained word between homes and spill -> grep the body for `call() op expr` folds and
+   struct comma args. The reverse (CCXVI: target has EXTRA temp-area words) can come from the same source: an
+   expression that needs cfe to hold a call result. Not transferable to NCC as is: the 55A0 NCC donor's four
+   `(t6.w = X, t6)` args compile identically as plain statements / folded first args (edg has its own temps).
+5. *Counting the target's named locals from its frame (game_libs 2D374, negative).* With cfe every named local of
+   a function that needs any memory slot gets a home, so frame = round8(saves_end + homes [+ temps + spills]).
+   game_libs_func_0002D374 (99.77): target frame 40 with saves ending at 24 and the i spill at frame-12 = room
+   for at most FOUR named locals with i third; the NM body names eight (st, v, i, c, half, fr, z, d: frame 64,
+   `register` changes nothing, inner-block declarations still get homes). Keeping only st, v, i (+ one of c /
+   half / fr / z / d) gives frame 40, but every de-named spelling tried (macros for c / half / fr / z, the d chain
+   as `w -= x; i = (int)w;`, store orders, with / without the `&i` escape, 21 two-of-seven combos) loses the
+   256-block schedule (best 97.99 at frame 48 vs 99.77). An assignment expression used as a value
+   (`i = (int)(w = a - b)`) is itself a cfe temp (+8). Open: which spelling keeps `mtc1 zero,$f0` / fr in $f2
+   at the block head without naming them.
+6. *Same count, positive (bootup B75C 93.95 -> 94.00).* Target frame 120 = saves end 24 + spill words at
+   sp+0x1C..0x2B + 19 home words; the m2c names sp6C / sp60 / sp5C / sp58 / sp54 sit at frame-12 / -24 / -28 /
+   -32 / -36. Dropping the dead m2c `sp28 = ...; sp24 = ...;` names, declaring sp6C first and the two clamp
+   constants (`temp_f12_2 = -0.2f`, `temp_f12_3 = 0.2f`) as literal macros puts frame and all five homes on the
+   target. m2c `spNN` names whose NN lies BELOW the target's lowest home are spill slots, not locals.
+
+## kit CCXXIII (agent-c 2026-10-29, run 221): an address constant that the target re-forms per inline-constructor row (`lui v0; addiu v0`) but the build hoists into s0 across the rows is busted by per-row extern aliases (8FC8 91.56 -> 91.82); kit CCXXI's do-while v0 lever needs a FRESH name for the RMW chain (90CC 99.45 -> 99.48); negatives on 63964 / 31C0 / C310 / E2D0 / 578B4 / 48510 <a name="kit-ccxxiii-agent-c-run-221"></a>
+
+No exact. report.json-equivalent objdiff (NM objects after a full rebuild): bootup func_000090CC 99.448715 -> 99.48386
+(8424 B, length = target), timproc_b5 timproc_uso_b5_func_00008FC8 91.56035 -> 91.82389 (6496 B; ours 6468).
+
+1. *90CC gcfg RMW chains (kit CCXXI applied).* The two global RMW chains (`x = G.f04; x |= 0x20000; G2.f04 = x;`
+   and the `&= ~0x80000; &= ~2` one) were written on the shared `var_v1` name; `do { } while (0)` around them alone
+   is inert because the name's other webs (the 0x840 call argument, the d00 loop) keep the merged LR off v0. Moving
+   the chains onto the function's dummy-home local `var_t1` (`s32 var_t1 = 0;`, otherwise unused) AND wrapping each
+   in `do { } while (0)` gives v0 as in the target; either change alone is worse (fresh block-scope locals cost a
+   frame home: 99.37). Same run: the else-arm halfword pair written `0x88E = 1; 0x88C = 5;` on one line gives the
+   target's `li t6,1; li t7,5; sh t7,0x88C; sh t6,0x88E` (+0.002).
+2. *8FC8 S70 rows: per-row aliases stop an address hoist.* The four `new S70x(o)` rows each read three words through
+   `*(char **)(&import_80020098 + 0x134)`. The target re-forms `lui v0; addiu v0,v0,0` inside each row and gives the
+   new object np s0 / the cfront fallback object bp s1; the build hoisted `&import_80020098` into s0 across all four
+   rows (np s1, bp in a2 with a save/restore around the base ctor). Passing a per-row extern alias
+   (`import_80020098_a.._d`) into the row-class macro stops the hoist (per-row v0 like the target); the row ctor
+   parameter as `B *const &o` then keeps o memory-homed (by value it took s0 once the hoist was gone). Left: the
+   implicit S70 base-vtable store is hoisted into s0 the same way (an implicit vptr cannot take an alias), and the
+   Panel / M2B8 rows have the same np / bp shape. 8FC8 also ends in a 5-entry jump table (`sltiu at,t1,5`), which
+   NCC never emits, so the NCC donor cannot be exact as it stands.
+3. *Negatives.*
+   - post1b 63964: the arm-1 temp layout (target: 12 unreferenced bytes above ref1, 4 between mul1 and X; ours 8 / 8)
+     is identical under member vs free operator+ / operator*, by-value / const-ref / named-return operator bodies
+     (`pt` / `mt` / set-based: other arms move too), operand order swaps (`n * va.y + va` with a swapped operator+,
+     `va.y * n`), every spelling of the scalar (`+va.y`, `*&va.y`, `(&va)->y`, `((f32 *)&va)[1]`), and `{ V3 t; }` /
+     volatile pads at every statement boundary (named block locals go to the frame top). Only a constant or plain
+     variable scalar (`n * 2.0f`, `n * acc`) moves the 8-byte gap (below X), i.e. the gap is the scalar's parameter temp.
+   - bootup 31C0 (T at 0x74 / KB new-temp 0x68 in the target, ours 0x70 / 0x74 reusing an earlier pointer temp):
+     out-of-line `operator new`, class-member `operator new` (longer code), implicit / explicit Obj2 ctor, `new Obj2()`,
+     cast forms, `Obj *obj = new Obj2;`, and 196 distributions of 4-5 unused volatile ints over operator new / N() /
+     M() / Obj() / Obj2(): all flat or worse.
+   - timproc_b5 C310: the frame words between the saves and the spill (target 6, ours 1) are not edg inline-parameter
+     homes (a micro test shows the inline `Col::set` adds only its `this` home, above the spill); removing the head
+     counter block RAISES them to 3 (frame 192), removing the ring loop drops them to 0, so they come from the loop.
+     Col::set as const-ref / float / named-k / per-channel helper forms: flat or worse.
+   - bootup E2D0: `&arg4` (folded) turns arg4 into a ugen temp, but it is loaded after the 1.0 constant and fills the
+     mtc1 hazard (length 520); `arg4 + 1.0f`, `k = 1.0f + arg4` at four positions, double forms: flat.
+   - post0b 578B4 sp50 (ra / t0): line layout, `if (1) {}` at three points, do-while, folded uses of arg2 / temp_t1_7,
+     a `temp_ra_7 = sp50 =` chain: flat. post0b 48510 `nv >= max590 - 1`: edg canonicalises every comparison spelling
+     (`max590 - 1 <= nv`, `!(nv < ...)`, inline accessors) to the same code.
+   - bootup 90CC `lui s0,%hi(g); lw v0` draw-call sites: array-element reads (kit CCXIX) and `var_s0 = &g;
+     v = var_s0->f28` are byte-identical to the plain read (the address is always folded into the load).
