@@ -14600,6 +14600,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCIII (agent-c 2026-10-29, run 213): **three or more trailing `if (1) {}` blocks (after the last call) raise the BB count until a loop-invariant address held in s8 drops to the target's frame home + reload; a by-value operator returning `T(x * s, y * s, z * s)` evaluates all components before the temp stores (restores the load-delay nop); 8FC8 S70-block / kid-loop / pos-zero, 4C5E4 2.0f remat, 65EE4, 18F0 peel, 5A2C4 split temps, 4A890 id copy diagnosed (negatives)**](#kit-cciii-agent-c-run-213) -- _No exact; post1b 65494 91.75 -> 98.64 (1336 = target, mnemonics identical)._
 - [kit CCIV (agent-g 2026-10-29, run 211): **two trailing `if (1) {}` after a loop drop an extra s8 and rematerialise a copied loop-end constant (3B2EC 96.36 -> 99.92, 948 = target; re-check old counted uses after a structural fix; `i * 12` builds the value in the s-register directly; `cx + cz * w` sets addu operand order); NCC temp slots moved by an in-expression named scalar `(kk = o->k)` and a `set(const V3 &)` reference helper (37938 every slot = target); a char-prototyped per-site callee alias gives the `lb + sll/sra` re-extended char argument (31A74 length + frame = target)**](#kit-cciv-agent-g-run-211) -- _Trailing blocks do nothing on most donors and on cfe; 3B9C0 / 46050 / 3558 / 30AF4 diagnosed; gui 4568 +4 is a splat boundary (delay slot in gui_uso_post)._
 - [kit CCVIII (agent-g 2026-10-29, run 213): **whole-project read-only boundary scan (jr-ra tails, one-word size deltas, edge INSERT/DELETE, odd pads) finds no new boundary error; `-Wo,-zdbug:5` LR dump shows 3B2EC's loop-bottom cursor copy must share the face-result edg temp (pool slot B, t4), which edg's allocation order (argument temps before parameter temps, no inlining of loop bodies, reference helpers home the cursor) never gives; 37938 final-reload negatives**](#kit-ccviii-agent-g-run-213) -- _No fuzzy change; boundary-scan method and ~120 3B2EC / 37938 variants listed._
+- [kit CCIX (agent-c 2026-10-29, run 216): **post0b 4A890 walks a copy, end from the parameter = the target's entry `or s0,a2` (93.48 -> 94.73); D884 / DF14 EE6C flag chain is non-volatile (IDO volatile always emits `la; lw 0(reg)`), every cfe/NCC spelling forwards, CSEs or lets as1 hoist; bootup C234 as C++ gets frame + top homes exact (NCC home order: function scope first, then source order) but scores below the C body**](#kit-ccix-agent-c-run-216) -- _negatives listed for 4A890 s1 size, D884 flag forms, C234 operator spellings._
+- [kit CCX (agent-g 2026-10-29, run 214): **each object of a class with an inline constructor is an edg labelled BB; above ~19 BBs uopt splits a held callee-saved constant (game_uso 3558's $f20 zero web: hold, live else muls, w.y reload) -- a constructor-less Vec3 / aggregate Ctx restores it; a Vec3 local is a uopt register candidate only when no member call or reference parameter is bound to it (free by-value mk() keeps the op- copy chain)**](#kit-ccx-agent-g-run-214) -- _3558 85.86 -> 89.21 (frame 256 = target, all homes on the target map); vb split / va.y f20 residual and negatives listed._
 - [kit CCVII (agent-c 2026-10-29, run 215): **an inline operator's parameter temp (`v * -h`, CSE'd with a named `w = -h`) is a zero-code FP phantom holding f0 across the products; trade its home for a register-neutral one (dot()'s const-ref pointer)**](#kit-ccvii-agent-c-run-215) -- _post1b 65494 EXACT (99.91 -> 100); 63964 arm-1 temp-pool negatives; 65EE4 is not C++._
 - [kit CCVI (agent-g 2026-10-29, run 212): **a NM donor's last word scored as INSERT = the `.s` stops at `jr ra`: gui 4568's delay slot sat in the tail bin (yaml boundary + renamed force-added bin; grow expected .text by appending at EOF, objcopy --update-section drops relocs), post0b 37938's delay nop was emitted by an 8-byte 1-word `_pad.s` block (-> all-zero suffix + NM clip -4 + symbol trim); the NCC reused edg temp is one uopt LR, which pins 3B2EC's cursor copy and 37938's final reload to v0**](#kit-ccvi-agent-g-run-212) -- _4568 96.01 -> 96.53, 37938 98.71 -> 99.88; 3B2EC / 37938 / 97EC colour and temp-order negatives listed._
 - [kit CCV (agent-c 2026-10-29, run 214): **NCC frame-home fitting with an isvar home list + three LCS scores: scalar DECLARATION placement moves homes (function-scope f, h/w/dt before n/d/hit), ctor -> set() fixes the s-reg permutation, a real C++ virtual call fixes addu order, operator/= fixes the division schedule, by-value operator= via cp(const &) homes temps below the param, `n.sc(k = ...)` + `const Vec3 &ri = imp` fill the last holes, a named float result in an inline dot() is a phantom f0 LR (use a const-ref local), one `if (1) {}` before the impulse swaps k / w colours**](#kit-ccv-agent-c-run-214) -- _post1b 65494 NM 98.64 -> 99.91 (every sp offset + frame = target; left: op* products f0/f2/f12 vs f2/f12/f14, an f0 phantom the target has); 63964 op+ temp order negatives._
@@ -47554,3 +47556,104 @@ Reloading into a named `Node *n` / `char *m` before the `if (1) {}` puts it in B
 the same as dropping the `if (1) {}` (46 words). Inline wrappers that pass the reload as a parameter temp
 (`fin(c.getOut(), &arg)` with or without `if (0) { n = 0; }` / an inner `if (1) {}`), Ctx::fire(&arg), returning the
 callee's value, `+ 0` on either argument, and operator= / set() spellings are all inert (2 words) or worse.
+
+## kit CCIX (agent-c 2026-10-29, run 216): post0b 4A890 parameter-in-s0 from entry (93.48 -> 94.73); timproc_b5 D884 / DF14 EE6C flag chain is NOT volatile (IDO volatile never emits the direct `lui rd; lw rd,%lo(rd)` form) and no cfe/NCC spelling found; bootup C234 C++ port gets frame / top homes exact but scores below the C body <a name="kit-ccix-agent-c-run-216"></a>
+
+**1. 4A890 (NCC NM donor, 93.48 -> 94.73, 344 -> 348 bytes, target 352).** The target's leading
+`or s0,a2,zero` (s0 then reused for the list base after the loop) is the PARAMETER's live range in a callee-
+saved register: the loop walks a COPY (`s = ids; ... *s ... s++ ... while (s != end)`) and the end pointer is
+computed from the parameter (`end = ids + n`; `n + ids` gives the same bytes). Walking `ids` itself and
+taking `end` from the copy (the old body) leaves the copy in a t-register and no early s0. Still left: the
+byte size `t0 * 2` that the target holds in s1 across alloc + copy (ours: volatile home reload, or with a plain
+`s32 sz` the value colours a2 and is spilled around the call / re-derived from t0's home); flat:
+`t0 + t0`, `t0 << 1`, `sizeof(s16) * t0`, unsigned, function-scope / register sz, typed alloc / copy
+prototypes, `new s16[t0]` through an inline operator new (94.11 at best).
+
+**2. D884 / DF14 flag chain (96.65 / 96.31): what the target is NOT.** The residual is one block: six
+read-modify-writes of `import_8005EE6C + 4` where every load is a fresh direct access (`lui tN; lw tN,4(tN)`),
+every store keeps its own `lui at` (shared only between adjacent stores with no `$at` clobber -- as1 tracks
+`$at` per symbol inside a block), and each load follows the previous store. Probed (standalone file with the
+D884 body, `-S` and objdump):
+- `volatile` in every form (scalar at offset 0, struct member, `*(volatile s32 *)`, array, per-site distinct
+  volatile scalars): IDO 7.1 and 5.3 ALWAYS materialise `la reg; lw 0(reg)` for a volatile access (`.set
+  volatile` around the access in `-S`), even for a single-use symbol: +1 word per access. So the target is
+  non-volatile.
+- non-volatile, one symbol: uopt forwards every stored value (only the reload after an aliasing pointer
+  store survives) and CSEs the address into a register; mixing access forms on the same symbol (struct
+  member vs cast arithmetic vs scalar vs array) is canonicalised by cfe -- still forwarded.
+- per-site distinct symbols (the current body): direct form, but as1 hoists each load above the previous
+  store (different symbols = independent; `-S` shows source order, the hoist is as1's) and adjacent stores
+  can't share `lui at`.
+- NCC bitfields: word RMWs (not cfe's byte RMWs) but forwarded, and a 1-bit set is `and ~m; or m`.
+- C++ inline `clr()/set()` members on a global object: the first two loads stay separate (like the target's
+  L1/L2), the rest forwarded.
+- the whole C body under NCC: 76.6 (the cfe-tuned volatile/pad homes don't transfer); with one volatile
+  symbol the LDA live range spans the switch and is rematerialised after every case's calls (`lui/addiu t0`).
+So the target needs an address that is non-volatile, never forwarded and never CSE'd -- no source form found.
+`if (1) {}` between the statements is inert here.
+
+**3. bootup C234 (95.07) as real C++: frame and top homes exact, score lower (94.69).** The m2c names map
+onto target homes exactly (spCC 204, spB4 180 = the shared copy temp, sp8C 140, sp7C 124, sp68 / sp40 = the
+two `operator*` results 104 / 64, sp54 84 = the by-value `operator=` parameter shared by both arms, sp3C 60).
+NCC home order observed with `-Wo,-zdbug:6` (`isvar M` offsets): function-scope declarations first (in
+declaration order, wherever they appear in the body), then everything else in SOURCE order (block locals,
+edg temps, inline locals), so moving a scalar into a `{ }` moves its home to that point in the source. With a
+by-value `operator=(V3 o)` (element-wise, no `cp()`), `operator*` as `return V3(a.x * s, ...)` (field-store
+forms: 88.6), `V3 p = *(V3 *)(q + 0x30)` copy-constructed in its block, `S4 sp8C` in its block and `var_f2`
+wrapped in a block, the frame (248), spCC and spB4 land on the target. Left: the then-branch needs 3 more homes
+(target 9 words between spB4 and sp8C, ours 6), the `if (count)` block 4 fewer before the first `operator*`
+result and the arms' temp pairs differ (target 2 / 2 / 2 words around X1 / param / X2). Also: the plane test
+in the target is `K * (p.x * n.x + (p.y + c) * n.y + p.z * n.z) + 4 > d` with the product in f0 and `d` loaded
+last (point-first operands); the C body has normal-first operands and scores higher as it stands.
+
+## kit CCX (agent-g 2026-10-29, run 214): every object of a class with an inline default constructor is an edg basic block, and uopt's callee-saved cost grows with the BB count -- a constructor-less Vec3 brings back game_uso 3558's held $f20 zero; vreg Vec3 locals need no member call on them <a name="kit-ccx-agent-g-run-214"></a>
+
+**game_uso 3558 (NCC donor) 85.86 -> 89.21, two commits.** The target keeps one FP zero in callee-saved
+$f20 (`sdc1 $f20` save, `mtc1 zero,$f20` once after the first 070238 call) for the side x / z stores, the w.y
+store AND the three live else-branch `mul.s` by zero, and reloads w.y from its home in |w|^2 (x / z come from
+registers). Every earlier donor const-propagated the zero per site; the cfe body did hold it, so the spelling
+was never the issue.
+
+1. *The BB count decides it.* `-Wo,-zdbug:5` coloring dump: the zero is a constant LR (`{0|n}` in the active
+   list). With few BBs it is coloured whole into reg 30 ($f20); with more BBs it is split into per-BB pieces
+   and rematerialised. Kit run 111's firstUseCost (0.25 x BBs, clamped 4..60) is the threshold: on one
+   reduced body 19 BBs held it and 20 did not (one trailing `if (1) {}` flipped it); on the donor 15-19 hold,
+   20 does not. Count BBs from the dump's flow graph (unique node numbers between `flow graph` and the next
+   `SECONDS` line; nodes with a non-zero second number are label targets).
+2. *Where edg's BBs come from.* Measured on one-statement probes: each OBJECT of a class with a
+   user-written inline constructor (`Vec3() {}`, `Ctx(S *s) { ... }`) adds a labelled BB at its declaration
+   (moving all declarations to the top does not help -- consecutive empty labelled BBs still count); an
+   inline member with a named return object (op- `Vec3 r; ...; return r;`) adds ~2; a by-value copy of a
+   local adds 1; `if (1) {}` adds 1 (inside an inline: once per expansion). Plain member functions without
+   a return object, member access, `{ }` blocks with declarations, aggregate init (`Ctx c = { s0->node };`)
+   add none. The old 3558 donor had 25 BBs; removing both Vec3 constructors and the Ctx constructor gave 15
+   and the whole f20 web (zero hold, live muls, w.y reload) came out as in the target.
+   Tell: target has an `sdc1 $f20` save and a single `mtc1 zero,$f20` used across calls, ours materialises
+   the zero per site -> count the donor's BBs; a class used for many locals must not have a constructor.
+3. *Homes, then vreg.* With the BB fix the frame homes were refitted top-down (kit CCV method; `-zdbug:6`
+   `isvar M 4 <off>[vreg]` list vs the target's map): three function-scope scalars between e and stage, a
+   named matrix block (`M4 *m`, `const Vec3 &v = stage`, named x / y / z) for the 6 temp words between the
+   by-value temp and op-'s r, op- computing into named a / b / c after `Vec3 r` for the 4 words between r
+   and the binding temp. That reproduced the sp+40/44 spill juggle and mixed `b0+112 / b0+128` then
+   `addiu v0,v0,112` addressing (88.56). The target then reloads vb into f14 / f16 / f18 at the top of the
+   matrix block and adds each row as it completes: vb (and va) are uopt REGISTER candidates (`vreg` in the
+   isvar list). Any member call ON the object or reference parameter bound to it (`vb - va`, `getPos(vb)`)
+   goes through an edg this / reference temp and drops the vreg flag; direct field stores plus a free
+   by-value `inline Vec3 mk(float, float, float)` (named return -> return temp -> by-value op= binding temp
+   -> e: the same r / tmp / bt copy chain as the member op-) made both vreg, frame 256 = target (89.21 with
+   one `if (1) {}` after the stage copy).
+   Residual (13 words short): the target stores vb after its init and reloads it in the block (split LR;
+   ours stays in f14..f18 -- 1..4 `if (1) {}` between init and block do not split it), va.y is coloured f20
+   until the block in ours (target reloads va from its home), the by-value temp sits at 148 vs 140.
+   Negatives: stage as vreg (`{ Vec3 v = s0->v68; stage.z = v.z; ... }`, 78-86, frame 272), `vb.x += x`
+   per row, rotate() as an inline member (stage written through the reference is never forwarded to the
+   adds), `const Vec3 &sr` for `vb += stage` (stage reload), a cfe / cfront-style C body (frame and f20 right,
+   no juggle, 246 words), volatile k (lever-sweep +0.28 but adds a home store / reload the target lacks).
+   Layout is not the score: every home can be put on the target map with frame 256 (va block
+   `const Vec3 &p = o->pos`, no named `M4 *m`, the matrix block nested as
+   `{ const Vec3 &v = stage; stage = s0->v68; if (1) {} M4 *m = ...; { float x, y, z ... } }` -- edg homes a
+   block's names at block ENTRY, so a name declared before the by-value copy lands above its temp), but those
+   bodies score 87.1-87.3 against the committed 89.21 (scheduling / colouring moves elsewhere). Also: one
+   extra reference temp at the bottom (`const Vec3 &er = e` for len2) can flip the frame to 264 with
+   byte-identical code -- the frame grows by 8 when the home area reaches 208 bytes in some layouts and not
+   in others; compare whole listings with offsets masked before blaming spills.
