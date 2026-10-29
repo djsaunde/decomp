@@ -14597,6 +14597,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CXCVIII (agent-c 2026-10-28, run 210): **counted-use sweep made permanent (`scripts/zero-use-sweep.py`, maybe-unset filter) + `--exprs` (`*p`, `p->f`, `v[i]`): parameter / member dereferences moved 1ADC, 24B8 (3 greedy rounds), E68, 4C5E4; 4A308 / 24B8 frame-slot and self-referencing-update negatives; 4E424 decode read**](#kit-cxcviii-agent-c-run-210) -- _No exact; 1ADC 93.54 -> 94.32, 24B8 97.05 -> 98.91, E68 93.97 -> 94.54, 4C5E4 88.48 -> 88.65._
 - [kit CC (agent-c 2026-10-28, run 211): **counted-use sweep continued: global array element `+ 0 * (int)(import_8005EE6C_r[1])` moved bootup 6808 +0.9 at same length; `0 * (int)(float)` is NOT zero code (+4 bytes); C310's scored body is its NCC donor; run-210 movers re-swept flat; zero-use-sweep.py empties other bodies of in-tree units (several x faster)**](#kit-cc-agent-c-run-211) -- _No exact; 6808 95.65 -> 96.56, C310 96.25 -> 96.45, 4BAF4 96.33 -> 96.36, B75C 93.93 -> 93.94._
 - [kit CCII (agent-c 2026-10-28, run 212): **read the zdbug:5 colour ORDER (adjsave) on a reload region: counted uses outside the block reorder it -- 90CC's whole arg1 / arg2 / arg7 / const-6 block now matches; `if (1) {}` splitters are counted-use sites (55A0); a counted use that adds a spill or a char-global load is real code; 4D688 / 4B0A8 / 24B8 a-register residuals diagnosed; zero-use-sweep skips float identifiers**](#kit-ccii-agent-c-run-212) -- _No exact; 90CC 99.26 -> 99.45, 5A2C4 90.29 -> 90.47, 55A0 97.24 -> 97.26, 8FC8 91.44 -> 91.51._
+- [kit CCIII (agent-c 2026-10-29, run 213): **three or more trailing `if (1) {}` blocks (after the last call) raise the BB count until a loop-invariant address held in s8 drops to the target's frame home + reload; a by-value operator returning `T(x * s, y * s, z * s)` evaluates all components before the temp stores (restores the load-delay nop); 8FC8 S70-block / kid-loop / pos-zero, 4C5E4 2.0f remat, 65EE4, 18F0 peel, 5A2C4 split temps, 4A890 id copy diagnosed (negatives)**](#kit-cciii-agent-c-run-213) -- _No exact; post1b 65494 91.75 -> 98.64 (1336 = target, mnemonics identical)._
 - [kit CLXXXVIII (agent-c 2026-10-28, run 205): **a register copy in the FIRST compare's delay slot is the else block's first insn (as1 fills from the branch target): a block-local `u8 d = c` dispatch copy (int copies propagate away) + the range test on c gives 6126C 93.81 -> 99.35 at target length; NCC ignores volatile params; 4C5E4 un-named m78 + folded `0 * mC0` ring phase (87.22 -> 88.48)**](#kit-clxxxviii-agent-c-run-205) -- _No exact; 4E424 / 18F0 / CEB4 / 4A890 / 578B4 / 63964 / 50444 negatives._
 - [kit CLXXVIII (agent-c 2026-10-28, run 200): **37540 ported to C++ from its exact sibling 37348's donor kit (cfe 81.17 -> NCC 93.58, length = target): one inline reads the saved vector and clears x (refs = early stores, return = register), set() + compound `*=` for the store/re-read build; 8CD8 pads worth +0.07, no natural aggregate; 36694 n-CSE diagnosis**](#kit-clxxviii-agent-c-run-200) -- _No exact._
 - [kit CLXXI (agent-g 2026-10-28, run 202): **timproc_uso_b5 32C8 EXACT (1480 B): cfe NM body re-written as NCC on its exact sibling 2B74's donor shape (literal vec constants, rodata pin, `(f32)iz()` zero re-assigned on both alloc paths, cfe decl list); the last 2 colour words fell to a grid of PAIRED `if (1) {}` splits x statement order x line layout**](#kit-clxxi-agent-g-run-202) -- _Run negatives: 4A890 / E68 / 6126C / 18F0 / 65EE4 / 65494 / 578B4 / C310 / 4A308 / E2D0 / 31C0 / C234 / 90CC._
@@ -47294,3 +47295,71 @@ Notes: (1) a parameter folded into its OWN copy (`w = arg4 + 0 * (int)(arg4)`) i
 - 35B1C (97.40): rewritten as the real cfront-shaped constructor `X::X(List *, W, int)` under NCC (vptr at +0xC after `next`, `W m`, `a3`; member W's null-check fallback = the alloc(4) cascade) -- same code, same single residual (the vptr store issued two slots early); comma-expression, statement-order and frame-pad variants do not move IDO's list scheduler.
 - 396FC (98.66): the default arm's `or a0,a3` steal into the range-check delay slot persists.
 - 2E354 (cfe, frame 0xA0 vs 0x80): IDO lays out every declared local, register-only ones included, top-down in declaration order; consecutive `u8` locals pack into one word from byte 3 downward (target sp7D at +125 = third char of its word). Reordering the 30 decls (chars first in two groups, the 13 register-only locals in the target's gaps) and making the spilled 0x40/8 pick the variable `sp58` reproduces the target layout relative to the top (frame 0x88, 8 bytes from target) but leaves the fuzzy score unchanged, so it was NOT kept; the remaining 8 bytes are two words of declared locals below sp50.
+
+## kit CCIII (agent-c 2026-10-29, run 213): structural pass -- trailing empty blocks un-colour a loop-invariant address (65494), a by-value operator returning `T(a, b, c)` evaluates every component before the temp stores; negatives on 8FC8 / 4C5E4 / 65EE4 / 18F0 / 5A2C4 / 4A890 <a name="kit-cciii-agent-c-run-213"></a>
+
+**65494 (post1b, NCC donor) 91.75 -> 98.64, 1336 = target length, mnemonic sequence now identical.**
+Two independent fixes:
+
+1. *Trailing `if (1) {}` blocks flip a held address to a spill home.* The target computes
+   `self + 0x2FC` once before the loop, stores it to a frame home (`addiu t0,s3,764; sw t0,108(sp)`)
+   and reloads it before the one call per iteration; our build gave it `s8` (+1 save word, every
+   later s-register and FP temp shifted). Three or more `if (1) {}` at the very end of the
+   function (after the last call, nothing for as1 to schedule across) raise uopt's basic-block
+   count, which raises the callee-saved cost (kit run 111: firstUseCost = 0.25 x BBs, clamped
+   4..60) above the cost of a home + reload, so the address drops out of colouring -- exactly
+   the target's shape. 1-2 blocks do nothing, 3-32 all give the same result. The same sweep
+   (1/2/4/8/16 trailing blocks) over 26 other NCC donors and 19 cfe NM bodies in agent-c's
+   range found nothing else: the lever only applies where a value is coloured callee-saved in
+   the build but home-spilled in the target.
+2. *By-value operator* evaluation order.* `Vec3 operator*(float s) const { Vec3 r; r.x = x * s;
+   r.y = y * s; r.z = z * s; return r; }` interleaves load / mul / store; the target loads all
+   three components, issues the three `mul.s`, then the three `swc1` into the return temp.
+   `return Vec3(x * s, y * s, z * s);` (constructor parameters are evaluated before any member
+   store, same rule as the inline-set() form of kit CXXXI) reproduces it and restores the
+   target's load-delay nop (1332 -> 1336 bytes). The `r.set(...)` member form adds three words
+   here; the named-ctor form `Vec3 r(x * s, ...)` is identical to the return-ctor form.
+   Left: frame 384 vs 392 (block-temp homes shifted by 4-8 bytes; unused class objects and
+   arrays are dropped by NCC, so pads do not move them), the operator- sub / store interleave,
+   and an s1/s2/s3 permutation of self / &d / &node->v120.
+
+**Negatives / diagnoses (no source change kept):**
+
+- *8FC8 (timproc_b5, NCC donor 91.51).* The four S70 row blocks: the target holds `o = m38` in a
+  caller-saved `v1` saved / restored around EVERY call (`sw v1,224(sp)` in each jal delay, `lw`
+  after), the new-expression result in `s0` and the base-ctor `this` in `s1`, and rematerialises
+  `&import_80020098` per block. The NCC body gives `o` one home (284), np `s1`, bp `a2`
+  (spilled), and holds `&import_80020098` in `s0` across all four blocks. Writing the blocks as
+  the explicit `NEWS70` alloc / test / init macro DOES reproduce the per-block `lui v0` remat and
+  the target's `lui; lui; addiu; addiu` vtable/name pair, but np coalesces with the long-lived
+  row variable (homed) and the score drops to 88.3; a function-scope np takes a fourth s-reg
+  (87.5). The cfe C body (in-tree, 86.64, 1603 words) already has the `v1` spill-around-call
+  shape for `o` and the jumptable -- the target is cfront output compiled by cfe -- but differs in
+  many small places. Trailing-BB counts 1..64 inert on this function. WB / WC's kid loop: the
+  target keeps a `blez` guard on the stored count (`n = 1`), `n = 1; if (1) {}` reproduces it
+  (+2 words toward the target, 6468 -> 6476 of 6496) but the counter then spills (a2 at 116)
+  where the target colours it s0: fuzzy 91.030 -> 91.024, not kept.
+  The three W16C `pos` zeros: the target materialises three separate `mtc1 zero` and stores x,
+  y, z in order; every spelling tried (int / unsigned / short / char seti params, float locals,
+  `if (1) {}` between stores, direct int-literal stores, a `V3 *p` walk, V3 temporaries) gives
+  one shared zero (or `$f20`) with stores in z, y, x order.
+- *4C5E4 (post0b, NCC donor 88.29 standalone).* The viewport block materialises 2.0f twice
+  (`lui at,0x4000` at 0x1E4 and 0x24C, two `mtc1`) while 4.0f is held in f18; NCC CSEs both
+  2.0f uses. `int two = 2` turns `y * 2` into `add.s y, y` (worse).
+- *65EE4 (post1b, -O2 -Olimit 1 donor 89.73).* IDO 5.3 at -O1 / -O2 / -O2 -Olimit 1 gives the
+  same bytes as 7.1; a `Save65EE4 *g` local or a named `int b` both lose. The residual call-2/3
+  argument order (target `lui a1` before `lui a0`) is the a1-load-first emission of a memory
+  argument.
+- *18F0 (kernel, cfe 89.19).* The peel copy's `bnezl found, store+4; b next` (store block after
+  an unconditional jump) and the hoisted `-9` mask register are not reproduced by any of:
+  `if (found) {...}`, if/else, goto, `while (found) {...; break;}`, `found == 1`, a mask local,
+  IDO 5.3 -O1/-O2/-O3/-g3; lever-sweep all: nothing.
+- *5A2C4 (post0b, cfe 90.47).* The colour block is word-identical to the target in mnemonics;
+  the residual is the target's live-range split of the three surviving `(u32)(c * 255.0f)` temps
+  (spill 0x20 / `or t1,t6` / `or a1,t7` at the merge), which in turn moves sp2C / sp30 from
+  0x24 / 0x20 to 0x2C / 0x30 and the call's outgoing-arg stores. Named u32 r/g/b/a locals: no
+  change; s32: much worse.
+- *4A890 (post0b, NCC 93.28).* The target copies `ids` into `s0` at entry (`or s0,a2,zero`,
+  then `end = s0 + 2n`, then `s0 = &list`), i.e. one variable that is the id copy and later the
+  list base; every spelling (copy before the `n > 0` test, explicit `s = list` reuse, non-
+  volatile byte size) compiles to the same bytes -- edg / uopt copy-propagate the copy away.
