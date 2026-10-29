@@ -14599,6 +14599,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCII (agent-c 2026-10-28, run 212): **read the zdbug:5 colour ORDER (adjsave) on a reload region: counted uses outside the block reorder it -- 90CC's whole arg1 / arg2 / arg7 / const-6 block now matches; `if (1) {}` splitters are counted-use sites (55A0); a counted use that adds a spill or a char-global load is real code; 4D688 / 4B0A8 / 24B8 a-register residuals diagnosed; zero-use-sweep skips float identifiers**](#kit-ccii-agent-c-run-212) -- _No exact; 90CC 99.26 -> 99.45, 5A2C4 90.29 -> 90.47, 55A0 97.24 -> 97.26, 8FC8 91.44 -> 91.51._
 - [kit CCIII (agent-c 2026-10-29, run 213): **three or more trailing `if (1) {}` blocks (after the last call) raise the BB count until a loop-invariant address held in s8 drops to the target's frame home + reload; a by-value operator returning `T(x * s, y * s, z * s)` evaluates all components before the temp stores (restores the load-delay nop); 8FC8 S70-block / kid-loop / pos-zero, 4C5E4 2.0f remat, 65EE4, 18F0 peel, 5A2C4 split temps, 4A890 id copy diagnosed (negatives)**](#kit-cciii-agent-c-run-213) -- _No exact; post1b 65494 91.75 -> 98.64 (1336 = target, mnemonics identical)._
 - [kit CCIV (agent-g 2026-10-29, run 211): **two trailing `if (1) {}` after a loop drop an extra s8 and rematerialise a copied loop-end constant (3B2EC 96.36 -> 99.92, 948 = target; re-check old counted uses after a structural fix; `i * 12` builds the value in the s-register directly; `cx + cz * w` sets addu operand order); NCC temp slots moved by an in-expression named scalar `(kk = o->k)` and a `set(const V3 &)` reference helper (37938 every slot = target); a char-prototyped per-site callee alias gives the `lb + sll/sra` re-extended char argument (31A74 length + frame = target)**](#kit-cciv-agent-g-run-211) -- _Trailing blocks do nothing on most donors and on cfe; 3B9C0 / 46050 / 3558 / 30AF4 diagnosed; gui 4568 +4 is a splat boundary (delay slot in gui_uso_post)._
+- [kit CCVIII (agent-g 2026-10-29, run 213): **whole-project read-only boundary scan (jr-ra tails, one-word size deltas, edge INSERT/DELETE, odd pads) finds no new boundary error; `-Wo,-zdbug:5` LR dump shows 3B2EC's loop-bottom cursor copy must share the face-result edg temp (pool slot B, t4), which edg's allocation order (argument temps before parameter temps, no inlining of loop bodies, reference helpers home the cursor) never gives; 37938 final-reload negatives**](#kit-ccviii-agent-g-run-213) -- _No fuzzy change; boundary-scan method and ~120 3B2EC / 37938 variants listed._
 - [kit CCVII (agent-c 2026-10-29, run 215): **an inline operator's parameter temp (`v * -h`, CSE'd with a named `w = -h`) is a zero-code FP phantom holding f0 across the products; trade its home for a register-neutral one (dot()'s const-ref pointer)**](#kit-ccvii-agent-c-run-215) -- _post1b 65494 EXACT (99.91 -> 100); 63964 arm-1 temp-pool negatives; 65EE4 is not C++._
 - [kit CCVI (agent-g 2026-10-29, run 212): **a NM donor's last word scored as INSERT = the `.s` stops at `jr ra`: gui 4568's delay slot sat in the tail bin (yaml boundary + renamed force-added bin; grow expected .text by appending at EOF, objcopy --update-section drops relocs), post0b 37938's delay nop was emitted by an 8-byte 1-word `_pad.s` block (-> all-zero suffix + NM clip -4 + symbol trim); the NCC reused edg temp is one uopt LR, which pins 3B2EC's cursor copy and 37938's final reload to v0**](#kit-ccvi-agent-g-run-212) -- _4568 96.01 -> 96.53, 37938 98.71 -> 99.88; 3B2EC / 37938 / 97EC colour and temp-order negatives listed._
 - [kit CCV (agent-c 2026-10-29, run 214): **NCC frame-home fitting with an isvar home list + three LCS scores: scalar DECLARATION placement moves homes (function-scope f, h/w/dt before n/d/hit), ctor -> set() fixes the s-reg permutation, a real C++ virtual call fixes addu order, operator/= fixes the division schedule, by-value operator= via cp(const &) homes temps below the param, `n.sc(k = ...)` + `const Vec3 &ri = imp` fill the last holes, a named float result in an inline dot() is a phantom f0 LR (use a const-ref local), one `if (1) {}` before the impulse swaps k / w colours**](#kit-ccv-agent-c-run-214) -- _post1b 65494 NM 98.64 -> 99.91 (every sp offset + frame = target; left: op* products f0/f2/f12 vs f2/f12/f14, an f0 phantom the target has); 63964 op+ temp order negatives._
@@ -47509,3 +47510,47 @@ statement order of `count = 1`, removing the `if (1) {}` blocks.
 **3. 65EE4 (-Olimit 1, 89.73) is not C++:** an NCC `Save::blk(int, int)` member version holds `&g` in s0 and
 stores through it (106 / 123 words at -Olimit 1 / plain -O2 vs 146); the target's `lui at` per store is the cfe
 -O1-style fallback. Literal `G.data = 0xB1FF0010` (macro third parameter) still gives `lui t7; ori a2,t7,0x10`.
+
+## kit CCVIII (agent-g 2026-10-29, run 213): whole-project boundary scan finds nothing new; 3B2EC's cursor copy has to share the face-result temp's live range, and edg's temp pool can't be made to give it that slot; 37938's final reload stays in v0 <a name="kit-ccviii-agent-g-run-213"></a>
+
+**Boundary scan (read-only, every non-exact report.json function, 92 of them).** The scan checks four things:
+(a) a `.s` whose last text word is `jr ra`; (b) objdiff target vs base size differing by one word; (c) a single
+INSERT/DELETE among the first or last three objdiff rows, or exactly one gap row in the whole function; (d) a
+`_pad.s` next to the function (odd word count). Results: (a) none among the non-exact functions. Across ALL `.s`
+files only seven end at `jr ra`: the sentinels C5B0 / EBC8 / 551E0 / 55B10 (delay words in their pads, on purpose)
+and game_libs tail 6C9E4 / 6D94C / 70AE4 (exact). (b)/(c) gave hits only where the code itself differs, not the
+boundary: 2E354 (+1 word in our build, register diffs at the tail), game_uso 3558 (an `ldc1 fs0` restore missing,
+frame 0x100 vs 0xF0), 36F0C (frame 0x88 vs 0x80), 3430 / 4A890 (prologue order), bootup 6204 / E9FC (an extra
+`sw ra`), bootup 6808 (an extra trailing store), C234 / 55A0 / 18F0 / b5 D884 / 4C5E4 (size off by one word, the
+diffs spread through the body). (d) found no odd pad next to a non-exact function. Every non-exact function's
+expected symbol size matches its `.s` word count (count the `jal` lines that have no `/* addr word */` prefix as
+well, or USO functions look short). Run 212's two fixes (gui 4568, post0b 37938) were the only ones in the project.
+
+**3B2EC (99.92): the coloring dump narrows down where the cursor copy has to live.** `-Wo,-zdbug:5` prints the
+itab plus each LR's live BBs, forbidden set and register (1 = v0 .. 10 = t3, 11 = t4, 14..21 = s0..s7). The face
+result temp (M -88) is t4 in BBs 22-25. BB 25 is the edge loop, and v0..t3 are all live there. The target puts
+the loop-bottom `*list++` copy in t4, so that copy has to be in a live range that crosses BB 25 without t4 being
+forbidden. Only M -88 itself fits, so in the original the post-increment temp IS the face-result temp (edg pool
+slot B). Ours puts it in slot A (M -84, with the `list()` result and face()'s `this` copy, v0). For the copy to land
+in slot B, slot A must already be taken when edg allocates it, and none of the ways tried get that:
+- argument temps are allocated BEFORE the callee's parameter / `this` temps (`rd(this, list++)` with
+  `if (0) { o = 0; }`, `col->rd(list++)`, `Col::rd(col, list++)`: the copy only moves to v1, 37 words);
+- a reference or pointer-to-pointer helper (`nextIdx(list)`, `it.next()`) takes list's address, so list gets a
+  stack home (238 words);
+- edg will not inline a function that contains a loop (kit CCVI), so the loop can't be put inside an inline
+  body that holds a `this` temp;
+- for-init / for-step, `for (int i = ...)`, do-while with its own pre-test, the step written inside the body's
+  scope with gotos, declaration-initialized `list` / `cell`, `?:` around the post-increment (non-constant
+  conditions add code, constant ones fold), `*&*list++`, a cursor q or the face pointer f shared with the
+  cursor (copy-propagated back to the temp, or a separate web in v1), and five face() spellings (named `Col *c`,
+  if/else into a named f, no named r) all stay at the same 4 words or get worse. A named pointer local adds one
+  frame word (drop one of the 13 volatiles to compensate when testing).
+- `col->face(i + 0)` (by-value parameter temp, the kit CCVII lever) shifts the pool and costs 18 words.
+
+**37938 (99.88): the final reload.** The coloring dump: the getOut() result (M -60, or M -68 when it goes through
+a wrapper) is v0 because no v0 live range shares its BB (12). The sp+0x54 address (595) is the v0 range in BB 11.
+Reloading into a named `Node *n` / `char *m` before the `if (1) {}` puts it in BB 11. But `m` takes a0
+(argument preference, 8 words). A named `n` lets code motion hoist the sp+0x54 address into v1 at entry (52 words),
+the same as dropping the `if (1) {}` (46 words). Inline wrappers that pass the reload as a parameter temp
+(`fin(c.getOut(), &arg)` with or without `if (0) { n = 0; }` / an inner `if (1) {}`), Ctx::fire(&arg), returning the
+callee's value, `+ 0` on either argument, and operator= / set() spellings are all inert (2 words) or worse.
