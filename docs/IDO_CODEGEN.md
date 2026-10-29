@@ -14617,6 +14617,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCXXVI (agent-c 2026-10-29, run 223): **a t-register that never appears as a temp in the build is held by a uopt-allocated VARIABLE (move that local's role, not the statements); a named RoData extern read in a loop gets its address hoisted into an s-register; per-line sweep of which reused cfront temporary each inline expansion uses; a dead `addiu aN,aN,0xb4` = the seti pointer variable read again later; one-line store pairs; a store-only extern alias stops an address CSE; an unused int-returning K&R callee inside a loop takes v0 from the loop's induction pointer (declare it void)**](#kit-ccxxvi-agent-c-run-223) -- _NM: timproc_uso_b5_func_00008FC8 96.01 -> 98.88, length 6492 -> 6496 = target. Negatives: site 1 / 2 triple `mtc1 zero`, site 2 / 3 counter in s0; 8CD8 4-entry table not ported._
 - [kit CCXXVII (agent-g 2026-10-29, run 225): **a target delay-slot instruction from the TAKEN block (branch falls through to a return) = that statement starts the next block: move it to just before its first use (31A74 `sel += 63`); split `x / K1 + K2` into `t = x / K1; t += K2` to load x before the literal; a kept dead first store to a homed float is what a volatile home produces; a volatile copy on a target stack word can be a SPILL slot -- delete the scratch locals (a spilling function gives named locals frame words) and let uopt spill**](#kit-ccxxvii-agent-g-run-225) -- _NM: game_libs 30AF4 93.55 -> 96.98 (frame 0x38, spill + homes on target, 2132 -> 2116 of 2112), 31A74 91.55 -> 95.28, 2E354 93.90 -> 93.94. Leads not kept (length +4): volatile sp78 (2E354 first `swc1 sum,0x78`), separate char-array alias for the else arm's G+0x14 web; 2D374 {fr, z, i} = target code up to registers but frame 0x30; NCC 41D40 / 454C4 variants <= base._
 - [kit CCXXVIII (agent-c 2026-10-29, run 224): **cfe passes float literal TEXT to uopt: `0.f` / `.0f` / `0.00f` are three distinct constant candidates (while `0` / `0.0` / `(f32)0` are one and `0.0f` / `0.0F` another) -- respell the stores of a coloured shared constant to get the target's per-use `mtc1 zero` (NCC normalises literals: neutral); void-prototype scan over all 83 non-exact NM sources + the inverse v0-use check: no further gains**](#kit-ccxxviii-agent-c-run-224) -- _NM: timproc_uso_b5_func_00008FC8 98.88 -> 99.03 (length 6496 -> 6512: the 4 words are the pre-existing sites 2/3 counter spill pairs). Negatives: 42938 / 5A2C4 void aliases, literal sweeps on 19 cfe functions, 8FC8 loop counter, E2D0 / 24B8 keep and home variants._
+- [kit CCXXIX (agent-c 2026-10-29, run 225): **a loop counter the target holds in s0 while ours spills it = it colours before the first callee-saved user (fresh s-reg firstUseCost 60 > caller-save 10-20): empty `if (1) {}` blocks INSIDE the loop body lower its adjsave below the first s0 user (check every other s-reg user's order with zdbug:5 adjsave); a kid pointer in a1 = the kid passed as the call argument (LR live into a call is forbidden v0/v1); an empty block after a value's last use can starve its split piece; a cfe donor whose INCLUDE_ASM carried .late_rodata needs a placeholder re-emitting the layout (verify-blocks, not ROM cmp, catches it)**](#kit-ccxxix-agent-c-run-225) -- _EXACT: timproc_uso_b5_func_00008FC8 99.03 -> 100 (+6496 B, 1624 words; the biggest function in the project)._
+- [kit CCXXX (agent-g 2026-10-29, run 226): **a small int constant the target holds in a register across compares and a store (`beq v1,v0` / `sw v1`) while ours uses `at` immediates = an UNSIGNED constant web: type the compared/stored globals u32 (keep per-use temp stores int-typed via `*(s32 *)&g = K`); `if (0) { f(&i); }` homes an address-taken local without the two cfe temp words of `if (0 + 0 * i)`**](#kit-ccxxx-agent-g-run-226) -- _NM: game_libs 30AF4 96.98 -> 97.86, 2116 -> 2112 B = target length. Negatives: 30AF4 &gl_state pre-switch base, 31A74 store/arg order (volatile hoists the address), 2D374 frame-correct spelling scores lower, 2E354 literal respell shortens._
 - [kit CCXIII (agent-g 2026-10-29, run 216): **post0b 454C4 95.95 -> 99.95, length = target: build on the structurally-right BB lever, then re-test old micro-levers (drop the named element pointer -> sixth s-reg; drop the folded `& 0xFF`); `if (rec) {}` breaks an adjsave tie; `cur = nxt; if (nxt)` keeps an inline iterator member out of the candidates (ring temp t7 vs v0 web); a ternary sharing edg's int temp with post-increments separates when assigned in the same full expression as the inline call**](#kit-ccxiii-agent-g-run-216) -- _Open: e copy-propagated as the shared pointer temp (5 words); 3C43C homes = function-scope five + k / ABS3 temps / dd; 3558 per-row adds inert._
 - [kit CCXIV (agent-c 2026-10-29, run 218): **a RoData float read as `D + off` / an extern alias is often a compiler LITERAL: read the ROM word (bootup.uso RoData = ROM 0xD9FE44); a run of identical values around a jump table = one constant rematerialised (one literal word per `l.s`). As a literal uopt hoists / colours / reloads it after calls -> game_libs 3430 (0.1f in f2 + three trailing `if (1) {}`) and timproc_b5 CEB4 (0.3f + `if (1) {}` per white arm) EXACT via donors pinned `<fn>_rodata` = the pool's ROM offset; C310 NM 96.45 -> 99.89 (`== 1` = register-held 1 shared with the `= 1` store, field-form counters)**](#kit-ccxiv-agent-c-run-218) -- _CCXII address-form scan (size>0 FUNC symbols only): no further hit; 4F2DC literal +0.19; 6204/E9FC, 8BD4, 1824, 4C5E4, 4A308 / C310 spill-slot gap negatives._
 - [kit CCX (agent-g 2026-10-29, run 214): **each object of a class with an inline constructor is an edg labelled BB; above ~19 BBs uopt splits a held callee-saved constant (game_uso 3558's $f20 zero web: hold, live else muls, w.y reload) -- a constructor-less Vec3 / aggregate Ctx restores it; a Vec3 local is a uopt register candidate only when no member call or reference parameter is bound to it (free by-value mk() keeps the op- copy chain)**](#kit-ccx-agent-g-run-214) -- _3558 85.86 -> 89.21 (frame 256 = target, all homes on the target map); vb split / va.y f20 residual and negatives listed._
@@ -48615,3 +48617,75 @@ into v1 (target re-forms `lui at` per store).
    multipliers, `register`, if-uses and P/SETI variable role swaps are all <= base. The body is 4 words
    long since this kit: exactly those spill / reload pairs (the old target length was two errors
    cancelling).
+
+## kit CCXXIX (agent-c 2026-10-29, run 225): a loop counter the target holds in s0 while ours spills it around the call = the counter is coloured BEFORE the first callee-saved user (fresh s-reg costs firstUseCost 60 > caller-save 10-20); lower its priority with empty blocks INSIDE the loop body so it colours after s0 is paid, keep every other s0 user's priority order intact (empty blocks in their live ranges too), and a pointer the target keeps in a1 is the kid passed as the call argument (an LR live into a call is forbidden v0/v1); timproc_uso_b5 8FC8 99.03 -> EXACT (+6496 B, 1624 words) <a name="kit-ccxxix-agent-c-run-225"></a>
+
+1. **Read the priority picture, not the registers.** `-Wo,-zdbug:5` prints per LR `adjsave`; sort them
+   (a 30-line parser over `>>>active<<<{ichain} lr reg` / `adjsave, hasstore:` lines). In 8FC8 the sites 2/3
+   counters had adjsave 15.5 (2 loop units) and coloured at ord 6/7, before t (8.41, first s0 user): every
+   s-reg still cost firstUseCost (clamped 60 in a 300-block function) against v1's 10-20 caller-save cost, so
+   v1 + spill/reload around the in-loop jal won. Site 1's counter has the same shape and the TARGET spills it
+   too -- only sites 2/3 were coloured late in the original.
+2. **Empty blocks inside a loop body lower that loop's LRs.** `if (1) {}` x k at the end of the loop body
+   (or before the call -- same result) divide the savings of everything live in the loop: counter 15.5 ->
+   4.43 (k = 9), the strength-reduced walk pointer 20.5 -> 5.9, w (live everywhere) 5.64 -> 4.77. k = 8 is
+   one short, k = 9..12 identical, 14 overshoots. It does NOT change the emitted loop (the blocks are
+   empty); only colour order moves. Check every s-reg user's order after each step: t (4.88 once it left the
+   loops) had to stay above w (s1) and above _wp (5.33, s0) -- _wp got there first and was SPLIT (best cost
+   = firstUseCost >= its value) until one `if (1) {}` inside the W16C macro (where _wp is live, t is not)
+   dropped it below t. Then the counters colour with s0 already in `usedeeregs` (cost 0) and take it.
+3. **A kid pointer in a1 next to an s0 counter = the kid is the call ARGUMENT.** `P = kids[i]; attach(W, P);
+   P = kids[i] + 0x18; *P &= ~4;` -- copy propagation keeps the code identical, but P's live range now feeds
+   the call, so v0/v1 are forbidden and it lands in a1 (the target's reload `lw a1, 0x148(v0)` after the jal).
+   Use a temp that is dead there (here `_at`, the B::add temp), not a fresh block local (+8 frame).
+4. **Block-scope counters move the frame.** The target's sb3 home 0x68 (ours 0x70) was the two block-local
+   `int _i` homes allocated below the function-scope locals; declaring the counters `int i2; int i3;` just
+   above `volatile int sb3;` restores every offset.
+5. **Last word: an empty block AFTER a value's last use can starve its split piece.** The site-3 `&t1` copy
+   pointer (a split piece of one const-address LR over three sites) got v0 at site 3 but a2 at sites 1/2:
+   at 1/2 the piece's block also holds the following `FP(self, 0x54)` temp (v0), at site 3 an `if (1) {}`
+   inside the `+0x284` store cut the block. Removing that empty block -> 100.
+6. **Landing a cfe donor whose INCLUDE_ASM carried `.late_rodata`:** the 8FC8 `.s` emitted RoData
+   +0x23C..+0x338 (63 words: float pool + jumptable); dropping INCLUDE_ASM shifted every later `%lo` in block 5
+   by -0xFC (ROM cmp stayed OK -- only `make verify-blocks` saw it, as lo16=12). The empty placeholder now
+   re-emits 63 distinct float literals (nonzero low half, so none becomes `lui + mtc1`); the donor's
+   reloc-free pool reads (`lui at,0 ; lwc1 0x278(at)`) are `extern f32 DF_278;` pinned `DF_278 = 0x00000278;`.
+
+## kit CCXXX (agent-g 2026-10-29, run 226): a small int constant the target keeps in a register (`addiu v1,zero,0xe` then `beq v1,v0` / `bnel v1,v0` / `sw v1,0(a2)`) while ours compares against `at` immediates = an UNSIGNED constant web -- type the global(s) it is compared with / stored to as u32; a store of the same value that the target materialises per use (temp, not the register) is an int-typed store; `if (0) { f(&i); }` gives an address-taken local its home with no cfe temp words <a name="kit-ccxxx-agent-g-run-226"></a>
+
+1. **Unsigned constant webs (game_libs gl_func_00030AF4, 96.98 -> 97.86, 2116 -> 2112 B = target length).**
+   uopt colours a constant as a candidate per (value, TYPE). Case 5 compares the command word
+   `gl_cmd_30AF4` and `D_30AF4_l` against 14 and 16 and stores 13/14/16 back; the target holds 14
+   in v1 across `gl_cmd == 14`, `D_l == 14` and `gl_cmd = 14`, then 16 in v1 for `D_l != 16` /
+   `gl_cmd = 16` and again in case 8 (`gl_cmd = 16; D_r = 16`). With the externs `s32` every one of
+   these was an `at` immediate (or a fresh temp for the store). Declaring `gl_cmd_30AF4`,
+   `D_30AF4_l` and `D_30AF4_r` `u32` makes the 14s and 16s unsigned constants and uopt colours them
+   exactly as in the target (`bnel v1,v0` with the 16 reassign in the likely slot, `sw v1`). Only the
+   type matters: `14` vs `14U` in the comparisons is identical once the operand is u32, and on an
+   `s32` global `== 14U` alone fixes the compares but not the store (`14U` stored to an int is
+   folded to an int constant). Where the target materialises the same value per store with a temp
+   (case 6 `gl_cmd = 14` twice: `addiu t9,zero,0xe; sw t9`), keep that store int-typed with
+   `*(s32 *)&gl_cmd_30AF4 = 14;` -- otherwise the u32 14 joins the case-5 web and lands in v1 there too.
+   Diagnostic: in an objdiff row pair, target `beq/bne rX, vY` against ours `beq vY, at` for a small
+   literal, or target `sw vN` against ours `sw tN` for a literal also used in a nearby compare.
+   Also kept: case 4's `else if (D_30AF4_h == 0)` through a named copy `hv = D_30AF4_h;` (+0.04; the
+   copy is the target's `or v0,t9` register, ours lands in a0 because v0 is still taken).
+2. **Frame words of address-taken / folded uses (game_libs 2D374, diagnosis only).** The run-206
+   counted use `if (0 + 0 * i) { f(&i); }` costs TWO frame words (cfe expression temps for
+   `0 * i` and the sum), pushing the frame to 0x40 with i at 0x34; `if (0) { f(&i); }` gives the
+   target's frame 0x28 with i at 0x1c (and with all eight named locals declared). Without any `&i`
+   the frame is 0x40 too (uopt spill area). The target-frame spelling scores lower (99.67 vs 99.77)
+   because the post-call i reload then colours a3 (target t2) and rec[2] t2 (target t3) -- the
+   `0 + 0 * i` temps were what shifted those; z / fr (f2 / f0 vs target f0 / f2) is unchanged by
+   keep-alive placement, literal spelling (`0`, `.0f`, `0.f`) or decl order.
+3. **Negatives.** 30AF4 pre-switch `lui v0; addiu v0` (&gl_state live into case 6 `sw 0xc(v0)`,
+   rematerialised in case 9 and post-switch): routing the sweep / prev / case 6 / case 9 /
+   post-switch accesses through the `sv` int-cast base (any subset, sv assigned at top / after the
+   prev swap / before the sweep / before the switch, case-10 copy split off) always rematerialises
+   into a temp (uopt copy-propagates sv to the address constant). Store-only alias for D_30AF4_h,
+   sub / a sixth local for case 4, u32 for D_g..D_k / sub / mode: flat. 31A74: the arg `mfc1 a1`
+   before the store's `lui at` (target) is unaffected by every store/arg spelling (separate store,
+   comma, assignment-in-first-arg, ternary); a volatile store gives the join-block `mfc1` duplicate
+   but hoists the store address into t6 (`lui/addiu` early, `swc1 0(t6)`), with a direct volatile
+   extern too. 2E354: respelling the 0.5f / 1.0f clamp pairs (`.5f`, `0.50f`, `1.f`) raises
+   fuzzy to 95.29 but shortens the function (921 -> 917 words, away from target): not kept.
