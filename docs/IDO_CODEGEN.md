@@ -14625,6 +14625,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCXXXIV (agent-c 2026-10-29, run 227): **as1 issues equal-ready instructions in source-LINE order (lower line first): a store that must precede a call but follow the call's stack-argument store gets a later line from a straightened goto block (`goto Z; C: call(...); goto E; Z: if (1) {} v.z = a; goto C; E: ;` -- the `if (1) {}` keeps the block's own line); a loop-preheader load issued one slot early goes behind on the `do {` line (`x = *p; do {`); a `.c` donor prerequisite of the matching object needs that object's TRUNCATE_TEXT / SUFFIX_BYTES_FORCE `private`; pin from the target relocs (NM pins can be reloc-blind wrong)**](#kit-ccxxxiv-agent-c-run227) -- _EXACT: bootup func_000090CC 99.904 -> 100 (+8424 B). C310 preheader s6/s4 swap is uopt order, not as1 lines (57 layouts at base)._
 - [kit CCXXXV (agent-c 2026-10-29, run 228): **as1-order scan (same per-block instruction multiset, different order) over the 81 non-exact functions: a load that must issue after the loop-setup addresses goes on the loop header's line (`b = *p; a = q; for (...) {` on one line; 4B2F4 98.37 -> 99.36); prologue `lui a0` / `sw ra` (6204 / E9FC), critical-path priority (mgrproc 2B7C), call-site home stores (5F5F0), hoisted constants (59E80), FP load order (4E424) and the 51AD8 delay-slot steal are NOT line ties; NCC keeps a goto block with `if (1) {}` as real branches; the 4-entry jump table (titproc 116C, kernel 1ADC, game_uso B3C) is not produced by any 4-label switch under 7.1 / 5.3 / NCC**](#kit-ccxxxv-agent-c-run228) -- _NM: game_libs_func_0004B2F4 98.37 -> 99.36; kernel func_80001594 96.80 -> 99.82 (a CSE'd address issues at its earliest use's line: move ALL early uses together; loop-entry and loop-body statements on one line)._
 - [kit CCXXXVI (agent-g 2026-10-29, run 229): **591C head axis: x component in `scale` computed first, stores Z, Y, X with the bbsplit after the first (99.973 -> 99.977); the last 591C row is a z / fsel colouring-priority swap (every move tried transfers the error); cfe keeps a `p = &t; if (p || (p = new))` stack-temp guard and gives every declared local a frame home; first cfront-style cfe ports of 97EC (95.16) and 7C1C (24.9, b in s4)**](#kit-ccxxxvi-agent-g-run229) -- _NM: game_uso_func_0000591C 99.973 -> 99.977._
+- [kit CCXXXVII (agent-c 2026-10-29, run 229): **a CSE'd address in a1 where the target has a2 = a coloured web missing from its interference: the following pointer-walk clear loop as a ONE-LINE index loop on the existing `i` (`for (i = 0; i < 135; i++) { a[i] = 0; b[i * 0x9C + 0x72] = 0; }`) lets i's web overlap it and it takes a2 (uopt still emits the pointer loop); splice a donor over a C stub when the INCLUDE_ASM body defines labels inside the range; `-Olimit 1` = pure ugen (0 LRs): its `lui a2; ori a2,a2` constant only comes from a call argument or a register variable in a single-call function**](#kit-ccxxxvii-agent-c-run229) -- _EXACT: kernel func_80001594 99.82 -> 100 (+544 B). Negatives: 65EE4 (ugen arg order / a2 constant), E2D0, C310, 24B8, 4B2F4, 578B4, 4B0A8._
 - [kit CCXIII (agent-g 2026-10-29, run 216): **post0b 454C4 95.95 -> 99.95, length = target: build on the structurally-right BB lever, then re-test old micro-levers (drop the named element pointer -> sixth s-reg; drop the folded `& 0xFF`); `if (rec) {}` breaks an adjsave tie; `cur = nxt; if (nxt)` keeps an inline iterator member out of the candidates (ring temp t7 vs v0 web); a ternary sharing edg's int temp with post-increments separates when assigned in the same full expression as the inline call**](#kit-ccxiii-agent-g-run-216) -- _Open: e copy-propagated as the shared pointer temp (5 words); 3C43C homes = function-scope five + k / ABS3 temps / dd; 3558 per-row adds inert._
 - [kit CCXIV (agent-c 2026-10-29, run 218): **a RoData float read as `D + off` / an extern alias is often a compiler LITERAL: read the ROM word (bootup.uso RoData = ROM 0xD9FE44); a run of identical values around a jump table = one constant rematerialised (one literal word per `l.s`). As a literal uopt hoists / colours / reloads it after calls -> game_libs 3430 (0.1f in f2 + three trailing `if (1) {}`) and timproc_b5 CEB4 (0.3f + `if (1) {}` per white arm) EXACT via donors pinned `<fn>_rodata` = the pool's ROM offset; C310 NM 96.45 -> 99.89 (`== 1` = register-held 1 shared with the `= 1` store, field-form counters)**](#kit-ccxiv-agent-c-run-218) -- _CCXII address-form scan (size>0 FUNC symbols only): no further hit; 4F2DC literal +0.19; 6204/E9FC, 8BD4, 1824, 4C5E4, 4A308 / C310 spill-slot gap negatives._
 - [kit CCX (agent-g 2026-10-29, run 214): **each object of a class with an inline constructor is an edg labelled BB; above ~19 BBs uopt splits a held callee-saved constant (game_uso 3558's $f20 zero web: hold, live else muls, w.y reload) -- a constructor-less Vec3 / aggregate Ctx restores it; a Vec3 local is a uopt register candidate only when no member call or reference parameter is bound to it (free by-value mk() keeps the op- copy chain)**](#kit-ccx-agent-g-run-214) -- _3558 85.86 -> 89.21 (frame 256 = target, all homes on the target map); vb split / va.y f20 residual and negatives listed._
@@ -49038,3 +49039,69 @@ The last two 90CC rows (cfe donor 99.904) were as1 reorders. Both closed by sour
   target keeps it in its home 0x3BC; the target's `lw t6, 0x3bc(sp)` is the first t-register use), so the
   ugen temp ring is one register short everywhere. Next step: get b out of registers (cf. the 97EC `&s`
   escape), then the per-site ctor-argument colours.
+
+## kit CCXXXVII (agent-c 2026-10-29, run 229): kernel func_80001594 EXACT -- a CSE'd address that takes a1 where the target has a2 gets a2 when a LOOP INDEX's web overlaps it: write the following pointer-walk clear loop as a one-line index loop; 65EE4's `lui a2; ori a2,a2` is ugen's register-variable path, which needs a function with one call <a name="kit-ccxxxvii-agent-c-run229"></a>
+
+**1. func_80001594 (99.82 -> 100, 544 B).** The last row was the `func_80000480 + 0x30` address (stored to
+cb+0x34 and cb+0x30): ours a1, target a2. The `-Wo,-zdbug:5` dump showed its LR (adjsave 3.0) forbidden
+`[v0 v1 a0 a3]` only; the only a1-coloured LR was the loop-2 index `i`, which did not interfere. Nine
+splitter / `i = 0` / copy-local / `if (arg1) {}` placements were flat, and an `i = 0` hoisted above the
+stores lost the loop inversion (75 %). What worked: the following slot-clear loop rewritten from the p / q
+pointer walk to an index loop on the same `i`, all on one line:
+`for (i = 0; i < 135; i++) { D_80012D60[i] = 0; (&D_800130A0)[i * 0x9C + 0x72] = 0; }`.
+uopt's IV elimination still emits the target's pointer loop (bound `D_800130A0 + 0x5244`), but i's web now
+reaches into the store block, so the address CSE gets a2. The one-line form keeps the target's
+`sltu / sw / sb / bnez / addiu` order (CCXXXIV line ties). Splitting the body over two lines puts the
+`addiu v1,4` first (`sw zero,-4(v1)`, 97.05); the two stores in reverse order give 99.07. A `do { } while
+(++i < 135)` and `p = D_80012D60; for (i...) { *p = 0; ...; p++; }` are also 100. Splice notes: the donor
+(src/kernel/kernel_000_1594.c) goes over a C-stub placeholder, not INCLUDE_ASM. The asm body defines labels
+inside the replaced range (D_800016BC), and replace-function-body refuses with "lies inside replaced body".
+The target's `.text`-relative and `.L800007A8` references are pinned as `func_80001594_L80000C5C` /
+`func_80001594_L800007A8`. The target's reloc-less `lui 0x8000; addiu 0x1994` comes out as a
+func_80001994 reloc, which gives the same ROM bytes; objdiff report scores it 100.
+
+**2. game_libs_func_00065EE4 (-Olimit 1, 89.73): what the fallback really is.** With `-Olimit 1`, uopt
+does nothing at all: the dump shows 0 LRs and 0 colours. The body is pure ugen -O2 on unoptimised ucode.
+Micro-tests at `-O2 -Olimit 1`:
+- `G.data = C; f(&G, 1, G.data)`, `f(&G, 1, G.data = C)`, plain / `u32` / block-scope locals and `register`
+  locals all give `lui tN; ori a2,tN,lo` (li into a temp, then as1 folds the `move a2,tN` into the ori).
+- `f(&G, 1, C)` gives `lui a2; ori a2,a2` directly, and so does `f(&G, 1, d = C)` with the store after the call.
+- `register int d = C; G.data = d; f(&G, 1, d);` gives the target's `lui a2; ori a2,a2; sw a2` ONLY in a
+  function with a single call. With two or more calls, ugen puts the register variable in s0, whatever its
+  scope or position (`lui s0; ori a2,s0`).
+So the a2-born constant would need a ugen register variable that does not cross a call, which 65EE4's 15
+calls rule out. Also flat: splitting the macro into statements, joining it per block, or splitting call
+arguments across lines (ugen order is per statement, and the whole block is one macro line anyway). The same
+goes for 15 data / base / end literal spellings, char * / unsigned fields, `G.data = G.base + 0x10` (ugen
+forwards the stored base), IDO 5.3 `-Olimit 1`, `-mips1`, `-O3 -Olimit 1`, `-Wb,-O0/-O1`, and
+per-field volatile casts (91.10 at 560 B, too short). `-g3` keeps the ugen order unscheduled and shows the
+call-2 `lui a0; lui a1; lw a1; jal; addiu a0` is ugen's own argument order (load before address). The
+target evaluates `&G` first. Arguments tried with no change: `&G.a`, `(char *)&G`, `extern S H[]`, `(&G)->base`,
+casted-pointer chains, prototyped / varargs callees, an `S *p = &G` local.
+
+**3. Negatives (no fuzzy gain).**
+- bootup E2D0: arg4 colours fa1 because of the `if (arg4) {}` keep-live. Without it the arg4 load issues
+  after the `1.0f` mtc1 (98.21). Thirteen spellings of `dot *= 1.0f + arg4` and an `s` / `k` local at four
+  lines were flat or lower.
+- timproc_b5 C310: the f0 spill slot sits right below the lowest declared local. The target has 4 fewer
+  local words above it and 6 words below, so moving or resizing the volatile block (66 layouts) only
+  slides it (0x4c / 0x50).
+- bootup 24B8: the last-reload `if (p) {}` placements are flat or lower. Removing it gets the target's
+  ugen-temp reload but reorders the 0x48 store (97.57).
+- post0b 4B2F4: `flags | 2` in a temp (the target's `ori t5,a2,2`) needs flags coloured across the pack
+  call (`if (flags) {}` after it). The andi then issues after the slot increment and the ring shifts by
+  one (95.89). 32 `if (x) {}` reads in the slot3 / slot4 blocks were flat.
+- post0b 578B4: the sp50 (t0) / arg2-reload (ra) swap. Seven alternative variables for the DL pointer and
+  nine `if (arg2) {}` / `if (1) {}` placements were flat or lower.
+- post0b 4B0A8: eight AIter::next() spellings were flat or lower.
+- bootup 8BD4 (NCC): the second `scaledBy` result `r` (target sp+0x40, ours 0x50) is placed from the BOTTOM
+  of the frame. The used locals declared after it (branch 2's `t` / `q`) sit below it, rounded to 8 bytes.
+  Two changes move it. A separate `scaledBy2` for nnA with `f32 hx, hy, hz; V3 r;` declared first (and the
+  first inline as `V3 r; f32 hx, hy, hz;`) puts it at 0x44 with the target registers. Hoisting t and q to
+  function scope then gives 0x3c. One hoisted word, a block-scope `u` or a `w` still rounds to 8 (0x44), so
+  0x40 needs one more 4-byte item in the spill / save area below the locals. Score flat (98.83).
+- mgrproc 1824: the hoisted `addiu at,zero,1` of the outer two-case compare (target: after the beqz) stays
+  where it is with the counter store joined onto the switch line, a comma-operator switch value, `+= 1`,
+  `if (1) {}`, an if-goto chain (92.46) and a CCXXXIV goto block for the counter store. Not a line tie.
+- post0b 48510: twelve `Mesh::next()` spellings (`buf + n++`, a named n, `<< 4` byte arithmetic in both
+  operand orders, `n[buf]`) leave the `sll t6 / lw t7` operand order (target buf in t6) and the ring shift.
