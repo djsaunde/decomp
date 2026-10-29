@@ -14607,6 +14607,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCXVI (agent-c 2026-10-29, run 219): **post0b 4A308 EXACT: the target's extra frame words BELOW the spill come from writing a once-assigned local (`entry`, recomputed after a call) as an expression macro with a dead `char *entryd = 0;` keeping its home (frame 120 -> 128, spill sp+56 -> sp+60); literal-pool scan of the agent-c range (target `lwc1/ldc1 OFF(lui 0)` resolved through the ROM / label relocs and compared with the NM object's loads): no decode error and no new exact; offsets 0x0..0xC / 0x30 are imported objects, not RoData; B75C's 0x8C8..0x910 pool as literals +0.01. 4A308 / C310's missing frame bytes are ugen temp-area words between the saves and the spill (ours 16 / target 24 bytes in 4A308; a two-arm memory-homed short pair adds 8), not args / struct returns / block pads**](#kit-ccxvi-agent-c-run-219) -- _NM: B75C 93.94 -> 93.95, 6808 96.56 -> 96.61 (bbsplit); E2D0, 51AD8, 65EE4 (aliases 67.98 < -Olimit 89.73), lever-sweep negatives._
 - [kit CCXVII (agent-g 2026-10-29, run 218): **post0b 36F0C 94.42 -> 99.73 (968 B = target): decl order c / p / v + a named `f64 h = 100.0` = target frame 136; a nested `?:` clamp has two result temps (outer `mov.s` copy), an if / return inline clamp one; `f32 d = dist;` before a store run hoists the load like the target; `if (&c == 0) return;` (folded) = memory-resident local without volatile; kept-parameter inline setters (`if (0) { n = 0; }`) make each reload its own v0 web; literal scan of game_uso / gui / post0b < 0x48000 exhausted (3B9C0 1e-5 decode fix)**](#kit-ccxvii-agent-g-run-218) -- _40304 0.01 literal negative, 7C1C / BB8C value-only; 35B1C = cfront-style C++ ctor (NCC word-for-word except frame 72 vs 80 + vptr store order); 3C43C homes, 415A4 double-ori, 37540 s-home negatives._
 - [kit CCXVIII (agent-g 2026-10-29, run 219): **post0b 36F0C EXACT: an inline's by-value float parameter is a uopt variable (f0), a `const f32 &` parameter read is an ugen ring temp (f4 / f6 / f10 / f8); a forwarded store goes direct through a kept-parameter accessor result (`Cam *n = gc0(c)` = the pooled v0 temp, no interference); replace-function-body.py names objcopy-renamed section symbols (redefine-sym C++ donors' `.rodata` relocs -> `<func>_rodata`)**](#kit-ccxviii-agent-g-run-219) -- _35B1C NCC ctor frame fixed (pad block), vptr-store order still open; 591C var-bound colours, 2E354 literals cost length, 40304 / 37938 negatives._
+- [kit CCXIX (agent-g 2026-10-29, run 220): **a global read through `&D` / a held `int *` is a direct variable access (folded `lui; lw %lo`, never hoisted); read as an ARRAY element (`extern int D_x[]; D_x[0]`) its address becomes a loop-invariant web held in an s-register across calls -> post0b 46050 89.71 -> 92.20 at target length (real-C++ appends + stock gSPTextureRectangle); gui 2DE0 95.53 -> 96.65 (329C-shape port, &D live-range residual)**](#kit-ccxix-agent-g-run-220) -- _inverse const-ref sweep negative on 3B2EC / 37938 / 41D40 / 454C4 / 7C1C / 33094; 3C43C r-home vs counted use._
 - [kit CCXIII (agent-g 2026-10-29, run 216): **post0b 454C4 95.95 -> 99.95, length = target: build on the structurally-right BB lever, then re-test old micro-levers (drop the named element pointer -> sixth s-reg; drop the folded `& 0xFF`); `if (rec) {}` breaks an adjsave tie; `cur = nxt; if (nxt)` keeps an inline iterator member out of the candidates (ring temp t7 vs v0 web); a ternary sharing edg's int temp with post-increments separates when assigned in the same full expression as the inline call**](#kit-ccxiii-agent-g-run-216) -- _Open: e copy-propagated as the shared pointer temp (5 words); 3C43C homes = function-scope five + k / ABS3 temps / dd; 3558 per-row adds inert._
 - [kit CCXIV (agent-c 2026-10-29, run 218): **a RoData float read as `D + off` / an extern alias is often a compiler LITERAL: read the ROM word (bootup.uso RoData = ROM 0xD9FE44); a run of identical values around a jump table = one constant rematerialised (one literal word per `l.s`). As a literal uopt hoists / colours / reloads it after calls -> game_libs 3430 (0.1f in f2 + three trailing `if (1) {}`) and timproc_b5 CEB4 (0.3f + `if (1) {}` per white arm) EXACT via donors pinned `<fn>_rodata` = the pool's ROM offset; C310 NM 96.45 -> 99.89 (`== 1` = register-held 1 shared with the `= 1` store, field-form counters)**](#kit-ccxiv-agent-c-run-218) -- _CCXII address-form scan (size>0 FUNC symbols only): no further hit; 4F2DC literal +0.19; 6204/E9FC, 8BD4, 1824, 4C5E4, 4A308 / C310 spill-slot gap negatives._
 - [kit CCX (agent-g 2026-10-29, run 214): **each object of a class with an inline constructor is an edg labelled BB; above ~19 BBs uopt splits a held callee-saved constant (game_uso 3558's $f20 zero web: hold, live else muls, w.y reload) -- a constructor-less Vec3 / aggregate Ctx restores it; a Vec3 local is a uopt register candidate only when no member call or reference parameter is bound to it (free by-value mk() keeps the op- copy chain)**](#kit-ccx-agent-g-run-214) -- _3558 85.86 -> 89.21 (frame 256 = target, all homes on the target map); vb split / va.y f20 residual and negatives listed._
@@ -48141,3 +48142,47 @@ rematerialises `lui t3 / addiu t3` at the ends of the dtdy MAX / MIN arms (`lw s
 that LR at the RDPHALF_1 append and loads the last CTX in the direct `lui s0,%hi / lw s0,%lo(s0)` form. A 6^4 grid of
 append spellings (nextp / next / nC / nD / nextc / nexta) does not extend it (best at 1212: 93.85). Next step:
 whatever extends the &D address LR across the dtdy arms (scratch: /tmp/claude-1000/g219/d2.cpp).
+
+## kit CCXIX (agent-g 2026-10-29, run 220): a global read through `&D` / a held `int *` is a DIRECT variable access that uopt folds into `lui; lw %lo` and never hoists; the same word read as an ARRAY element (`extern int D_x[]; D_x[0]`) makes its address a loop-invariant web (hoisted into an s-register across calls) -- post0b 46050 89.71 -> 92.20 at target length with the real-C++ append kit; gui 2DE0 95.53 -> 96.65 (329C-shape port) <a name="kit-ccxix-agent-g-run-220"></a>
+
+**post0b 46050 (font string draw, 1848 B).** The target materialises `lui s8 / addiu s8` = the right-margin word's
+address in the loop preheader and reads it as `lw t6, 0(s8)` every iteration (s8 survives the else-arm call). Every
+spelling of the read as `*(int *)&D_00000000` -- direct `D_00000000`, a held `int *margin = &D`, `int &`, `char` symbol
+plus cast, a struct accessor inline, `register`, `const` pointer, late init, a free inline `scrw(int *)` -- gave
+byte-identical code: `lui t6,%hi(D); lw t6,%lo(D)(t6)` inside the loop. uopt treats `*&D` as a direct memory
+variable, so there is no address expression to hoist. Declaring the word as an array and indexing it
+(`extern int D_46050_m[]; ... D_46050_m[0] - 0x14`) turns the read into an address computation plus an indexed load;
+that address is a loop-invariant constant web and takes s8 exactly as in the target (and pushes the 0xE4000000
+constant, which had taken s8, back to a per-use `lui at`): 89.71 -> 90.91 on the C lift, length 1840 -> 1844.
+Pin the new symbol at the reloc's baked offset (here 0). This is the read-side twin of the
+[extern-struct-array base](#extern-struct-array-base-keeps-sreg-opaque-26d64) recipe: use it whenever the target holds
+a global's address in an s-register across a loop / call but the build folds every access to `lui; lw %lo`.
+
+Then the 2DE0 / 329C kit (real C++, not a C lift): every display-list append as the context's inline `Ctx::next()`
+through `o->sub->ctx`, the fixed packets as word pairs, and the glyph as the STOCK gbi.h `gSPTextureRectangle` with
+`CTX->next()` as its pkt argument (its two `gImmp1(pkt, ...)` re-evaluations are the RDPHALF_1 / RDPHALF_2 appends;
+s = `(cc & 0xF) << 8`, t = `((cc & 0xF0) >> 1) << 5`, dsdx / dtdy = `0x2000 / charw` / `0x2000 / lineh`): 1848 B =
+target, 92.20. The prologue sequence FD900000 / F5900000 / E6 / F3 / E7 / F5801000 / F2 decodes as
+`gDPLoadTextureBlock_4b(pkt, xlate(&font), G_IM_FMT_I, 128, 64, ...)` (lrs 0x7FF, dxt 0x100, line 8). Negatives at
+92.20: `if (1) {}` / `if (var) {}` inserted at every statement boundary, a 9 x 9 grid of the first two appends'
+spellings (+0.06), a 9 x 9 prologue / epilogue spelling grid, the E4 w1 term order (yl first: the 0x220 load then
+matches but 91.55), cc / ch declaration order and scope, cursor-read spellings, a member-function (`this`) form.
+LEFT: the first prologue append reads o from a0 and the first two use v0 / a1 for the dl / count temps (target);
+cc in a3 (target a0); the E4 w1 / B4 / B3 block schedule (target issues the lineh divide after the E4 w1 store).
+
+**gui 2DE0.** Ported to the exact-shape 329C body (inline `Ctx::load()`, next / nC / nD rect appends, five pads,
+t / fw fh / x y / spr / w h declaration order = the target's w / h homes): 95.53 -> 96.65, every block lines up up
+to registers, 1196 B (target 1212). The four missing words: the target keeps `&D` (CTX) live in t3 through the
+RDPHALF_2 append, re-forming `lui / addiu t3` at the yl < 0 entry and at both MAX-arm exits (live-range split
+reloads); ours ends that web at the RDPHALF_1 append and re-forms the address as `lui s0 / lw %lo` for the third
+CTX. Negative: a named `Ctx **` for the rect (or all) appends, a ctx local, a per-append extern alias, the array
+form above (for all / the rect / the third append), `CTX;` / `(void)&D` / `if (&D) {}` / `if (CTX) {}` / empty
+blocks at five positions, a 9^3 x 4 append-spelling grid, a 120 x 4 declaration-order x pad grid.
+
+**Negatives (inverse const-ref sweep).** By-value <-> const-reference parameter flips, every single / pair: 3B2EC
+`toCell` / `cellOf` / `list` / `face`, 37938 (operator* / operator- / operator= / set; 2^5), 41D40 (IBase / AIter /
+iter / operator[]), 454C4 (LIter plus a flags-test inline in five spellings), 7C1C (ten operator / constructor
+parameters, singles and pairs), 33094 (set / *= / mul / += / =, 64 combos): none raises. 3C43C: the counted use
+`0 * (int)(r)` is what puts r in s0 (target: r memory-resident in its arg home, as `nouse` gives, but then the
+`0.0f + dist[best]` add folds away and the frame is 24 bytes over); `&r` / `if (0) { f(&r); }` makes ALL the
+parameters memory (s too, target keeps s in fs0); reusing lim's home for dd saves 8 frame bytes but scores lower.
