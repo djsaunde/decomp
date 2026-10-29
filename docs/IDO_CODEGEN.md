@@ -14630,6 +14630,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCXXXIX (agent-g 2026-10-29, run 231): **FP operand order (`a * b` vs `b * a`, sum-term order) and a compare operand moved into a temp on the line before the `if` (as1 line order) are big unswept levers: C234 95.07 -> 98.17, 3558 89.98 -> 91.56, 2E354 93.94 -> 94.23 (reuse a dead temp: a fresh cfe local grew the frame), B75C 94.01 -> 94.37; re-drop stale folded `0 * X` terms (4BAF4 96.36 -> 96.82); NCC frame slots = used locals in decl order, spills at the bottom**](#kit-ccxxxix-agent-g-run231) -- _Sweeps: /tmp/claude-1000/g231/commute.py, hoist.py, dropfold.py, join.py. No exact._
 - [kit CCXL (agent-c 2026-10-29, run 230): **cfront-style cfe port of game_uso 7C1C, 27.7 -> 98.52 (beats the 96.35 NCC donor, length = target): objdiff fuzzy is alignment-bound -- fix length first; `(unsigned)((hit != 0) == 0) ||` keeps both CSE spills; one function-wide tx / ty / tz trio for every inline set() (roles moved by reuse, rotated trio at three sites) and sa / sc for operator- / perp; 16 `if (1) {}` raise firstUseCost so a pooled &local stops taking s3; `vp = &b->pos; do { loads } while (0);` keeps the reference temp coloured (as1 sinks its `addiu` past the loads, so it looks dead); a flag re-read after the arms' constant stores reproduces the forwarded v0; as1 line ties for result / mode constants**](#kit-ccxl-agent-c-run230) -- _NM gain +2.17 on 4284 B; left: b->width f14 vs f0, perp colours, ugen t-ring one late from the loop's t164 site._
 - [kit CCXLI (agent-c 2026-10-29, run 231): **game_uso 7C1C EXACT (98.52 -> 100): `cc -S` shows ugen's pre-schedule temps (an invisible `addu tN; move v1, tN` guard costs a ring slot); trailing firstUseCost blocks can reject short address-constant LRs too -- one `if (1) {}` at the loop-body top fixed the t-ring; empty blocks around a straight-line site give a CSE its own live unit (width f0 beside tz f0); a fourth shared float temp (reuse an unused float, a new decl shifts the frame); one-line member copies; folded-use grid for colouring order**](#kit-ccxli-agent-c-run231) -- _exact +4284 B._
+- [kit CCXLII (agent-g 2026-10-29, run 232): **a target `mov.s` copy = a copy taken BEFORE its source variable is overwritten by a later result (`t = s; x*s; s = y*s; z*t`: uopt cannot propagate it; plain copies are always propagated); compare constant off the hoisted temp (`t = K*sum; if (a < t + 4.0f)`); repeated scaled sums through one shared float temp; NCC frame fit by declaration gaps (every used scalar takes a word, structs top-down); post-increment on a deref costs two bottom edg homes above the spill area**](#kit-ccxlii-agent-g-run232) -- _bootup C234 98.17 -> 99.62 (length = target, colours + one spill slot left)._
 - [kit CCXIII (agent-g 2026-10-29, run 216): **post0b 454C4 95.95 -> 99.95, length = target: build on the structurally-right BB lever, then re-test old micro-levers (drop the named element pointer -> sixth s-reg; drop the folded `& 0xFF`); `if (rec) {}` breaks an adjsave tie; `cur = nxt; if (nxt)` keeps an inline iterator member out of the candidates (ring temp t7 vs v0 web); a ternary sharing edg's int temp with post-increments separates when assigned in the same full expression as the inline call**](#kit-ccxiii-agent-g-run-216) -- _Open: e copy-propagated as the shared pointer temp (5 words); 3C43C homes = function-scope five + k / ABS3 temps / dd; 3558 per-row adds inert._
 - [kit CCXIV (agent-c 2026-10-29, run 218): **a RoData float read as `D + off` / an extern alias is often a compiler LITERAL: read the ROM word (bootup.uso RoData = ROM 0xD9FE44); a run of identical values around a jump table = one constant rematerialised (one literal word per `l.s`). As a literal uopt hoists / colours / reloads it after calls -> game_libs 3430 (0.1f in f2 + three trailing `if (1) {}`) and timproc_b5 CEB4 (0.3f + `if (1) {}` per white arm) EXACT via donors pinned `<fn>_rodata` = the pool's ROM offset; C310 NM 96.45 -> 99.89 (`== 1` = register-held 1 shared with the `= 1` store, field-form counters)**](#kit-ccxiv-agent-c-run-218) -- _CCXII address-form scan (size>0 FUNC symbols only): no further hit; 4F2DC literal +0.19; 6204/E9FC, 8BD4, 1824, 4C5E4, 4A308 / C310 spill-slot gap negatives._
 - [kit CCX (agent-g 2026-10-29, run 214): **each object of a class with an inline constructor is an edg labelled BB; above ~19 BBs uopt splits a held callee-saved constant (game_uso 3558's $f20 zero web: hold, live else muls, w.y reload) -- a constructor-less Vec3 / aggregate Ctx restores it; a Vec3 local is a uopt register candidate only when no member call or reference parameter is bound to it (free by-value mk() keeps the op- copy chain)**](#kit-ccx-agent-g-run-214) -- _3558 85.86 -> 89.21 (frame 256 = target, all homes on the target map); vb split / va.y f20 residual and negatives listed._
@@ -49319,3 +49320,47 @@ parallel per-line variant scorer, rows.py = diff-row counter, sS.sh = `cc -S`)._
    grid over `+ 0 * (int)(S2 + k*n0.x + j*n0.z [+ n0.x * n0.z])` (22 of 48 exact) -- extra n0.x / n0.z uses
    raise their priority above the sum. Shipped `+ 0 * (int)(S2 + n0.x + n0.z + n0.x * n0.z)` (unit normals,
    the int conversion is in range). Assigning the sum to a temp on the line before (kit CCXXXIX) was flat here.
+
+## kit CCXLII (agent-g 2026-10-29, run 232): bootup C234 98.17 -> 99.62 -- a COPY TAKEN BEFORE ITS SOURCE IS OVERWRITTEN is the C spelling of an IDO `mov.s` copy (uopt cannot propagate it); a compare constant moved off the hoisted temp into the test; repeated scaled sums each assigned to one shared float temp; NCC frame fit by declaration gaps (frame and every struct offset = target); post-increment on a deref = two edg homes at the frame bottom <a name="kit-ccxlii-agent-g-run232"></a>
+
+_No exact. report.json (non_matching build): bootup func_0000C234 98.17 -> 99.62 (2200 B, length = target, 550/550
+words; only register colours and one spill slot left). Four commits on src/bootup_uso/bootup_uso_ncc_C234_nm.cpp._
+
+1. **The missing `mov.s` (kit CXCII "1 word short") is a copy whose source is overwritten before the copy's use.**
+   Target: `lwc1 fa0, 0x968(s0)` (scale s), x * s and y * s from f12, `mov.s fv0, fa0`, z * f0, and y's product written
+   back INTO f12. Every plain copy `t = s; ... z * t` is propagated away by uopt (5 placements, all flat). Written
+   as `t = s; hx = v[0] * s; s = v[1] * s; hz = v[2] * t;` (store `s` as the y component) the copy cannot be
+   propagated (its source is redefined before the use) and the move appears: length 2196 -> 2200 (= target),
+   98.17 -> 98.68. Recipe: when a target `mov.s/move` copies a register that is then OVERWRITTEN by a later result,
+   reuse the source variable as that result's destination and read the copy afterwards.
+2. **Compare constant into the test (C234 plane test).** Target `mul.s fv0, K, sum; add.s ft3, fv0, 4.0; c.lt.s f0val,
+   ft3` with spCC.f0 loaded BEFORE the add. Run 231's `t = 4.0f + K * sum; if (spCC.f0 < t)` (as1 line order) loads
+   it after; `t = K * sum; if (spCC.f0 < t + 4.0f)` gives the product-first add and the early load: 98.68 -> 99.10.
+   Variants `(K * sum) + 4.0f` on the temp line, `t > spCC.f0`, a temp for spCC.f0, the sum alone in t: 95.5 - 98.4.
+3. **Repeated `acc += scale * (dot)` rows: each dot product into ONE shared float temp, then `acc = acc + temp *
+   scale`.** The target keeps all three sums in f0 and the scale (0x910) in f16; as expressions the scale took f0.
+   `temp_f0 = dot1; o->A1C = o->A1C + temp_f0 * k; temp_f0 = dot2; ...; o->A24 = o->A24 - temp_f0;` 99.10 -> 99.54
+   (+0.04 more with the plane temp moved to another reassigned float). The three row temps' colours are still
+   rotated (scale LR colours before temp_f12_2 / the 0x934 CSE): float declaration swaps (78 pairs), statement
+   order of the four loads (24 perms), macro / variable combinations (8), sharing the scale variable with an earlier
+   value: all flat or lower.
+4. **NCC frame fit (kit CCXXXIX item 5 completed).** Struct homes are allocated top-down in declaration order with every
+   USED scalar taking a word; compute the target's gaps between the structs (C234: 1 / spCC / 3 / spB4 / 9 / sp8C /
+   1 / sp7C / 2 / sp68 / 2 / sp54 / 2 / sp40) and give each gap that many used scalars (order inside a gap is free:
+   78 float swaps flat). Block-scope products become function-scope scalars; de-name scalars (`temp_a1`, `temp_v0`)
+   until the count fits (frame 0x100 -> 0xf8). 99.58 -> 99.62 with every struct offset = target.
+5. **Post-increment on a deref (`(*(s32 *)(o + K))++ >= N`) costs TWO edg temp homes (address + old value, vreg M
+   vars in the -zdbug:6 dump, `ustr{T} {uilod}` / `uadd{T} 1` / `ugeq{T} 151`) at the bottom of the frame**, right
+   above the uopt spill area. C234: the a1 spill sits 8 low (0x34 vs 0x3c) because of them. Moving the late block's
+   structs into that block (`if (count) { V3 sp68; f32 ga, gb; V3 sp54; f32 gc, gd; V3 sp40; f32 ge; ... }`) puts
+   the two edg homes in the target's sp7C / sp68 gap and the spill 4 low (0x38, flat score); a named old value
+   (`t = o->c; o->c = t + 1; if (t >= N)`) takes no home at all (frame -8). The spill-area rule here is `spill at
+   lowest-home - 4` (the target's spill area is 16 bytes, ours 8): two more (unused) spill slots in the target,
+   source unknown.
+6. **Left on C234 (38 rows, all colours):** the plane product f2 (target f0) since the plane temp moved to temp_f2_3;
+   `var_t0` in v0 (target t0, shifts the ugen ring by one: 8 rows); the jump-table index from `(s32)(...)` in t3
+   (target v0 -- a uopt var; named int temps are copy-propagated); the 0x95C counter v0 (target v1, m2c's
+   `temp_v1_2`); the divisor `(f32)count` in f0 (target f2: something in f0 spans the division block in the target)
+   with the 0x968 scale in f2 (target f12); the tail row temps above. Negatives: lever-sweep bbsplit (132) / order
+   (203) / declmove (20), commute / hoist on every new base; post0b 54E78 (a zero / two local, removing either
+   `if (1) {}` -> length 556 / 560), 37938 final reload v0 vs v1 (named / hoisted m30 pointer, `if (1) {}` moves).
