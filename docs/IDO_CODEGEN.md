@@ -14644,6 +14644,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCLIII (agent-g 2026-10-29, run 237): **NCC homes a block's named locals in declaration order BELOW its edg temporaries, which are homed in REVERSE creation order; temporaries that the target has in creation order are named locals assigned inside the ctor argument (`XZ e(pe = (a - b) * k)`), placed above / below the remaining temporaries with a nested block**](#kit-ccliii-agent-g-run237) -- _game_uso game_uso_func_000097EC 99.974 -> 100 EXACT (924 bytes, NCC donor); 41D40 / 37938 / 3AE58 / 46790 / 40304 / 250C8 / 3B2EC / 3E5E0 negatives._
 - [kit CCLIV (agent-g 2026-10-29, run 238): **edg's pointer temp pool picks a rotated loop condition copy's colour; a for-increment of nested zero-code inline calls (`me()->me()`) holds pool slot 1 while the BOTTOM copy is emitted, moving it to slot 2; a donor promotion's old `.s` may carry `.late_rodata` that must move to the preceding INCLUDE_ASM**](#kit-ccliv-agent-g-run238) -- _post0b gl_func_0003B2EC 99.916 -> 100 EXACT (948 bytes, NCC donor); game_uso verify-blocks lo16=7 -> 0; 3BE1C NM 98.34 -> 98.56 (cellOf on caller cx / cz); 41D40 / 34890 / 3E5E0 negatives._
 - [kit CCLV (agent-c 2026-10-29, run 238): **NCC frame homes: an inline's scalar locals declared BEFORE its result V3 are homed above it; one variable instead of two drops a home; `V3 &v = x; v += w;` for a member +=; a DEAD nested pool allocation `if (0) { *a.me()->me() += *b.me(); }` homes edg's pointer-temp pool slots above the next statement's temporaries; array-indexed loop pointers (uopt IVs) move the spill slot up**](#kit-cclv-agent-c-run238) -- _bootup func_00008BD4 98.83 -> 100 EXACT (836 B) and post1b gl_func_00063964 99.964 -> 100 EXACT (1120 B), NCC donors; 4B0A8 NM 99.56 -> 99.83 (CCLIV hold on a while-loop); 31C0 99.965 -> 99.975; C310 / 454C4 / 59E80 / 1DDC / 4B2F4 / 4B620 negatives._
+- [kit CCLVI (agent-c 2026-10-29, run 239): **an expression form that leaves a variable in its home gets its register back with a folded `+ 0 * (int)(v)` use before the call it crosses; a count pointer read through a block-scoped NAMED pointer is a uopt variable (slot / pointer colours) whose home is paid back by MERGING two later same-type locals; a nested pool hold `(it.me()->me(), e->flags & 2)` stops inline-return copy-propagation inside a condition; 1DDC frame layout = named V3 e + nameless then-block + one block around mm / call**](#kit-cclvi-agent-c-run239) -- _post0b 4B2F4 NM 99.36 -> 99.63; 454C4 / 1DDC structural wins not yet fuzzy gains; 31C0 / C310 / 59E80 / 48510 / 4B620 / 5F5F0 / E2D0 negatives._
+- [kit CCLVII (agent-g 2026-10-29, run 239): **an UNSIGNED literal is a different uopt expression from the same int literal: a call argument that reads a constant-holding register (`or a1,t0,zero`) where the target re-materialises (`addiu a1,zero,1`) becomes unsigned through the callee's type-neutral parameter (`unsigned int a1`; a K&R call with `1u` is UB against a prototyped definition, narrower casts fold back to int)**](#kit-cclvii-agent-g-run239) -- _game_uso 0B3C NM 99.83 -> 99.9986 (only the 4-entry jump table left); 41D40 / 37938 / 3E5E0 / 34890 / 3AE58 / 40304 / 250C8 / 31A74 / 18F0 negatives with dump diagnoses._
 - [kit CCXIII (agent-g 2026-10-29, run 216): **post0b 454C4 95.95 -> 99.95, length = target: build on the structurally-right BB lever, then re-test old micro-levers (drop the named element pointer -> sixth s-reg; drop the folded `& 0xFF`); `if (rec) {}` breaks an adjsave tie; `cur = nxt; if (nxt)` keeps an inline iterator member out of the candidates (ring temp t7 vs v0 web); a ternary sharing edg's int temp with post-increments separates when assigned in the same full expression as the inline call**](#kit-ccxiii-agent-g-run-216) -- _Open: e copy-propagated as the shared pointer temp (5 words); 3C43C homes = function-scope five + k / ABS3 temps / dd; 3558 per-row adds inert._
 - [kit CCXIV (agent-c 2026-10-29, run 218): **a RoData float read as `D + off` / an extern alias is often a compiler LITERAL: read the ROM word (bootup.uso RoData = ROM 0xD9FE44); a run of identical values around a jump table = one constant rematerialised (one literal word per `l.s`). As a literal uopt hoists / colours / reloads it after calls -> game_libs 3430 (0.1f in f2 + three trailing `if (1) {}`) and timproc_b5 CEB4 (0.3f + `if (1) {}` per white arm) EXACT via donors pinned `<fn>_rodata` = the pool's ROM offset; C310 NM 96.45 -> 99.89 (`== 1` = register-held 1 shared with the `= 1` store, field-form counters)**](#kit-ccxiv-agent-c-run-218) -- _CCXII address-form scan (size>0 FUNC symbols only): no further hit; 4F2DC literal +0.19; 6204/E9FC, 8BD4, 1824, 4C5E4, 4A308 / C310 spill-slot gap negatives._
 - [kit CCX (agent-g 2026-10-29, run 214): **each object of a class with an inline constructor is an edg labelled BB; above ~19 BBs uopt splits a held callee-saved constant (game_uso 3558's $f20 zero web: hold, live else muls, w.y reload) -- a constructor-less Vec3 / aggregate Ctx restores it; a Vec3 local is a uopt register candidate only when no member call or reference parameter is bound to it (free by-value mk() keeps the op- copy chain)**](#kit-ccx-agent-g-run-214) -- _3558 85.86 -> 89.21 (frame 256 = target, all homes on the target map); vb split / va.y f20 residual and negatives listed._
@@ -50155,3 +50157,106 @@ vregs at the offsets that differ. NCC homes every named local, inline local and 
    move the return slot the wrong way; ref-read / getPos spellings flat. 4B2F4: `(flags | 2)` inline instead of
    `flags |= 2` loses flags' a2 LR (91.7). 4B620: CCLIV holds flat. mgrproc 1824's remaining displacement is the
    documented external jump table.
+
+## kit CCLVI (agent-c 2026-10-29, run 239): NM gains from VARIABLE WEIGHT and MERGED HOMES -- (1) an expression form that drops a variable to its home gets its register back with a folded `+ 0 * (int)(v)` use placed BEFORE the call it must cross; (2) a count pointer read through a block-scoped NAMED pointer is a uopt variable (changes the slot / pointer colours) but costs a home, paid back by MERGING two later same-type locals into one; (3) a nested zero-code pool hold `(it.me()->me(), e->flags & 2)` stops an inline-return copy-propagation inside a condition; 1DDC frame layout reproduced <a name="kit-cclvi-agent-c-run239"></a>
+
+_No exact. NM: post0b game_libs_func_0004B2F4 99.36 -> 99.63 (812 B, length unchanged, two commits)._
+
+Method (scratch scripts were under /tmp/claude-1000/c239/, reproducible): score each standalone donor variant
+with lever-sweep.py's `probe()` (objdiff `-c functionRelocDiffs=none`, the report.json metric), diff
+`objdump -M no-aliases` with function-relative branch targets, and for colour questions the zdbug:6 trace through
+scripts/coloring-solve.py (`--func <mangled name>`, LR -> register in priority order).
+
+1. **4B2F4: `flags |= 2` in place vs the target's `ori t5, a2, 2`.** The target keeps flags in a2 across the
+   pack call (spilled at sp+100 right before the jal) and builds the operand in a ring temp. Writing the `| 2`
+   inside the packet expression (`(((u32)(flags | 2) & 0xFF) << 16)`) gives the t5 operand but leaves flags with
+   one def + one use, and uopt drops it to its home (stored right after the load, 91.7). A folded
+   `+ 0 * (int)(flags)` on the pre-call `fixed = ... + (slot1 << 6)` sum adds a counted use before the call and
+   flags is a register LR again with the target's spill-around-call shape. `((x << 8) << 8)` vs `<< 16` changes
+   the ugen schedule; `<< 16` is the target's (99.36 -> 99.41).
+2. **4B2F4: late DL slot colours.** `slot = (*(s32 **)(ctx + 0xC))[1]; (*(s32 **)(ctx + 0xC))[1] = slot + 1;`
+   leaves the count pointer a CSE temp (v1) and the slot v0 / a0. Through a block-scoped named pointer
+   `{ s32 *h = *(s32 **)(ctx + 0xC); slot3 = h[1]; h[1] = slot3 + 1; }` the slot takes v1 and (last block) the
+   pointer a0 as in the target, but each named h adds a home word and the frame grows 8. Merging the last slot /
+   packet pointer into the previous ones (slot4 -> slot3, cmd3 -> cmd2: dead by then) drops two homes and the
+   frame is back at 0xC0 (99.41 -> 99.63). Merging into `flags` / `fixed` instead, an outer-scope h, or
+   `h[1] = (slot3 = h[1]) + 1` are worse or flat. Left: the first h takes v0 (target a2).
+3. **454C4: the propagation stopper.** CCLV item 6 / agent-g run 217: e copy-propagates as the LIter::next
+   return temp into the second flags test and the colour loads. A NESTED pool hold in the second test,
+   `(it.me()->me(), e->flags & 2)` (or `it.me()->cur`), with `LIter *me() { return this; }`, makes both the test
+   and the colour loads read e -- the body is then word-for-word up to registers -- but the extra pool LR
+   reorders the constrained phase (e: ord 7 -> 3, now a1 instead of a2; the temp v1 instead of a3: 98.20). One
+   `it.me()`, `c->me()` chains, `e->me()` chains, folded `0 * (int)it.me()` and dead holds before the loop do
+   nothing. Not committed; next step is lowering e's priority back below lr 0 / 6 / 128 with the hold kept.
+4. **1DDC: the frame layout is three moves.** Restore the named `V3 e` (the last product; target sp+328),
+   drop the two then-block name homes (`a0->src->mtx.getPos(m); c.getOut()->goal.set(m);`: then-block 32 bytes
+   as in the target) and wrap the else arm's `{ const M4 &mm = ...; mm.getPos(self); r = f23D4(a0); }` in one
+   block: frame 384, r at 340, every home but the f23D4 return slot at the target offset (slot 244, target 252:
+   an 8-byte hole sits above the slot, not below). That costs the then-block matrix pointer's v1 (v0 without the
+   named mm): 99.91 (base 99.969, not committed). A volatile pair after the call puts the hole below the slot
+   (slot 252) but the frame grows 8; a dead `if (0) { r = f23D4(a0); }` before the block removes the hole and
+   shrinks the frame to 376.
+5. **Negatives.** 31C0: a second named pointer (`Obj *ob = (Obj *)((int)obj + 0 * FW(a3v, 0))` for the links,
+   plain `obj = new Obj2` for the ctor arguments) gives the case-0 ctor argument from the new-temp but holds the
+   join's load in a1 across the KB alloc (98.3); `obj = obj + 0` re-assignments after the first ctor call change
+   nothing. C310: with the CCLV IV form the spill is at 92; the 72..96 area below it is 24 bytes in the target and
+   20 here, and removing any home drops the frame to 192 (an unused non-volatile int is not homed). 59E80: bbsplit
+   sweep flat (the 3 / 0xFFFD hoist stays one packet early). 48510: `max590 - 1 <= nv` / `!(nv < ...)` spellings
+   compile identically; a named `lim` loses 4 bytes. 4B620: s0 / s3 swap is LR 32 vs LR 39 priority (two edg pool
+   temps); `if (1) { stmt; }` wraps and me() pool holds in addG / addOK / before the first append flat. 5F5F0:
+   moving `if (z) {}` / adding `if (zLook) {}` flat or worse. E2D0: `1.0f + arg4` spellings and early dead
+   `while (0)` reorders flat. lever-sweep `all` and zero-use sweeps over 48510 / 4B2F4 / 4B620 / 5F5F0 / 59E80 /
+   E2D0 / 24B8 / 31C0: no gain. 4B0A8: the IBase ctor `this` is pool slot -60 (lr 24, t0), the SAME uopt variable
+   as the loop's `++idx` / cur() temps, so its LR reaches the loop and meets lr 81 (-88, cur()'s `Arr &r` temp,
+   a3); a 0-4 x 0-3 grid of for-increment / iterator-argument me() holds is flat (99.83). 31C0: a dead
+   `if (0) f(&o2)` address-take on a named new result (to make later reads come from obj's home) is worse (98.1).
+   1DDC also: the dead early f23D4 call with the then-block names kept gives frame 384 but r at 332 (99.78).
+
+## kit CCLVII (agent-g 2026-10-29, run 239): an UNSIGNED literal is a different uopt expression from the same INT literal -- when the target re-materialises a constant (`addiu a1,zero,1`) at a call argument but the build reuses a register that a constant-valued LR already holds (`or a1,t0,zero`), give that value an UNSIGNED type (here the callee's type-neutral parameter, so the prototype converts the literal); game_uso B3C NM 99.83 -> 99.9986 <a name="kit-cclvii-agent-g-run239"></a>
+
+_No exact. NM: game_uso game_uso_func_00000B3C 99.82861 -> 99.99858 (2824 B; the one word left is the
+documented 4-entry jump table, kits CXL / CCXXXV). Negatives: post0b 41D40, 37938, 3E5E0, 34890, 3AE58,
+40304, post 250C8 / 31A74, kernel 18F0._
+
+1. **The B3C residual.** Two call sites `game_uso_func_00002714(*(int **)(s + 0x154), 1, ...)` took
+   `or a1,t0,zero`: t0 is the LR of the function's constant-1 holder (`tmp = 1;` compared with
+   `tmp == cur` / `1 == *(seg + 0)`), and uopt treats every int literal 1 in its span as the same
+   expression, so the argument reads the register. The target materialises a fresh `addiu a1,zero,1` at both
+   sites while the compares keep t0. A function-pointer cast to `(void (*)(int *, unsigned, int))` proved the
+   mechanism (the literal becomes `addiu`, but the call becomes `jalr`, +8 bytes): the converted constant has
+   a different data type, so it is a separate uopt expression and never joins the int-1 LR.
+2. **The legal spelling: retype the callee's PARAMETER.** 2714 (defined later in game_uso.c, exact) only
+   compares `a1` for equality and stores it, so its definition and every declaration now say
+   `unsigned int a1`: 2714 still compiles to the same 12 words, and the prototype converts the B3C literals to
+   unsigned constants (99.99858 with plain `1`; either site alone 99.9136). A first attempt -- a K&R
+   declaration plus `1u` arguments, same score -- was replaced: an argument type that is not compatible with a
+   PROTOTYPED definition's parameter is undefined even when unprototyped at the call (C99 6.5.2.2p6 exempts
+   signed / unsigned only for unprototyped definitions). `(s8)1`, `(u8)1`, `(s16)1`, `(u16)1`, `(int)1u`,
+   `1L` through the K&R call all fold back to the int-1 expression (99.83): only the unsigned type separates.
+3. **Recipe.** Target `addiu aN,zero,K` where the build has `or aN,tX,zero` (tX holding K for a compare or a
+   named constant variable): find a type for that ONE value that is a different uopt expression (unsigned
+   int works, narrower types fold back to int) and that is semantically neutral -- best by retyping the callee
+   parameter when its body is type-neutral for the value (equality / store / pass-through) and the callee
+   stays exact; check every other call site of the callee for knock-on changes.
+   The reverse (target reuses the register, build re-materialises) is the same lever: make both literals the
+   same type. A scan of every 90-99.99 % non-exact for this exact pair found no other instance, so this
+   lever is rare; the int/float literal-typing family is kit LXV.
+4. **Negatives (all flat or lower).** 41D40: 112 cond x next() x increment holds, plus 144 for-init holds
+   (`iter((*arr)->me()->me())`, `*iter(..).me()`) combined with increment holds: base 99.90 stays best; the
+   dump shows the bottom copy's array temp and the entry copy's index temp are ONE pool vreg (-64, a1), the
+   target splits them, and every hold that splits them reshuffles the whole colouring. 37938: the final
+   `c.getOut()->m30` reload is v0 through any getOut form (19 spellings), a0 when `c.out` is read directly,
+   never v1; CCLV dead pool allocations and CCLIV holds around it flat. 3E5E0: dead `if (0)` pool / new /
+   reg0 allocations at 18 positions flat; the dump shows reg0's new-temp is vreg -24 and the target's is the
+   top word -12 (where x sits; with x removed the temp moves to -20, not -12). 34890: make()'s params are
+   homed o -12, h -16 (target h -12); every form that puts h on top (swapped params, h as make()'s local,
+   O::mk(), a make2 wrapper) makes h memory-only (320 bytes); dead pool allocations flat. 3AE58: pick()
+   returning int / unsigned / Ent * / Ent & flat or lower. 40304: 72 permutations x positions of the dead
+   `while (0)` anchor, folded `0 * (int)(d)` uses at 8 later sites, a named 1/32767 constant (+4 bytes) all
+   flat or lower; the zdbug:6 trace names the FP LRs (a f0, b f2, kt f12, d f14, c f16, K f18 by priority:
+   the target needs K before c and d). 250C8: fontId as `ASYNC_ID(...)` expressions (local / field) or
+   s32 / u8 / block-scoped, a static FinishAsyncLoad helper (not inlined at -O2): flat or lower; the target
+   spills fontId to the bytesRemaining temp slot (sp+36), ours to its home (sp+84). 31A74: moving the 0x1CAC0
+   store after the sel clamp (12 forms incl. CCXXXIV goto blocks) gives the target's block layout except
+   `sb`/`swc1` swapped around the jal (97.16, objdiff ranks it below the 97.73 base). kernel 18F0: `~8`
+   spellings flat. game_uso B3C: lever-sweep bbsplit (120) flat.
