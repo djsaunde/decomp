@@ -14614,6 +14614,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCXXIII (agent-c 2026-10-29, run 221): **an address constant the target re-forms per inline-ctor row but the build hoists into s0 across rows is busted by per-row extern aliases (timproc_b5 8FC8 91.56 -> 91.82, with a `B *const &o` row-ctor parameter; then an explicit per-row base vptr, held-`this` inline setters, kept loop guards, do-while flag chains and stacked if (1) splits: 93.39; 8FC8's 5-entry jump table keeps the NCC donor non-exact); kit CCXXI's do-while v0 lever needs a fresh name for the RMW chain (bootup 90CC 99.45 -> 99.48 on the dummy-home var_t1)**](#kit-ccxxiii-agent-c-run-221) -- _negatives: 63964 operator / scalar / pad forms (the arm-1 gap is the scalar's parameter temp), 31C0 operator new / volatile distributions, C310 below-spill words come from the ring loop, E2D0 `&arg4`, 578B4 sp50, 48510 compare spellings, 90CC lui-s0 sites._
 - [kit CCXXIV (agent-g 2026-10-29, run 224): **count the target frame word by word (saves end, spill words, home area; homes from the target's sp offsets; cfe packs chars at byte granularity) and re-declare the cfe locals to fit: m2c `spNN = v` before a call is v spilled to ITS home (declare v there, drop spNN), a `spNN` below the homes is a spill slot, zero-use temps still take homes, disjoint same-type temps merge -> game_libs 2E354 frame 0xA0 -> 0x80 with all seven homes on target; a frame pad declared LAST sits under the homes (bootup E68 homes on target); a 1 / 2 / default pick as a switch, `u8 == 1U` for a fresh `li at,1`**](#kit-ccxxiv-agent-g-run-224) -- _No exact; NM 2E354 93.79 -> 93.90, E68 94.57 -> 94.59, B75C 94.00 -> 94.01; swap / bb / decl-move sweeps over NCC donors: 3BE1C 97.33 -> 97.60, 4F2DC 95.45 -> 95.67, 3C43C, 4C5E4, 7C1C, 8CD8 small gains; negatives 2D374 (<= 2 named words fit frame 40 but lose the 256-block schedule; sibling block locals do not share frame space), B75C sp1C spill-slot order, 5A2C4 pad sizes, 591C colour renames, B3C 4-case table, 30AF4 sv copy._
 - [kit CCXXV (agent-c 2026-10-29, run 222): **a C++ ctor that can only be exact through cfe (switch -> jumptable) written as cfront-style C: `this` IS the parameter (`if (arg0 || (arg0 = new))`), inline members as one-line statement macros, inline temporaries as a FEW reused function-scope pointers (one per site spills everything, frame 0x280) whose choice per expansion picks s0 / s1; locals in the target's frame order; a run of stored ctor results on ONE source line (comma) moves the stores behind the next call's arguments; virtual calls through a held vtable local**](#kit-ccxxv-agent-c-run-222) -- _NM: timproc_uso_b5_func_00008FC8 93.39 (NCC donor) -> 96.01 (new cfe donor timproc_uso_b5_8FC8_nm.c, jumptable included), length 6492 of 6496. Open: per-site triple `mtc1 zero`, sites 2 / 3 loop-counter colouring, site-3 EE6C address CSE._
+- [kit CCXXVI (agent-c 2026-10-29, run 223): **a t-register that never appears as a temp in the build is held by a uopt-allocated VARIABLE (move that local's role, not the statements); a named RoData extern read in a loop gets its address hoisted into an s-register; per-line sweep of which reused cfront temporary each inline expansion uses; a dead `addiu aN,aN,0xb4` = the seti pointer variable read again later; one-line store pairs; a store-only extern alias stops an address CSE; an unused int-returning K&R callee inside a loop takes v0 from the loop's induction pointer (declare it void)**](#kit-ccxxvi-agent-c-run-223) -- _NM: timproc_uso_b5_func_00008FC8 96.01 -> 98.88, length 6492 -> 6496 = target. Negatives: site 1 / 2 triple `mtc1 zero`, site 2 / 3 counter in s0; 8CD8 4-entry table not ported._
 - [kit CCXIII (agent-g 2026-10-29, run 216): **post0b 454C4 95.95 -> 99.95, length = target: build on the structurally-right BB lever, then re-test old micro-levers (drop the named element pointer -> sixth s-reg; drop the folded `& 0xFF`); `if (rec) {}` breaks an adjsave tie; `cur = nxt; if (nxt)` keeps an inline iterator member out of the candidates (ring temp t7 vs v0 web); a ternary sharing edg's int temp with post-increments separates when assigned in the same full expression as the inline call**](#kit-ccxiii-agent-g-run-216) -- _Open: e copy-propagated as the shared pointer temp (5 words); 3C43C homes = function-scope five + k / ABS3 temps / dd; 3558 per-row adds inert._
 - [kit CCXIV (agent-c 2026-10-29, run 218): **a RoData float read as `D + off` / an extern alias is often a compiler LITERAL: read the ROM word (bootup.uso RoData = ROM 0xD9FE44); a run of identical values around a jump table = one constant rematerialised (one literal word per `l.s`). As a literal uopt hoists / colours / reloads it after calls -> game_libs 3430 (0.1f in f2 + three trailing `if (1) {}`) and timproc_b5 CEB4 (0.3f + `if (1) {}` per white arm) EXACT via donors pinned `<fn>_rodata` = the pool's ROM offset; C310 NM 96.45 -> 99.89 (`== 1` = register-held 1 shared with the `= 1` store, field-form counters)**](#kit-ccxiv-agent-c-run-218) -- _CCXII address-form scan (size>0 FUNC symbols only): no further hit; 4F2DC literal +0.19; 6204/E9FC, 8BD4, 1824, 4C5E4, 4A308 / C310 spill-slot gap negatives._
 - [kit CCX (agent-g 2026-10-29, run 214): **each object of a class with an inline constructor is an edg labelled BB; above ~19 BBs uopt splits a held callee-saved constant (game_uso 3558's $f20 zero web: hold, live else muls, w.y reload) -- a constructor-less Vec3 / aggregate Ctx restores it; a Vec3 local is a uopt register candidate only when no member call or reference parameter is bound to it (free by-value mk() keeps the op- copy chain)**](#kit-ccx-agent-g-run-214) -- _3558 85.86 -> 89.21 (frame 256 = target, all homes on the target map); vb split / va.y f20 residual and negatives listed._
@@ -48488,3 +48489,54 @@ was NOT kept (u: 6492); sites 2 / 3 want the loop counter in s0 and the seti / e
 caller-saved temp (dead `addiu a1,a1,0xb4` survives in the target) -- block-scope pointers, an outer
 counter and a fresh pointer for the element all lose; the site-3 0x80000 restore CSEs the EE6C address
 into v1 (target re-forms `lui at` per store).
+
+## kit CCXXVI (agent-c 2026-10-29, run 223): a t-register that NEVER appears as a temp in the build is held by a uopt-allocated VARIABLE -- find the local whose web landed in that caller-saved register and move its role; then sweep which reused cfront temporary each inline expansion uses (per-line var swaps), one-line store pairs, and an extern alias per un-CSE'd store; timproc_uso_b5 8FC8 NM 96.01 -> 98.81, length = target <a name="kit-ccxxvi-agent-c-run-223"></a>
+
+1. **Off-by-one t-register cascade = a variable parked in a temp register (96.20 -> 97.08).** Every ugen
+   temp after the head was one later than the target (`lw t1` vs target `lw t0`), but deleting / joining
+   statements around the first diff never removed the skip. Grepping the build's column for the
+   skipped register showed `t0` used ONLY by two `lw t0, ...` that hold a named local (the shared `u`
+   pointer: a zero-fill base and the item-loop vtable). uopt colours that web to t0 and ugen then
+   excludes t0 from its temp ring for the whole function. Fix by moving the role, not the code: the
+   item loop held its vtable in `w` (s1 like the target), and the loop's RoData float argument read as
+   `FF(import_808000CC, 0x320)` instead of a named `DF_320` extern (uopt hoisted the named symbol's
+   address into s0 out of the loop -- `lui s0; addiu s0` -- which pushed the mask local `tu` out of s0
+   and spilled it; the target reloads `lui at; lwc1 0x320(at)` per iteration). **Check: if a temp
+   register is missing from the build's whole function, look for a variable in it before touching
+   statement order.**
+2. **Per-expansion temp-role sweep (97.08 -> 98.67).** With the inline temporaries reused function-scope
+   pointers (kit CCXXV), which one an expansion uses decides s0 / s1 and whether a row pointer is
+   spilled-and-reloaded: S70 row ctor outer allocation in `t`, nested base-ctor `this` in `w`, and each
+   row's `B::add` binding through `t` (ADDW) gave the target's `sw s0, 0x12c(sp)` / reload; the panel's
+   +0x284 float store and the 0x2B8 -> 0x29C copy go through `w` (target holds the copied pointer in
+   s1, the plain field-to-field copy used a temp) -- 97.27 -> 98.41 in one step. A scripted per-line
+   swap of one temp name for another (`re.sub` on a single body line, ~100 variants a pass, 6
+   parallel compiles ~12 s) finds the rest, BUT it also proposes semantics-changing swaps (passing
+   the stale `t` instead of the fresh `w` to a call scored +0.04) -- only keep swaps where the line
+   assigns the variable before using it.
+3. **A target's dead `addiu aN, aN, 0xb4` after a zero fill** is the inline `V3::seti` pointer
+   (P = V + 0xB4) kept because the SAME variable is read again later: SETI(u, ..) at sites 2 / 3 plus
+   `u` reused by site 3's +0x284 store brings both dead adds back (length 6492 -> 6496 = target).
+4. **Small levers:** two vtable / name stores written on one source line give the target's addiu
+   order (as the 0x2C block already showed); the "hidden item" store through `items[i]` rather than the
+   call-result local (+0.10); a store-only extern alias (`f8fc8_ee6c_r3`, pinned 0) on the site-3
+   flag-restore store stops the EE6C address CSE (+0.19 and +1 word to the target length).
+5. **Negatives (do not repeat):** the per-site triple `mtc1 zero` at sites 1 / 2 (site 3 already has
+   it): per-site spellings 0 / 0.0 / (float)0 / (f32)0.0 / 0.0f / 0L / 0U / '\0' / casts, f32 or int
+   locals per component (int locals keep a live cvt.s.w; f32 locals propagate to the fs0 zero),
+   volatile pad, do-while / if (1) {} / if (P) {} between the stores, comma-with-`*P` value, stores
+   through V with a late `P += 0xB4`; site 2 / 3 loop counter in s0 (target) vs a spilled caller-saved
+   register: while / reversed compare / guarded do-while / array index / RMW spellings, `register`,
+   unsigned / short counters, a fresh function-scope counter at every declaration position, a fresh
+   element pointer (moves P to v1 but the counter stays spilled); decl-position sweeps of i1 / u / _x /
+   fv / t / n / w / i / tu / e3 / the row pointers (all <= base); `if (1) {}` after every body line and
+   every line join (none raise it). game_uso 8CD8 is the only other NCC NM donor in range whose target
+   has a jumptable, but it is the 4-entry table kit LXV found below cfe's threshold -- not ported.
+6. **Addendum -- an unused int-returning prototype steals v0 from a loop (98.81 -> 98.88).** The coloring
+   trace (`-Wo,-zdbug:6` with tools/ido-static-recomp-dump + scripts/coloring-solve.py; candidate
+   colours 1 = v0, 2 = v1, 5 = a2; frame `off=-N` = sp + frame - N) showed each attach loop's
+   strength-reduced kid pointer colouring v1 and the counter a2 (target v0 / v1) although nothing held
+   v0: the K&R `extern int f();` callee called in the loop defines v0 inside the live range. Declaring
+   the never-read callee `void` frees v0 (site-1 loop word-for-word). Same idea as kit IX's dead-v0
+   void alias, but here it re-colours a loop induction variable, not the call site. Sites 2 / 3 still
+   want the counter in s0 (the build keeps it caller-saved and spilled).
