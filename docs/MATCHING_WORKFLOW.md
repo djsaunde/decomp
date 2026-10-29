@@ -14,6 +14,7 @@ _76 entries. Auto-generated from per-memo notes; content may be rough on first p
 
 - [scripts/spelling-grid.py (monorepo): parallel search over explicit, semantics-preserving source alternatives in a template copy of a standalone donor -- `@{a @| b}@` choose-one, `@[s1 @; s2]@` every order, `@{=NAME ..}@` linked choices; exhaustive or coordinate descent + pairwise; objdiff score per probe (~1 s)](#spelling-grid-search) -- _the hand-written grids of kits CXII-CXXV (increment spelling, operand order, inline routing, decl/statement order, line layout) as one tool; not the permuter: it only tries what you wrote._
 - [scripts/lever-sweep.py (monorepo): one-lever-at-a-time sweeps -- denaming / volatile / order / bbsplit / all -- on an in-tree NM body or a standalone donor, scratch copies, parallel objdiff scoring](#lever-sweep-monorepo) -- _finds which lever moves a function; then combine with spelling-grid._
+- [scripts/zero-use-sweep.py (monorepo): brute `+ 0 * (int)(X)` counted-use sweep, site x identifier (`--exprs` adds `*p` / `p->f`), skips maybe-unset locals, report.json metric](#zero-use-sweep) -- _kits CXCIV / CXCVI / CXCVIII; confirm hits with refresh-report._
 - [Handwritten assembly sources (1080, agent-g run 158): libultra/handwritten `.s` routines are real assembly source under `src/libultra/` + `src/handwritten/`, GLOBAL_ASM'd into their host unit with no splat `nonmatching` marker, so objdiff scores them from source -- one block per splat symbol; classification of the 48 zero-fuzzy functions](#handwritten-assembly-sources) -- _evidence rule: cache/CP0/TLB/FPU-control ops, k0/k1/eret, addi/add/sub, or byte-identity with a reference libultra .s. No episodes (not C matches)._
 - [Clean-build-only CI break: a target-specific REPLACE_FUNC_BODY is inherited by the host object's explicit prerequisites, so a donor listed as a prerequisite runs every splice on itself in a fresh build (main CI red 2026-10-22..23, runs 118-131)](#private-replace-func-body-ci-break) -- _use `private REPLACE_FUNC_BODY +=` when the donor is also a prerequisite; the landing gate now builds a fresh worktree like CI._
 - [scripts/rdiff.py (1080): branch-offset- and jal-aware per-function diff -- `--raw --pins` keeps branch targets (measured from the function's FIRST label) and jal targets and applies undefined_syms pins; the masked default view hides decode errors (agent-c run 121)](#rdiff-raw-pins-run121) -- _run it on every near-miss before trusting an old cap note; classify each residue as decode / pin / schedule / colour._
@@ -13527,3 +13528,20 @@ copy of the whole unit, compiled through asm-processor + IDO cc with -DNON_MATCH
 game_libs_func_0002D374 --target build/src/game_libs/game_libs_post.c.o --jobs 8` (~65 variants in under a
 minute; its `denaming raw` hit took 2D374 99.59 -> 99.64). Use it first to find which lever moves a function,
 then spelling-grid to combine alternatives. Scores rank variants; confirm with `scripts/refresh-report.sh`.
+
+## scripts/zero-use-sweep.py: the `+ 0 * (int)(X)` counted-use sweep (2026-10-28) <a name="zero-use-sweep"></a>
+
+`scripts/zero-use-sweep.py` (monorepo; imports lever-sweep.py's compile/score code, so the same two input kinds and
+the same `-c functionRelocDiffs=none` metric as report.json) appends ` + 0 * (int)(X)` to every `= E;` /
+`return E;` and wraps every `if (E)` / `while (E)` as `((E) + 0 * (int)(X))`, for every identifier X in the
+function (`--exprs` adds `*p`, `p->f`, `a.b`, `v[i]` forms: kit CXCIV's own match was `+ 0 * *q`). The term is zero
+code but a counted use for uopt / NCC colouring priority (kits CXCIV, CXCVI, CXCVIII). It never writes `src/`.
+Well-definedness filter (on by default): X (or the base identifier of an `--exprs` form) must be a parameter, a
+non-local, or a local whose declaration-initialiser / plain assignment precedes the site in the same or an
+enclosing block, is not the brace-less body of if/else/while/for, has no switch label of its block in between,
+and is not the site's own statement; functions with `goto` are skipped. Skipped (maybe-unset) pairs are listed.
+Textual and conservative -- still read every hit. `--no-defcheck` is diagnosis only. Example:
+`python3 scripts/zero-use-sweep.py --exprs --src projects/1080-agent-c/src/kernel/kernel_000.c --fn func_80001ADC
+--target build/src/kernel/kernel_000.c.o --jobs 10` (~340 variants, a few minutes; found 1ADC 93.54 -> 94.32).
+Probe scores can disagree with the spliced unit (titproc 116C: +0.02 in the probe, flat in report.json): confirm
+every hit with `scripts/refresh-report.sh`. A hit that changes length counts only toward the target length.

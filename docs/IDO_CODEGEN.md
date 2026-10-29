@@ -14602,6 +14602,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLXXIX (agent-g 2026-10-28, run 203): **NCC folded `+ 0` on a pointer-valued inline-call result (or the inline's return) re-pools EDG temporaries = zero-code colour lever (41D40 99.61 -> 99.90, 42938 97.44 -> 97.60, gui 3714 96.43 -> 96.51); a `+ 0` site-sweep recipe over 30 NCC donors; negatives 3DF58 / 46790 / 3AE58 / 250C8 / 2D374 / 591C / 97EC / 1DDC / 0B3C**](#kit-clxxix-agent-g-run-203) -- _No exact._
 - [kit CLXXXI (agent-g 2026-10-28, run 204): **`scripts/zero-lever-grid.py` = rerunnable `+ 0` / folded `0 * inline()` / `(&X)[0]` site grid for NCC donors (30 donors: one hit, game_uso 3558 81.66 -> 85.86 via `&p->mtx + 0 * (int)(c.getOut())`); 41D40's last register is an EDG pool-slot merge (bottom array temp reuses the entry index vreg), 3E5E0's spill is the CB-level ctor `this` vreg; 2D374 / 97EC / 3AE58 / 0B3C / 591C / 396FC negatives**](#kit-clxxxi-agent-g-run-204) -- _No exact._
 - [kit CLXXXIII (agent-g 2026-10-28, run 205): **count the by-value copy hops: game_uso 8CD8 87.19 -> 89.48 (XZ return type, `Vec3 dir = xz-expr`, direct-init `XZ e(..)`, `kE0 * (250 * width)`); the report scores with `functionRelocDiffs=none` (CLI default differs on reloc-free cfe units: 30AF4 92.52 report = 91.73 CLI); 30AF4 92.52 -> 93.20 (if / else-if decode, direct fC store, wv/cp order); 3558 x,y,z operator= fixes two copy regions but loses the matrix juggle; 46050 / 454C4 constant-hoist pattern**](#kit-clxxxiii-agent-g-run-205) -- _No exact._
+- [kit CLXXXVII (agent-g 2026-10-28, run 207): **cfe `+ 0 * VAR` as a uopt priority lever read in the zdbug:5 list (one counted use per block / dominance path, int contexts only, defined variables only; a use extends the LR and blocks its register); 591C 99.73 -> 99.85, 38A28 84.62 -> 92.49 at target length, 30AF4 93.20 -> 93.55**](#kit-clxxxvii-agent-g-run-207) -- _No exact; 591C left = copy destinations a0 vs a1._
 - [kit CLXXXV (agent-g 2026-10-28, run 206): **corrected-metric re-sweep = 3 `hoist` hits (inner declaration -> function scope: 37540, 8CD8, 7C1C), 0 that the old metric missed, 0 zero-lever-grid hits on 27 NCC donors; two unused `V3` locals set 37540's frame to the target 0xC0; cfe `+ 0 * VAR` counted-use grid automated in-tree (2D374 `if (0 + 0 * i)`, 469A8 `+ 0 * arg1` to target length)**](#kit-clxxxv-agent-g-run-206) -- _No exact; NM 37540 95.72 -> 96.39, 469A8 94.24 -> 95.12, 2D374 99.67 -> 99.77, 8CD8 89.475 -> 89.499, 7C1C 95.239 -> 95.261._
 - [kit CLXXVII (agent-g 2026-10-28, run 202): **NCC `(&x)[0]` re-read = a load uopt will not CSE but ugen still reuses across the fall-through edge: a candidate (v1) becomes the target's ugen temp (t8 / t9); cfe folds the spelling away (NCC-only)**](#kit-clxxvii-agent-g-run-202) -- _EXACT game_libs_func_000307A8 (99.46 -> 100); negatives 41D40 / 97EC / 0B3C / 3AE58 / 46790 / 3DF58 / 37938 / 250C8 / 1DDC._
 - [kit CLXIX (agent-g 2026-10-28, run 201): **fixed lever-sweep `order` re-sweep over 50 bodies: order hits in 4 (2 kept, 2 false positives), bbsplit kept in B75C / C234 / DF14 / kernel 1ADC; a PAIR declaration grid beats single declmove (B75C 93.61 -> 93.93); four `order` false-positive classes (unqualified member / global stores, cast-deref writes, ALL-CAPS call macros); in-tree whole-file grid harness**](#kit-clxix-agent-g-run-201) -- _No exact; 32C8 zero/l134 colour, 578B4 sp50/ra, E2D0, 1ADC, 4C5E4 grids negative; 54E78 / 65494 / 6808-gD hits rejected (length away from / across the target)._
@@ -46947,3 +46948,81 @@ _Exact: gl_func_00050444 (488 B, 91.94 -> 100), NCC donor `game_libs_ncc_50444.c
   pointers passed as a0 (e, c, p), i.e. a copy-to-argument preference, which the target temp would need from
   somewhere. Ten spellings (inline odd() / post(int &), named t, `(n += 1) - 1`, `% 2`, decl orders) and the
   full counted-use sweep: flat.
+
+## kit CLXXXVII (agent-g 2026-10-28, run 207): **cfe `+ 0 * VAR` as a uopt PRIORITY lever, read in the zdbug:5 list -- 591C 99.73 -> 99.85 (57 -> 34 rows), post0b 38A28 84.62 -> 92.49 at target length (a counted use keeps a switch selector coloured), post 30AF4 93.20 -> 93.55; the one-zero-use-per-dominance-path rule** <a name="kit-clxxxvii-agent-g-run-207"></a>
+
+_No exact. report.json: game_uso_func_0000591C 99.73376 -> 99.85270 (4372, length = target), gl_func_00038A28
+84.61729 -> 92.49383 (344 -> 324 bytes = target), gl_func_00030AF4 93.19697 -> 93.54735 (2132, target 2112, length
+unchanged)._
+
+**1. Reading priorities.** Compile the asm-processor output of the whole unit with the dump cc
+(`tools/ido-static-recomp-dump/.../cc ... -Wo,-zdbug:5`, diagnosis only) and summarise `uoptlist` between
+`global coloring of FN` and `REEMISSION OF FN`: each `>>>active<<<{expr|n} LR reg` block, its `adjsave` and the
+`- live bb - <bb> <refs>` lines. The reg column is machine number - 1 (1 = v0, 2 = v1, 3 = a0, 4 = a1, 5 = a2).
+`forbidden:` is the set at colouring time (already-coloured neighbours + precoloured argument registers in the
+LR's blocks, e.g. a0 when the LR spans an alloc call block that loads `a0 = 12`). Ties in adjsave go to the lower
+LR number. Empirically adjsave = (refs + const) / spanfactor, so each counted use in an LR of n blocks adds
+1 / spanfactor (0.25 for a 4-block LR, 0.5 for 2 blocks).
+
+**2. Counting rules for the folded use (cfe).**
+- Pointer variables need an int cast: `+ 0 * (int)p`. Put it in an INT context (an address offset
+  `*(float *)((int)p + 8 + 0 * (int)p)`, an index `p[0 * ((int)p | 1)]`, an int call argument
+  `alloc(0xC + 0 * (int)src)`, a pointer built through `(T *)((int)q + 0 * (int)p)`). In a float expression it
+  adds an int->float conversion (code); pointer arithmetic `ptr + 0 * x` is folded before uopt and counts nothing.
+- At most ONE counted use per block, and never two uses of the same variable where one block dominates the other
+  (57 dominating 61): uopt then CSEs `0 * x` into a live zero (`or a2,zero,zero` + spill, +16 bytes). Different
+  spellings (`(int)p * 0`, `0u * (unsigned)p`, `0 * ((int)p + 1)`) are the same expression for this. A second use
+  in the same block needs a different sub-expression of the variable (`0 * ((int)src | 1)`, `0 * (int)src[0]`).
+- A use in a block where the variable was not live EXTENDS its live range there: the rank changes, and the
+  extended LR now blocks its register for every LR in that block (that is how the 591C site-4 address constant
+  moved a1 -> a2: `accel_params = (float *)((int)hit_parent + 48 + 0 * (int)child_flags)`).
+- Only use variables that are definitely set on every path to the use (coordinator rule after agent-c's run):
+  the grid's biggest 591C hits were `+ 0 * (int)delta_g_dst` reads before the variable's first assignment --
+  rejected. A use of the variable inside its own initialiser (`int code = *(int *)c + 0 * code;`, 38A28 grid top
+  hit) is an uninitialised read -- rejected; the same use one statement later is fine.
+- A use of a LOAD expression (`0 * *(int *)((char *)self + 0x30)`) is folded together with the load and does NOT
+  count for that expression's code-motion candidate.
+
+**3. 591C (cfe, 4372 B).** Order before: self->0x30 prefetch (2.67, spans the dispatch arms, the scratch block AND
+the post-3ED4 block 66) -> v1; scratch dst copy (2.5) -> a0; scratch src (1.5) -> a1; &res_a (1.0) -> a0; sub
+(0.63) -> a0. Kept (all zero-code, length = target):
+- scratch src raised to 3.0 (`alloc(0xC + 0 * (int)src)` in the call block, `src[0 * ((int)src | 1)]` and the z
+  offset in the body): src now outranks its copy destination and colours v1 as the target;
+- chain site-4 source (`accel_params`, one LR across both chains) raised 1.5 -> 2.5 with the z offset in both
+  chains and `stage = *(Vec3 *)((int)p + 0 * (int)accel_params)` after each block: it ties the 2.5 destination
+  and wins on LR number -> v1 as the target;
+- `axis_src` (the 1784 base) read through the PARAMETER (`a0->0x30`, kit CLXXIV): block 66 leaves the prefetch
+  web, so sub stops interfering with the prefetch and colours a0 again (99.79);
+- `+ 0 * (int)child_flags` on both site-4 source definitions (child_flags is set by site 3 just before): the
+  address constant colours a2 (99.85).
+Left (34 rows): the three copy destinations colour a0 (target a1) and the prefetch then a1 (target a0). The target
+needs a0 blocked for the destinations; only the prefetch can do that at the scratch block, and it ranks 1.33 once
+block 66 is out of its web (2.67 with 66 in, but then it interferes with sub and sub loses a0). Merging the three
+destination variables into one gives the merged LR 3.75 (span compression), above every source. Fresh counter
+variable + `0 * v0` around the 0xd84 counter: flat or longer. Region-wide grid (3872 single insertions, 22
+variables; then 1111 on the scratch / chain region and 564 on the tail after each kept step): no other hit with a
+defined variable.
+
+**4. 38A28 (cfe jump-table interpreter).** `if (key >= 40 + 0 * code)` in the 0x66 arm keeps `code` live and
+coloured across the jump-table switch (it had a memory home + reload): 344 -> 324 bytes = target, 84.62 -> 92.49.
+The remaining rows are the target's 64-byte frame (key spilled at 60) and p/key in a2/a3 (ours v0/a2). Second
+grid round on top: flat.
+
+**5. 30AF4.** `gl_cmd_30AF4 = 16 + 0 * prev;` in case 2 (any defined variable gives the same +0.35; the same
+store in the later case is +4 bytes and lower).
+
+**6. Grid results on the other cfe bodies (one insertion per statement x every local / parameter).** 396FC
+(98.66, 264 variants), 35B1C (97.40), 415A4 (93.38; the only hit shortens 452 -> 444, away from the 452 target,
+rejected): flat.
+31A74 (90.73), 250C8 (99.85), 30AF4 second round on the kept body: flat. 2E354 (m2c body, 8792 variants, 4907
+probed in the time box): the only length-toward-target hit (`+ 0 * var_v0`, 3692 -> 3688) reads a variable that is
+only assigned inside earlier `if` arms -- rejected under the defined-variable rule.
+
+**7. 38A28 frame.** After the counted use the target length was reached but the frame was 48 bytes (target 64, key
+spilled at sp+60). A 120-way declaration grid over {r, p, key, `volatile int pad[4]`} x the position of `code` gave
+`key; code; volatile int pad[4]; r; p` -- frame 64 and every home as the target (92.49 -> 92.59).
+
+**Tools (scratch, /tmp/claude-1000/g207):** `zsum.py` (colour-order summary of a uoptlist), `lr.py` (forbidden /
+interference for chosen LRs), `grid.py` + `batch.py` (line-anchored counted-use grid scored in-tree; 0.7 s a probe,
+which makes a 4000-variant grid on a 4 KB cfe body a few minutes -- lever-sweep's in-tree probe path was ~20x
+slower here).
