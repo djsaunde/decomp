@@ -14599,6 +14599,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCII (agent-c 2026-10-28, run 212): **read the zdbug:5 colour ORDER (adjsave) on a reload region: counted uses outside the block reorder it -- 90CC's whole arg1 / arg2 / arg7 / const-6 block now matches; `if (1) {}` splitters are counted-use sites (55A0); a counted use that adds a spill or a char-global load is real code; 4D688 / 4B0A8 / 24B8 a-register residuals diagnosed; zero-use-sweep skips float identifiers**](#kit-ccii-agent-c-run-212) -- _No exact; 90CC 99.26 -> 99.45, 5A2C4 90.29 -> 90.47, 55A0 97.24 -> 97.26, 8FC8 91.44 -> 91.51._
 - [kit CCIII (agent-c 2026-10-29, run 213): **three or more trailing `if (1) {}` blocks (after the last call) raise the BB count until a loop-invariant address held in s8 drops to the target's frame home + reload; a by-value operator returning `T(x * s, y * s, z * s)` evaluates all components before the temp stores (restores the load-delay nop); 8FC8 S70-block / kid-loop / pos-zero, 4C5E4 2.0f remat, 65EE4, 18F0 peel, 5A2C4 split temps, 4A890 id copy diagnosed (negatives)**](#kit-cciii-agent-c-run-213) -- _No exact; post1b 65494 91.75 -> 98.64 (1336 = target, mnemonics identical)._
 - [kit CCIV (agent-g 2026-10-29, run 211): **two trailing `if (1) {}` after a loop drop an extra s8 and rematerialise a copied loop-end constant (3B2EC 96.36 -> 99.92, 948 = target; re-check old counted uses after a structural fix; `i * 12` builds the value in the s-register directly; `cx + cz * w` sets addu operand order); NCC temp slots moved by an in-expression named scalar `(kk = o->k)` and a `set(const V3 &)` reference helper (37938 every slot = target); a char-prototyped per-site callee alias gives the `lb + sll/sra` re-extended char argument (31A74 length + frame = target)**](#kit-cciv-agent-g-run-211) -- _Trailing blocks do nothing on most donors and on cfe; 3B9C0 / 46050 / 3558 / 30AF4 diagnosed; gui 4568 +4 is a splat boundary (delay slot in gui_uso_post)._
+- [kit CCVI (agent-g 2026-10-29, run 212): **a NM donor's last word scored as INSERT = the `.s` stops at `jr ra`: gui 4568's delay slot sat in the tail bin (yaml boundary + renamed force-added bin; grow expected .text by appending at EOF, objcopy --update-section drops relocs), post0b 37938's delay nop was emitted by an 8-byte 1-word `_pad.s` block (-> all-zero suffix + NM clip -4 + symbol trim); the NCC reused edg temp is one uopt LR, which pins 3B2EC's cursor copy and 37938's final reload to v0**](#kit-ccvi-agent-g-run-212) -- _4568 96.01 -> 96.53, 37938 98.71 -> 99.88; 3B2EC / 37938 / 97EC colour and temp-order negatives listed._
 - [kit CCV (agent-c 2026-10-29, run 214): **NCC frame-home fitting with an isvar home list + three LCS scores: scalar DECLARATION placement moves homes (function-scope f, h/w/dt before n/d/hit), ctor -> set() fixes the s-reg permutation, a real C++ virtual call fixes addu order, operator/= fixes the division schedule, by-value operator= via cp(const &) homes temps below the param, `n.sc(k = ...)` + `const Vec3 &ri = imp` fill the last holes, a named float result in an inline dot() is a phantom f0 LR (use a const-ref local), one `if (1) {}` before the impulse swaps k / w colours**](#kit-ccv-agent-c-run-214) -- _post1b 65494 NM 98.64 -> 99.91 (every sp offset + frame = target; left: op* products f0/f2/f12 vs f2/f12/f14, an f0 phantom the target has); 63964 op+ temp order negatives._
 - [kit CLXXXVIII (agent-c 2026-10-28, run 205): **a register copy in the FIRST compare's delay slot is the else block's first insn (as1 fills from the branch target): a block-local `u8 d = c` dispatch copy (int copies propagate away) + the range test on c gives 6126C 93.81 -> 99.35 at target length; NCC ignores volatile params; 4C5E4 un-named m78 + folded `0 * mC0` ring phase (87.22 -> 88.48)**](#kit-clxxxviii-agent-c-run-205) -- _No exact; 4E424 / 18F0 / CEB4 / 4A890 / 578B4 / 63964 / 50444 negatives._
 - [kit CLXXVIII (agent-c 2026-10-28, run 200): **37540 ported to C++ from its exact sibling 37348's donor kit (cfe 81.17 -> NCC 93.58, length = target): one inline reads the saved vector and clears x (refs = early stores, return = register), set() + compound `*=` for the store/re-read build; 8CD8 pads worth +0.07, no natural aggregate; 36694 n-CSE diagnosis**](#kit-clxxviii-agent-c-run-200) -- _No exact._
@@ -47422,3 +47423,58 @@ Negatives: statement order of nsum / count / w / psum / wsum, element-wise nsum 
 (named r, set(), field stores, s * x), plain ctor for op* only (products become ugen temps, still f0..),
 `if (1) {}` at every loop-body position. 63964 (99.96): free vs member operator+, by-value / named-result /
 reference-local forms of operator+ do not move the op+ reference temps from below X to above T2.
+
+## kit CCVI (agent-g 2026-10-29, run 212): two jr-ra delay-slot boundary fixes (gui 4568 delay word in the tail bin, post0b 37938 delay nop emitted by an 8-byte `_pad.s` block); the NCC reused edg temp is ONE uopt LR (3B2EC cursor copy, 37938 final reload diagnosed); 97EC temp-order negatives <a name="kit-ccvi-agent-g-run-212"></a>
+
+**Boundary class: a NM donor's last word scored as an INSERT = the function `.s` stops at `jr ra`.**
+Two instances this run, both legal boundary fixes with ROM byte-identical:
+
+- *gui_func_00004568* (96.01 -> 96.53, 792 -> 796 B): the delay slot `addiu sp,sp,8` at ROM 0x591DB0
+  sat at the start of the `gui_uso_post` bin (the USO's own section header says text size 0x4880, i.e.
+  the original tool counted the delay word outside .text, which is why splat ended the c segment there).
+  Fix: yaml tail bin -> 0x591DB4 under a NEW name (`gui_uso_tail`, bin force-added) so other checkouts
+  don't link their stale untracked `gui_uso_post.bin`; `.s` + the word; TRUNCATE_TEXT +4; expected/
+  .text grown by 4 bytes. Growing an expected `.o`'s .text: `objcopy --update-section` DROPS the
+  relocations -- instead append the new .text bytes at EOF and repoint the section header (sh_offset /
+  sh_size), leaving .mdebug's internal file offsets untouched, then patch the symbol sizes; build it in
+  /tmp and `cp` it over.
+- *gl_func_00037938* (98.71 -> 99.88, 340 -> 344 B): the `.s` ended at `jr ra` (0x154) and the
+  one-word `gl_func_00037938_pad.s` GLOBAL_ASM block emitted EIGHT bytes (asm-processor pads a 1-word
+  block), silently covering both the delay nop and the real alignment word. Fix: delay nop into the
+  `.s` (0x158), pad pragma + `_pad.s` removed, `SUFFIX_BYTES_FORCE += gl_func_00037938=0x00000000`
+  (+ NM mirror), expected symbols resized in place; the NM object shrinks 4 (old 2-word block vs the
+  1-word suffix) so the post0b NM clip moves -4 and gains a `gl_func_00037938=0x158` symbol trim (the
+  NM suffix otherwise lands inside the symbol). Scan: `tailscan.py`-style check of every 80-99.99
+  function's last three objdiff rows for an INSERT/DELETE found no other case in game_uso / gui /
+  post / post0b<0x48000.
+
+**NCC reused edg temp = one LR, so its colour is set by its WHOLE union of pieces.** zdbug:1 shows edg
+reusing one `M` temp (3B2EC: M -84, 13 versions -- inline `this` copies, the `list()` result, the
+`*list++` old-value copy, the `cnt++` old-value copy; 37938: M -60, `&c`, `o->s`, the `getOut()`
+result) and coloring-solve shows a single LR for it. Consequences found:
+- 3B2EC (still 99.92): the loop-bottom cursor copy is that temp (ours v0 = first free at ord 13). For the
+  target's t4 the copy must interfere with every v0..t3 owner, and those are exactly the inner edge-loop
+  LRs (v0 / v1 vertex pointers, a0 / a1 halfword loads, a2 / a3 dx / dz, t0 / t1 ex / ez, t2 the vi
+  walk, t3 the next-index table) -- while the entry copy stays v0. So in the original the copy shares
+  a variable with something live across the edge loop but not past it (the face pointer f is the only
+  such value and is t4 in both). Not reproduced. Negatives (all 4 words or worse): for-loop init/incr
+  (identical: edg reuses the same temp), explicit pre-test + bottom statement (entry schedule moves),
+  named cursor q (copy coalesces at entry, 236 words; bottom q goes v1), q shared with the face pointer
+  (still v0), `Face &` / `const Face *` / `Face *const` f, unnamed remap in face(), s16 i, const list,
+  `cnt++` split (moves the cnt copy, cursor copy still v0), an inline `Face::edges()` holding the edge
+  loop (edg does not inline a function with a loop: emits a call), single `if (1) {}` at every body line,
+  face() moved into the edge loop's for-init (`for (f = col->face(i), k = 0; ...)`: the whole temp
+  web swaps v0 / v1, copy v1, 37 words; `vt` in the same init too: unchanged 4 words; `Face *f` declared
+  in the for-init: 240 words).
+- 37938 (99.88): the final `c.getOut()->m30` reload is in the M -60 temp LR (v0); target v1. A member
+  returning `char *` (`c.m30()`) makes a separate return temp but it takes a0 (argument preference) and
+  evicts o to a1 (30 words). Evaluating the reload before `o->k` via a named `Node *n` copy-propagates
+  from the entry `o->s` load (no reload, n in v1 -- the colour the target wants, but not its reload);
+  `if (0) { gl(&a, &b, &c); }`, `Node * volatile out`, call-argument comma forms (frame +24) all worse.
+- game_uso 97EC (6 words, e-bound / f-bound temp homes swapped): f in a nested block (frame +8),
+  reference casts on either ctor argument, copy-init `XZ e = ...` (identical), `XZ f = XZ(...)` (+8
+  words), a named `Vec3 te` for e all negative.
+- post0b 41D40 (99.90, bottom next()'s array load a1, target v1 = the entry next()'s result register, so
+  in the original the two share a pooled edg temp): extra folded `+ 0` on the result / index / array /
+  condition, `a[0][..]`, `a->data[..]`, a named `r`, `idx += 1` / `idx = idx + 1`, and an `if (1) {}` /
+  `if (0) {}` / `{}` at every body line all negative.
