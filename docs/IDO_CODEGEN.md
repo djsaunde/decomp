@@ -14626,6 +14626,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCXXXV (agent-c 2026-10-29, run 228): **as1-order scan (same per-block instruction multiset, different order) over the 81 non-exact functions: a load that must issue after the loop-setup addresses goes on the loop header's line (`b = *p; a = q; for (...) {` on one line; 4B2F4 98.37 -> 99.36); prologue `lui a0` / `sw ra` (6204 / E9FC), critical-path priority (mgrproc 2B7C), call-site home stores (5F5F0), hoisted constants (59E80), FP load order (4E424) and the 51AD8 delay-slot steal are NOT line ties; NCC keeps a goto block with `if (1) {}` as real branches; the 4-entry jump table (titproc 116C, kernel 1ADC, game_uso B3C) is not produced by any 4-label switch under 7.1 / 5.3 / NCC**](#kit-ccxxxv-agent-c-run228) -- _NM: game_libs_func_0004B2F4 98.37 -> 99.36; kernel func_80001594 96.80 -> 99.82 (a CSE'd address issues at its earliest use's line: move ALL early uses together; loop-entry and loop-body statements on one line)._
 - [kit CCXXXVI (agent-g 2026-10-29, run 229): **591C head axis: x component in `scale` computed first, stores Z, Y, X with the bbsplit after the first (99.973 -> 99.977); the last 591C row is a z / fsel colouring-priority swap (every move tried transfers the error); cfe keeps a `p = &t; if (p || (p = new))` stack-temp guard and gives every declared local a frame home; first cfront-style cfe ports of 97EC (95.16) and 7C1C (24.9, b in s4)**](#kit-ccxxxvi-agent-g-run229) -- _NM: game_uso_func_0000591C 99.973 -> 99.977._
 - [kit CCXXXVII (agent-c 2026-10-29, run 229): **a CSE'd address in a1 where the target has a2 = a coloured web missing from its interference: the following pointer-walk clear loop as a ONE-LINE index loop on the existing `i` (`for (i = 0; i < 135; i++) { a[i] = 0; b[i * 0x9C + 0x72] = 0; }`) lets i's web overlap it and it takes a2 (uopt still emits the pointer loop); splice a donor over a C stub when the INCLUDE_ASM body defines labels inside the range; `-Olimit 1` = pure ugen (0 LRs): its `lui a2; ori a2,a2` constant only comes from a call argument or a register variable in a single-call function**](#kit-ccxxxvii-agent-c-run229) -- _EXACT: kernel func_80001594 99.82 -> 100 (+544 B). Negatives: 65EE4 (ugen arg order / a2 constant), E2D0, C310, 24B8, 4B2F4, 578B4, 4B0A8._
+- [kit CCXXXVIII (agent-g 2026-10-29, run 230): **591C priorities read exactly (z 23/5, fsel 50/12, shared join temp 30/9); a dead `if (z) {}` in z's span fixes the z / fsel order on the fsel-site version (99.39 -> 99.81), but the shared selector join temp then takes f2 at all ten sites: the target also needs an f2 LR inside some selector's join blocks; 97EC named in-expression temps fix f's home but not T1 / e (block temps sit above named locals)**](#kit-ccxxxviii-agent-g-run230) -- _No fuzzy change; negatives listed (690 statement-position variants, 0x204-site spellings, 22 97EC layouts)._
 - [kit CCXIII (agent-g 2026-10-29, run 216): **post0b 454C4 95.95 -> 99.95, length = target: build on the structurally-right BB lever, then re-test old micro-levers (drop the named element pointer -> sixth s-reg; drop the folded `& 0xFF`); `if (rec) {}` breaks an adjsave tie; `cur = nxt; if (nxt)` keeps an inline iterator member out of the candidates (ring temp t7 vs v0 web); a ternary sharing edg's int temp with post-increments separates when assigned in the same full expression as the inline call**](#kit-ccxiii-agent-g-run-216) -- _Open: e copy-propagated as the shared pointer temp (5 words); 3C43C homes = function-scope five + k / ABS3 temps / dd; 3558 per-row adds inert._
 - [kit CCXIV (agent-c 2026-10-29, run 218): **a RoData float read as `D + off` / an extern alias is often a compiler LITERAL: read the ROM word (bootup.uso RoData = ROM 0xD9FE44); a run of identical values around a jump table = one constant rematerialised (one literal word per `l.s`). As a literal uopt hoists / colours / reloads it after calls -> game_libs 3430 (0.1f in f2 + three trailing `if (1) {}`) and timproc_b5 CEB4 (0.3f + `if (1) {}` per white arm) EXACT via donors pinned `<fn>_rodata` = the pool's ROM offset; C310 NM 96.45 -> 99.89 (`== 1` = register-held 1 shared with the `= 1` store, field-form counters)**](#kit-ccxiv-agent-c-run-218) -- _CCXII address-form scan (size>0 FUNC symbols only): no further hit; 4F2DC literal +0.19; 6204/E9FC, 8BD4, 1824, 4C5E4, 4A308 / C310 spill-slot gap negatives._
 - [kit CCX (agent-g 2026-10-29, run 214): **each object of a class with an inline constructor is an edg labelled BB; above ~19 BBs uopt splits a held callee-saved constant (game_uso 3558's $f20 zero web: hold, live else muls, w.y reload) -- a constructor-less Vec3 / aggregate Ctx restores it; a Vec3 local is a uopt register candidate only when no member call or reference parameter is bound to it (free by-value mk() keeps the op- copy chain)**](#kit-ccx-agent-g-run-214) -- _3558 85.86 -> 89.21 (frame 256 = target, all homes on the target map); vb split / va.y f20 residual and negatives listed._
@@ -49105,3 +49106,54 @@ casted-pointer chains, prototyped / varargs callees, an `S *p = &G` local.
   `if (1) {}`, an if-goto chain (92.46) and a CCXXXIV goto block for the counter store. Not a line tie.
 - post0b 48510: twelve `Mesh::next()` spellings (`buf + n++`, a named n, `<< 4` byte arithmetic in both
   operand orders, `n[buf]`) leave the `sll t6 / lw t7` operand order (target buf in t6) and the ring shift.
+
+## kit CCXXXVIII (agent-g 2026-10-29, run 230): 591C's last row needs an f2 LR inside the shared selector join temp's blocks, not only the z / fsel priority order; a dead `if (z) {}` fixes the priority order (99.39 -> 99.81 on the fsel-site version); 97EC named-temp layouts <a name="kit-ccxxxviii-agent-g-run230"></a>
+
+_No exact, no fuzzy change landed. game_uso_func_0000591C stays at 99.97713 and game_uso_func_000097EC at 99.97403._
+
+- **Measured priorities (zdbug:5, `adjsave = refs / span`, span = ((units + reaching) - 2) >> 2 + 2).**
+  Base: z (one LR: the head Y, the scratch / chain Z sites and the 0x204 selector) = 23 / 5 = 4.6 -> f2.
+  fsel = 50 / 12 = 4.17 -> f12. The shared inner-ternary join temp (ichain 899, one LR over the 3 blocks
+  of all 10 selector sites) = 30 / 9 = 3.33 -> f14. It interferes with z only through the 0x204 join block.
+  With the 0x204 selector in fsel: z = 20 / 5 = 4.0 and fsel = 53 / 13 = 4.08, so fsel colours first and
+  the two swap (99.39).
+- **A dead `if (z) {}` right after the head `z = axis[1] * fsel;` adds one ref to z (21 / 5 = 4.2 > 4.08).**
+  The same holds after any statement in z's existing span (the head, the scratch site, the chain sites).
+  It is emission-free and z is defined there. The order is then right: z f2, fsel f12, and the 0x204
+  outer is f12 as in the target (99.81). But now nothing coloured f2 is live in a join block, so the
+  join temp takes f2 at all ten sites (40 rows). `while (0) { if (z) {} }` counts nothing.
+- **So the target needs an f2-coloured LR that is live in at least one selector's join blocks, coloured
+  before the join temp (adjsave > 3.33).** The target's tail has no f2 reference in or near any join block.
+  The only f2 uses after the chains are the 0x200 abs and the proximity f2v, and both are defined after
+  their join. Negatives on the 99.81 version: `if (z) {}` after each of 230 statements (any position past
+  the chains spreads z over the tail: 90-96; the first-region case-1 site raises the span factor 5 -> 9
+  through reaching blocks); `if (f2v) {}` after 177 statements; `if (1) {}` after 230 statements (all
+  flat at 99.81); 0x204-site spellings `z = sel; fsel = z`, `fsel = z = sel`, `z = fsel = sel`,
+  `fsel = sel; z = fsel; if (z) {}`, `(fsel <= m) + 0 * (int)(z = fsel)`, `if ((z = fsel) <= m)`
+  (each either restores the base or gives 99.19-99.81). Next: find the f2 LR, e.g. a split piece in
+  the target, or a selector site whose join block the chain-Z LR can reach without adding reaching blocks.
+- **97EC (NCC) bound-temp layout.** Target homes: f-bound 0xB4 < T1 (the materialised `a - b`) 0xC0 <
+  e-bound 0xCC. Named locals assigned in the expression with the implicit `operator=`
+  (`Vec3 te, tf; XZ e(te = (a - b) * s->k); XZ f(tf = ...)`) fix f (0xB4) but put T1 above te
+  (T1 0xCC, te 0xC0), because block temps always sit above the block's named locals: 99.970. `te` declared
+  in an enclosing block goes above the vp spill (0xE8, worse). A named `d` for `a - b` adds a copy hop
+  (frame 0x128). Copy-init `Vec3 te = ...` shrinks the frame to 0x108. `const Vec3 &` bindings, a
+  one-declaration `XZ e(...), f(...)`, an inline `dk(b, k)` and a static `XZ::mk(Vec3)` are all worse.
+- **More 591C negatives.** Moving the 0x200 abs, the 0x204 abs, the proximity f2v group or either
+  yaw_raw load into z / x / scale / dot / f12v / neg / dist_sq (45 variants) leaves the result at 99.81.
+  `if (f2v) {}` after the 0x2DC selector does make f2v interfere with the join temp, but the reaching
+  blocks drop f2v to 20 / 15 = 1.31. f2v then colours after the join temp and takes f14 (99.66). Extra
+  `if (f2v) {}` refs inside its span do not win that back.
+- **97EC: the target's three bound-temp homes are an exact MIRROR of ours.** Ours, bottom to top: e-bound,
+  T1, f-bound. The target has f-bound, T1, e-bound. So the e statement's internal order flips as well as
+  the e / f group order. An inner `{ }` around f and the rest moves f's group to the frame bottom (frame
+  +8, 99.75). Friend `operator*(const Vec3 &, float)` and `k * (a - b)` give 99.948. By-value friend,
+  `.scaled()`, an `XZ(const Vec3 &, float)` ctor and default-ctor assignment forms are all worse (84-97).
+- **1DDC (NCC, 99.969):** moving any one declaration of the else arm (36 moves) and retyping the `int e`
+  placeholder (int / float / short / double / char[8] / int[2] / pointer / none) gain nothing.
+- **kernel 18F0 (89.19, 7.1 and 5.3 give the same bytes at -O2 / -O3):** the target keeps `~8` in a
+  hoisted register (t5, also inside the peel's store block), while ours builds it in `at` at each use.
+  No spelling makes it a uopt candidate: `0xFFFFFFF7`, `~8u`, `-9`, `~(1 << 3)`, u32 info, a mask local,
+  `&= (m = ~8)` in signed or unsigned form, or bitfields (bitfields give byte RMW). The peel's found test
+  is `bnezl found, store` + `b next` in the target but `beqz` in ours. `if (found) {}`, `goto`, and the
+  `continue` / else forms all compile to identical code.
