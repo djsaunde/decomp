@@ -292,6 +292,8 @@ def main():
                     help='in-tree units: compile the whole file (default: every other function body is emptied '
                          '(`{}`, line numbers kept; checked against a full-file base compile)')
     ap.add_argument('--no-defcheck', action='store_true', help='also try maybe-unset locals (diagnosis only)')
+    ap.add_argument('--keep-float', action='store_true',
+                    help='also try float-typed identifiers (default: skipped -- `(int)(float)` is a cvt, not zero code)')
     ap.add_argument('--jobs', type=int, default=8)
     ap.add_argument('--top', type=int, default=15)
     ap.add_argument('--maxv', type=int, default=4000)
@@ -357,6 +359,24 @@ def main():
         ex |= set(re.findall(r'\b[A-Za-z_]\w*\s*\[\s*\w+\s*\]', seg))
         ex = sorted(re.sub(r'\s+', '', e) for e in ex if not re.match(r'^\*\s*(' + '|'.join(KW) + r')\b', e))
         vocab = sorted(set(vocab) | set(ex)) if not a.vars else vocab + ex
+    if not a.keep_float:
+        # `+ 0 * (int)(f)` on a float/double is a real conversion (+4..8 bytes, kit CC), never a zero-code use
+        fl = set()
+        for m in re.finditer(r'\b(?:f32|f64|float|double)\s+([^;(){}]*)', C[flo:fhi] if intree else seg):
+            for part in m.group(1).split(','):
+                # a leading `*` (pointer to float) is not matched; `f32 a, f32 b` parameter lists are
+                n = re.match(r'^\s*(?:(?:f32|f64|float|double)\s+)?([A-Za-z_]\w*)', part)
+                if n:
+                    fl.add(n.group(1))
+        # globals declared float anywhere in the file (`extern f32 g;`, `f32 tbl[4];`)
+        for x in vocab:
+            if re.match(r'^[A-Za-z_]\w*$', x) and re.search(
+                    r'\b(?:f32|f64|float|double)\s+(?:[A-Za-z_]\w*\s*,\s*)*' + re.escape(x) + r'\s*[;,=\[]', C):
+                fl.add(x)
+        fl &= set(vocab)
+        if fl:
+            print('float-typed (skipped; --keep-float to try):', ' '.join(sorted(fl)))
+            vocab = [x for x in vocab if re.match(r'^\**([A-Za-z_]\w*)', x).group(1) not in fl]
     print('vocab', len(vocab), flush=True)
 
     sites = []
@@ -439,6 +459,11 @@ def main():
                   key=lambda r: (-r[0][0], abs(r[0][1] - r[0][2])))
     for s, x in rows[:a.top]:
         print('%s%.3f size %d/%d %s' % ('GAIN ' if s[0] > base[0] + 1e-3 else '     ', s[0], s[1], s[2], x))
+    same = [r for r in rows if r[0][1] == base[1]]
+    if same and len(same) != len(rows):
+        print('best same-length (NM size %d) rows:' % base[1])
+        for s, x in same[:min(a.top, 8)]:
+            print('%s%.3f size %d/%d %s' % ('GAIN ' if s[0] > base[0] + 1e-3 else '     ', s[0], s[1], s[2], x))
     print('done', len(rows), 'scored', sum(1 for t in res if t != 'base' and res[t] is None), 'failed', flush=True)
 
 
