@@ -47657,3 +47657,12 @@ was never the issue.
    extra reference temp at the bottom (`const Vec3 &er = e` for len2) can flip the frame to 264 with
    byte-identical code -- the frame grows by 8 when the home area reaches 208 bytes in some layouts and not
    in others; compare whole listings with offsets masked before blaming spills.
+
+**4. D884 / DF14 gains this run (same file, NM bodies).** (a) D884 took DF14's `p = base + 0xB4; p[2] = p[1] =
+p[0] = 0` shape (the three zero stores together before the flag block): the target's dead `addiu v0,v0,180`
+before the switch appears and every word up to the switch matches (96.65 -> 96.90, length 421 -> 422 because the
+missing addiu is now there and the flag block's two unshared `lui at` remain). (b) cfe `.loc` grouping: an
+if/else on ONE source line lets as1 hoist the else arm's `lui` first (target order), and the whole six-RMW flag
+chain on one line moves the saved-bit spill store next to the last RMW (both functions, +0.03..+0.08 each). (c)
+DF14 r-block: the cvt store before the 0x2B0 store lets the next call's `li a0` fill the cvt delay (-1 word). A
+pairwise line-join sweep over both bodies (48 / 47 joins) found nothing further.
