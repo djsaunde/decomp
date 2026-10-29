@@ -14638,6 +14638,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCXLVII (agent-c 2026-10-29, run 234): **cursor registers that change from DL append to append = BLOCK-LOCAL cursors (`{ char *base; s32 cnt; char *p; ... }` per append: own variable, own colour, own home words -- they replace frame-sculpt pad arrays); a u8 colour stored and read straight back (`colv[i] = cvt; ... r = colv[0];`) is store-forwarded by uopt into the target's spill + merge copies; dead IV copies in a cfe-tuned loop are an NCC tell**](#kit-ccxlvii-agent-c-run234) -- _post0b 5A2C4 90.47 -> 94.85 (1788 -> 1804 = target, frame 0xC0 with no pads); titproc 116C 99.12 -> 99.44 (plain `x * 30` + read-back + direct test, jointly); 578B4 sp50/arg2 t0-ra swap negatives; E68 NCC probes (88.4-90.4) and 76F0 / 31C0 / 63964 / 4B2F4 negatives._
 - [kit CCXLVIII (agent-g 2026-10-29, run 235): **a target that saves a pure address (`p = arg0 + K`) at a NAMED home across a call (above the temp area) has a non-copy-propagated variable: write `p = arg0 + K + 0 * (int)(*arg0);` (folded memory read, zero code) -- plain spellings are always propagated and spill to the temp area; offset-map diagnosis (target-only / build-only sp offsets = variables in the wrong slot); NCC layout: function-scope homes, then block locals in source order (siblings do not overlap), then temps, slack at the bottom**](#kit-ccxlviii-agent-g-run235) -- _bootup C234 99.84 -> 99.87 (spill slot = target via the frozen sp3C home defined in the call's argument list after an argument-0 assignment; counter old value v1 by holding the call result with a folded `0 * var_v0` use: keep a call result alive across a top-priority int LR to push it off v0), 55A0 97.27 -> 97.29 (every home but vec2 aligned), B75C 94.372 -> 94.376; 3BE1C / 48AEC frame-anatomy negatives._
 - [kit CCXLIX (agent-c 2026-10-29, run 235): **uopt spill slots sit directly below the cfe home region (every declared local has a home, unused ones too; u8s pack per word), so the home COUNT slides every spill slot by a word -- spill offsets all off by one word while homes line up = add or remove one home; two stores of one append on ONE line give the target's lui order; 5A2C4's per-append arg4 colours are not more block locals (the frame budget cannot hold them); a ugen ring shift at the first instruction can come from code much later**](#kit-ccxlix-agent-c-run235) -- _post0b 5A2C4 94.85 -> 94.92 (head block on the function-level base, BA stores p+0 first on one line); post0b 3B9C0 94.27 -> 95.14 (a component named before its second use takes the target's extra callee-saved float, then bbsplit / denaming / zero-use stack); E68 cfe / NCC copy probes, 4C5E4 second-2.0f rematerialisation, C310 / E2D0 / 24B8 (folded-read latch home) / 2B7C negatives._
+- [kit CCL (agent-g 2026-10-29, run 236): **a ugen-allocated cvt / expression becomes a uopt-coloured variable when NAMED with a folded memory read (`d = (f32)(n + 0 * (int)(*arg0));`); uopt interference is BASIC-BLOCK granular, so removing an `if (1) {}` between two LRs makes them interfere (and adding one separates them); UNCONSTRAINED LRs colour in BITPOS (first-occurrence) order, so an early dead `while (0) { n = 0; it.next(); }` reorders them with zero code**](#kit-ccl-agent-g-run236) -- _bootup C234 99.87 -> 100 and post0b 3DF58 99.06 -> 100 (both EXACT); 54E78 / 31A74 / 46790 / 97EC / 3AE58 / 454C4 / 3E5E0 / 329C / 18F0 negatives._
+- [kit CCLI (agent-c 2026-10-29, run 236): **a call-crossing pointer and a later value that both take ra in the target are ONE variable kept non-propagated by a folded read (its LR then reaches the later t0 users); adjsave = refs / units-with-refs, so an `if (1) { stmt; }` wrap that adds one ref unit drops a variable below an equal-adjsave tie group; a `lw tN; andi ra,tN` scratch load = the source copied into its own non-propagated variable first**](#kit-ccli-agent-c-run236) -- _post0b gl_func_000578B4 99.9855 -> 100 EXACT (9676 bytes, +1.27% code); new 0 pin gl_578b4_c34458 for the blank USO jals._
 - [kit CCXIII (agent-g 2026-10-29, run 216): **post0b 454C4 95.95 -> 99.95, length = target: build on the structurally-right BB lever, then re-test old micro-levers (drop the named element pointer -> sixth s-reg; drop the folded `& 0xFF`); `if (rec) {}` breaks an adjsave tie; `cur = nxt; if (nxt)` keeps an inline iterator member out of the candidates (ring temp t7 vs v0 web); a ternary sharing edg's int temp with post-increments separates when assigned in the same full expression as the inline call**](#kit-ccxiii-agent-g-run-216) -- _Open: e copy-propagated as the shared pointer temp (5 words); 3C43C homes = function-scope five + k / ABS3 temps / dd; 3558 per-row adds inert._
 - [kit CCXIV (agent-c 2026-10-29, run 218): **a RoData float read as `D + off` / an extern alias is often a compiler LITERAL: read the ROM word (bootup.uso RoData = ROM 0xD9FE44); a run of identical values around a jump table = one constant rematerialised (one literal word per `l.s`). As a literal uopt hoists / colours / reloads it after calls -> game_libs 3430 (0.1f in f2 + three trailing `if (1) {}`) and timproc_b5 CEB4 (0.3f + `if (1) {}` per white arm) EXACT via donors pinned `<fn>_rodata` = the pool's ROM offset; C310 NM 96.45 -> 99.89 (`== 1` = register-held 1 shared with the `= 1` store, field-form counters)**](#kit-ccxiv-agent-c-run-218) -- _CCXII address-form scan (size>0 FUNC symbols only): no further hit; 4F2DC literal +0.19; 6204/E9FC, 8BD4, 1824, 4C5E4, 4A308 / C310 spill-slot gap negatives._
 - [kit CCX (agent-g 2026-10-29, run 214): **each object of a class with an inline constructor is an edg labelled BB; above ~19 BBs uopt splits a held callee-saved constant (game_uso 3558's $f20 zero web: hold, live else muls, w.y reload) -- a constructor-less Vec3 / aggregate Ctx restores it; a Vec3 local is a uopt register candidate only when no member call or reference parameter is bound to it (free by-value mk() keeps the op- copy chain)**](#kit-ccx-agent-g-run-214) -- _3558 85.86 -> 89.21 (frame 256 = target, all homes on the target map); vb split / va.y f20 residual and negatives listed._
@@ -49832,3 +49834,100 @@ branch base b0c58bef0, sentinels 551E0 / 55B10 / EBC8 / C5B0 / 62F08 at 100. No 
    than ours; the frame is 8 larger here (0xF0 vs 0xE8) because the fs2 save went in without a home word
    leaving. `t = (d - sum) / dn` instead of `-(sum - d) / dn` scores 95.24 but shortens the function (1092) and
    flips the sign of a zero t, so it was not kept. post0b NM clip 0x2eaf8 -> 0x2eb00 (62F08 NM offset 0x2eab0).
+
+## kit CCL (agent-g 2026-10-29, run 236): two FP/INT colour residuals CLOSED -- (1) a value that ugen colours (a propagated cvt / expression) becomes a uopt-coloured variable when it is NAMED with a FOLDED MEMORY READ (`d = (f32)(n + 0 * (int)(*arg0));`), and an `if (1) {}` between two LRs REMOVES their interference (uopt live ranges are basic-block granular), so dropping a BB split can push a variable off a register; (2) UNCONSTRAINED LRs are coloured in BITPOS (first-occurrence) order, so a dead `while (0) { n = 0; it.next(); }` placed early reorders them without emitting code -- bootup C234 and post0b 3DF58 EXACT <a name="kit-ccl-agent-g-run236"></a>
+
+_report.json (non_matching build): bootup func_0000C234 99.87 -> 100 (2200 B), post0b gl_func_0003DF58 99.06 -> 100
+(360 B). Both NCC donors, spliced over empty placeholders on both build paths. Gate: full make ROM byte-identical
+(cmp), verify-blocks 6/6, `make non_matching_objects` 0 errors, no exact lost vs branch base a0f35f6f7, sentinels
+551E0 / 55B10 / EBC8 / C5B0 / 62F08 at 100. NM clip unchanged (no post0b NM length change)._
+
+1. **C234: the division block's FP colours (16 words).** Target: divisor `(f32)count` in f2, the reloaded 0x968
+   value (`temp_f12`) in f12, the copy in f0, the x product in f2; ours had the divisor in f0, temp_f12 in f2 and the
+   x product in f12. Two independent facts:
+   - The de-named divisor (`#define temp_f2_2 ((f32) temp_v0_4)`, run 184) is a CSE'd cvt expression that ugen
+     allocates (first free = f0). A plain named variable is copy-propagated straight back (byte-identical), but
+     `temp_f2_3 = (f32)(temp_v0_4 + 0 * (int)(*arg0));` (kit CCXLVIII's folded memory read: zero code, the
+     expression reads memory so uopt cannot propagate it across the four stores) makes it a real uopt LR, coloured
+     f2 (99.87 -> 99.918). The m2c names (`temp_f2_2`, `temp_f12`, `temp_f0`) were the target registers all along.
+   - Coloring dump (`-Wo,-zdbug:6`, bitpos -> cfe home offset via `-zdbug:2` `isvar M 4 -N`): temp_f12 was coloured
+     before ga and took f2 because it did NOT interfere with the divisor: the run-200 `if (1) {}` after the 0x968
+     division store put the reload in a new basic block, and uopt interference is per BB. Removing that split makes
+     temp_f12 share the divisor's block, f2 is forbidden, temp_f12 takes f12 and ga (coloured later) gets f2: 100.
+   Rule: when two values that never overlap in time share a register in the build but not in the target, look for
+   an `if (1) {}` (or other BB split) between them; when they overlap in the build but not in the target, add one.
+2. **3DF58: v0 / a0 / a1 swap between the two passes (16 words).** zdbug:5 (`>>>active<<<` blocks: bitpos,
+   adjsave, forbidden, interferes, colour) showed the next() return temp (shared by every inlined next() call),
+   the it.nxt temp and pass-1 n as UNCONSTRAINED LRs: their adjsave values did not change under any edit, the colour
+   follows bitpos order. `while (0) { n = 0; }` ahead of the pass-1 loop moved n before the next() temp (n -> v0,
+   target) but swapped the two temps; `while (0) { n = 0; it.next(); }` (one dead loop, nothing emitted) orders all
+   three like the target: 100. Variants that did nothing: the dead loop inside the loop body / after the loop,
+   `while (0) { best = n; }`, a separate `next2()` for pass 2, `while (0) { n = it.first(); }` (no change),
+   `while (0) { it.next(); }` before the `n = 0` loop (98.39). Rule: if a colour swap survives every priority
+   lever, dump zdbug:5; when the LRs involved are unconstrained, generate dead `while (0)` statements that mention
+   them in the wanted order at the top of the region (throwaway sweeper: `/tmp/claude-1000/g236/dl.py` inserts
+   `while (0) { V = 0; }` after every statement line for every listed variable and scores each with objdiff).
+3. **Negatives.** post0b 54E78 (NCC): the operator* scale `s = p.d` is an edg param temp coloured f0 (adjsave 4.0)
+   in every spelling (by value, `const f32 &`, `f32 *`, free / member operator, cast) -- the target keeps it in f18
+   (ft5, ring order after the z load in ft4), so it is probably not a uopt LR there; moving the m[2][2] split after
+   `m[2][3] = 0.0f` frees 0.0f into f0 (target) but CSEs the diagonal 1.0f (91.99); dead-loop sweeps over 5 forms x
+   every statement flat. post 31A74 (cfe): the 0x1CAC0 store after the sel clamp puts its `lui at` in the bgez delay
+   slot like the target but the sel caller-save `sb` then fills the jal delay slot instead of the `swc1`
+   (97.16 < 97.73) in seven forms (comma, in-argument, goto block, read-back, split calls). post0b 46790: 26
+   spellings of `(c / 16) * 1024 + (u8)(c & 15) * 8` / the nibble tests -- no extra ring slot. 97EC: copy-init /
+   reference-bound XZ temporaries do not swap the two edg homes. 3AE58 / 454C4 / 3E5E0 / gui 329C: dead-loop sweeps
+   flat (their residuals are ugen temp / copy-propagation choices, not uopt colour order). kernel 18F0 (cfe): the
+   target's `bnezl found` + `b skip` store layout is not produced by `if (found) {}` / `!= 0` / goto / empty-then
+   forms (byte-identical).
+
+## kit CCLI (agent-c 2026-10-29, run 236): post0b gl_func_000578B4 EXACT (9676 bytes, +1.27% code) -- a call-crossing pointer and a later value that BOTH take ra in the target are ONE variable kept non-propagated by a folded read; adjsave = refs / units-with-refs, so a zero-code `if (1) { stmt; }` that spreads the refs over one more unit drops a variable below a tie group; a `lw tN; andi ra,tN` scratch load is the source copied into its OWN non-propagated variable first <a name="kit-ccli-agent-c-run236"></a>
+
+Exact. gl_func_000578B4 (NCC donor) 99.985535 -> 100 report.json in two commits (99bbe684 99.9959, 3c9763d3 exact);
+code 87.55 -> 88.82 %, exact 3210 -> 3211. Donor renamed `game_libs_ncc_578B4.cpp`, spliced over an empty
+placeholder on both paths; the 15 `gl_func_00034458` calls go through the new 0 pin `gl_578b4_c34458` (the target's
+blank USO jal words). ROM byte-identical, verify-blocks 6/6, post0b NM length unchanged (clip 0x2eb00 untouched).
+
+**1. Diagnosis with the zdbug:5 dump (kit XCIX recipe).** The residual (kits XCIX ... CCXLVII) was the s2_508 FD50
+packet pointer `sp50` (t0 ours, ra target) and the following `arg2 & 0x1FF` load. Facts read off the dump:
+- colours go by `adjsave` descending; equal adjsave colours in itab-bit order (the four `temp_t2..t5` shift
+  expressions, adjsave 1.5, low bits, colour t2..t5 BEFORE sp50, adjsave 1.5, high bit);
+- **adjsave = (refs) / (number of live units that contain a ref)**; pass-through units do not count
+  (sp50: def + FD50 store in one unit, result store in the next = 3/2 = 1.5; merged variable below = 7/4);
+- ra (colour 13) is taken only when v0..t5 are all forbidden; the tmem expression `arg2 & 0x1FF` is ONE expression
+  LR across all six arms (ra everywhere), so sp50 = ra needs (a) no shared unit with it and (b) t0 forbidden.
+  The only t0 users near the call are after the tmem definition, so a separate short-lived pointer LR can never
+  reach ra.
+
+**2. The fix: one variable for both values, kept a variable by a folded read.**
+```c
+s32 sp50;                                   /* was char *; temp_ra_8 keeps its home via the `= 0` pad line */
+sp50 = (s32)( FW(FW(arg0, 0xC), 0x0) + (temp_a1 * 8));
+if (1) { FW(sp50, 0x0) = 0xFD500000; }      /* def and FD50 store in different units */
+FW(sp50, 0x4) = gl_578b4_c34458(...);
+...
+temp_ra_8 = arg2 + 0 * FW(arg1, 0x0); sp50 = (temp_ra_8 & 0x1FF) + 0 * FW(arg1, 0x4);
+```
+- Without the folded read uopt copy-propagates `sp50 = arg2 & 0x1FF` and the variable's LR ends at the result
+  store (flat). With it the variable lives to the last tmem use, so the later t0 / t1 users forbid t0 / t1.
+- Merged alone it has adjsave 7/4 = 1.75 and colours BEFORE the t2..t5 group (takes t2, 563 rows). Wrapping the
+  FD50 store in `if (1) { ... }` adds a unit with a ref: 7/5 = 1.4 < 1.5, so it colours after them and gets ra
+  (99.9959). Every other single-statement `if (1) { stmt; }` wrap that leaves 5 ref units works the same; the
+  plain trailing `stmt; if (1) {}` form did NOT split the unit here (all 88 positions flat).
+- **Scratch load.** The target's `lw t0,504(sp); andi ra,t0,0x1ff` is not a ugen rule: arg2 goes into its own
+  non-propagated variable first (temp_ra_8, coloured t0 in that unit), then is masked into sp50. A plain
+  `t = arg2;` copy is propagated (flat); the folded read is needed on BOTH statements (`t = arg2 + 0*...;
+  sp50 = t & 0x1FF;` without the second read is 505 rows).
+- Folded reads use arg1 words 0x0 / 0x4 (inside the descriptor, never otherwise read, so no CSE temp).
+
+**3. Negatives on the way (for similar call-crossing ra/t0 pairs).**
+- goto-reordering the w1 store before the w0 store (to put the t2..t5 defs in the pointer's unit): as1 keeps the
+  IR order (w1 first), 57 rows.
+- folded uses of the propagated temp_t2..t5 (`+ (temp_t2 & 0)`) are removed before LR building (identical).
+- phantom loads at the arm head (4+) make sp50 ra but recolour the tmem LR t0 in all arms and grow the frame by 32.
+- post-call phantoms (11+) separate sp50 from the tmem LR but leave t0 free (sp50 = t0).
+- tmem in a separate variable with or without folded reads, with `if (1) { }` around the call / tmem / FD50 store
+  (16 combos): sp50 stays 1.5 / t0.
+
+Reproduce: compile the donor with
+`tools/ido-static-recomp-dump/build/7.1/out/NCC -c -G 0 -non_shared -Wab,-r4300_mul -O2 -mips2 -32 -Wo,-zdbug:5`
+in a scratch dir and grep `>>>active<<<` for the bit whose itab line is `isvar M 4 -416` (sp50's home).
