@@ -14619,6 +14619,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCXXVIII (agent-c 2026-10-29, run 224): **cfe passes float literal TEXT to uopt: `0.f` / `.0f` / `0.00f` are three distinct constant candidates (while `0` / `0.0` / `(f32)0` are one and `0.0f` / `0.0F` another) -- respell the stores of a coloured shared constant to get the target's per-use `mtc1 zero` (NCC normalises literals: neutral); void-prototype scan over all 83 non-exact NM sources + the inverse v0-use check: no further gains**](#kit-ccxxviii-agent-c-run-224) -- _NM: timproc_uso_b5_func_00008FC8 98.88 -> 99.03 (length 6496 -> 6512: the 4 words are the pre-existing sites 2/3 counter spill pairs). Negatives: 42938 / 5A2C4 void aliases, literal sweeps on 19 cfe functions, 8FC8 loop counter, E2D0 / 24B8 keep and home variants._
 - [kit CCXXIX (agent-c 2026-10-29, run 225): **a loop counter the target holds in s0 while ours spills it = it colours before the first callee-saved user (fresh s-reg firstUseCost 60 > caller-save 10-20): empty `if (1) {}` blocks INSIDE the loop body lower its adjsave below the first s0 user (check every other s-reg user's order with zdbug:5 adjsave); a kid pointer in a1 = the kid passed as the call argument (LR live into a call is forbidden v0/v1); an empty block after a value's last use can starve its split piece; a cfe donor whose INCLUDE_ASM carried .late_rodata needs a placeholder re-emitting the layout (verify-blocks, not ROM cmp, catches it)**](#kit-ccxxix-agent-c-run-225) -- _EXACT: timproc_uso_b5_func_00008FC8 99.03 -> 100 (+6496 B, 1624 words; the biggest function in the project)._
 - [kit CCXXX (agent-g 2026-10-29, run 226): **a small int constant the target holds in a register across compares and a store (`beq v1,v0` / `sw v1`) while ours uses `at` immediates = an UNSIGNED constant web: type the compared/stored globals u32 (keep per-use temp stores int-typed via `*(s32 *)&g = K`); `if (0) { f(&i); }` homes an address-taken local without the two cfe temp words of `if (0 + 0 * i)`**](#kit-ccxxx-agent-g-run-226) -- _NM: game_libs 30AF4 96.98 -> 97.86, 2116 -> 2112 B = target length. Negatives: 30AF4 &gl_state pre-switch base, 31A74 store/arg order (volatile hoists the address), 2D374 frame-correct spelling scores lower, 2E354 literal respell shortens._
+- [kit CCXXXI (agent-g 2026-10-29, run 227): **an `if (0) { f(&i); }`-homed local is still a coloured LR (needregsave / needreglod): its post-call reload takes the web's colour (a3 when the a1 argument preference is forbidden); a target reload into an ugen temp = that piece split out uncoloured -- one more read `if (i) {}` right after the last call gives the split; the home is the declaration slot counted from the frame top, frame ends at the lowest homed local**](#kit-ccxxxi-agent-g-run-227) ; and a float CONSTANT that loses f0 to a short variable gets it back with one more counted use (`if (k) {}`) in a block it already spans -- _NM: game_libs 2D374 99.77 -> 99.79 at the target frame (0x28, i at 0x1c), then 99.91 (constant f0 / fr f2 = target). Left: the post-call 0x358 reload in f0 (target f2)._
+- [kit CCXXXII (agent-c 2026-10-29, run 226): **`lui sN, %hi(g); lw v0, %lo(g)(sN)` = the global was loaded into the s-variable the NEXT statement overwrites and copied on (as1 folds the copy into the load, the lui keeps sN); bootup 90CC is cfe, not edg (`addu a0, delta, ptr` with one base load; every edg int-cast spelling reloads the base); an empty `if (1) {}` closing the inner `if (arg2 == 6) { if/else }` gives arg1's dead reload its own join block and removes the as1 join copy plus two address hoists at once; `temp_f0 = 0;` (not `0.0f`) keeps one coloured f0 zero; re-test old splitters after a structural lever; a call does not end a uopt block -- a value that refuses v0 although nothing visible uses v0 = another variable's v0 range in the same block across a call: `if (1) {}` right after the call**](#kit-ccxxxii-agent-c-run-226) -- _NM: bootup func_000090CC 99.48 -> 99.904 (new cfe donor bootup_uso_90CC_nm.c, 2106 words = target, 4 rows left: one d148 preheader load slot, vpos.z / arg-5 store order). Negatives: 78 single void aliases, splitter sweeps in three regions._
 - [kit CCXIII (agent-g 2026-10-29, run 216): **post0b 454C4 95.95 -> 99.95, length = target: build on the structurally-right BB lever, then re-test old micro-levers (drop the named element pointer -> sixth s-reg; drop the folded `& 0xFF`); `if (rec) {}` breaks an adjsave tie; `cur = nxt; if (nxt)` keeps an inline iterator member out of the candidates (ring temp t7 vs v0 web); a ternary sharing edg's int temp with post-increments separates when assigned in the same full expression as the inline call**](#kit-ccxiii-agent-g-run-216) -- _Open: e copy-propagated as the shared pointer temp (5 words); 3C43C homes = function-scope five + k / ABS3 temps / dd; 3558 per-row adds inert._
 - [kit CCXIV (agent-c 2026-10-29, run 218): **a RoData float read as `D + off` / an extern alias is often a compiler LITERAL: read the ROM word (bootup.uso RoData = ROM 0xD9FE44); a run of identical values around a jump table = one constant rematerialised (one literal word per `l.s`). As a literal uopt hoists / colours / reloads it after calls -> game_libs 3430 (0.1f in f2 + three trailing `if (1) {}`) and timproc_b5 CEB4 (0.3f + `if (1) {}` per white arm) EXACT via donors pinned `<fn>_rodata` = the pool's ROM offset; C310 NM 96.45 -> 99.89 (`== 1` = register-held 1 shared with the `= 1` store, field-form counters)**](#kit-ccxiv-agent-c-run-218) -- _CCXII address-form scan (size>0 FUNC symbols only): no further hit; 4F2DC literal +0.19; 6204/E9FC, 8BD4, 1824, 4C5E4, 4A308 / C310 spill-slot gap negatives._
 - [kit CCX (agent-g 2026-10-29, run 214): **each object of a class with an inline constructor is an edg labelled BB; above ~19 BBs uopt splits a held callee-saved constant (game_uso 3558's $f20 zero web: hold, live else muls, w.y reload) -- a constructor-less Vec3 / aggregate Ctx restores it; a Vec3 local is a uopt register candidate only when no member call or reference parameter is bound to it (free by-value mk() keeps the op- copy chain)**](#kit-ccx-agent-g-run-214) -- _3558 85.86 -> 89.21 (frame 256 = target, all homes on the target map); vb split / va.y f20 residual and negatives listed._
@@ -48689,3 +48691,119 @@ into v1 (target re-forms `lui at` per store).
    but hoists the store address into t6 (`lui/addiu` early, `swc1 0(t6)`), with a direct volatile
    extern too. 2E354: respelling the 0.5f / 1.0f clamp pairs (`.5f`, `0.50f`, `1.f`) raises
    fuzzy to 95.29 but shortens the function (921 -> 917 words, away from target): not kept.
+
+## kit CCXXXI (agent-g 2026-10-29, run 227): an address-taken local (`if (0) { f(&i); }`) is still a uopt register candidate -- its web is coloured with needregsave / needreglod around calls, so the reload after a call lands in whatever register the web got (a3 here: its call-argument preference a1 was forbidden, CXCI takes the next free argument register); a target that reloads it into an ugen temp (t2, and the next temp t3 shifted) has that post-call piece SPLIT OUT uncoloured -- one extra read of the local after its last real use (`if (i) {}` after the final call) gives the split; the home sits at the DECLARATION slot counted from the frame top <a name="kit-ccxxxi-agent-g-run-227"></a>
+
+**game_libs 2D374 (countdown-timer tick, 676 B).** Run 226 found that `if (0) { gl_func_00000000(&i); }` gives the
+target frame (0x28, i at 0x1c) while the old `if (0 + 0 * i) { ... }` spelling scored higher (99.77) with a 0x40
+frame. The zdbug:5 dump shows why: in BOTH spellings `i` is `isvar M ... -12` (a memory home) AND an LR
+(`>>>active<<<{i} 104`). With `if (0 + 0 * i)` the dead call survives cfe, so its block sits between the `i = (int)d`
+store block and the call block; the LR is coloured a1 (its 4th-column argument preference) and the post-call block
+is split out (`live range 104: 104 split out 153`, 153 uncoloured -> `lw t2` reload, rec[2] then t3) = target
+registers, but cfe also reserves six extra frame words for the live dead call (0x28 -> 0x40). With `if (0)` the
+call is gone at cfe, the LR spans the def block, the call block (forbidden v0..a2 there) and the post-call block,
+and it colours a3 for the whole web (`lw a3, 0x1c(sp)` after the jal, rec[2] t2): frame right, registers off.
+Inserting `if (i) {}` after the final call (a defined value, no code) lengthens the web past the next call, so
+the post-call piece is split out uncoloured again: `lw t2, 0x1c(sp)` + rec[2] t3, frame 0x28 -- 99.77 -> 99.79,
+the int registers and frame now word-for-word. Position sweep: only directly after the last use's call works
+(`if (0 * i) {}` there is equivalent); `if (i) {}` / `do {} while (0)` / `if (c) {}` anywhere earlier in the block
+keep a3. Moving the `if (0)` statement itself anywhere in the function changes nothing.
+
+Frame facts from the same sweep (useful for any `if (0) { f(&x); }` home): the home is at the local's declaration
+position counted down from the top of the locals area (st, v, i -> i third word from the top), and the frame
+holds every declared slot down to the lowest homed local -- locals declared after it cost nothing. A cfe-live dead
+call (`if (0 * i)`, `if (i * 0)`, `if ((int)&i * 0)`) instead keeps every declared local's slot plus cfe temps.
+
+**Second step, the float pair: a constant LR's priority is its counted uses -- add one.** The target holds z (the
+constant 0.0) in f0 and fr in f2; ours had fr f0 / z f2. zdbug:5: fr (adjsave 1.0) outranked the constant's LR
+(0.5: one counted use in the head block for the `if (z) {}` keep-alive, one at the store) over the same three blocks,
+so fr was coloured first and took f0. A second `if (z) {}` placed AFTER the stores (same block as the z store: no new
+block, the constant's bb34 count goes 1 -> 2) lifts the constant to adjsave 1.0; with z spelled `0` (its own constant
+candidate, CCXXVIII -- `0.0f` would join the 0x1010300 call's constant) and the z store written before the fr store
+(the target's 35C-then-358 order) the constant now takes f0 and fr f2: 99.79 -> 99.91. A third `if (z) {}` or one in
+a new block overshoots (length changes). Recipe: when a float CONSTANT and a short float variable trade f0 / f2,
+count the constant's uses per block in the zdbug:5 list and add an empty `if (k) {}` in a block it already occupies.
+
+LEFT on 2D374: the post-call 0x358 reload (target f2, ours f0: the reload LR has no interferences in its block, so
+it takes the lowest register; nothing found that occupies f0 there in the target). Negatives on the reload: `if (d)`
+after the call (d then spills across the 4E010000 call, frame 0x38), z defined at block entry plus `if (z) {}` after
+the call (pushes the constant back to f2 and re-colours i), float-returning prototypes (no f0 interference like
+CCXXI's v0), a named reload through d / fr / z, operand swap. Negatives on the pair before the fix (all flat at 99.79): statement order x keep-alive
+x store order (240), literal spellings of every float constant (z, the 0x1010300 call's 0.0f, 1/256, 127.0f;
+CCXXVIII gives z its own constant LR but the priority order stays), fr conversion spellings, `do {} while (0)` /
+`if (half) {}` / `if (fr) {}` splitters at every 256-block boundary, reusing fr / z / d for the reload, one symbol
+or a scalar global for the 0x358 store and reloads, float-returning prototypes for every call (no f0 interference
+like CCXXI's v0).
+
+## kit CCXXXII (agent-c 2026-10-29, run 226): bootup 90CC back to cfe -- a global value assigned to the variable the NEXT statement overwrites gives `lui sN, %hi(g); lw v0, %lo(g)(sN)`; an empty `if (1) {}` closing an inner if/else gives a reload its own join block (no as1 join copy, no address hoists); `temp_f0 = 0;` not `0.0f`; the NCC donor's edg fixes undone one by one <a name="kit-ccxxxii-agent-c-run-226"></a>
+
+bootup_uso func_000090CC (8424 B) NM 99.48 -> 99.90 (6 rows left, 2106 words = target). Three steps, each committed.
+
+**1. `lui s0, %hi(g); lw v0, %lo(g)(s0)` = the global was loaded INTO the s-register variable that the next
+statement overwrites, and copied on.** The three draw-argument globals (kit CXXV / CCXXIII called the s0 an
+"as1 scratch rename" and a "coloured address candidate") are
+
+    var_s0 = (char *)g44.f28;        /* var_s0 is s0; it is overwritten two lines down */
+    var_v1 = (s32)var_s0;            /* the real value variable (copy) */
+    var_s0 = *(char **)(sp164 + 0x28);
+    temp_s1 = (char *)(var_v1 + 0x70);
+
+ugen emits `lw $16, g+40; move $3, $16`; as1 expands the first into `lui s0; lw s0, %lo(s0)` and folds the move
+into the load, leaving the lui on s0 and the value in the copy's register. The same rule as the 44EDC lone
+`lui sN` (named-sreg-local-colours-lui-temp-44edc), but here the s-variable is DEAD after the copy, which is why
+the old "value into var_v1 / temp_v0_51 / address in var_s0 / array element" probes were byte-identical. Which
+register the value lands in is the copy variable's colour (temp_v0_51 / var_t1 -> v0; var_v1 -> v1: the site-1
+value is still v1 for every variable tried, even fresh ones -- something holds v0 across that block in ours).
+NCC: 99.48 -> 99.67.
+
+**2. Once a structural lever lands, re-test the old `if (1) {}` splitters.** The `if (1) {}` after the site-2
+`var_s0 = sp160->0x28` (added for an older NCC ring) now only cost a second sp160 reload; dropping it put the
+t-ring right through the call tail (NCC 99.67 -> 99.88, 14 rows).
+
+**3. The target is cfe, not edg: evidence = `addu a0, delta, ptr` + one base load.** edg canonicalises
+`*(s16 *)(vt + 0x58) + p` to `p + delta` (`addu a0, p, delta`); every integer-cast spelling that restores the
+operand order makes ugen RELOAD the memory-homed p (`lw $25, 356($sp)`: no CSE across the int / pointer
+dtypes, one ring slot lost), also with p declared `s32` and the vfn prototype taking `s32`. cfe gives the
+target's order and the single load directly. Porting the NCC donor back to C (drop `extern "C"`, `fi(255)` ->
+`(f32)255`, `(...)` -> `()`) scored 98.10; then, in order:
+- dispatch: `if (arg2 == 7) goto c7; if (arg2 == 6) goto c6;` with `if (1) {}` as the first statement of both
+  case bodies (cfe's 2-case switch sorts 6 first; #if1-keeps-goto-target-out-of-line-d900), and the c7 stores
+  `0x902 = 0x1A; 0x900 = 0x19;` joined on one line (constants 0x19-first, stores 0x902-first);
+- compare operands in the target's load order (`D+0x58 == D+0x4C`, `u8 D+0x17D == D+0x4C`; edg had sorted them);
+- the 0xB4 block as offsets from the unadvanced pointer then `var_s0 += 0xB4;` (the dead add is the target's
+  jal-delay `addiu s0, s0, 0xB4`) with `temp_f0 = 0;` -- `0.0f` is copy-propagated into two `mtc1 zero`
+  (ft2/ft3, which also shifted the whole later FP ring by 2); the literal `0` stays one coloured f0
+  (kit CCXXVIII literal identity, in the other direction);
+- `var_s0 = temp_s1_8; var_s0 += idx * 4;` for the target's base-first `addu s0, a0, t8` (`base + idx*4` in one
+  expression, swapped operands, `&((s32 *)b)[i]`, int casts all give `addu s0, t8, a0` in cfe);
+- **the join-copy / hoist trio is one fix: an empty `if (1) {}` as the LAST statement inside
+  `if (arg2 == 6) { if (sp174) {..} else {..} if (1) {} }`.** Without it cfe has no block at the inner join,
+  so uopt puts arg1's (dead) `lw $7, 380($sp)` reload at the end of BOTH arms and the outer join is just
+  `and t1, t1, -5; b` -- as1 then copies that 2-word join into the rgb30 arm (+8 bytes). With the empty block the
+  reload sits in its own join block (as in the NCC ucode: `$136: lw $7; $137: and`), the copy stops, and as a
+  side effect two unrelated as1 decisions flipped to the target's: the d148 zero loop's `la` no longer hoisted
+  above `beqz sp174`, and `la a0, &D_8880` back in the `beqz` delay slot instead of above the `andi` (+4 bytes).
+  98.95 -> 99.89 in one step; `if (1) {}` / `do {} while (0)` / labels anywhere else around the join were inert.
+- the index form of the 3-word zero loop stays (cfe's pointer do-while compares against a non-folded
+  `sym + 36`; distinct start / end aliases lose the trip count and unroll x4); a block-scoped `{ s32 i; ... }`
+  beat reusing var_v1 by one row.
+
+Residual (6 rows): site-1 value v1 (target v0), `lw v1, 0(t6)` scheduled before the `addiu a0` of the d148
+list-walk preheader (source order, joins, splitters and a hoisted temp_s1_8 all inert), and the vpos.z / 5th
+call-argument store order (statement permutations, arg spellings, zero spellings inert). Negatives: void
+aliases for each of the 78 statement-level `func_00000000` calls (one at a time); `if (1) {}` after every
+statement in the d148 / &D_8880 / site-1 regions; the 13 old `if (1) {}` / folded-use levers removed one at a time.
+Wiring: the cfe donor src/bootup_uso/bootup_uso_90CC_nm.c is filtered out of C_FILES and replaces the NCC
+donor as BOOTUP_90CC_NM_DONOR (NM tree only).
+
+**Kit CCXXXII addendum (same run): a call does not end a uopt basic block, and uopt live ranges are sets of
+blocks.** The site-1 value stayed v1 for every variable because the sp158 CSE temp (v0, `lw v0, 0x158(sp)`
+... `sw s1, 0x14(v0)` in the delay slot of `jal func_00000000(1)`) shares one uopt block with the site-1 code
+after that jal: its v0 range covers the whole block, so nothing else in the block can be v0. `func_00000000(1);
+if (1) {}` ends the block at the call; the value then takes v0 -- but only with a value variable other than
+var_v1 (var_v1 keeps its own colour from its d148 web), and with the d148 list walk's id moved to `cg` (an
+otherwise rgb-only u32) the d148 loop keeps the target's v1 / a0 / a1 (cfe NM 99.899 -> 99.904, 4 rows: the
+`lw v1, 0(t6)` preheader slot and the vpos.z / argument-5 store order, both as1 order; splitters, statement
+order, labels and loop forms around both were inert). Tell: a value that refuses a caller-saved register
+everywhere although nothing visible uses that register between its def and use = another variable's range
+in the same uopt block across a call; split the block right after the call.
