@@ -14595,6 +14595,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CXCIV (agent-c 2026-10-28, run 208): **6126C EXACT: an un-forwarded temp is a self-referencing update of an earlier-block copy (`(ch = c, c >= '0') && ..` then `ch -= '0'; A = (u8)ch`); cfe `+ 0 * VAR` is zero code but a counted use for uopt colouring priority (`c = *q + 0 * *q`); zdbug:5 adjsave readout**](#kit-cxciv-agent-c-run-208) -- _Exact: gl_func_0006126C._
 - [kit CXCVI (agent-c 2026-10-28, run 209): **50444 EXACT: brute `+ 0 * (int)(X)` site x identifier sweep over cfe bodies and NCC donors (reject uninitialised X); in NCC the counted use kept a parameter in its memory home; `(m->n += 1) >= max` vs `++m->n` swaps v0 / v1; 578B4 / 4D688 / 4A308 negatives**](#kit-cxcvi-agent-c-run-209) -- _Exact: gl_func_00050444._
 - [kit CXCVIII (agent-c 2026-10-28, run 210): **counted-use sweep made permanent (`scripts/zero-use-sweep.py`, maybe-unset filter) + `--exprs` (`*p`, `p->f`, `v[i]`): parameter / member dereferences moved 1ADC, 24B8 (3 greedy rounds), E68, 4C5E4; 4A308 / 24B8 frame-slot and self-referencing-update negatives; 4E424 decode read**](#kit-cxcviii-agent-c-run-210) -- _No exact; 1ADC 93.54 -> 94.32, 24B8 97.05 -> 98.91, E68 93.97 -> 94.54, 4C5E4 88.48 -> 88.65._
+- [kit CC (agent-c 2026-10-28, run 211): **counted-use sweep continued: global array element `+ 0 * (int)(import_8005EE6C_r[1])` moved bootup 6808 +0.9 at same length; `0 * (int)(float)` is NOT zero code (+4 bytes); C310's scored body is its NCC donor; run-210 movers re-swept flat; zero-use-sweep.py empties other bodies of in-tree units (several x faster)**](#kit-cc-agent-c-run-211) -- _No exact; 6808 95.65 -> 96.56, C310 96.25 -> 96.45, 4BAF4 96.33 -> 96.36, B75C 93.93 -> 93.94._
 - [kit CLXXXVIII (agent-c 2026-10-28, run 205): **a register copy in the FIRST compare's delay slot is the else block's first insn (as1 fills from the branch target): a block-local `u8 d = c` dispatch copy (int copies propagate away) + the range test on c gives 6126C 93.81 -> 99.35 at target length; NCC ignores volatile params; 4C5E4 un-named m78 + folded `0 * mC0` ring phase (87.22 -> 88.48)**](#kit-clxxxviii-agent-c-run-205) -- _No exact; 4E424 / 18F0 / CEB4 / 4A890 / 578B4 / 63964 / 50444 negatives._
 - [kit CLXXVIII (agent-c 2026-10-28, run 200): **37540 ported to C++ from its exact sibling 37348's donor kit (cfe 81.17 -> NCC 93.58, length = target): one inline reads the saved vector and clears x (refs = early stores, return = register), set() + compound `*=` for the store/re-read build; 8CD8 pads worth +0.07, no natural aggregate; 36694 n-CSE diagnosis**](#kit-clxxviii-agent-c-run-200) -- _No exact._
 - [kit CLXXI (agent-g 2026-10-28, run 202): **timproc_uso_b5 32C8 EXACT (1480 B): cfe NM body re-written as NCC on its exact sibling 2B74's donor shape (literal vec constants, rodata pin, `(f32)iz()` zero re-assigned on both alloc paths, cfe decl list); the last 2 colour words fell to a grid of PAIRED `if (1) {}` splits x statement order x line layout**](#kit-clxxi-agent-g-run-202) -- _Run negatives: 4A890 / E68 / 6126C / 18F0 / 65EE4 / 65494 / 578B4 / C310 / 4A308 / E2D0 / 31C0 / C234 / 90CC._
@@ -47179,3 +47180,36 @@ and is coloured early (2.5) with only [v0 v1] forbidden, so a0 is lowest free; n
 A destination use in the alloc call (`alloc(0xC + 0 * (int)dst)`) is copy-propagated (flat); making the copy
 `(Vec3 *)((int)p | 0)` drops 8 bytes (97.2). 250C8: moving the FinishAsyncLoad locals into the `bytesRemaining == 0`
 block: flat. 41D40 / 3DF58 / BB8C: the remaining register swaps are not argument-preference cases (no call in the LR).
+
+## kit CC (agent-c 2026-10-28, run 211): counted-use sweep continued over agent-g's range -- a global array element (`+ 0 * (int)(import_8005EE6C_r[1])`) is the one big same-length step (bootup 6808 +0.9); `(int)(float)` terms are NOT zero code (+4 bytes); the four run-210 movers re-swept flat; zero-use-sweep.py now empties the other function bodies of in-tree units <a name="kit-cc-agent-c-run-211"></a>
+
+_No exact. bootup 6808 95.65 -> 96.56, timproc_b5 C310 96.25 -> 96.45, post0b 4BAF4 96.33 -> 96.36, bootup B75C 93.93 -> 93.94 (report.json, all same length)._
+
+- **Hits (all `--exprs`, well-defined reads only):**
+  - bootup 6808: `import_8005EE6C[1] = import_8005EE6C_r[1] | 0x20000 + 0 * (int)(import_8005EE6C_r[1]);` (the
+    int USO import array read by the same store; every site from `dc = 0` to that store scored the same):
+    95.65 -> 96.55; round 2 `t = (char *)func_00000000(0) + 0 * (int)(*arg1);` -> 96.556; round 3 not run.
+    Same family as run 210's E68 `import_8001FFA0_h[1]`: global array elements are worth sweeping in every
+    function that reads one.
+  - timproc_b5 C310: the scored body is the NCC donor `timproc_uso_b5_ncc_C310_nm.cpp` (spliced into the NM object),
+    NOT the C body in timproc_uso_b5.c -- the in-tree probe of the C body scored 94.88 at 1020 bytes and its hit
+    was flat in the real NM object. Check `replace-body:` lines in the make log before sweeping an in-tree body.
+    Donor hit: `if ((*(s32 *)(arg1 + 0x3BC) - 1 == 0) + 0 * (int)(*arg0))` 96.25 -> 96.45; round 2 flat.
+  - post0b 4BAF4 (NCC): `ctx = ... + 0 * w + 0 * (int)(spr->w);` 96.33 -> 96.36; round 2 flat.
+  - bootup B75C: `var_a0 = arg0 + 0xCC + 0 * (int)(*arg0);` +0.01.
+- **`0 * (int)(float)` emits code.** Every hit on a float identifier or float global grew the function by 4
+  bytes (B75C `temp_f2` 2096 -> 2104 at 94.27; timproc_b5 D884 `d884_ee6c_l6` 1684 -> 1688 at 97.36 and DF14
+  `df14_ee6c_l6` 1700 -> 1704 at 96.57, both already longer than the target): the cvt/trunc is not folded. All
+  rejected (length away from target). Use only integer / pointer X.
+- **Flat (re-sweeps of the run-210 movers):** bootup 24B8 98.91, E68 94.54, kernel 1ADC 94.32, post0b 4C5E4 88.65
+  (both halves; the first run hit `--maxv` at 4000). Also flat: mgrproc 1824 98.52, game_libs.c 2840 (NCC) 93.28,
+  post0b 48AEC (NCC) 97.24, bootup 90CC donor lines 860-1027 (99.26; residue is t-register rotation in the second
+  half), 24B8 / 1824 `do { } while (0);` after every statement (kit CLXXXIX's split, via a scratch copy of
+  lever-sweep bbsplit) and lever-sweep `hoist`.
+- **zero-use-sweep.py changes (uncommitted in the monorepo):** (1) in-tree units: every other top-level function
+  body is emptied to `{}` (same length, newlines kept), checked against a full-file base compile with automatic
+  fallback; bootup / timproc_b5 / post0b variants run several times faster (B75C 5146 variants in ~10 min under
+  load 45, where the full-file run did 661 in 25 min). (2) standalone donors: sites and vocabulary are limited
+  to the `--fn` body when it is defined by name (C310 donor: 1385 of 1936 variants failed on helper-method
+  identifiers before). Wishlist: skip float-typed X (see above), and print the best same-length / toward-target
+  rows separately from `--top` (B75C's same-length +0.01 was hidden under 150 rows of +4-byte float hits).
