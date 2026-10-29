@@ -14608,6 +14608,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCXVII (agent-g 2026-10-29, run 218): **post0b 36F0C 94.42 -> 99.73 (968 B = target): decl order c / p / v + a named `f64 h = 100.0` = target frame 136; a nested `?:` clamp has two result temps (outer `mov.s` copy), an if / return inline clamp one; `f32 d = dist;` before a store run hoists the load like the target; `if (&c == 0) return;` (folded) = memory-resident local without volatile; kept-parameter inline setters (`if (0) { n = 0; }`) make each reload its own v0 web; literal scan of game_uso / gui / post0b < 0x48000 exhausted (3B9C0 1e-5 decode fix)**](#kit-ccxvii-agent-g-run-218) -- _40304 0.01 literal negative, 7C1C / BB8C value-only; 35B1C = cfront-style C++ ctor (NCC word-for-word except frame 72 vs 80 + vptr store order); 3C43C homes, 415A4 double-ori, 37540 s-home negatives._
 - [kit CCXVIII (agent-g 2026-10-29, run 219): **post0b 36F0C EXACT: an inline's by-value float parameter is a uopt variable (f0), a `const f32 &` parameter read is an ugen ring temp (f4 / f6 / f10 / f8); a forwarded store goes direct through a kept-parameter accessor result (`Cam *n = gc0(c)` = the pooled v0 temp, no interference); replace-function-body.py names objcopy-renamed section symbols (redefine-sym C++ donors' `.rodata` relocs -> `<func>_rodata`)**](#kit-ccxviii-agent-g-run-219) -- _35B1C NCC ctor frame fixed (pad block), vptr-store order still open; 591C var-bound colours, 2E354 literals cost length, 40304 / 37938 negatives._
 - [kit CCXIX (agent-g 2026-10-29, run 220): **a global read through `&D` / a held `int *` is a direct variable access (folded `lui; lw %lo`, never hoisted); read as an ARRAY element (`extern int D_x[]; D_x[0]`) its address becomes a loop-invariant web held in an s-register across calls -> post0b 46050 89.71 -> 92.20 at target length (real-C++ appends + stock gSPTextureRectangle); gui 2DE0 95.53 -> 96.65 (329C-shape port, &D live-range residual)**](#kit-ccxix-agent-g-run-220) -- _inverse const-ref sweep negative on 3B2EC / 37938 / 41D40 / 454C4 / 7C1C / 33094; 3C43C r-home vs counted use._
+- [kit CCXX (agent-g 2026-10-29, run 221): **a target global RMW kept in ONE register (`lw v0; and v0,v0; ori v0,v0; sw v0`) is a local's chain (`x = G; x &= m; x |= k; G2 = x;` on a dead / dummy-home local), v0 only where nothing else in the block claims it; a target `addiu rX,base,K; lw/sw 0(rX)` field RMW = the if (1) pointer-mutation barrier (C and NCC member); a folded counted use stretches its operand's live range -- re-sweep the operand (E68 `0 * *cfg` -> `0 * arg3` restores the s0/s1 param colours)**](#kit-ccxx-agent-g-run-221) -- _bootup 6808 96.61 -> 98.34, post0b 493AC 97.18 -> 97.33, E68 94.54 -> 94.57; negatives 18F0 bitfield / mask, 4C5E4 inline setvp, 65EE4 aliases / prototypes, 5A2C4 stacked if (1), C234 literals, 6808 v1 sites._
 - [kit CCXIII (agent-g 2026-10-29, run 216): **post0b 454C4 95.95 -> 99.95, length = target: build on the structurally-right BB lever, then re-test old micro-levers (drop the named element pointer -> sixth s-reg; drop the folded `& 0xFF`); `if (rec) {}` breaks an adjsave tie; `cur = nxt; if (nxt)` keeps an inline iterator member out of the candidates (ring temp t7 vs v0 web); a ternary sharing edg's int temp with post-increments separates when assigned in the same full expression as the inline call**](#kit-ccxiii-agent-g-run-216) -- _Open: e copy-propagated as the shared pointer temp (5 words); 3C43C homes = function-scope five + k / ABS3 temps / dd; 3558 per-row adds inert._
 - [kit CCXIV (agent-c 2026-10-29, run 218): **a RoData float read as `D + off` / an extern alias is often a compiler LITERAL: read the ROM word (bootup.uso RoData = ROM 0xD9FE44); a run of identical values around a jump table = one constant rematerialised (one literal word per `l.s`). As a literal uopt hoists / colours / reloads it after calls -> game_libs 3430 (0.1f in f2 + three trailing `if (1) {}`) and timproc_b5 CEB4 (0.3f + `if (1) {}` per white arm) EXACT via donors pinned `<fn>_rodata` = the pool's ROM offset; C310 NM 96.45 -> 99.89 (`== 1` = register-held 1 shared with the `= 1` store, field-form counters)**](#kit-ccxiv-agent-c-run-218) -- _CCXII address-form scan (size>0 FUNC symbols only): no further hit; 4F2DC literal +0.19; 6204/E9FC, 8BD4, 1824, 4C5E4, 4A308 / C310 spill-slot gap negatives._
 - [kit CCX (agent-g 2026-10-29, run 214): **each object of a class with an inline constructor is an edg labelled BB; above ~19 BBs uopt splits a held callee-saved constant (game_uso 3558's $f20 zero web: hold, live else muls, w.y reload) -- a constructor-less Vec3 / aggregate Ctx restores it; a Vec3 local is a uopt register candidate only when no member call or reference parameter is bound to it (free by-value mk() keeps the op- copy chain)**](#kit-ccx-agent-g-run-214) -- _3558 85.86 -> 89.21 (frame 256 = target, all homes on the target map); vb split / va.y f20 residual and negatives listed._
@@ -48186,3 +48187,55 @@ parameters, singles and pairs), 33094 (set / *= / mul / += / =, 64 combos): none
 `0 * (int)(r)` is what puts r in s0 (target: r memory-resident in its arg home, as `nouse` gives, but then the
 `0.0f + dist[best]` add folds away and the frame is 24 bytes over); `&r` / `if (0) { f(&r); }` makes ALL the
 parameters memory (s too, target keeps s in fs0); reusing lim's home for dd saves 8 frame bytes but scores lower.
+
+## kit CCXX (agent-g 2026-10-29, run 221): a target global read-modify-write whose value stays in ONE caller-saved register (`lui v0,0; lw v0,0(v0); and v0,v0,s6; ori v0,v0,0x100; sw v0,0(at)`) is a LOCAL's chain, not an expression -- `x = G; x &= m; x |= k; G2 = x;`; a target `addiu rX,base,K; lw/sw 0(rX)` field RMW is the documented if (1) pointer-mutation barrier; a folded counted use stretches its operand's live range, so pick the operand <a name="kit-ccxx-agent-g-run-221"></a>
+
+Fresh-eyes swap run (agent-c's near-exact bootup / post0b / post1b / kernel list). Gains: bootup 6808 96.61 -> 98.34
+(the last +0.02: `g0 = p->0x40; ... func(g0 * 4)` = the target's `lw v1,64(s1); sll a0,v1,2`),
+post0b 493AC 97.18 -> 97.33, bootup E68 94.54 -> 94.57 (report-equivalent in-tree objdiff); no exact.
+
+1. **Global RMW as a local's v0 chain (bootup 6808, 96.61 -> 97.92).** The target's four `import_8005EE64` flag
+   updates keep load, and/or results and store value in a single register (`v0`) -- ugen temps would rotate
+   (t6 -> t7 -> t8). Writing each as `g00 = G1; g00 &= ~8; g00 |= 0x100; G0 = g00;` (separate compound
+   statements on a named int local; a single `x = (G & m) | k` still leaves the intermediate in a ugen temp)
+   makes uopt carry one live range through the whole RMW. Use dead / dummy-home locals (here the unused `g0, g00`
+   at the top of the declaration list) so no new home appears.
+   - The register is v0 only where the RMW's basic block has nothing else claiming v0: the first site sits in the
+     join block after an if / else and got v0 once the mode-word address (`import_8005EE6C`, stored twice right
+     after) stopped being hoisted into v0 above the branch -- an `if (1) {}` between the RMW and the mode-word
+     stores did that (97.14 -> 97.86), with the `D_bu_1EBDC[0] = 6` store written first as its own statement.
+   - The other three sites (each after a call in the same block) stay v1: per-site distinct locals (op / dc / d0 /
+     b0 / d4 grid, 120 variants), `if (1) {}` before / after / both, making the variable's first role a call result
+     (`g0 = f(); ...`), block-scope / `register` / u32 locals: all flat or worse. Open.
+2. **Field RMW through a materialised address (`addiu v1,v0,0x18; lw t1,0(v1); ...; sw t2,0(v1)`).** Plain
+   `*(int *)(res + 0x18) &= ~0x40`, a named pointer, `volatile`, `(int)res + K`, `+ 0 * (int)res` index tricks and
+   C++ reference / pointer inline helpers all fold to `lw 0x18(v0)`. The pointer-mutation barrier from the
+   arcproc 1F54 / mgrproc C14 notes reproduces it word-for-word: `rec = (int *)res; if (1) { rec += 0x18 / 4; }
+   *rec &= ~0x40;` (6808 97.92 -> 98.32; length 2376 -> 2380 = a verified decode fix: the old equal length came
+   from an unrelated extra `or a3,v1` cancelling this missing addiu). Same lever in NCC on a member:
+   `pad1 = (int)this; if (1) { pad1 += 0x30; } *(int *)pad1 |= 0x80;` (493AC 97.18 -> 97.33, reusing an
+   unexplained pad home; a new `int *f` local costs a home and scores 97.19). In 6808 the second site (p+0x30)
+   lines up up to registers only with the flag local itself as the pointer (`g0 = (int)p; if (1) { g0 += 0x30; }
+   *(int *)g0 |= 0x40;` -- the target reuses v0 for flag and pointer), but stays v1 like item 1 and scores lower
+   (+4 bytes): not kept.
+3. **Folded counted use: the operand matters, not just the site (bootup E68).** Agent-c's run-209 `m = E68_MGR +
+   0 * *cfg` raised E68 by keeping *some* use at that point, but it also kept `cfg` alive into the second loop nest,
+   so `arg2` out-prioritised it for s0 (`or s0,a2 / or s1,a1` vs the target's `or s0,a1 / or s1,a2`). The same
+   folded term on `arg3` (or `y`, `row`, `(int)self`, `arg2`, `(int)buf`, `(int)tlut`) keeps the gain and fixes the
+   prologue (94.54 -> 94.57). Rule: when a counted-use hit lengthens a parameter's live range, re-sweep the
+   operand at that site. The 6808 `*arg1` uses (which make the target-absent `sw a1,244(sp)` home store) and the
+   B75C / 4C5E4 member uses: no better operand.
+4. **Negatives.**
+   - 18F0 (kernel): the `& ~8` mask as a bitfield clear (`unsigned done:1` -> lbu / sb byte access), mask / flag
+     variables, `^= 8`, if / else polarity: flat or worse.
+   - 4C5E4: an inline `setvp(Vp *, x, y, w, h)` DOES re-materialise 2.0f per use like the target (`lui at,0x4000`
+     twice), but also 4.0f, and the Vp append moves ahead of the member loads (+4..16 bytes, 78-85).
+   - 65EE4: all-distinct per-access aliases at -O2 with the first call's third argument as the constant itself
+     (`f(&a6, B + 4, B + 0x10)`) reach the target length (584) but only 67.98 (agent-c's figure); prototypes
+     (`(Save *, ...)`, `(void *, ...)`, 3-int with padding args) and pointer-typed fields under -Olimit 1: flat.
+   - 5A2C4: consecutive `if (1) {}` blocks collapse (1 = 2 = 5 in score) -- no BB-count lever in cfe; named
+     post-conversion r / g / b locals: 90.40 < 90.47. The target's uncoloured CSE temps stay open.
+   - C234: the 0x920 / 0x924 / 0x928 / 0x94C pool reads as literals (100000.0f, 335.0f, -335.0f, 0.4f): identical
+     code. 0x128 is an imported object (1.07e21), not a literal.
+   - Declaration moves in 6808 (46 variants) and objdiff fuzzy: sp offsets do not count, so home-layout fixes
+     only matter for an exact.
