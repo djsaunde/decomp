@@ -14596,6 +14596,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CXCVI (agent-c 2026-10-28, run 209): **50444 EXACT: brute `+ 0 * (int)(X)` site x identifier sweep over cfe bodies and NCC donors (reject uninitialised X); in NCC the counted use kept a parameter in its memory home; `(m->n += 1) >= max` vs `++m->n` swaps v0 / v1; 578B4 / 4D688 / 4A308 negatives**](#kit-cxcvi-agent-c-run-209) -- _Exact: gl_func_00050444._
 - [kit CXCVIII (agent-c 2026-10-28, run 210): **counted-use sweep made permanent (`scripts/zero-use-sweep.py`, maybe-unset filter) + `--exprs` (`*p`, `p->f`, `v[i]`): parameter / member dereferences moved 1ADC, 24B8 (3 greedy rounds), E68, 4C5E4; 4A308 / 24B8 frame-slot and self-referencing-update negatives; 4E424 decode read**](#kit-cxcviii-agent-c-run-210) -- _No exact; 1ADC 93.54 -> 94.32, 24B8 97.05 -> 98.91, E68 93.97 -> 94.54, 4C5E4 88.48 -> 88.65._
 - [kit CC (agent-c 2026-10-28, run 211): **counted-use sweep continued: global array element `+ 0 * (int)(import_8005EE6C_r[1])` moved bootup 6808 +0.9 at same length; `0 * (int)(float)` is NOT zero code (+4 bytes); C310's scored body is its NCC donor; run-210 movers re-swept flat; zero-use-sweep.py empties other bodies of in-tree units (several x faster)**](#kit-cc-agent-c-run-211) -- _No exact; 6808 95.65 -> 96.56, C310 96.25 -> 96.45, 4BAF4 96.33 -> 96.36, B75C 93.93 -> 93.94._
+- [kit CCII (agent-c 2026-10-28, run 212): **read the zdbug:5 colour ORDER (adjsave) on a reload region: counted uses outside the block reorder it -- 90CC's whole arg1 / arg2 / arg7 / const-6 block now matches; `if (1) {}` splitters are counted-use sites (55A0); a counted use that adds a spill or a char-global load is real code; 4D688 / 4B0A8 / 24B8 a-register residuals diagnosed; zero-use-sweep skips float identifiers**](#kit-ccii-agent-c-run-212) -- _No exact; 90CC 99.26 -> 99.45, 5A2C4 90.29 -> 90.47, 55A0 97.24 -> 97.26, 8FC8 91.44 -> 91.51._
 - [kit CLXXXVIII (agent-c 2026-10-28, run 205): **a register copy in the FIRST compare's delay slot is the else block's first insn (as1 fills from the branch target): a block-local `u8 d = c` dispatch copy (int copies propagate away) + the range test on c gives 6126C 93.81 -> 99.35 at target length; NCC ignores volatile params; 4C5E4 un-named m78 + folded `0 * mC0` ring phase (87.22 -> 88.48)**](#kit-clxxxviii-agent-c-run-205) -- _No exact; 4E424 / 18F0 / CEB4 / 4A890 / 578B4 / 63964 / 50444 negatives._
 - [kit CLXXVIII (agent-c 2026-10-28, run 200): **37540 ported to C++ from its exact sibling 37348's donor kit (cfe 81.17 -> NCC 93.58, length = target): one inline reads the saved vector and clears x (refs = early stores, return = register), set() + compound `*=` for the store/re-read build; 8CD8 pads worth +0.07, no natural aggregate; 36694 n-CSE diagnosis**](#kit-clxxviii-agent-c-run-200) -- _No exact._
 - [kit CLXXI (agent-g 2026-10-28, run 202): **timproc_uso_b5 32C8 EXACT (1480 B): cfe NM body re-written as NCC on its exact sibling 2B74's donor shape (literal vec constants, rodata pin, `(f32)iz()` zero re-assigned on both alloc paths, cfe decl list); the last 2 colour words fell to a grid of PAIRED `if (1) {}` splits x statement order x line layout**](#kit-clxxi-agent-g-run-202) -- _Run negatives: 4A890 / E68 / 6126C / 18F0 / 65EE4 / 65494 / 578B4 / C310 / 4A308 / E2D0 / 31C0 / C234 / 90CC._
@@ -47213,3 +47214,53 @@ _No exact. bootup 6808 95.65 -> 96.56, timproc_b5 C310 96.25 -> 96.45, post0b 4B
   to the `--fn` body when it is defined by name (C310 donor: 1385 of 1936 variants failed on helper-method
   identifiers before). Wishlist: skip float-typed X (see above), and print the best same-length / toward-target
   rows separately from `--top` (B75C's same-length +0.01 was hidden under 150 rows of +4-byte float hits).
+
+## kit CCII (agent-c 2026-10-28, run 212): the zdbug:5 colour ORDER read on a reload region -- 90CC's whole arg-reload block (arg1 / arg2 / arg7 / const 6) lined up by counted uses that reorder adjsave ties; `if (1) {}` BB splitters are counted-use sites too; a counted use that forces a spill or a char-global load is real code (rejected); 4D688 / 4B0A8 / 24B8 a-register residuals diagnosed <a name="kit-ccii-agent-c-run-212"></a>
+
+_No exact. report.json: bootup func_000090CC 99.25926 -> 99.448715 (8424 = target), post0b game_libs_func_0005A2C4
+90.28603 -> 90.4745 (same length 1788), bootup func_000055A0 97.23913 -> 97.25585, timproc_b5 8FC8 91.44335 ->
+91.51355. 83.46 % code, 3196 exact (unchanged). post0b NM clip unchanged (no post0b length change)._
+
+**1. 90CC: read which LR is coloured FIRST, not only which register is free.** The block after the 0x908 / 0x848 /
+0x8C4 stores (`lw a3,380(sp); lw t3,384(sp)` = arg1 / arg2 reloads) had five LRs in the wrong registers. zdbug:5 on
+the NCC donor: arg2 piece adjsave 0.545 -> a2, arg7 piece (P 28) 0.5 -> a2/a3, constant 6 0.143 -> a3, arg1's reload
+piece 0.1 -> t4 (forbidden v0..t3). The target is const 6 = a2, arg1 = a3, arg7 = t0, arg2 = t3: the same lowest-free
+rule with a different ORDER (const 6 and arg1 before arg7 / arg2). Counted uses that do not touch the uses inside the
+block change it: `0x8B8 = arg8 + 0 * (int)(arg7)` (arg7 extended past its last use -> t0), `sp174 = 0 + 0 * (int)(arg8)`,
+`+ 0 * (int)(arg2)` on the 0x2A8 child's 0xC store and on the scaled-index pointer, `sp174 = 1 + 0 * (int)(sp174)`.
+After the five steps every register in 0x1238-0x1674 matches. Found by windowed greedy rounds of
+`zero-use-sweep.py --lines 600-1000 --vars <params,flag>` (500-4000 variants, 2-5 min each), then whole-function
+`--vars` rounds; the dump told which variables to put in --vars.
+
+**2. `if (1) {}` splitters are counted-use sites.** 55A0's loop `it++; if (1) {}` -> `if ((1) + 0 * (int)(it)) {}`
+(+0.017, zero code; the script's `cond` site on that line, not the `while`). The splitter keeps its BB and adds a use.
+
+**3. Not zero code (rejected).** (a) `+ 0 * (int)(g)` on a `char` global read through an access macro (timproc_b5
+D884 / DF14 `d884_ee6c_l6`, `df14_ee6c_l*`): +4 bytes, away from the target length. (b) C234 `+ 0 * (int)(temp_v0)`
+after the first call: toward the target length (2196 -> 2200) but the 4 bytes are a new `sw v1,124(sp)` spill of
+temp_v0 across the call and the frame grows 248 -> 256 -- a fake use creating a spill, not kept. (c) 5A2C4 round 2
+(`+ 0 * (int)(sp38)`, 1788 -> 1792 toward 1804, +0.03): a post0b length change; skipped to keep the clip alone.
+(d) 65494 `count` / 4A890 `n`: as in run 210.
+
+**4. Diagnoses (negatives, do not repeat).**
+- 4D688 old-n copy (target a0, ours v0): the `n++` value is edg temp M -32 (the same temp the volatile `m24++` uses
+  for its `this` copy). Its LR is the case-'d' head block only, forbidden [a1 s0], no call in the block (hint 0), so v0
+  is the lowest free register; nothing makes v0 / v1 forbidden there and no call-argument hint can reach it.
+- 4B0A8 AIter ctor `this` (target a3, ours t0): the ctor's this-pointer is edg pool temp M -60, which `next()` /
+  `cur()` reuse inside the loop, so it is ONE LR over the whole loop with a0..a3 forbidden by the loop calls. The target's
+  a3 is a short, separate temp. 7 iterator / construction spellings (idx++, idx += 1, `a->data[++idx]`, named index,
+  single-return, `AIter it(&s->arr)`, `= AIter(..)`) all flat or worse.
+- 24B8 first `k` (target t0 after a reload from sp+0x4C, ours v1 from 0x30): dropping `r` (k = 0 kept across the call)
+  and declaring `int k;` first puts the spill at the target 0x4C, but the second-web k then shares that slot (target
+  0x2C), and splitting it into its own variable fixes the slots while shifting the t-ring (98.91 -> 98.08). The
+  register piece still takes v1: nothing coloured v1 interferes with it. A `+ 0 * k` in the active branch makes k
+  uncoloured (+8 bytes). A `long long` alias for the first call (v1 clobbered) is inert because that piece is in memory.
+- 90CC remaining: `var_v1` at the two gcfg RMW lines (target v0, ours v1; fresh locals / temp_v0_51 for them: worse or
+  flat); the target's `lui s0,%hi; lw v0,%lo+40(s0)` sites are a COLOURED address-constant candidate (lui base in s0,
+  value in v0), ours rematerialise the lui into the value register.
+- Flat plain sweeps: timproc_b5 CEB4, bootup E2D0 / 8BD4 / 31C0 / 24B8, game_libs.c 3430, mgrproc 2B7C / 1824, post1b
+  63964, post0b 4B0A8 / 4B620 / 4F2DC / 4D688 / 54E78 / 59E80 / 4A308, kernel 1594 / 18F0 / 1ADC, 8FC8 inline-method lines.
+
+**5. scripts/zero-use-sweep.py (monorepo, uncommitted).** Float-typed identifiers (locals, `f32 a, f32 b` parameter
+lists, file-scope float globals) are skipped by default (`--keep-float` restores them; kit CC: `(int)(float)` is a cvt).
+When the top rows mix lengths, the best rows at the base's NM length are printed separately ("best same-length").
