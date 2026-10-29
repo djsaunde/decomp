@@ -14603,6 +14603,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCIX (agent-c 2026-10-29, run 216): **post0b 4A890 walks a copy, end from the parameter = the target's entry `or s0,a2` (93.48 -> 94.73); D884 / DF14 EE6C flag chain is non-volatile (IDO volatile always emits `la; lw 0(reg)`), every cfe/NCC spelling forwards, CSEs or lets as1 hoist; bootup C234 as C++ gets frame + top homes exact (NCC home order: function scope first, then source order) but scores below the C body**](#kit-ccix-agent-c-run-216) -- _negatives listed for 4A890 s1 size, D884 flag forms, C234 operator spellings._
 - [kit CCXI (agent-g 2026-10-29, run 215): **the BB-count lever runs both ways: when the target rematerialises a constant per site and saves fewer callee-saved regs than ours, ADD a BB (`if (1) {}`) -- post0b 454C4 loses its hoisted 255.0f / 0x03000000 with one; 3558's va / vb are memory (address-taken) in the target; 3C43C's extra frame is named-scalar vreg homes**](#kit-ccxi-agent-g-run-215) -- _454C4 structurally closer (masked diff 44 -> 13) but objdiff 95.95 -> 95.68, not committed; 3558 / 3C43C / 36694 / 7C1C / 3B9C0 negatives._
 - [kit CCXII (agent-c 2026-10-29, run 217): **a chain of destructive `lui rd; lw rd,%lo(sym)(rd)` reads and `lui at` stores on ONE symbol (reads after each store, `$at` shared by two stores) = as1 output for an address uopt left uncoloured: per-PAIR aliases (store + following load share one; each reused after a call), u32 stores / s32 loads -> timproc_b5 D884 + DF14 EXACT**](#kit-ccxii-agent-c-run-217) -- _as1 reorders loads across stores of different symbols and shares `$at` only for equal symbol+addend; uopt holds any twice-used global address in a register unless the web crosses a call; volatile always gives lui/addiu/0(reg)._
+- [kit CCXIII (agent-g 2026-10-29, run 216): **post0b 454C4 95.95 -> 99.95, length = target: build on the structurally-right BB lever, then re-test old micro-levers (drop the named element pointer -> sixth s-reg; drop the folded `& 0xFF`); `if (rec) {}` breaks an adjsave tie; `cur = nxt; if (nxt)` keeps an inline iterator member out of the candidates (ring temp t7 vs v0 web); a ternary sharing edg's int temp with post-increments separates when assigned in the same full expression as the inline call**](#kit-ccxiii-agent-g-run-216) -- _Open: e copy-propagated as the shared pointer temp (5 words); 3C43C homes = function-scope five + k / ABS3 temps / dd; 3558 per-row adds inert._
 - [kit CCX (agent-g 2026-10-29, run 214): **each object of a class with an inline constructor is an edg labelled BB; above ~19 BBs uopt splits a held callee-saved constant (game_uso 3558's $f20 zero web: hold, live else muls, w.y reload) -- a constructor-less Vec3 / aggregate Ctx restores it; a Vec3 local is a uopt register candidate only when no member call or reference parameter is bound to it (free by-value mk() keeps the op- copy chain)**](#kit-ccx-agent-g-run-214) -- _3558 85.86 -> 89.21 (frame 256 = target, all homes on the target map); vb split / va.y f20 residual and negatives listed._
 - [kit CCVII (agent-c 2026-10-29, run 215): **an inline operator's parameter temp (`v * -h`, CSE'd with a named `w = -h`) is a zero-code FP phantom holding f0 across the products; trade its home for a register-neutral one (dot()'s const-ref pointer)**](#kit-ccvii-agent-c-run-215) -- _post1b 65494 EXACT (99.91 -> 100); 63964 arm-1 temp-pool negatives; 65EE4 is not C++._
 - [kit CCVI (agent-g 2026-10-29, run 212): **a NM donor's last word scored as INSERT = the `.s` stops at `jr ra`: gui 4568's delay slot sat in the tail bin (yaml boundary + renamed force-added bin; grow expected .text by appending at EOF, objcopy --update-section drops relocs), post0b 37938's delay nop was emitted by an 8-byte 1-word `_pad.s` block (-> all-zero suffix + NM clip -4 + symbol trim); the NCC reused edg temp is one uopt LR, which pins 3B2EC's cursor copy and 37938's final reload to v0**](#kit-ccvi-agent-g-run-212) -- _4568 96.01 -> 96.53, 37938 98.71 -> 99.88; 3B2EC / 37938 / 97EC colour and temp-order negatives listed._
@@ -47771,3 +47772,48 @@ previous store, and two store pairs sharing one `lui at`. What produces each par
    new-temp at 0x74 (target 0x68). `Obj *obj = new Obj2;`, `{ obj = new Obj2; }`, a block around
    `new KB`, a named KB pointer, an extra block volatile or moving obj's declaration did not move
    the homes (12 raw words, or much worse).
+
+## kit CCXIII (agent-g 2026-10-29, run 216): post0b 454C4 95.95 -> 99.95 (2020 -> 2028 bytes = target, word-for-word up to five registers): a NAMED pointer into an array element is a register candidate the target never had; `cur = nxt; if (nxt)` keeps an inline iterator's member out of the candidates (ring temp store-forwarded instead of a v0 web); an `if (var) {}` bb lever breaks an adjsave tie; a ternary that shares edg's int temp with the post-increments gets its own live range when it is assigned in the same full expression as the inline call <a name="kit-ccxiii-agent-g-run-216"></a>
+
+NCC donor `Obj::setLights` (NM only). Each step was verified in-tree (report.json fuzzy, objdiff `functionRelocDiffs=none`).
+
+1. *Start from the structurally-right body even if it scores lower.* Run 215's extra `if (1) {}` (drops the
+   hoisted 255.0f / 0x03000000) scored 95.66 < 95.95, but every later step built on it:
+   - `int n = 0;` declared BEFORE the by-value iterator object moved the iterator from sp+56/60 to the target's
+     sp+60/64 and the frame 80 -> 88 (decl order of a memory object vs a vreg scalar sets the frame map).
+   - Dropping the named `Light *l = &rec->l[n];` (every store through `rec->l[n]`, call arg `&rec->l[n]`) gave the
+     sixth s-register: a new short LR (the `rec + n*16` web across the call) is coloured s1 BEFORE n, so n / s /
+     rec / c all move up one register exactly as in the target (the s1 owner never shows in the final code; only
+     the default path's second `_g` lands in s1). With `l` named, n took s1. 96.04, 2024 bytes.
+   - Then the folded `& 0xFF` on the three direction bytes (an old 42F4C-idiom gain) was the 1-word length gap:
+     plain `(s32)(e->dir[i] * 120.0f)` -> 2028 bytes = target and an EMPTY register-masked diff (98.28).
+   Rule: after a BB/colouring lever changes the structure, re-test every earlier "folded" or "named" micro-lever;
+   they were tuned to the old structure.
+2. *adjsave tie (rec / c both 3.2, c won on bitpos):* replacing the trailing `if (1) {}` lever with `if (rec) {}`
+   (same BB, one emission-free rec reference) colours rec before c (s4 / s5 as the target): 98.66.
+3. *Inline iterator member as a register candidate.* `LElem *next() { cur = nxt; if (cur) { nxt = cur->next;
+   return cur->data; } return 0; }` makes the memory member `cur` a candidate LR ({640|1} in zdbug:6, coloured
+   v0) across the `if`; the target holds it in a ring temp (t7) store-forwarded from `sw t7,60(sp)`. Testing the
+   member it was copied FROM (`if (nxt)`) removes the candidate, and the whole t-register ring lines up (98.66 ->
+   99.92, 214 -> 16 diff rows). Tell: a cross-BB value in t7/t8/t9 in the target (outside uopt's v0..t6 colour
+   set) but in v0/v1/a* in ours = ours made it a global candidate; re-read it from a different but equal
+   memory source after the branch.
+4. *edg temp sharing.* zdbug:6 LR {512|0} was ONE int variable used by every inline `dl->count++` (old value) AND
+   the `n <= 0 ? 1 : n` clamp, so the clamp sat in v1 with the counts (target v0). Type changes (u32), inline
+   helpers, named `m` in its own statement: inert or worse (a separate statement moves the w0 store out of the
+   bgtz delay slot). Assigning the clamp in the SAME full expression as the inline call and the w0 store
+   (`_g = c->next(), _g->w0 = ..., m = n <= 0 ? 1 : n; _g->w1 = NUML(m);`) gives it its own temp: 99.95.
+   Likewise the pointer temp {448|0} is shared by Ctx::next(), Ctx::lights() and LIter::next().
+5. *Open (five words):* the target reads e from a2 in the second flags test and the colour / dir[0] loads; ours
+   copy-propagates e = (inline return temp, a3) into them up to the bb where the shared pointer temp is redefined
+   (the loop's c->next()). Inert: volatile placement on either test, nested ifs / continue / goto forms, if (e) {}
+   / while (0) anchors, self-assignments, inline member or free-function tests (with and without param temps),
+   for / do-while / two-variable loop forms, `first()` own-temp entry (kit XVIII: makes e a phi coloured v1,
+   worse), void* / u32 return types, `register`.
+Negatives this run: 3C43C -- the 9 vreg homes are n, i, best, lim, row (function scope, -160..-176 in decl order),
+k, both ABS3 ternary temps and dd; the target's 5 are exactly the function-scope five, but no spelling removes the
+ternary temps (inline function / if-assign / comma statement: worse); out-of-loop `0 * (int)r` folds vanish
+(the in-loop one survives). 3558 -- per-row `vb.x += x` inside the matrix block / `vb.x = vb.x + ...`: identical
+code; `getPos(vb)` puts vb in memory (target-like stores) but va.x / va.y stay in registers (84.6, 992 bytes).
+CCXII scan (lui-at count per function, game_uso / gui_uso / post / post0b < 0x48000): no uncoloured-address-web
+candidate (the 2E354 / 30AF4 / 46050 / 8CD8 count differences are float / GBI constants).
