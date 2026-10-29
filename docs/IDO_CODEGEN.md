@@ -14640,6 +14640,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCXLIX (agent-c 2026-10-29, run 235): **uopt spill slots sit directly below the cfe home region (every declared local has a home, unused ones too; u8s pack per word), so the home COUNT slides every spill slot by a word -- spill offsets all off by one word while homes line up = add or remove one home; two stores of one append on ONE line give the target's lui order; 5A2C4's per-append arg4 colours are not more block locals (the frame budget cannot hold them); a ugen ring shift at the first instruction can come from code much later**](#kit-ccxlix-agent-c-run235) -- _post0b 5A2C4 94.85 -> 94.92 (head block on the function-level base, BA stores p+0 first on one line); post0b 3B9C0 94.27 -> 95.14 (a component named before its second use takes the target's extra callee-saved float, then bbsplit / denaming / zero-use stack); E68 cfe / NCC copy probes, 4C5E4 second-2.0f rematerialisation, C310 / E2D0 / 24B8 (folded-read latch home) / 2B7C negatives._
 - [kit CCL (agent-g 2026-10-29, run 236): **a ugen-allocated cvt / expression becomes a uopt-coloured variable when NAMED with a folded memory read (`d = (f32)(n + 0 * (int)(*arg0));`); uopt interference is BASIC-BLOCK granular, so removing an `if (1) {}` between two LRs makes them interfere (and adding one separates them); UNCONSTRAINED LRs colour in BITPOS (first-occurrence) order, so an early dead `while (0) { n = 0; it.next(); }` reorders them with zero code**](#kit-ccl-agent-g-run236) -- _bootup C234 99.87 -> 100 and post0b 3DF58 99.06 -> 100 (both EXACT); 54E78 / 31A74 / 46790 / 97EC / 3AE58 / 454C4 / 3E5E0 / 329C / 18F0 negatives._
 - [kit CCLI (agent-c 2026-10-29, run 236): **a call-crossing pointer and a later value that both take ra in the target are ONE variable kept non-propagated by a folded read (its LR then reaches the later t0 users); adjsave = refs / units-with-refs, so an `if (1) { stmt; }` wrap that adds one ref unit drops a variable below an equal-adjsave tie group; a `lw tN; andi ra,tN` scratch load = the source copied into its own non-propagated variable first**](#kit-ccli-agent-c-run236) -- _post0b gl_func_000578B4 99.9855 -> 100 EXACT (9676 bytes, +1.27% code); new 0 pin gl_578b4_c34458 for the blank USO jals._
+- [kit CCLII (agent-c 2026-10-29, run 237): **`v0 * 1 == K` = const-first bne with no extra LR (uopt input swaps ==/!= when the left operand is not an isvar); a nested float selector's inner join temp in the wrong register = route the inner arms through an existing dead named float whose LR already has the target colour (`fsel = c3 ? A : (scale = c2 ? B : C, scale)`); a folded read on a `new` result keeps the named pointer off edg's new-temp**](#kit-cclii-agent-c-run237) -- _game_uso game_uso_func_0000591C 99.977 -> 100 EXACT (4372 bytes, +0.57% code, cfe donor); bootup 31C0 99.955 -> 99.965; 454C4 / 1DDC / 63964 / C310 / 51AD8 negatives._
+- [kit CCLIII (agent-g 2026-10-29, run 237): **NCC homes a block's named locals in declaration order BELOW its edg temporaries, which are homed in REVERSE creation order; temporaries that the target has in creation order are named locals assigned inside the ctor argument (`XZ e(pe = (a - b) * k)`), placed above / below the remaining temporaries with a nested block**](#kit-ccliii-agent-g-run237) -- _game_uso game_uso_func_000097EC 99.974 -> 100 EXACT (924 bytes, NCC donor); 41D40 / 37938 / 3AE58 / 46790 / 40304 / 250C8 / 3B2EC / 3E5E0 negatives._
 - [kit CCXIII (agent-g 2026-10-29, run 216): **post0b 454C4 95.95 -> 99.95, length = target: build on the structurally-right BB lever, then re-test old micro-levers (drop the named element pointer -> sixth s-reg; drop the folded `& 0xFF`); `if (rec) {}` breaks an adjsave tie; `cur = nxt; if (nxt)` keeps an inline iterator member out of the candidates (ring temp t7 vs v0 web); a ternary sharing edg's int temp with post-increments separates when assigned in the same full expression as the inline call**](#kit-ccxiii-agent-g-run-216) -- _Open: e copy-propagated as the shared pointer temp (5 words); 3C43C homes = function-scope five + k / ABS3 temps / dd; 3558 per-row adds inert._
 - [kit CCXIV (agent-c 2026-10-29, run 218): **a RoData float read as `D + off` / an extern alias is often a compiler LITERAL: read the ROM word (bootup.uso RoData = ROM 0xD9FE44); a run of identical values around a jump table = one constant rematerialised (one literal word per `l.s`). As a literal uopt hoists / colours / reloads it after calls -> game_libs 3430 (0.1f in f2 + three trailing `if (1) {}`) and timproc_b5 CEB4 (0.3f + `if (1) {}` per white arm) EXACT via donors pinned `<fn>_rodata` = the pool's ROM offset; C310 NM 96.45 -> 99.89 (`== 1` = register-held 1 shared with the `= 1` store, field-form counters)**](#kit-ccxiv-agent-c-run-218) -- _CCXII address-form scan (size>0 FUNC symbols only): no further hit; 4F2DC literal +0.19; 6204/E9FC, 8BD4, 1824, 4C5E4, 4A308 / C310 spill-slot gap negatives._
 - [kit CCX (agent-g 2026-10-29, run 214): **each object of a class with an inline constructor is an edg labelled BB; above ~19 BBs uopt splits a held callee-saved constant (game_uso 3558's $f20 zero web: hold, live else muls, w.y reload) -- a constructor-less Vec3 / aggregate Ctx restores it; a Vec3 local is a uopt register candidate only when no member call or reference parameter is bound to it (free by-value mk() keeps the op- copy chain)**](#kit-ccx-agent-g-run-214) -- _3558 85.86 -> 89.21 (frame 256 = target, all homes on the target map); vb split / va.y f20 residual and negatives listed._
@@ -49931,3 +49933,109 @@ temp_ra_8 = arg2 + 0 * FW(arg1, 0x0); sp50 = (temp_ra_8 & 0x1FF) + 0 * FW(arg1, 
 Reproduce: compile the donor with
 `tools/ido-static-recomp-dump/build/7.1/out/NCC -c -G 0 -non_shared -Wab,-r4300_mul -O2 -mips2 -32 -Wo,-zdbug:5`
 in a scratch dir and grep `>>>active<<<` for the bit whose itab line is `isvar M 4 -416` (sp50's home).
+
+## kit CCLII (agent-c 2026-10-29, run 237): game_uso 591C EXACT (4372 bytes, +0.57% code) -- (1) `v0 * 1 == K` makes the ==/!= left operand a non-isvar at uopt input, so the swap gives the target's const-first `bne vK, v0` with no extra LR; (2) the f2 holder agent-g's kit CCXXXVIII asked for is not needed: route every nested float selector's INNER join through an existing dead float variable (`fsel = c3 ? A : (scale = c2 ? B : C, scale)`), whose single LR already sits on f14; (3) a folded read on a `new` result keeps the named pointer off edg's new-temp (bootup 31C0) <a name="kit-cclii-agent-c-run237"></a>
+
+_One exact: game_uso game_uso_func_0000591C 99.97713 -> 100 (4372 B; report 88.82 -> 89.39 % code), now the cfe
+donor src/game_uso/game_uso_591C.c spliced over a placeholder on both paths. NM: bootup func_000031C0 99.955 -> 99.965._
+
+1. **Const-first compare without a new LR (591C, `bne v1, v0` vs our `bne v0, v1`).** uoptinput swaps ==/!= operands
+   when the LEFT operand is not an isvar (see the BEQ/BNE ucode-shape section). `v0 == 0x10000` with `v0` a local is
+   var-first whatever the source order. Writing the field read inline (`*(int *)(self + 0x4C4) == 0x10000`) does give
+   const-first, but the read becomes its own load LR (bitpos 797, adjsave 3.0) that takes v1 and pushes the
+   promoted 0x10000 to a1, and the else arm's `addiu v1,v0,-1` then moves into the `blezl` delay slot (-1 word).
+   A folded arithmetic identity on the variable keeps everything else: `v0 * 1`, `v0 & -1`, `v0 << 0`, `v0 >> 0`,
+   `v0 / 1`, `v0 + 0 * v0` and `v0 + 0 * (int)self` all give the target (99.977 -> 99.986). No effect: `v0 + 0`,
+   `v0 - 0`, casts through unsigned / pointers / long, comma `(0, v0)`, `!(v0 != K)`, `K == v0`, and
+   `(v0 = load) == K`. `v0 | 0` / `v0 ^ 0` change the length; `(unsigned)v0` / `0x10000U` change the compare.
+2. **The last FP cell (591C: 0x204 selector outer f2, target f12).** zdbug:5 on agent-g's 99.81 version (0x204
+   selector in fsel + the dead `if (z) {}` after the head z): FP colours are taken lowest-free in the order
+   f0 (24), f2 (25), f12 (26), f14 (27), f16 (28). cfe's shared inner-ternary temp is a VARIABLE (isvar M -416,
+   one LR over all ten selector sites, 3.33) whose only neighbours are fsel (f12), the metric f0 LR, the 0.0 f16
+   constant and two spilled metrics, so it takes f2. f2v (3.2, f2) never meets it. Instead of supplying an f2
+   holder, name the inner join with an existing float that is dead after the head: `scale` (the head's x-axis
+   product, f14 because it interferes with x f0 / z f2 / fsel f12 there). Spelled
+   `fsel = v0 == 3 ? A : (scale = v0 == 2 ? B : C, scale);` (or the if / else form with `fsel = scale;` in the
+   inner arm) at all TEN sites (the tail site is the `v0 == 1` one), the inner loads land on f14 at every site,
+   the 0x204 outer is fsel f12, and the function is byte-identical (99.986 -> 100). Notes: the plain assignment
+   form `(scale = v0 == 2 ? B : C)` without the trailing `, scale` read is copy-propagated away (no change);
+   converting nine sites but not the tail one moves the tail site's join to f0 (99.63); `x` / `dot` as the join
+   variable give 98.94 / 99.45 (their own colours); without the dead `if (z) {}` the result is 99.58.
+   Lever: a nested-selector join temp in the wrong register = give the inner arms an existing named variable
+   whose LR already has the right colour, and keep the read (`, var`) so it is not propagated.
+3. **cfe donor landing for a game_uso body that rode a .late_rodata block.** 591C.s carried 44F4's 24 floats
+   (RoData +0x9C..+0xF8, moved there when 57D8 became a donor). With a C placeholder for 591C the words moved to
+   the end of the next INCLUDE_ASM block in text order (7448.s); the C functions in between (6A30..7424) emit no
+   rodata (checked: no .rodata relocs in that text range), so the RoData layout is unchanged; ROM byte-identical.
+4. **bootup 31C0 (NCC donor): `obj = (Obj *)((int)(Obj *)new Obj2 + 0 * FW(a3v, 0));`** keeps obj from being
+   copy-propagated into edg's new-temp: link(obj, r3) / the 0xB4 store read obj's home 0x78 as in the target
+   (99.955 -> 99.965). The target still reads the new-temp for the WA / KB arguments (copy-propagated there and
+   not later), and has the new-temp / KB temp at 0x74 / 0x68 (ours 0x70 / 0x74). A second named copy `o` for
+   the early uses costs a home (frame +8); dropping volatile pads to compensate scores 98.1-98.3. A mid-function
+   `obj = obj + 0 * load` re-definition emits a store (+2 words).
+5. **Negatives this run.** post0b 454C4: folded reads on the iterator result (`it.next() + 0 * *(int *)s` keeps
+   the length but flips the int-pool colours, 97.38; `0 * n` / `0 * (int)c` grow the frame), `if (e) {}` in either
+   position, nested ifs, `continue` form, for(;;) form: none reach test 2 / the colour loads. game_uso 1DDC: `V3 e`
+   for the last product (instead of `int e` + reusing acc) puts the return slot and the last-product temp on the
+   target (0x14C / 0x148) but the frame is 0x188; dropping either `const M4 &` reference block restores 0x180 but
+   moves the source pointers v1 -> v0 (99.71); 30 declaration moves and 16 getPos spellings stay <= 99.934.
+   post1b 63964: operator+ / operator* member / by-value / named-result forms, `{ V3 t; }` / scalar pads at 28
+   positions, arm-1 spellings: flat or worse. timproc_b5 C310: the f0 spill slot is 16 bytes low (0x50 vs 0x60);
+   volatile pad count / position (55 probes), init order of fb / i / pv / pp, the arg1 + 0x230 spellings: flat.
+   post0b 51AD8 (99.15): the same unstolen range-check delay slot as 396FC (default not treated as shared).
+6. **More negatives (diagnosis for the next pass).** post0b 4B620: the s0 / s3 swap is LR 32 (vreg -24, the
+   iterator array pointer reloads, adjsave 40.3, s0) against LR 39 (vreg -32, appends 1-2 old count / ++idx /
+   element address, 19.0, s3); dead `while (0) { ... }` seeds (40 probes: DL appends, iterator next / cur / ref at
+   four positions) do not reorder them (priority, not bitpos). bootup E2D0: the target reloads arg4 into f16 (the
+   register the 0x9F8 product just freed) where our kept arg4 LR takes f14; dropping `if (arg4) {}` loses a word
+   (130), arg4 spellings / folded reads are flat or worse. post0b 5F5F0: the target spills mf (a1) at the top of
+   the else arm (bc1fl delay slot) and colours z f18 (ours f14); BB levers / dead tests of the params in the arm,
+   z / zLook dead uses and statement order (19 probes) are flat or worse. titproc 116C: the 4-entry table
+   (sltiu 4) is still the open cell. A scan of every 90-99.99 % function for swapped beq / bne operands (the
+   item-1 lever) found only post0b 46050.
+
+## kit CCLIII (agent-g 2026-10-29, run 237): game_uso 97EC EXACT (924 bytes) -- edg TEMPORARY HOMES vs NAMED-LOCAL HOMES: under NCC the named locals of a block are homed in declaration order (earlier = higher sp offset) while the block's edg temporaries sit ABOVE them in REVERSE creation order (later-created = higher); a target whose temporaries are in creation order is a source with NAMED locals assigned inside the ctor argument (`XZ e(pe = (a - b) * k)`), and a NESTED BLOCK splits which names land above / below the remaining temporaries <a name="kit-ccliii-agent-g-run237"></a>
+
+_One exact: game_uso game_uso_func_000097EC 99.97403 -> 100 (924 B), the NCC donor src/game_uso/game_uso_ncc_97EC.cpp
+now spliced over a placeholder on both paths (old NM-only block removed)._
+
+1. **Diagnosis by offset map, not colouring.** The 6-word residual was three stack offsets only (two `addiu tN, sp, K`
+   and their lwc1 pairs): the temporaries bound to `XZ(const Vec3 &)` for e and f were homed at 180 / 204, target
+   204 / 180, with the `a - b` XZ temporary at 192 in both. Micro-probe (a 3-line `.cpp` with two such declarations,
+   objdump the `addiu reg, sp, K` sequence): for `X e(p - q); X f(r - s);` f's temporary is ABOVE e's, and inside one
+   declaration the ctor-argument temporary (created first) is BELOW the operand temporary. So edg prepends each new
+   temporary to the block list and the list is homed top-down; named locals (`e` 168, `f` 156) are homed below all of
+   the block's temporaries in declaration order.
+2. **The fix.** Name the two Vec3 arguments and assign them in the argument, with the first one in the outer block
+   and the rest in a nested block:
+   ```
+   if (0.0f < dot(a, a)) {
+       Vec3 pe;
+       {
+       Vec3 pf;
+       XZ e(pe = (a - b) * s->k);
+       XZ f(pf = s->w->other->pos - s->w->pos);
+       ...
+       }
+   }
+   ```
+   Homes: the outer block (pe) is homed first, then the nested block -- its one remaining temporary (`a - b`)
+   above its named locals pf, e, f -- so the frame reads pe 204, `a - b` temp 192, pf 180, e 168, f 156 =
+   target, frame 272 unchanged, same code (the implicit Vec3
+   operator= is the same 3-word copy the bound temporary got). Without the nested block (`Vec3 pe, pf;` together,
+   99.9697) pf matches but pe / the `a - b` temporary are swapped; `const Vec3 &re = ...` lifetime-extended
+   references, comma declarations, `XZ e = XZ(...)`, a named `XZ d = a - b`, dead `if (0) { temp }` blocks (they
+   take frame space: edg does not reuse temporaries) and `~Vec3() {}` (emits dtor code) all lose.
+3. **Recipe for any NCC frame-slot residual where only edg temporaries are swapped.** Write the offset map (target vs
+   build) and classify each slot as temporary or named. Temporaries in creation order in the target = named locals
+   in the source; move each one to a named local assigned in place (`T x(name = expr)` keeps the code: the name gets
+   the value the bound temporary got), then use nested blocks to place the names relative to the temporaries that
+   stay. Probe list (one score each, ~1 s): name each temporary alone, both, then each nesting split.
+4. **Negatives this run (all flat).** post0b 41D40 (next() spellings x12 and with the condition un-folded, do-while
+   with separate first / bottom conditions: the for-init temp lifetime matters, 99.29-99.34), 37938 (final reload
+   spellings x10: v0 vs v1 is a ugen ring pick), 3AE58 (pick() return / reference / by-ref forms: dropping the return
+   LR leaves the ternary pointer in v1, target never uses v1), 46790 (180 + 150 idx / dst / c spellings: every one
+   99.2537, the ring shift is not in those expressions), 40304 (13 dead-anchor orders, 10 `if (1) {}` placements
+   around d / q[3]: K1 stays f18), 250C8 (fontId scope / decl position / re-read forms), 3B2EC (`*list++` spellings,
+   s16 i), 3E5E0 (K / CB ctor forms; offset map: reg0 / reg1's new-result temp is vreg -12 in the target, -24 here,
+   i.e. two fewer variables are declared before it -- see the follow-up below if any).
