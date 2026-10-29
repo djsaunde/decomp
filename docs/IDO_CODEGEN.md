@@ -14601,6 +14601,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCIV (agent-g 2026-10-29, run 211): **two trailing `if (1) {}` after a loop drop an extra s8 and rematerialise a copied loop-end constant (3B2EC 96.36 -> 99.92, 948 = target; re-check old counted uses after a structural fix; `i * 12` builds the value in the s-register directly; `cx + cz * w` sets addu operand order); NCC temp slots moved by an in-expression named scalar `(kk = o->k)` and a `set(const V3 &)` reference helper (37938 every slot = target); a char-prototyped per-site callee alias gives the `lb + sll/sra` re-extended char argument (31A74 length + frame = target)**](#kit-cciv-agent-g-run-211) -- _Trailing blocks do nothing on most donors and on cfe; 3B9C0 / 46050 / 3558 / 30AF4 diagnosed; gui 4568 +4 is a splat boundary (delay slot in gui_uso_post)._
 - [kit CCVIII (agent-g 2026-10-29, run 213): **whole-project read-only boundary scan (jr-ra tails, one-word size deltas, edge INSERT/DELETE, odd pads) finds no new boundary error; `-Wo,-zdbug:5` LR dump shows 3B2EC's loop-bottom cursor copy must share the face-result edg temp (pool slot B, t4), which edg's allocation order (argument temps before parameter temps, no inlining of loop bodies, reference helpers home the cursor) never gives; 37938 final-reload negatives**](#kit-ccviii-agent-g-run-213) -- _No fuzzy change; boundary-scan method and ~120 3B2EC / 37938 variants listed._
 - [kit CCIX (agent-c 2026-10-29, run 216): **post0b 4A890 walks a copy, end from the parameter = the target's entry `or s0,a2` (93.48 -> 94.73); D884 / DF14 EE6C flag chain is non-volatile (IDO volatile always emits `la; lw 0(reg)`), every cfe/NCC spelling forwards, CSEs or lets as1 hoist; bootup C234 as C++ gets frame + top homes exact (NCC home order: function scope first, then source order) but scores below the C body**](#kit-ccix-agent-c-run-216) -- _negatives listed for 4A890 s1 size, D884 flag forms, C234 operator spellings._
+- [kit CCXI (agent-g 2026-10-29, run 215): **the BB-count lever runs both ways: when the target rematerialises a constant per site and saves fewer callee-saved regs than ours, ADD a BB (`if (1) {}`) -- post0b 454C4 loses its hoisted 255.0f / 0x03000000 with one; 3558's va / vb are memory (address-taken) in the target; 3C43C's extra frame is named-scalar vreg homes**](#kit-ccxi-agent-g-run-215) -- _454C4 structurally closer (masked diff 44 -> 13) but objdiff 95.95 -> 95.68, not committed; 3558 / 3C43C / 36694 / 7C1C / 3B9C0 negatives._
 - [kit CCX (agent-g 2026-10-29, run 214): **each object of a class with an inline constructor is an edg labelled BB; above ~19 BBs uopt splits a held callee-saved constant (game_uso 3558's $f20 zero web: hold, live else muls, w.y reload) -- a constructor-less Vec3 / aggregate Ctx restores it; a Vec3 local is a uopt register candidate only when no member call or reference parameter is bound to it (free by-value mk() keeps the op- copy chain)**](#kit-ccx-agent-g-run-214) -- _3558 85.86 -> 89.21 (frame 256 = target, all homes on the target map); vb split / va.y f20 residual and negatives listed._
 - [kit CCVII (agent-c 2026-10-29, run 215): **an inline operator's parameter temp (`v * -h`, CSE'd with a named `w = -h`) is a zero-code FP phantom holding f0 across the products; trade its home for a register-neutral one (dot()'s const-ref pointer)**](#kit-ccvii-agent-c-run-215) -- _post1b 65494 EXACT (99.91 -> 100); 63964 arm-1 temp-pool negatives; 65EE4 is not C++._
 - [kit CCVI (agent-g 2026-10-29, run 212): **a NM donor's last word scored as INSERT = the `.s` stops at `jr ra`: gui 4568's delay slot sat in the tail bin (yaml boundary + renamed force-added bin; grow expected .text by appending at EOF, objcopy --update-section drops relocs), post0b 37938's delay nop was emitted by an 8-byte 1-word `_pad.s` block (-> all-zero suffix + NM clip -4 + symbol trim); the NCC reused edg temp is one uopt LR, which pins 3B2EC's cursor copy and 37938's final reload to v0**](#kit-ccvi-agent-g-run-212) -- _4568 96.01 -> 96.53, 37938 98.71 -> 99.88; 3B2EC / 37938 / 97EC colour and temp-order negatives listed._
@@ -47666,3 +47667,44 @@ if/else on ONE source line lets as1 hoist the else arm's `lui` first (target ord
 chain on one line moves the saved-bit spill store next to the last RMW (both functions, +0.03..+0.08 each). (c)
 DF14 r-block: the cvt store before the 0x2B0 store lets the next call's `li a0` fill the cvt delay (-1 word). A
 pairwise line-join sweep over both bodies (48 / 47 joins) found nothing further.
+
+## kit CCXI (agent-g 2026-10-29, run 215): the BB-count lever works in BOTH directions (post0b 454C4: ONE extra `if (1) {}` drops the hoisted 255.0f / 0x03000000 callee-saved constants, structure then matches the target up to one s-register, but objdiff scores it lower); game_uso 3558's va / vb are MEMORY variables in the target, not split vregs; 3C43C's 32 extra frame bytes are named-scalar vreg homes <a name="kit-ccxi-agent-g-run-215"></a>
+
+No exact, no committed gain. Measured with the standalone NCC loop (objdiff, `-c functionRelocDiffs=none`).
+
+1. *post0b 454C4 (NCC donor `Obj::setLights`, 95.95): adding BBs removes callee-saved constants.* Our donor has
+   39 edg BBs and keeps the 255.0f scale in `$f22` (extra `sdc1`) and the gSPLight `0x03000000` in `s5`; the
+   target holds neither (255.0f in f0, rematerialised after the loop call; `lui at,0x300` per site). Adding a
+   single `if (1) {}` ANYWHERE (40 BBs; 1..8 extra all give the same body) drops both hoists: the masked-register
+   diff goes from 44 to 13-15 lines and raw diff from 163 to 131-136 lines, length 2020 -> 2016 (target 2028).
+   The remaining words: the target uses six s-registers (n in s2, the default path's second gSPLight `_g` in s1),
+   ours colours n and that `_g` into the same s1 (frame 80 vs 88, one save/restore pair), plus a `sll` nop and
+   two l->dir stores based on v0+8 vs a0. objdiff nevertheless scores 95.66-95.68 (< 95.95), so it is not
+   committed. Reading n in the default path (`&rec->l[n]`, `n + 2`, valid because n == 0 there) gives the
+   sixth s-register but computes the constants at run time (2048 bytes, 92.41). Shared function-scope `_g`,
+   if/else instead of early return, `n = 1` constants, `int n` decl moves: no change.
+   Tell: target has fewer callee-saved saves than ours and rematerialises a constant per site -> ADD BBs
+   (the inverse of kit CCX). Do this before any decl-order grind on such functions.
+2. *game_uso 3558 (89.21): the target's va and vb are memory variables.* Target listing: va stored to
+   240 / 244 / 248 at entry, reloaded for e and w; vb initialised exactly as `s0->b0->mtx.getPos(vb)`
+   (`lwc1 160(v0); addiu v0,v0,112; lwc1 52(v0); lwc1 56(v0)`), its post-add stores to 228 / 232 / 236 are
+   dead (never reloaded) -- so vb is address-taken memory, not a split vreg. Getting both into memory
+   (`getPos(vb)`, `va.from(o->pos)` member) reproduces those stores but costs 8 frame bytes (the 40 / 44
+   spill juggle disappears, because our vb loads stay next to the adds while the target loads vb.z / vb.y /
+   vb.x at the top of the matrix block and keeps f14..f18 busy through the rows). Variants tried (all below
+   89.21): vb via getPos only (84.6), + va.from (71.6), per-row `o.x += x` through `Vec3 &o = vb` (75.0,
+   frame 256 and juggle back), vb read into named / function-scope floats at block top (85.8-87.8: loads
+   move up but each name adds a home, frame 264-280), `Vec3 ov = o` copy (68.0), reference binding on the
+   vreg base (81-85.6), extra BBs (va.y and the zero leave f20 together at 20 BBs), an x/y/z-order by-value
+   `set(Vec3)` for `s0->v3C` (the target stores 60 / 64 / 68 in x, y, z order from the by-value temp;
+   order now right, 89.18). Open: what makes uopt issue the three vb loads at the block's start.
+3. *post0b 3C43C (96.78): the 24..32 extra frame bytes are named-scalar homes.* `-zdbug:6` isvar list:
+   every named scalar (n, i, best, lim, k, row, dd) and both ABS3 ternary temps get a `vreg` home
+   (9 words at -160..-192); the target's area between ra and the lowest record has 5 words. The cfe (C)
+   body gives the same homes (frame 256), so it is the source's set of names, not the front end. Dropping
+   k + dd shrinks the frame by 8 but scores lower (94.1-94.3); without the run-210 `0 * (int)(r)` fold the
+   body is structurally the target's (r stored to its home and reloaded) at 868 bytes, 96.08.
+4. *Not BB-count candidates:* 36694 (no callee-saved in either; dropping V3's constructors loses edg's
+   return-slot elision, 90.68 -> 65), 7C1C (185 BBs; a constructor-less Vec3 removes the XZ ctor protocol,
+   65), 3B9C0 (target holds n->z in f20 and the 0.0001 double in f24: a colouring difference, BB count 37 is
+   not near the cutoff).
