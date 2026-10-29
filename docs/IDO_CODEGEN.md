@@ -14603,6 +14603,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CLXXIX (agent-g 2026-10-28, run 203): **NCC folded `+ 0` on a pointer-valued inline-call result (or the inline's return) re-pools EDG temporaries = zero-code colour lever (41D40 99.61 -> 99.90, 42938 97.44 -> 97.60, gui 3714 96.43 -> 96.51); a `+ 0` site-sweep recipe over 30 NCC donors; negatives 3DF58 / 46790 / 3AE58 / 250C8 / 2D374 / 591C / 97EC / 1DDC / 0B3C**](#kit-clxxix-agent-g-run-203) -- _No exact._
 - [kit CLXXXI (agent-g 2026-10-28, run 204): **`scripts/zero-lever-grid.py` = rerunnable `+ 0` / folded `0 * inline()` / `(&X)[0]` site grid for NCC donors (30 donors: one hit, game_uso 3558 81.66 -> 85.86 via `&p->mtx + 0 * (int)(c.getOut())`); 41D40's last register is an EDG pool-slot merge (bottom array temp reuses the entry index vreg), 3E5E0's spill is the CB-level ctor `this` vreg; 2D374 / 97EC / 3AE58 / 0B3C / 591C / 396FC negatives**](#kit-clxxxi-agent-g-run-204) -- _No exact._
 - [kit CLXXXIII (agent-g 2026-10-28, run 205): **count the by-value copy hops: game_uso 8CD8 87.19 -> 89.48 (XZ return type, `Vec3 dir = xz-expr`, direct-init `XZ e(..)`, `kE0 * (250 * width)`); the report scores with `functionRelocDiffs=none` (CLI default differs on reloc-free cfe units: 30AF4 92.52 report = 91.73 CLI); 30AF4 92.52 -> 93.20 (if / else-if decode, direct fC store, wv/cp order); 3558 x,y,z operator= fixes two copy regions but loses the matrix juggle; 46050 / 454C4 constant-hoist pattern**](#kit-clxxxiii-agent-g-run-205) -- _No exact._
+- [kit CLXXXIX (agent-g 2026-10-28, run 208): **uopt priority ties break toward the lower LR number; an LR's span includes its live-through "default" blocks -- 591C scratch site fixed by moving the anti-fold guard above the dispatch (prefetch 8/6 -> 8/4) and an empty do-while in the copy body (destination 10/4 -> 10/5); 38A28 case-0x65 value through key**](#kit-clxxxix-agent-g-run-208) -- _No exact; 591C 99.85 -> 99.89, 38A28 92.59 -> 93.33; chain site-4 destinations still a0._
 - [kit CLXXXVII (agent-g 2026-10-28, run 207): **cfe `+ 0 * VAR` as a uopt priority lever read in the zdbug:5 list (one counted use per block / dominance path, int contexts only, defined variables only; a use extends the LR and blocks its register); 591C 99.73 -> 99.85, 38A28 84.62 -> 92.49 at target length, 30AF4 93.20 -> 93.55**](#kit-clxxxvii-agent-g-run-207) -- _No exact; 591C left = copy destinations a0 vs a1._
 - [kit CLXXXV (agent-g 2026-10-28, run 206): **corrected-metric re-sweep = 3 `hoist` hits (inner declaration -> function scope: 37540, 8CD8, 7C1C), 0 that the old metric missed, 0 zero-lever-grid hits on 27 NCC donors; two unused `V3` locals set 37540's frame to the target 0xC0; cfe `+ 0 * VAR` counted-use grid automated in-tree (2D374 `if (0 + 0 * i)`, 469A8 `+ 0 * arg1` to target length)**](#kit-clxxxv-agent-g-run-206) -- _No exact; NM 37540 95.72 -> 96.39, 469A8 94.24 -> 95.12, 2D374 99.67 -> 99.77, 8CD8 89.475 -> 89.499, 7C1C 95.239 -> 95.261._
 - [kit CLXXVII (agent-g 2026-10-28, run 202): **NCC `(&x)[0]` re-read = a load uopt will not CSE but ugen still reuses across the fall-through edge: a candidate (v1) becomes the target's ugen temp (t8 / t9); cfe folds the spelling away (NCC-only)**](#kit-clxxvii-agent-g-run-202) -- _EXACT game_libs_func_000307A8 (99.46 -> 100); negatives 41D40 / 97EC / 0B3C / 3AE58 / 46790 / 3DF58 / 37938 / 250C8 / 1DDC._
@@ -47075,3 +47076,46 @@ _No exact. kernel 1ADC 93.54 -> 94.32, bootup 24B8 97.05 -> 98.91, bootup E68 93
 - **Not finished (timeouts):** timproc_b5 D884 (4091 variants) and bootup B75C (5000) hit the 25-minute cap before
   scoring; DF14, 6808, 5A2C4 not reached. Run them with `--lines` around the residual or a lower `--maxv`
   (note `--maxv` keeps the FIRST N variants, i.e. the early sites only).
+
+## kit CLXXXIX (agent-g 2026-10-28, run 208): **uopt priority TIES break toward the lower LR number -- 591C scratch site fixed by bringing the prefetch (2.0) and the copy destination (2.0) to a tie: the guard-pointer setup moved above the transform dispatch drops two "default" (live-through) blocks from the prefetch's span, and an empty `do { } while (0);` between the copy's loads and stores adds one block to the destination's span; 38A28 case-0x65 value through `key`** <a name="kit-clxxxix-agent-g-run-208"></a>
+
+_No exact. report.json: game_uso_func_0000591C 99.85270 -> 99.89387 (4372, length = target), gl_func_00038A28 92.59259 ->
+93.33334 (324 = target). post0b NM clip unchanged 0x2eacc._
+
+**1. What the span is.** In the zdbug:5 colouring dump, an LR's adjsave is divided by the blocks in its `- live bb -` rows PLUS
+the `- live bb (default) [...]` list (blocks it is merely live through). 591C's self->0x30 prefetch (defs in the three
+transform-dispatch arm exits, one use in the scratch block) had span 6 (48, 50, 54, 57 + default 55..56) = 8 / 6 = 1.33; the
+default blocks 55..56 were the `p = 0; if (1) { p = &scratch_xz; }` anti-fold blocks sitting between the switch and the
+scratch block. Moving those two lines ABOVE the transform switch (same code: p is an address constant, rematerialised) gives
+span 4 = 2.0. The copy destination (defs at the copy from p and the alloc result, three store uses) was 10 / 4 = 2.5; one
+`do { } while (0);` AFTER the second source load (before the first store; also works between stores, not before the
+loads -- that splits the src LR instead, 98.5) makes it 10 / 5 = 2.0.
+
+**2. Tie order.** At equal adjsave the LR with the lower number is coloured first. The prefetch's LR number is set by the
+first occurrence of ITS expression in the candidate table (here 195 vs the destination's 190 before the move; reading the
+first-region `sub->0x348` compares through the parameter (`(char*)a0 + 0x30`) drops it to 127). In this case the move
+alone already ordered them correctly; check `>>>active<<<{expr|n} LR reg` in the dump. Result: prefetch a0, destination
+a1, src v1 -- the target's three registers at the scratch site (11 rows gone).
+
+**3. Same idea, chain site 4 (still open).** The two chain site-4 destinations (delta_b_dst / delta_g_dst) colour a0
+(target a1) with forbidden [v0 v1]; nothing visible holds a0 there in the target. Tried: do-while splits at every
+statement of both chains (94 singles, flat); merging the site-4 destinations with scratch_dst (merged LR 2.5 = 45 / 18 --
+the per-ref weight is NOT constant, so don't extrapolate), with / without do-while at site 4 (that also splits the
+accel_params LR: 2.5 -> 2.0), with / without the `+ 0 * child_flags` lever: all lower. A destination use in the alloc call
+block (to make a0 = 12 forbidden) is copy-propagated to p (or constant-propagated to &scratch_xz) and never extends it.
+
+**4. Negatives on 591C (all at target length).** Axis-load order (x first) with every permutation of 6 float variables x
+`if (1) {}` position (720 variants) / 9 variables (1008): order fixes but colours move, best 99.84. Prefetch as a named
+variable assigned in each arm (+ default): the src addition sinks below the alloc and the variable spills (99.47). Dropping
+the `sub` variable for direct `self->0x30` expressions (per region / all): one long expression LR coloured a2 with a0
+copies, 95.9-99.6. Self/a0 spelling flips of the 17 self->0x30 reads (singles + pairs, 153): flat except the known axis_src
+one. Alternative null-guard shapes (`if (dst == 0) dst = alloc(); if (dst)`: prefetch a0 but src / dst swap; ternary,
+comma forms): lower. Small rows: `0x10000 == v0`, mul operand swap, other counter / selector variables: flat.
+
+**5. 38A28.** Case 0x65 stores `*p` through `key` (`key = *p; o->0xC = key;`): the target's a3 value register and the
+shifted t-ring line up (92.59 -> 93.33). Left: `code` colours a3 (target v0) because the cursor web (6.0) takes v0 first;
+counted uses of `code` in any case / the default call: flat.
+
+**6. Checked, nothing found:** 41D40 (NCC, 99.90): 62 next()/condition spellings, the bottom copy's array temp stays a1
+(target v1). 97EC (NCC): declarator / copy-init forms of e / f don't reorder the two edg temp homes. 0B3C: the 4-entry
+table is the known cfe cap (kit CXL); `default:` instead of the phantom `case 4:` drops the table.
