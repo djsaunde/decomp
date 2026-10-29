@@ -14602,6 +14602,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCVIII (agent-g 2026-10-29, run 213): **whole-project read-only boundary scan (jr-ra tails, one-word size deltas, edge INSERT/DELETE, odd pads) finds no new boundary error; `-Wo,-zdbug:5` LR dump shows 3B2EC's loop-bottom cursor copy must share the face-result edg temp (pool slot B, t4), which edg's allocation order (argument temps before parameter temps, no inlining of loop bodies, reference helpers home the cursor) never gives; 37938 final-reload negatives**](#kit-ccviii-agent-g-run-213) -- _No fuzzy change; boundary-scan method and ~120 3B2EC / 37938 variants listed._
 - [kit CCIX (agent-c 2026-10-29, run 216): **post0b 4A890 walks a copy, end from the parameter = the target's entry `or s0,a2` (93.48 -> 94.73); D884 / DF14 EE6C flag chain is non-volatile (IDO volatile always emits `la; lw 0(reg)`), every cfe/NCC spelling forwards, CSEs or lets as1 hoist; bootup C234 as C++ gets frame + top homes exact (NCC home order: function scope first, then source order) but scores below the C body**](#kit-ccix-agent-c-run-216) -- _negatives listed for 4A890 s1 size, D884 flag forms, C234 operator spellings._
 - [kit CCXI (agent-g 2026-10-29, run 215): **the BB-count lever runs both ways: when the target rematerialises a constant per site and saves fewer callee-saved regs than ours, ADD a BB (`if (1) {}`) -- post0b 454C4 loses its hoisted 255.0f / 0x03000000 with one; 3558's va / vb are memory (address-taken) in the target; 3C43C's extra frame is named-scalar vreg homes**](#kit-ccxi-agent-g-run-215) -- _454C4 structurally closer (masked diff 44 -> 13) but objdiff 95.95 -> 95.68, not committed; 3558 / 3C43C / 36694 / 7C1C / 3B9C0 negatives._
+- [kit CCXII (agent-c 2026-10-29, run 217): **a chain of destructive `lui rd; lw rd,%lo(sym)(rd)` reads and `lui at` stores on ONE symbol (reads after each store, `$at` shared by two stores) = as1 output for an address uopt left uncoloured: per-PAIR aliases (store + following load share one; each reused after a call), u32 stores / s32 loads -> timproc_b5 D884 + DF14 EXACT**](#kit-ccxii-agent-c-run-217) -- _as1 reorders loads across stores of different symbols and shares `$at` only for equal symbol+addend; uopt holds any twice-used global address in a register unless the web crosses a call; volatile always gives lui/addiu/0(reg)._
 - [kit CCX (agent-g 2026-10-29, run 214): **each object of a class with an inline constructor is an edg labelled BB; above ~19 BBs uopt splits a held callee-saved constant (game_uso 3558's $f20 zero web: hold, live else muls, w.y reload) -- a constructor-less Vec3 / aggregate Ctx restores it; a Vec3 local is a uopt register candidate only when no member call or reference parameter is bound to it (free by-value mk() keeps the op- copy chain)**](#kit-ccx-agent-g-run-214) -- _3558 85.86 -> 89.21 (frame 256 = target, all homes on the target map); vb split / va.y f20 residual and negatives listed._
 - [kit CCVII (agent-c 2026-10-29, run 215): **an inline operator's parameter temp (`v * -h`, CSE'd with a named `w = -h`) is a zero-code FP phantom holding f0 across the products; trade its home for a register-neutral one (dot()'s const-ref pointer)**](#kit-ccvii-agent-c-run-215) -- _post1b 65494 EXACT (99.91 -> 100); 63964 arm-1 temp-pool negatives; 65EE4 is not C++._
 - [kit CCVI (agent-g 2026-10-29, run 212): **a NM donor's last word scored as INSERT = the `.s` stops at `jr ra`: gui 4568's delay slot sat in the tail bin (yaml boundary + renamed force-added bin; grow expected .text by appending at EOF, objcopy --update-section drops relocs), post0b 37938's delay nop was emitted by an 8-byte 1-word `_pad.s` block (-> all-zero suffix + NM clip -4 + symbol trim); the NCC reused edg temp is one uopt LR, which pins 3B2EC's cursor copy and 37938's final reload to v0**](#kit-ccvi-agent-g-run-212) -- _4568 96.01 -> 96.53, 37938 98.71 -> 99.88; 3B2EC / 37938 / 97EC colour and temp-order negatives listed._
@@ -47708,3 +47709,65 @@ No exact, no committed gain. Measured with the standalone NCC loop (objdiff, `-c
    return-slot elision, 90.68 -> 65), 7C1C (185 BBs; a constructor-less Vec3 removes the XZ ctor protocol,
    65), 3B9C0 (target holds n->z in f20 and the 0.0001 double in f24: a colouring difference, BB count 37 is
    not near the cutoff).
+
+## kit CCXII (agent-c 2026-10-29, run 217): a repeated `lui rd; lw rd,%lo(sym)(rd)` / `lui at; sw` chain on ONE symbol = an UNCOLOURED address web: per-pair aliases reused after a call reproduce it -- timproc_b5 D884 (96.98 -> 100) and DF14 (96.44 -> 100) EXACT <a name="kit-ccxii-agent-c-run-217"></a>
+
+Target shape (D884 / DF14 EE6C flag chain): six reads and five writes of `import_8005EE6C + 4` in one
+basic block, every read the destructive macro form `lui tN,%hi; lw tN,4(tN)` issued AFTER the
+previous store, and two store pairs sharing one `lui at`. What produces each part:
+
+1. *as1 is the scheduler and its alias test is by symbol.* `cc -S` (ugen output, before as1) shows
+   the source order; as1 then hoists a `lw sym_b+4` above a `sw sym_a+4` whenever the symbols differ
+   (the `.extern` size does not matter, 0 or 1). It keeps a load behind a store only when both name
+   the same symbol + addend. It reuses `$at` for a second store only when the symbol AND the addend
+   are equal (`ee+0x414C0` / `ee+0x414C4` get two `lui at`: the post1b 66B64 / 66A50 shared-$at cell
+   stays a cap). Assembling a hand-edited `-S` file with one symbol everywhere gave the target
+   chain word for word, which is how the shape was identified.
+2. *uopt holds a global's address in a register (`la` = lui + addiu, then `lw K(reg)`) whenever
+   the address is used twice in a region -- even one `g = g & m` RMW --* for plain scalars, struct
+   members, unions, arrays and every `(char *)&sym + K` spelling alike (all canonicalise to
+   `LDA sym` + offset). IDO 5.3 does the same. It leaves the address UNCOLOURED (direct macro form
+   at every access) when the web spans a call and has few uses: `x = g; foo(); g = x | 1;` compiles
+   to `lw sym` / `sw sym` with no base. With a held base, as1 also forwards same-base reloads (`lw
+   4(v0)` after `sw 4(v0)` disappears).
+3. *uopt never forwards a store into a later load of the same global through `-S`,* but with the
+   address uncoloured a reload of the same type as the preceding store was dropped; stores typed
+   `u32` and loads typed `s32` keep every reload (two adjacent loads are CSE'd unless their types
+   or symbols differ).
+4. *Recipe.* Use per-PAIR aliases (all pinned 0, like the import): each store and the load that
+   follows it name the same alias (as1 keeps the order, and reuses `$at` when the next store uses
+   that alias too); the first two reads get their own single-use aliases; every pair alias is used
+   again AFTER the switch's calls (the restore if/else: then-arm load s1 / store s2, else-arm load
+   s4 / store s7), so its address web crosses calls and uopt leaves it uncoloured. D884:
+   `l1, s1=l2.., s2=s1.., s2=s2.., s4=s2.., s4=s4..` (loads `s32`, stores `u32`). One alias per
+   access (the old spelling) is right for single RMWs but loses the store/load order and the $at
+   reuse in a chain.
+5. *Smaller fixes that fell out.* Two adjacent constant stores (`0x140 = 1; 0x13C = 1;`) on one
+   source line put the second constant in the preceding `lw` delay (as1 order). DF14 only: an
+   `if (1) {}` right after `char *rr = r;` issues the r reload before the arg2 reload; a tail block
+   writing through an existing local (`gsub = r;`) instead of a new block-local `rr` gives r v1 and
+   the following `FW(arg0, 0x38)` v0 (the block-local took v0 first). Both functions are cfe donors
+   (the 14-entry jumptables are read through `D_807FF3E0 + 0x3C0` / `D_807FF420 + 0x400`; donor
+   `.rodata` pinned with `<func>_rodata = 0x3C0 / 0x400`).
+6. *Negatives (do not retry):* volatile (scalar, array, struct member, per-site, cfe or NCC) always
+   materialises `lui; addiu; lw 0(reg)`; bitfields compile to byte `lbu/sb` RMWs; `-Olimit` skip
+   (unoptimised ucode) gives an -O0-like body, not this one; `-Wo,-zscm:0 / -zcomo:0 / -zcopy:0 /
+   -zstor:0` do not remove the `la`; block-scope `extern` redeclarations are the same symbol, and a
+   conflicting-type redeclaration is a cfe error.
+7. *timproc_b5 CEB4 (97.13) negatives:* `(f32)1` / `1.0` / `(f64)1` for the blocks 2-3 then-arm
+   constants (26-27 diffs vs 14), the D load in a comma expression in the condition (14, no change),
+   then-arm `a1 = a1;`, `f = f;`, `if (1) {}`, `while (0) {}`, `a1 = 0;`, `goto join;` (all fold the
+   arm, 23); `v[0] = v[0]; if (1) {}` (14).
+8. *post0b 4A9F0 EXACT (98.00 -> 100, NCC donor over an empty placeholder).* The run-133 NCC NM
+   donor had the inner cursor copy in t1 (target v0) and the cell sum in v1 twice. An `if (1) {}`
+   right after the inner `self->put(...)` call ends that block before the `*cursor++` re-read:
+   the copy then colours v0 (the dead grid-root register) and the -1 / &D registers drop back to
+   t1 / t2. Writing the cell address as ONE expression (`&g->grid->cells[base] + i`, not
+   `cell = &cells[base]; cell += i;`) sends the row sum to a ugen temp (t4) and the cell to v1,
+   which also re-phases the byte loads onto t6 / t7 / t9. Same length as the NM donor: post0b
+   clip unchanged.
+9. *bootup 31C0 (99.86) notes:* the target reads obj from the copy home (0x78) in case 0 and from
+   the new-temp home (0x74) in case 1; ours does the reverse (new-temp at 0x70) and puts the KB
+   new-temp at 0x74 (target 0x68). `Obj *obj = new Obj2;`, `{ obj = new Obj2; }`, a block around
+   `new KB`, a named KB pointer, an extra block volatile or moving obj's declaration did not move
+   the homes (12 raw words, or much worse).
