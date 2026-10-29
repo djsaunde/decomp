@@ -14599,6 +14599,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCII (agent-c 2026-10-28, run 212): **read the zdbug:5 colour ORDER (adjsave) on a reload region: counted uses outside the block reorder it -- 90CC's whole arg1 / arg2 / arg7 / const-6 block now matches; `if (1) {}` splitters are counted-use sites (55A0); a counted use that adds a spill or a char-global load is real code; 4D688 / 4B0A8 / 24B8 a-register residuals diagnosed; zero-use-sweep skips float identifiers**](#kit-ccii-agent-c-run-212) -- _No exact; 90CC 99.26 -> 99.45, 5A2C4 90.29 -> 90.47, 55A0 97.24 -> 97.26, 8FC8 91.44 -> 91.51._
 - [kit CCIII (agent-c 2026-10-29, run 213): **three or more trailing `if (1) {}` blocks (after the last call) raise the BB count until a loop-invariant address held in s8 drops to the target's frame home + reload; a by-value operator returning `T(x * s, y * s, z * s)` evaluates all components before the temp stores (restores the load-delay nop); 8FC8 S70-block / kid-loop / pos-zero, 4C5E4 2.0f remat, 65EE4, 18F0 peel, 5A2C4 split temps, 4A890 id copy diagnosed (negatives)**](#kit-cciii-agent-c-run-213) -- _No exact; post1b 65494 91.75 -> 98.64 (1336 = target, mnemonics identical)._
 - [kit CCIV (agent-g 2026-10-29, run 211): **two trailing `if (1) {}` after a loop drop an extra s8 and rematerialise a copied loop-end constant (3B2EC 96.36 -> 99.92, 948 = target; re-check old counted uses after a structural fix; `i * 12` builds the value in the s-register directly; `cx + cz * w` sets addu operand order); NCC temp slots moved by an in-expression named scalar `(kk = o->k)` and a `set(const V3 &)` reference helper (37938 every slot = target); a char-prototyped per-site callee alias gives the `lb + sll/sra` re-extended char argument (31A74 length + frame = target)**](#kit-cciv-agent-g-run-211) -- _Trailing blocks do nothing on most donors and on cfe; 3B9C0 / 46050 / 3558 / 30AF4 diagnosed; gui 4568 +4 is a splat boundary (delay slot in gui_uso_post)._
+- [kit CCV (agent-c 2026-10-29, run 214): **NCC frame-home fitting with an isvar home list + three LCS scores: scalar DECLARATION placement moves homes (function-scope f, h/w/dt before n/d/hit), ctor -> set() fixes the s-reg permutation, a real C++ virtual call fixes addu order, operator/= fixes the division schedule, by-value operator= via cp(const &) homes temps below the param, `n.sc(k = ...)` + `const Vec3 &ri = imp` fill the last holes, a named float result in an inline dot() is a phantom f0 LR (use a const-ref local), one `if (1) {}` before the impulse swaps k / w colours**](#kit-ccv-agent-c-run-214) -- _post1b 65494 NM 98.64 -> 99.91 (every sp offset + frame = target; left: op* products f0/f2/f12 vs f2/f12/f14, an f0 phantom the target has); 63964 op+ temp order negatives._
 - [kit CLXXXVIII (agent-c 2026-10-28, run 205): **a register copy in the FIRST compare's delay slot is the else block's first insn (as1 fills from the branch target): a block-local `u8 d = c` dispatch copy (int copies propagate away) + the range test on c gives 6126C 93.81 -> 99.35 at target length; NCC ignores volatile params; 4C5E4 un-named m78 + folded `0 * mC0` ring phase (87.22 -> 88.48)**](#kit-clxxxviii-agent-c-run-205) -- _No exact; 4E424 / 18F0 / CEB4 / 4A890 / 578B4 / 63964 / 50444 negatives._
 - [kit CLXXVIII (agent-c 2026-10-28, run 200): **37540 ported to C++ from its exact sibling 37348's donor kit (cfe 81.17 -> NCC 93.58, length = target): one inline reads the saved vector and clears x (refs = early stores, return = register), set() + compound `*=` for the store/re-read build; 8CD8 pads worth +0.07, no natural aggregate; 36694 n-CSE diagnosis**](#kit-clxxviii-agent-c-run-200) -- _No exact._
 - [kit CLXXI (agent-g 2026-10-28, run 202): **timproc_uso_b5 32C8 EXACT (1480 B): cfe NM body re-written as NCC on its exact sibling 2B74's donor shape (literal vec constants, rodata pin, `(f32)iz()` zero re-assigned on both alloc paths, cfe decl list); the last 2 colour words fell to a grid of PAIRED `if (1) {}` splits x statement order x line layout**](#kit-clxxi-agent-g-run-202) -- _Run negatives: 4A890 / E68 / 6126C / 18F0 / 65EE4 / 65494 / 578B4 / C310 / 4A308 / E2D0 / 31C0 / C234 / 90CC._
@@ -47375,3 +47376,49 @@ Trailing blocks did nothing on 3B9C0, 3BE1C, 3B6A0, 3C43C, 36694, 36F0C, 7C1C, 8
 **31A74 (in-tree cfe).** The target's `lb a2, 35(sp)` followed by a `sll / sra 24` re-extension of the char argument at the call means the callee is ANSI-prototyped with a `signed char` parameter. A per-site alias `extern int gl_func_00000000_c(int, s8);` (pinned to 0) reproduces it. A trailing `if (r) {}` had kept r live across the call (frame 0x20, target 0x18). Moving `sel += 63` above the `mode == 255` test puts the addiu in the bne delay slot, as in the target. 560 -> 564 bytes = target; 90.73 -> 91.55. Residual: the `ACC = r` store is scheduled before the arg `mfc1` (the target stores after it), and the late `sll / sra` of sel.
 
 **Negatives / diagnoses.** 3B9C0 (-20 bytes): all blocks line up; the gap is the target's `off` spill (sw / lw a1, 0x80(sp)), its f24 save, and a materialised `&D` (lui / addiu a2). All are register-pressure effects, not structure. 46050 (-8): the target keeps `&D` (margin) in s8 and rematerialises `lui at, 0xE400`; ours holds the 0xE4000000 constant in s8. Insensitive to the margin spelling, the E4 operand order, a named e4, or the position of the B3-word local. 3558: target matrix rows run x, y, z, with vb kept in registers through `+=` and `-`. The x, y, z row order lines up the block, but every vb rewrite loses the r temp chain (-20pp). 30AF4: the case-5 constants 13 / 14 / 16 live in a0 / v1 webs in the target; u32-typed c13 / c14 gets 14 into a register (2132 -> 2128 bytes) but scores lower. gui 4568 (+4): the target symbol ends at `jr ra` because the delay slot `addiu sp, sp, 8` (0x27BD0008 at ROM 0x591DB0) sits in the gui_uso_post bin. That is a splat boundary to fix (c segment end 0x591DB0 -> 0x591DB4), not a code difference.
+
+## kit CCV (agent-c 2026-10-29, run 214): NCC frame-home fitting on post1b 65494 -- every stack home and the s-register permutation exact, 98.64 -> 99.91 <a name="kit-ccv-agent-c-run-214"></a>
+
+**Method (fast loop).** Compile the donor standalone with the matching NCC line, objdump the function, and
+compare against the expected object with three scores: exact line LCS, LCS with sp offsets masked (= register
+diffs only), and LCS with registers masked (= structure). Then list the homes: `-Wo,-zdbug:6` with the dump NCC
+and grep `isvar M <size> <off>` (off is from the frame top, `vreg` = register candidate), plus a positional
+map target-offset -> our-offset over the aligned listing. Fix the frame from the top down: named block homes
+first, then the edg temp area.
+
+**Rules confirmed on 65494** (each step kept only when the scores rose; objdiff in-tree in brackets):
+1. Named locals home top-down in declaration order, function scope first, then the loop block. Register-only
+   scalars still take a home, so a home can be moved by moving a scalar's DECLARATION: `float f` hoisted from
+   the `if (count)` block to function scope, and `float h, w, dt` declared before `Vec3 n, d, hit` in the loop
+   block, put n / d / hit on the target's 0x134 / 0x128 / 0xF8 (frame 384 -> 392 with `Vec3 &operator=`).
+2. A 3-float ctor forwarding to `set(a, b, c)` instead of member stores fixed the s1 / s2 / s3 permutation
+   (self / return slot / &node->v120) [99.41].
+3. `operator-` as `return Vec3(...)` (ctor -> set) plus the loop-head normal as field stores (no set()
+   parameter temps above the return slot) put R / op- result on the target [99.44].
+4. A real C++ virtual call (`struct NB { char pad[0x28]; 11 dummy virtuals; virtual void contact(...); }`)
+   gives `addu a0,t2,s0` where the hand-written `vt[12].fn(vt[12].off + (char *)node, ...)` gave `s0,t2`;
+   `nsum /= f` (operator/=) gives the target's y / x / z division schedule where the element-wise spelling
+   in any order did not [99.56].
+5. A call statement in its own `{ }` homes its reference-bound temp BELOW the earlier statements' bound temps
+   (block-level binding temps are otherwise newest-on-top); a NAMED `Vec3 imp = n.sc(...)` in the block took
+   the target's bound-temp home directly [99.57].
+6. By-value `operator=(Vec3 v) { cp(v); }` with an inline `cp(const Vec3 &)`: cp's this / reference temps are
+   homed BELOW the by-value parameter (the target's two unreferenced words under the parameter), as in 63964
+   (kit CXV/CXXXI line) [99.59].
+7. The temp below an inline's named result (sc's `s` parameter temp) disappears when the argument is an
+   assignment to a named scalar `n.sc(k = ...)` with k declared in the loop block; `nsum /= (float)count`
+   (no named f) removes another; a `const Vec3 &ri = imp;` passed to the call adds one pointer home right
+   below imp: with these every sp offset and the frame match [99.70].
+8. `float dot() { float r = ...; return r; }` leaves r as a PHANTOM FP LR coloured f0 (dt then f2);
+   `const Vec3 &u = *this; return u.x * v.x + ...` keeps the home without the phantom (dt f0 as target) [99.76].
+9. One `if (1) {}` after the dt clamp (BB split before the impulse) swaps the k / w colour order: k f14,
+   w f16 as in the target [99.91].
+
+**Left (6 words):** the three operator* products colour f0 / f2 / f12 vs the target's f2 / f12 / f14 -- the
+target has an f0 holder live across the products. Making operator*'s `s` a parameter temp (`* (0, w)`,
+`* -h`, `float t = s`, `if (0) { s = 0; }`) does produce exactly that phantom (products f2 / f12 / f16) but
+adds a float home and reschedules the whole function (length 333, frame 400): not the target's spelling.
+Negatives: statement order of nsum / count / w / psum / wsum, element-wise nsum +=, minv forms, op* spellings
+(named r, set(), field stores, s * x), plain ctor for op* only (products become ugen temps, still f0..),
+`if (1) {}` at every loop-body position. 63964 (99.96): free vs member operator+, by-value / named-result /
+reference-local forms of operator+ do not move the op+ reference temps from below X to above T2.
