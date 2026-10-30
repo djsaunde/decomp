@@ -14646,6 +14646,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCLV (agent-c 2026-10-29, run 238): **NCC frame homes: an inline's scalar locals declared BEFORE its result V3 are homed above it; one variable instead of two drops a home; `V3 &v = x; v += w;` for a member +=; a DEAD nested pool allocation `if (0) { *a.me()->me() += *b.me(); }` homes edg's pointer-temp pool slots above the next statement's temporaries; array-indexed loop pointers (uopt IVs) move the spill slot up**](#kit-cclv-agent-c-run238) -- _bootup func_00008BD4 98.83 -> 100 EXACT (836 B) and post1b gl_func_00063964 99.964 -> 100 EXACT (1120 B), NCC donors; 4B0A8 NM 99.56 -> 99.83 (CCLIV hold on a while-loop); 31C0 99.965 -> 99.975; C310 / 454C4 / 59E80 / 1DDC / 4B2F4 / 4B620 negatives._
 - [kit CCLVI (agent-c 2026-10-29, run 239): **an expression form that leaves a variable in its home gets its register back with a folded `+ 0 * (int)(v)` use before the call it crosses; a count pointer read through a block-scoped NAMED pointer is a uopt variable (slot / pointer colours) whose home is paid back by MERGING two later same-type locals; a nested pool hold `(it.me()->me(), e->flags & 2)` stops inline-return copy-propagation inside a condition; 1DDC frame layout = named V3 e + nameless then-block + one block around mm / call**](#kit-cclvi-agent-c-run239) -- _post0b 4B2F4 NM 99.36 -> 99.63; 454C4 / 1DDC structural wins not yet fuzzy gains; 31C0 / C310 / 59E80 / 48510 / 4B620 / 5F5F0 / E2D0 negatives._
 - [kit CCLVII (agent-g 2026-10-29, run 239): **an UNSIGNED literal is a different uopt expression from the same int literal: a call argument that reads a constant-holding register (`or a1,t0,zero`) where the target re-materialises (`addiu a1,zero,1`) becomes unsigned through the callee's type-neutral parameter (`unsigned int a1`; a K&R call with `1u` is UB against a prototyped definition, narrower casts fold back to int)**](#kit-cclvii-agent-g-run239) -- _game_uso 0B3C NM 99.83 -> 99.9986 (only the 4-entry jump table left); 41D40 / 37938 / 3E5E0 / 34890 / 3AE58 / 40304 / 250C8 / 31A74 / 18F0 negatives with dump diagnoses._
+- [kit CCLXI (agent-g 2026-10-29, run 241): **a pointer the target spills around calls is a plain register variable (no `&x` in a frame-home list; post-loop `if (p) {}` reads lower its adjsave below the s-register threshold); two stores of one ugen temp = a WHOLE-STRUCT copy (`a = D; b = a;`, `b.w = (a = D).w`); a reload above a branch = `if (v) {}` before it; a dead-stored call-result vreg homed below a block's class object moves above it with a dead nested `if (0) { f(f(0)); }` before the block**](#kit-cclxi-agent-g-run241) -- _EXACT bootup func_000055A0 (2392 B, 97.29 -> 100); 41D40 / 37938 / 250C8 / 40304 / 31A74 / 4E424 / 35B1C negatives with diagnoses._
+- [kit CCLX (agent-c 2026-10-29, run 241): **NCC copy propagation stops at a derived-to-base CONVERSION on the use: type the named copy as the derived pointer, retype the parameters that should read edg's new-temp, spell the uses that must read the named home `(Base *)p`; a later `new` that reuses the same edg pool temp redefines it and stops propagation (an argument temp stays busy through an inlined call body, a statement temp does not)**](#kit-cclx-agent-c-run241) -- _bootup 31C0 NM 99.975 -> 99.980 (only the case-1 KB argument / KB temp slot left); mgrproc 1824's `lw t8,1464(at)` is a RoData layout gap (pre.bin +0x44 + 0x5B8), not an external table; C310 / 4B2F4 negatives._
 - [kit CCLIX (agent-g 2026-10-29, run 240): **the jump-table bound check (`sltiu at,x,N`) is synthesised by ugen's build_tree from the cfe table length N (`clab length`), and ugen can only DELETE it (selector `and(E,K)`, or `str X <- and; fjp(X); xjp` adjacency) -- never narrow it; a source guard always has a cfe `loc` node before the switch, a CSE'd mask keeps the check, `guard + switch (x & 3)` = target + 1 `andi`; `cc -K` + `ugen ... -d` prints the ucode trees; game_uso 57D8 (exact NCC: 7- and 4-label chains) vs 8CD8 (same 4-label shape as a table, edg temporaries) = a second, EDG-family, table-emitting C++ compiler**](#kit-cclix-agent-g-run-240) -- _Negative, no code change: 0B3C 99.9986 / 8CD8 / 116C / 76F0 / 80001ADC keep the phantom 5th label; do not reopen without a new compiler binary._
 - [kit CCLVIII (agent-c 2026-10-29, run 240): **colours fixed ON TOP of a structurally-right variant: a priority raised by a needed propagation stopper is lowered by post-loop low-weight ref units of the same variable (`if (e) {}` / folded `+ 0 * (int)e` before the first post-loop call; adjsave = savings / units-with-refs); a pointer merged into edg's first pool temp gets its own LR via an inline `mtx.me()->getPos()` (no home); `{ int p1 = 0, p2 = 0; }` pays back dropped homes**](#kit-cclviii-agent-c-run240) -- _post0b 454C4 (2028 B), game_uso 1DDC (1528 B), post0b 4B0A8 (588 B) EXACT; 31C0 / 4B620 / C310 negatives._
 - [kit CCXIII (agent-g 2026-10-29, run 216): **post0b 454C4 95.95 -> 99.95, length = target: build on the structurally-right BB lever, then re-test old micro-levers (drop the named element pointer -> sixth s-reg; drop the folded `& 0xFF`); `if (rec) {}` breaks an adjsave tie; `cur = nxt; if (nxt)` keeps an inline iterator member out of the candidates (ring temp t7 vs v0 web); a ternary sharing edg's int temp with post-increments separates when assigned in the same full expression as the inline call**](#kit-ccxiii-agent-g-run-216) -- _Open: e copy-propagated as the shared pointer temp (5 words); 3C43C homes = function-scope five + k / ABS3 temps / dd; 3558 per-row adds inert._
@@ -50388,3 +50390,116 @@ the same cap family as the 4-entry tables unless a zero-code second reference to
 Dead references do not count (standalone 396FC, still `or a0,a3` in the slot): `goto dflt;` after an arm's
 `break`, `if (0) goto dflt;` before the switch or at the head of an arm, an unreachable `goto dflt;` after a final
 `return` -- cfe/uopt drop them before as1 sees the label.
+
+## kit CCLX (agent-c 2026-10-29, run 241): NCC copy propagation stops at a DERIVED-TO-BASE CONVERSION on the use (type the named copy as the derived pointer, retype the propagating parameters, spell the non-propagating uses `(Base *)p`); the KB new-temp shares the Obj2 new-temp's pool slot and that REDEFINITION is what stops propagation into case 1 (bootup 31C0); an edg temp stays busy only while its full-expression runs (a new in an inline call's ARGUMENT keeps it busy through the inlined body); mgrproc 1824's `lw t8,1464(at)` is a RoData-layout gap, not an external table <a name="kit-cclx-agent-c-run241"></a>
+
+_No exact. NM: bootup func_000031C0 99.975 -> 99.980 (808 B, length unchanged, commit d25d66a44)._
+
+1. **Conversion = propagation stopper (31C0).** With `Obj2 *obj; obj = new Obj2;` (plain, no fold, no conversion
+   temp on the new result) uopt copy-propagates obj into edg's new-temp at every use that needs no conversion, and
+   at NO use that carries a derived-to-base conversion (`(Obj *)obj`, or an `Obj2 *` passed to an `Obj *`
+   parameter). So the use set is chosen by types: retype WA's / KB's constructor parameter to `Obj2 *` (those
+   arguments now read the new-temp sp+0x74, target) and spell the case-0 link / 0xB4 store `(Obj *)obj` (they read
+   obj's home sp+0x78, target). This replaces the run-237 folded `+ 0 * FW(a3v, 0)` read, which kept EVERY use off
+   the new-temp. The mangled WA ctor name changes with the parameter type (Makefile rename updated; NM names only).
+2. **What stops case 1 (31C0, diagnosis).** The KB `new` gets the SAME edg pool temp as the Obj2 new (both store
+   v0 to sp+0x74). That redefinition kills `obj = T` (CCXV: propagation stops at a BB that redefines the pooled
+   temp), so the KB argument reads obj's home (sp+0x78); the target has a fresh KB temp (sp+0x68) and reads the
+   new-temp. Proof: `return build(new Obj2, mode, parent, a3v, p4)` with the whole body in an inline `build(Obj2 *o,
+   ...)` keeps the Obj2 temp busy (an argument temp lives until the CALLER's full-expression ends, i.e. through the
+   inlined body), the KB temp becomes fresh and the KB argument reads the new-temp -- frame 144 with the q0..q3
+   pads and the Obj2 `p` home removed -- but every inline local is homed BELOW the argument temp (target: w / h /
+   v / r2 / r3 / obj above it), so the frame map is wrong. Flat or worse: the new inside the inline body (temps
+   there are freed per statement, KB temp shared again), `switch (obj = new Obj2, mode)`, `if (obj = new Obj2, 1)`,
+   `for (obj = new Obj2;;)`, declaration / direct-init `Obj2 *obj(new Obj2)`, class-specific `operator new` on
+   KB / Obj2 / Obj / B2 (loses the this == 0 fallback shape), `obj->me()` holds / dead `if (0)` news before the KB
+   new, reference-parameter locals (address-taken: +11 words), the locals as leading inline PARAMETERS initialised
+   to 0 (the new-temp is still allocated first; h = 0 becomes a live default value). Pool temps are NOT keyed by
+   pointee type (Obj2 * and KB * share) and the pool is function-wide (braces / `if (1)` / `do {} while (0)` around
+   either new: flat; an inline `make() { return new Obj2; }` or `mkkb(o, a) { return (char *)new KB(o, a); }`
+   draws from the same pool: identical code). The locals as members of a local struct with the body in an inline
+   member called as `l.build(new Obj2, ...)` puts the struct above the new-temp and the KB temp fresh, but struct
+   fields are memory (stores before each call, reloads after: 213 words); `keep(obj, new KB(...))` wrappers and a
+   reference-bound new-temp (`Obj2 *const &obj = new Obj2;`) switch uopt into s-register allocation. No
+   GNU statement expressions in this edg. Open question for 31C0: how the target homes w / h / v / r2 / r3 / obj
+   above a new-temp that is still busy when the KB new runs. Lead for the next pass (not tried): the target frame
+   map (user locals w 140 / h 136 / v 132 / r2 128 / r3 124 / obj 120, then T 116, p 112, Obj-this 108, KB temp 104)
+   is exactly what CFRONT-GENERATED C under cfe gives -- cfront declares one named temporary per new-expression
+   after the user's locals, so the KB temp never aliases T (the 90CC / 24B8 cfront-style cfe bodies are the
+   precedent; 24B8's "one reused s0 variable" is a cfront temp too). A cfe body written the cfront way
+   (`__nt = alloc(184); if (__nt) { inline Obj ctor expanded } obj = __nt;`, a second `__kt` for the KB new) would
+   fix the last slot. Caveat: the in-tree cfe NM body (bootup_uso.c, run 114/131/138) is already cfront-shaped
+   (obj / obj2 / e) and cfe lowers the 0 / 2 / 1 switch with its own test order plus an explicit default branch
+   (93.61), while edg's lowering is the target's -- so the switch says edg; a mixed answer (edg front end, but
+   named per-site temporaries) would have to come from the source, e.g. explicitly named temporaries.
+   uopt dump (`-Wo,-zdbug:6`, frame 144): the target's KB slot 104 (vreg -40) is the inlined M member ctor's `this`
+   temp (`-40 := Obj-this + 0x2C`; N's this is -44 = sp+100) -- created inside the Obj2 new and FREE by the time the
+   KB new runs, while T (-28) must still be busy. So in the target the Obj2 construction temps were released but
+   T was not. A hand-expanded case 1 (`{ char *kt = (char *)fn_31c0_alloc(0x15C); if (kt) { B2c(kt, obj, ...);
+   vptr; f158; f154; f150; } h = kt; }`, B2c taking `Obj2 *`) reads T for the B2 argument as in the target, but the
+   block-scoped `kt` is homed at the frame BOTTOM (sp+60, below the V3 temp) and the frame grows 8 (164 diffs).
+3. **mgrproc 1824: the jump-table displacement is NOT external.** `lui at,%hi(import_80264348)` + `lw t8,1464(at)`
+   is the game_uso 0940 class (MATCHING_WORKFLOW #game-uso-rodata-relayout-late-rodata): mgrproc's RoData dir entry
+   is pre.bin +0x34 (`[0x10006F00, type 7, size 0x620]`), offset 0 = pre.bin +0x44, and +0x5B8 holds exactly 1824's
+   five case addresses (0x189C 0x18CC 0x18E8 0x1930 0x1984). Before it: the 19C function's 9-entry table (+0x0),
+   3.9f (+0x24), two zero words, then 0x588 bytes of credit strings ("2 ", "0EXECUTIVE PRODUCER", ...). The block
+   is `ld -r` of o0_0 / head / o0_19C / mgrproc_uso.c objects and bake-data-relocs.py bakes `.rodata` LO16 from the
+   linked offset, so emitting those words (late_rodata / .rdata in the owning .s files, in order) would give the
+   target's 0x5B8. Not done: the other residual, as1's `li at,1` hoist above the outer switch's `beqz`, still has
+   no C form (micro-tests: every two-case switch / if-chain / goto form hoists it), and objdiff already scores the
+   relocated word, so the relayout alone gives no fuzzy gain.
+4. **Negatives.** timproc_b5 C310: 361 volatile / block-home placements (`{ int / float / volatile int pN }` at 5
+   positions x 1-6 words x 0-3 kept volatiles) never move the f0 spill off sp+80 (target 96) -- the 24 empty bytes
+   above ra's save slot are not homes. post0b 4B2F4: the first h's v0 (target a2) and the tail ring (target t0 /
+   t7 / t9, ours t9 / t8 / t4) unchanged.
+
+## kit CCLXI (agent-g 2026-10-29, run 241): bootup 55A0 EXACT from a 97.29 NCC NM donor in one run -- a pointer the target SPILLS around calls is a plain register variable (drop it from any `&x` frame-home list; extra post-loop `if (p) {}` reads lower its adjsave below the s-register threshold); a value stored to two struct homes through ONE ugen temp is a WHOLE-STRUCT copy (`a = D; b = a;` / `b.w = (a = D).w`), member copies give a coloured register; a reload above a branch = a well-defined `if (v) {}` read before the branch; an unaccessed dead vreg homed BELOW a block's class object moves above it with a dead nested call-result `if (0) { f(f(0)); }` before the block <a name="kit-cclxi-agent-g-run241"></a>
+
+_EXACT: bootup func_000055A0 (2392 B, 97.29 -> 100), NCC donor bootup_uso_ncc_55A0.cpp spliced over a placeholder
+on both build paths; new pins D_55A0_* (29 blank-reloc 0-pins, 13 target addresses, D_55A0_ro598..5AC)._
+
+Method (scratch /tmp/claude-1000/g241/: `multi.py fn target files...` = lever-sweep.py `probe()` over many variant
+files, objdiff `-c functionRelocDiffs=none`; `dd.sh` = normalised side-by-side; `relcmp3.py fn target.o nm.o` maps
+every donor reloc symbol to the target's reloc symbol + LO16 addend by offset -- the pin list for promotion).
+Lower-fuzzy NM donors in a less-ground range paid off far better than the 99.9 colour caps (41D40 / 37938 / 40304 /
+250C8 / 31A74 / 4E424 / 35B1C all re-swept flat this run, see 6).
+
+1. **List iterator in a2, spilled to its home around the calls (97.29 -> 98.07).** The target keeps `it` in a2,
+   `sw a2,0x98(sp)` in the first call's delay slot, `lw` after the second call, `lw a1,0xc(a2); addiu a2,a2,0xc` for
+   `it++; it->w` (never stored back). The donor had `(int)&it` in its `if (0 * (...&x...)) {}` frame-home list, so
+   `it` lived in memory. Without the `&it`, uopt gave it s1 (callee-saved, extra prologue save): six post-loop
+   `if (it) {}` reads inside the `arg1 == 1` block (well defined: assigned before the loop) add adjsave units and
+   drop it below the s-register threshold; fewer than six still take s1. Removing the old in-loop
+   `+ 0 * (int)(it)` counted use is also needed.
+2. **Whole-struct copies (98.07 -> 98.98 -> 99.25).** `v0.w = D.w; p1.w = D.w;` (4-byte struct members) gives a
+   uopt-coloured register (v0 / a1) for the loaded value; the target's `lui t4; lw t4; sw t4,0x94; sw t4,0x7c` is a
+   ugen temp = a STRUCT copy. `v = D; p1 = v;` matches; for the store order v-first in the actor-0 block
+   `p1.w = (v0 = D).w` (`v0 = p1 = D` stores p1 first; `p1 = v0 = D` takes &v0 as a temp, +16 bytes). The same
+   fix on the t5 / t10 copies: `t5 = *(S4 *)&D_x; p1 = t5;`.
+3. **Reload above the branch (99.25 -> 99.92).** The target reloads the list pointer nl (`lw a2,0xbc(sp)`) right
+   after the alloc call, before `beqz obj`, where the build reloaded inside the if: `if (nl) {}` between the call and
+   `if (obj != 0)` (nl is defined). A folded `+ 0 * (int)nl` in the following call does not do it.
+4. **Float store order (99.92 -> 99.99).** `OF(0x4C) = 0; OF(0x50) = 0; OF(0x54) = 0; OF(0x58) = 1.0f;` in field
+   order gives the target FP ring (zeros f6 / f8 / f10, 1.0 in f16) while the 1.0 store is still scheduled first;
+   the 1.0-first spelling took f6 for 1.0.
+5. **vec2 home 4 bytes high (99.99 -> 100).** `isvar M 4 -344vreg` in the `-Wo,-zdbug:5` dump = a dead-stored
+   call-result vreg (never in memory, but homed) at the very bottom of the locals, below the actor-2 block's
+   `V4 vec2`; the target has it above (vec2 sp+0x28, 12 unaccessed bytes above vec2). A dead
+   `if (0) { func_00000000(func_00000000(0)); }` just before the actor-2 block grows edg's temp pool there, so the
+   slot is allocated before vec2's home: 3 of 48 dead-statement x position variants hit, all at that position
+   (`if (0) { func((char *)func(0) + 1); }` and a dead copy of a later call statement also work). Extra block ints,
+   unused class objects, mid-block declarations and function-scope vec2 do not move it.
+6. **Negatives (no change).** 41D40: a for-increment `it.me()->me()` fixes the bottom copy's array temp (v1) but
+   gives the entry copy the same pool slots (entry = bottom colours); `iter((*(Arr **)D)->me())` in the for-init
+   restores the entry copy but adds a frame word and the bottom reverts -- 600+ me() / hold / next() spelling /
+   dead-statement variants, best 99.903 (base). 37938: the final c.out reload's LR (vreg 128|0, adjsave 5) colours
+   v0 first; 176 me() / getOut / hold variants flat. 250C8: fontId as `ASYNC_ID(retMsg)` everywhere puts it in the
+   target's sp+0x24 temp slot but splits a second temp (frame +8, 612 B); 124-variant use grid flat. 40304: 120
+   anchor permutations / named 1/32767 constant flat. 31A74: the ACCS2 store after both sel clamps gives the target
+   `lui at` placement but the sel spill `sb` takes the jal delay slot (target swc1); volatile / pointer / in-argument
+   stores, goto blocks and clamp re-orders do not swap them. 4E424: the target subtracts into the y1 / z1 parameter
+   registers (f0 / f2) and keeps x1 in f20; written that way uopt puts y1 / z1 in f22 / f24 (frame +16); 112-role
+   grid best = base 95.37. 35B1C under NCC as a real ctor (`Obj::Obj(List *, W, int)`, vptr at +0xC after the data
+   members, inline member M4()) reproduces the cfe body with the same early vptr store. 41D40 with kit CCLX's
+   derived-to-base spelling (`((IBase *)this)->a` / `->idx` / `->last` in next() / cur(), `(IBase *)&it` reads in
+   the body): best = base 99.903.
