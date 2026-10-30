@@ -14646,6 +14646,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCLV (agent-c 2026-10-29, run 238): **NCC frame homes: an inline's scalar locals declared BEFORE its result V3 are homed above it; one variable instead of two drops a home; `V3 &v = x; v += w;` for a member +=; a DEAD nested pool allocation `if (0) { *a.me()->me() += *b.me(); }` homes edg's pointer-temp pool slots above the next statement's temporaries; array-indexed loop pointers (uopt IVs) move the spill slot up**](#kit-cclv-agent-c-run238) -- _bootup func_00008BD4 98.83 -> 100 EXACT (836 B) and post1b gl_func_00063964 99.964 -> 100 EXACT (1120 B), NCC donors; 4B0A8 NM 99.56 -> 99.83 (CCLIV hold on a while-loop); 31C0 99.965 -> 99.975; C310 / 454C4 / 59E80 / 1DDC / 4B2F4 / 4B620 negatives._
 - [kit CCLVI (agent-c 2026-10-29, run 239): **an expression form that leaves a variable in its home gets its register back with a folded `+ 0 * (int)(v)` use before the call it crosses; a count pointer read through a block-scoped NAMED pointer is a uopt variable (slot / pointer colours) whose home is paid back by MERGING two later same-type locals; a nested pool hold `(it.me()->me(), e->flags & 2)` stops inline-return copy-propagation inside a condition; 1DDC frame layout = named V3 e + nameless then-block + one block around mm / call**](#kit-cclvi-agent-c-run239) -- _post0b 4B2F4 NM 99.36 -> 99.63; 454C4 / 1DDC structural wins not yet fuzzy gains; 31C0 / C310 / 59E80 / 48510 / 4B620 / 5F5F0 / E2D0 negatives._
 - [kit CCLVII (agent-g 2026-10-29, run 239): **an UNSIGNED literal is a different uopt expression from the same int literal: a call argument that reads a constant-holding register (`or a1,t0,zero`) where the target re-materialises (`addiu a1,zero,1`) becomes unsigned through the callee's type-neutral parameter (`unsigned int a1`; a K&R call with `1u` is UB against a prototyped definition, narrower casts fold back to int)**](#kit-cclvii-agent-g-run239) -- _game_uso 0B3C NM 99.83 -> 99.9986 (only the 4-entry jump table left); 41D40 / 37938 / 3E5E0 / 34890 / 3AE58 / 40304 / 250C8 / 31A74 / 18F0 negatives with dump diagnoses._
+- [kit CCLIX (agent-g 2026-10-29, run 240): **the jump-table bound check (`sltiu at,x,N`) is synthesised by ugen's build_tree from the cfe table length N (`clab length`), and ugen can only DELETE it (selector `and(E,K)`, or `str X <- and; fjp(X); xjp` adjacency) -- never narrow it; a source guard always has a cfe `loc` node before the switch, a CSE'd mask keeps the check, `guard + switch (x & 3)` = target + 1 `andi`; `cc -K` + `ugen ... -d` prints the ucode trees; game_uso 57D8 (exact NCC: 7- and 4-label chains) vs 8CD8 (same 4-label shape as a table, edg temporaries) = a second, EDG-family, table-emitting C++ compiler**](#kit-cclix-agent-g-run-240) -- _Negative, no code change: 0B3C 99.9986 / 8CD8 / 116C / 76F0 / 80001ADC keep the phantom 5th label; do not reopen without a new compiler binary._
+- [kit CCLVIII (agent-c 2026-10-29, run 240): **colours fixed ON TOP of a structurally-right variant: a priority raised by a needed propagation stopper is lowered by post-loop low-weight ref units of the same variable (`if (e) {}` / folded `+ 0 * (int)e` before the first post-loop call; adjsave = savings / units-with-refs); a pointer merged into edg's first pool temp gets its own LR via an inline `mtx.me()->getPos()` (no home); `{ int p1 = 0, p2 = 0; }` pays back dropped homes**](#kit-cclviii-agent-c-run240) -- _post0b 454C4 (2028 B), game_uso 1DDC (1528 B), post0b 4B0A8 (588 B) EXACT; 31C0 / 4B620 / C310 negatives._
 - [kit CCXIII (agent-g 2026-10-29, run 216): **post0b 454C4 95.95 -> 99.95, length = target: build on the structurally-right BB lever, then re-test old micro-levers (drop the named element pointer -> sixth s-reg; drop the folded `& 0xFF`); `if (rec) {}` breaks an adjsave tie; `cur = nxt; if (nxt)` keeps an inline iterator member out of the candidates (ring temp t7 vs v0 web); a ternary sharing edg's int temp with post-increments separates when assigned in the same full expression as the inline call**](#kit-ccxiii-agent-g-run-216) -- _Open: e copy-propagated as the shared pointer temp (5 words); 3C43C homes = function-scope five + k / ABS3 temps / dd; 3558 per-row adds inert._
 - [kit CCXIV (agent-c 2026-10-29, run 218): **a RoData float read as `D + off` / an extern alias is often a compiler LITERAL: read the ROM word (bootup.uso RoData = ROM 0xD9FE44); a run of identical values around a jump table = one constant rematerialised (one literal word per `l.s`). As a literal uopt hoists / colours / reloads it after calls -> game_libs 3430 (0.1f in f2 + three trailing `if (1) {}`) and timproc_b5 CEB4 (0.3f + `if (1) {}` per white arm) EXACT via donors pinned `<fn>_rodata` = the pool's ROM offset; C310 NM 96.45 -> 99.89 (`== 1` = register-held 1 shared with the `= 1` store, field-form counters)**](#kit-ccxiv-agent-c-run-218) -- _CCXII address-form scan (size>0 FUNC symbols only): no further hit; 4F2DC literal +0.19; 6204/E9FC, 8BD4, 1824, 4C5E4, 4A308 / C310 spill-slot gap negatives._
 - [kit CCX (agent-g 2026-10-29, run 214): **each object of a class with an inline constructor is an edg labelled BB; above ~19 BBs uopt splits a held callee-saved constant (game_uso 3558's $f20 zero web: hold, live else muls, w.y reload) -- a constructor-less Vec3 / aggregate Ctx restores it; a Vec3 local is a uopt register candidate only when no member call or reference parameter is bound to it (free by-value mk() keeps the op- copy chain)**](#kit-ccx-agent-g-run-214) -- _3558 85.86 -> 89.21 (frame 256 = target, all homes on the target map); vb split / va.y f20 residual and negatives listed._
@@ -50267,3 +50269,122 @@ documented 4-entry jump table, kits CXL / CCXXXV). Negatives: post0b 41D40, 3793
    only). There, `a28 = 1030; a28 |= 6; a28 |= 0x400;` gives the two `ori`s but keeps the middle store (+8
    bytes); a local `m = 1030` (int or unsigned) is constant-folded by uopt (-12 bytes); `(a28 | 6u) | 0x400u`
    is re-associated by cfe into one `ori 0x406`. The target's value is a constant uopt did NOT fold.
+
+## kit CCLVIII (agent-c 2026-10-29, run 240): THREE NCC EXACTs by fixing COLOURS ON TOP OF A STRUCTURALLY-RIGHT VARIANT -- (1) post0b 454C4: a priority that rose with a needed propagation stopper is lowered again by adding LOW-WEIGHT REF UNITS of the same variable after the loop (adjsave = savings / units-with-refs; `if (v) {}` and folded `+ 0 * (int)v` reads before the first post-loop call); (2) game_uso 1DDC: a pointer that joined edg's first pool temp LR (v0) gets its own LR (v1) when read through an inline `me()` instead of a named reference (no home), and the frame homes come from a dead early call plus an initialised two-int block; (3) post0b 4B0A8: dropping a named reference inside an inline accessor + `*me()->a` moves pool temps so a ctor `this` takes the target register; the two homes it drops are paid back by `{ int p1 = 0, p2 = 0; }` <a name="kit-cclviii-agent-c-run240"></a>
+
+_EXACT: post0b gl_func_000454C4 (2028 B), game_uso game_uso_func_00001DDC (1528 B), post0b gl_func_0004B0A8 (588 B); all NCC
+donors spliced over placeholders on both build paths._
+
+Method (reproducible; scratch was /tmp/claude-1000/c240/): score with lever-sweep.py `probe()` (`multi.py fn target files...`,
+objdiff `-c functionRelocDiffs=none`), read priorities from `-Wo,-zdbug:5` with the dump NCC
+(tools/ido-static-recomp-dump/build/7.1/out/NCC): each `>>>active<<<{ichain} LR REG` block is followed by
+`adjsave, hasstore: X` (the colouring priority) and `- live bb - BB uses defs ...` lines (only the bbs WITH refs; the
+`live bb (default)` list = live-through bbs, which do NOT enter adjsave). Map an LR to a source variable through its
+`isvar M 4 <off>vreg` line (offset = edg home, frame-top relative). Register numbers: 1 v0, 2 v1, 3-6 a0-a3, 7 t0,
+14-21 s0-s7.
+
+1. **454C4 (99.96 -> 100).** Kit CCLVI's nested hold `(it.me()->me(), e->flags & 2)` gives the target's word layout but
+   e (vreg -32) rises from adjsave 13.7 to 27 (two more in-loop ref bbs) and is coloured before the c2 product (15):
+   e a1 / c2 a2, and the return / DL pool temp (-40, 20.4) now beats the count temp (-36, 16) to v1. Post-loop reads of
+   e are well defined (the loop exits with e == 0): a folded `n + 1 + 0 * (int)e` in the n-path gSPLight count, and in
+   the default path `if (e) {}` before the copy block, `if (e) {}` twice between the last copies and a folded
+   `+ 0 * (int)e` on colc[2]. Each adds a weight-1 ref unit (e 16.6 -> 13.8, below c2), and the extra empty-if bbs in
+   the default path split the pool temp's post-loop refs (-40 drops to 14.9 so the count temp takes v1 first). All
+   four pieces are needed (any three: 99.88 or 98.20). A use AFTER a post-loop call makes e live across the call
+   (frame / length change): keep the reads before the first call of each path. An `if (1) {}` alone between straight
+   stores does not add an adjsave unit (no ref in the new bb).
+2. **1DDC (99.969 -> 100).** Frame: named `V3 e` for the last product, no named references in the key-3 arm,
+   `if (0) { r = f23D4(a0); }` before the matrix read (removes the 8-byte hole above edg's pooled return slot) and
+   `{ int p1 = 0, p2 = 0; }` right after it (8 bytes below the slot: slot sp+252, frame 384; volatile / uninitialised
+   pairs give the same bytes, the initialised non-volatile pair is the clean form). Colours: without the named
+   `const M4 &mm` both matrix pointers are refs of edg's first pool temp (vreg -20, v0); `a0->src->mtx.me()->getPos(m)`
+   (inline `const M4 *me() const { return this; }`) gives each pointer its own LR, which takes v1. `Body::me()` or
+   `Self::me()` chains in the same place also work; `(a0->me()->me(), ...)` holds too.
+3. **4B0A8 (99.83 -> 100).** The iterator ctor `this` (vreg -60, t0, adjsave 9.3) met cur()'s `Arr &r` temp (a3, 20).
+   cur() as `return (*a)[idx];` with next() as `&(*me()->a)[++idx]` gives `this` a3 (12.5) and leaves every other
+   colour; the frame loses 8, restored by `{ int p1 = 0, p2 = 0; }` after the loop (any position from the last loop
+   statement to before the final call; `if (0) { it.me()->me(); }` also works).
+4. **Promotion notes.** Blank USO jal words (0x0C000000) need the donor's jal relocs renamed to 0-pinned aliases
+   (source rename `gl_454c4_c34458`, or Makefile `--redefine-sym gl_func_00034458=gl_4b0a8_c34458` together with the
+   base ctor `__ct__4BaseFPc` and `__vtbl__3Obj` for blank lui/addiu pairs); the first full make otherwise fails ROM
+   cmp on exactly the jal bytes. When the unit .c keeps a cfe NM body under `#ifdef NON_MATCHING`, a placeholder in
+   the `#else` arm is enough (the donor replaces both).
+5. **Negatives.** 31C0: an `Obj::me()` on the KB / WA ctor arguments, a declaration-init obj and `(new Obj2)->me()`
+   do not move the WA / KB obj arguments to the new-temp (99.975 best). 4B620: 132 me() / hold / bb-split combos flat
+   at 99.66 (the s0 / s3 swap is the -24 pool temp at adjsave 40.3 vs the -32 one at 19.0). C310: the f0 spill of the
+   CSE'd `255 / 255.0f` sits 4 bytes lower per extra edg home below it (3 volatiles: sp+80, 2 + vals[i] IV: sp+84;
+   target sp+96 with 24 empty bytes above ra's save slot), extra blocks / IV forms flat at 99.89.
+
+## kit CCLIX (agent-g 2026-10-29, run 240): the jump-table BOUND CHECK is synthesised by ugen from the table length, and ugen can only DELETE it, never narrow it -- `ugen -d` tree dumps show the mechanism; game_uso 57D8 vs 8CD8 proves a second (table-emitting, EDG-family) C++ compiler inside one USO; no spelling reaches a 4-entry table <a name="kit-cclix-agent-g-run-240"></a>
+
+Re-opened the 4-entry table cap (`sltiu at,x,4` + table: game_uso 0B3C 99.9986 / 8CD8 90.41, titproc 116C 99.44,
+game_libs 76F0 95.02, kernel func_80001ADC 94.32, about 11 KB). Kits LXXVI and CXL already read the cfe rule; this run
+re-verified it, found where the bound check itself comes from, tested every "guard + check-free table" route, and
+added new cross-function evidence. **Answer: still negative. Keep the phantom 5th label.**
+
+**Tool: the ugen tree dump.** `cc -K` keeps the intermediates (`t.B` = cfe ucode, `t.O` = uopt output); then
+`tools/ido-static-recomp/build/7.1/out/ugen -G 0 -mips2 -EB -g0 -O2 t.O -o x.G -t t.T -d` prints "Tree dump after
+Build / Translate / ..." with every ucode node, its opcode, operands and `prior=`/`next=` links (use `t.B` and `-O0`
+for the raw cfe ucode). Opcode numbers (ugen's name table): and 0x04, equ 0x23, fjp 0x26, lab 0x42, ldc 0x49,
+loc 0x51, lod 0x52, str 0x7b, tjp 0x7f, ujp 0x88, xjp 0x8c, clab 0x11.
+
+1. **Who decides table vs chain:** only cfe (`func_465d90`, `sltiu at,a1,5` at 7.1 0x4660c4 / 0x4662dc and 5.3
+   0x4708f8 / 0x470b48, `addiu t5,tN,25` for the 25-gap cluster join). Re-checked: case ranges (`case 0 ... 3:`) are
+   a syntax error; trailing `case 4: ;`, `case 4: break;` first, `case -1: default:` all stay `sltiu 5` (7.1 and 5.3);
+   no cfe option string mentions switches/tables. edgcpfe 7.1's switch generator (`func_51d740`, statement kind 9 of
+   `f_mbe_statement`) loops `lod` 0x52 / `mbe_load_constant` / `equ` 0x23 / `tjp` 0x7f / `ujp` 0x88 per case -- it has no
+   `xjp` path at all. A C if/else chain over 0..7 never becomes a table at -O2 or -O3 (uopt does not build `xjp`).
+2. **The bound check is NOT in the ucode from cfe.** cfe writes `xjp lbound hbound`, `clab length=N` and N `ujp`
+   entries (N = hbound - lbound + 1). ugen's `build_tree` (ugen.c ~12860, the code after it finds the `xjp` for the
+   table it is reading) synthesises `fjp (les dtype=L (sel) (ldc N))` in front of the `xjp`, sharing the selector
+   node (`ref_count=2` in the dump). So the `sltiu` immediate is the TABLE LENGTH, always >= 5 from cfe.
+3. **ugen only ever deletes that check.** It skips the synthesised `fjp` when it can prove the selector is masked:
+   (a) the `xjp` operand itself is `and(E, ldc K)`, K >= 0 (ugen.c L4105f4); or (b) the two statements before the
+   `xjp` are `str X <- and(E, ldc K)` then an `fjp` whose condition's left operand is `lod X` (or a cvt of it), same
+   memory type / offset / block (L4106bc..L4107f8). Then (CXL measurements) the check vanishes when K <= hbound with
+   lbound 0. There is no path that emits a smaller N.
+4. **Every "guard + check-free table" spelling costs at least one word**, so none can make 0B3C exact (0B3C's only
+   residual is the `sltiu 5` vs `4` immediate; the donor's own table length does not matter because the table reloc
+   is pinned to the USO RoData offset, so only .text counts):
+   - `if ((unsigned)x < 4) switch (x & 3) {0..3, case 4}` = `sltiu 4; beqz; andi; sll; lui; addu; lw; jr` -- the
+     target shape plus one `andi` (rule 3a).
+   - a CSE'd mask (`m = x & 3; if ((unsigned)m < 4) switch (m)`, or the guard and selector both spelt `c & 3`) makes
+     the selector a register `lod R`, so ugen keeps the check: `sltiu 4` AND `sltiu 5`.
+   - rule 3b can never be met by a source guard: cfe emits a `loc` node for EVERY statement whose line is > 0
+     (`func_466804` entry, cfe.c ~162880), even on the same source line, and that `loc` sits between the guard's
+     `fjp` and the switch's `xjp` (dump: `str R8 <- and; fjp; loc; xjp`). 11 guard spellings x 5 statement forms
+     (if / if-else / early return / goto / while; 55 functions) at -O0 and -O2: no check removed. cfe's own binary search over
+     clusters uses `tjp` to the low cluster and falls into the high one, so 3b does not fire there either (24
+     two-cluster probes on `x & 3` / `(x + 1) & 3` / `x & 4`, int and unsigned).
+   For 8CD8 (target `andi t8; sw t6; sltiu at,t8,4; beqz; sw t8; sll t9,t8,2; ...`) the masked value is used three
+   times, so it is a register and rule 3a/3b cannot apply.
+5. **New evidence that a second C++ compiler built these units.** Inside game_uso, the EXACT NCC donor
+   `game_uso_ncc_57D8.cpp` has a 7-label dense switch (1..7 + default) AND a 4-label `switch (a0->0x64) { case 0..3:
+   call; }` (no default), both as edg case-order compare chains in the target. game_uso 8CD8 has the SAME shape
+   (4 labels 0..3, memory selector) as a 4-entry TABLE, while the rest of 8CD8 follows edg's temp-pool / by-value-
+   return codegen (NCC NM 90.41 vs the cfe NM 86.05). One front end cannot give both, and the table one is
+   EDG-family (C++ temporaries), not a cfe variant: look for a later/other edgcpfe that writes `xjp` with a
+   4-label threshold, not for a C spelling. (Same-segment C example from CXL: exact game_libs 2FB74 has a 4-label
+   chain; its 5-label switch [19, 32, 34, 36, 39] is a 21-entry table, i.e. cfe's 25-gap rule, not pcc's
+   range <= 3n.) ROM scan of `sltiu` + `jr tN` dispatches: smallest table size is 4 (six tables in the five
+   functions above), never 2 or 3.
+
+**Nothing applied.** 0B3C stays 99.9986 with `case 4:` on an existing arm; 116C / 76F0 / 1ADC (agent-c) and 8CD8
+keep their phantom-label shapes. Do not reopen this cap without a new compiler binary.
+
+**Addendum (same run): the bound check's DELAY SLOT across the ROM (396FC / 51AD8 diagnosis).** A scan of every
+target `sltiu at,x,N; beqz at,L` table dispatch (raw words of all `asm/` .s files) finds NO target that steals the
+default block's first instruction into the check's delay slot: every one keeps the fall-through `sll` (or an
+earlier instruction) there. Our as1 steals the default head whenever the default block is exclusive to the check
+(as1 rule 2) and the head's destination is dead on the table path; every EXACT table function whose default head
+would be stealable (38A28, 68990, 343F4, 2E290, 52CD4, timproc_b5 8FC8, ...) has the default SHARED -- table holes,
+a `case K: default:` label inside the range, or default = the switch's end label. The only exclusive-default
+functions with a stealable head are the open near-misses gl 396FC (`or a0,a3`, 98.66) and post0b 51AD8
+(`lui a0,2`, 99.15), whose six / twelve table entries are all distinct and in range. A far case label merged
+into default (`case 500: default:`, `case -500: default:`) does add a predecessor but also emits a compare
+block (+4..6 words). So the "default has a second predecessor" residual is consistent with the same second
+toolchain (an as1 / ugen that never steals into the bound check), not with a missing C spelling; treat both as
+the same cap family as the 4-entry tables unless a zero-code second reference to the default label turns up.
+Dead references do not count (standalone 396FC, still `or a0,a3` in the slot): `goto dflt;` after an arm's
+`break`, `if (0) goto dflt;` before the switch or at the head of an arm, an unreachable `goto dflt;` after a final
+`return` -- cfe/uopt drop them before as1 sees the label.
