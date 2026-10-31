@@ -14659,6 +14659,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCLXXXV (agent-g 2026-10-31, run 255): **reading `-zdbug:5` (`>>>active<<<` blocks: adjsave, forbidden set, LR = itab index): E68's phase-2 `dl` / `count` expressions are forbidden v0 / a0 because they reach the phase-3 calls -- the target's m is ONE variable that uopt split; a separate phase-2 variable's phase-2-only `count` expression (adjsave 13500) always takes v0 first, so the two-variable route is closed; the split itself is not reachable under the documented split rules**](#kit-cclxxxv-agent-g-run255) -- _No gains; E68 stays 98.61 (NCC rewrite 94.04, accessors inert on m); 42938 accessor greedy / zero-use flat, 2840 single-variable dx forms <= 90.93, 36694 accessor / named-product forms <= 90.98._
 - [kit CCLXXXVI (agent-c 2026-10-31, run 253): **a gbi macro that re-evaluates ONE pkt expression for several appends (stock gSPTextureRectangle: TEXRECT + two gImmp1 RDPHALF) hides them from the per-site accessor lever -- give the macro one pkt parameter per append, then re-run the best-improvement per-site greedy**](#kit-cclxxxvi-agent-c-run253) then **live units: the target's result-colour sequence marks unit boundaries; drop a BB split that the target lacks, re-greedy, and add zero-code counted loads of distinct never-loaded words to move a boundary** -- _NM post0b 46050 99.36 -> 99.58 (a3fe4a88e) -> 99.77 (505a4d483; prologue = target but one ctx temp); game_uso 3558 93.49 -> 93.61 (`me(s0)->b1`, a5ea3d3cd); next() body variants, per-append empty tests, block-local ctx, m-base locals flat; zero-code `me()` wraps flat on 41D40 / 4B2F4 / 3BE1C / 493AC / 48AEC / 0F04 / 3714 / 329C; 34890 h-spill slot negatives._
 - [kit CCLXXXVII (agent-g 2026-10-31, run 256): **post0b 4D688 EXACT: a dead-epilogue `.align 5` pad that the target lacks = the function was not first in its file -- reconstruct the translation unit in the donor (preceding functions from the start whose distance makes the epilogue 32-aligned, confirmed by a shared static) and splice only the function; a temp's register via a DEAD variable whose other web holds it (old-n copy through e -> a0); NM frame audit: a function-scope declaration moved off its first assignment places a spill home (3B6A0), one more phantom volatile moves a call-crossing spill (33094); cfe segfault on an empty placeholder fixed by a prototype**](#kit-cclxxxvii-agent-g-run256) -- _EXACT post0b 4D688 (48db84c0d, clip f8e95d60b); NM post0b 3B6A0 96.31 -> 96.325, post 33094 93.62 -> 93.65, gui 2DE0 96.65 -> 96.77 (`me(me(CTX))` on RDPHALF_2), post0b 4E424 95.37 -> 95.47 (`b = (x0 + b) / 2; return b + zero;`); 4E424 colour / 4A890 / 469A8 / 4568 / 4D688 / 4FD00 negatives._
+- [kit CCLXXXVIII (agent-g 2026-10-31, run 257): **file-context (placement) scan of all 60 non-exact functions: no nop-run / `.align` pad, word-count or lui difference that comes from placement; IDO statics codegen like externs (no shared %hi, no reload change); an unfolded `ori` chain on a constant = the value went through a local; post0b 4A890 EXACT: a spilled value the target keeps in s1 goes into the DEAD PARAMETER n (+ an unused volatile for the old home), an index-first pointer add needs int arithmetic `(T *)(n * 2 + (int)p)`; route a temp through a dead variable whose other web holds the target's register**](#kit-cclxxxviii-agent-g-run257) -- _EXACT post0b 4A890 (6495e1c61); NM post0b 415A4 94.87 -> 95.58 (b6b2c00c8, 2c84695c5, bfd1c6edd), gui 4568 96.53 -> 96.63 (86d171c01, int-arithmetic append on one site), post0b 469A8 95.12 -> 95.36 (dc6e45de8, index term written first); 4E424 / 2840 / 469A8 / 3B6A0 / 18F0 / 2DE0 / 33094 / 42938 / 4FD00 / E68 negatives._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
 - [kit CCLXXII (agent-c 2026-10-30, run 247): **a folded `+ 0` on one loop's test moves the shared edg pool temp to the OTHER loop (493AC: the second loop's next() result leaves the call-crossing s2 temp); taking a local's address through a member call (`getPos(vb)`, `e = vb - va`) makes it memory-resident like a target that stores it after init (3558 length fixed)**](#kit-cclxxii-agent-c-run247) -- _NM 493AC 99.36 -> 99.43, game_uso 3558 91.62 @ 956 B -> 92.60 @ 1008 B; 41D40 / 250C8 / 3AE58 / 46790 / 3E5E0 / BB8C / 31A74 / `+ 0` toggle sweep negatives._
@@ -51978,3 +51979,89 @@ length rule), `vsplit.py` (cfe variable-split sweep: move one assignment web to 
    placeholder. Also: after a failed NM build the half-processed object survives and is NOT rebuilt by a
    Makefile-only change (clip edit) -- touch the unit .c, else the report shows the per-symbol resizes missing
    (551E0 / 55B10 / 4D084 / 37938 "lost").
+
+## kit CCLXXXVIII (agent-g 2026-10-31, run 257): FILE-CONTEXT (placement) scan of all 60 non-exact functions -- no `.align` / dead-epilogue pad, shared-static or section-offset residual left anywhere; IDO statics codegen exactly like externs; post0b 415A4's unfolded `ori` chain = a value routed through a local <a name="kit-cclxxxviii-agent-g-run257"></a>
+
+_EXACT post0b 4A890 (95.91 -> 100, 352 B, 6495e1c61). NM: post0b 415A4 94.87 -> 95.58 (452 B, same length,
+b6b2c00c8 + 2c84695c5 + bfd1c6edd), gui 4568 96.53 -> 96.63 (796 B, 86d171c01), post0b 469A8 95.12 -> 95.36 (412 B, dc6e45de8). Main lever (items 5 / 6): hold a value the target keeps in a register that
+ours spills or colours elsewhere in a DEAD EXISTING variable (a parameter or a local whose other web already sits
+in the target's register) instead of a new local._
+
+1. **Placement scan (method, reproducible).** After a full `make` + `make non_matching_objects`, for every
+   function below 100 in `report.json`: disassemble the target (`expected/...c.o`) and our NM object
+   (`build/non_matching/...c.o`) with `objdump -d -M no-aliases --disassemble=FN`, and compare (a) word
+   counts, (b) runs of >= 2 consecutive `00000000` words (the `.align 5` pad ugen emits before an infinite
+   loop's dead epilogue, kit CCLXXXVII), (c) `lui` counts (a shared %hi base across neighbouring statics
+   would show as fewer target luis). Result: NO function, target or ours, has a nop run (the 4D688 effect
+   is gone from the open set); word counts differ only in kernel 18F0 (123 / 122), post0b 3B9C0 (279 /
+   276), 4C5E4 (209 / 208) and gui 2DE0 (303 / 299) -- all structural (unrolled-loop store block,
+   FP pipeline, &D rematerialisation), not padding; lui counts differ in 76F0, 2E354, 415A4, 4C5E4, 2DE0,
+   8CD8, each explained by an in-function decode difference (415A4: the a28 store base, see 3). The
+   function start mod 32 differs between target and NM object in about half the units, which is harmless
+   while no `.align` is emitted. Note: the game_libs `expected/` objects carry no relocations, so a
+   HI16 / LO16 symbol scan on the target side is impossible there; count luis instead.
+2. **Statics are not a placement lever.** cfe scratch: a file `static int g` read before and after a call
+   is reloaded exactly like an extern (`lui/lw .bss` twice); two statics stored and summed give the same
+   lui / addiu pairs as two externs (same section does not share %hi in uopt). So moving a neighbour's
+   static into the donor changes relocations only, never instructions. The bootup 6204 / E9FC prologue
+   order (`lui a0` before `sw ra` in the target) is also not placement: cfe and NCC, extern / static /
+   string-literal / constant arguments all give `sw ra` first.
+3. **post0b 415A4 94.87 -> 95.20.** The target writes the +0x28 mode word twice: `li t1,1030; sw t1,40(at)`
+   and, from a SECOND `li v0,1030`, `ori v0,6; ori v0,0x400; sw v0,40(at)`. 1030 = 0x406, so `1030 | 6 |
+   0x400` is 1030 and cfe folds every literal spelling (`X = (Y | 6) | 0x400` in five operand orders: no
+   ori at all); the unfolded chain means the value went through a variable. `{ int m = 1030; t->a28 = m;
+   m |= 6; if (1) {} m |= 0x400; D_415A4_tA.a28 = m; }` is the best of 90 + 216 + 48 shapes (symbol per
+   store, a2C spelling, hook spots, m as a function-scope / unsigned / short / volatile local or the
+   address-taken a / b): uopt still folds the ors (ours `li v0,1030; sw`), but the store pair and its
+   base now line up. The new local takes a home (frame 0x38 -> 0x40); routing the value through the
+   existing `p` instead (`p = (char *)1030; t->a28 = (int)p; p = (char *)((int)p | 6); if (1) {}
+   p = (char *)((int)p | 0x400); D_415A4_tA.a28 = (int)p;`, p is re-assigned by the alloc before any
+   other read) keeps the target frame and every sp offset: 95.27. General: when a lever needs a new
+   local and the frame grows, reuse a same-size local whose next read follows a fresh write. Open: what
+   keeps uopt from folding `m | 6` on a known-constant m.
+4. **Negatives.** 4E424: fresh dy (f0) with big in y0, 4 dy spellings x 2 dz forms x volatile / plain z0 x
+   3 returns (48): 212 B vs 196, max 87.5. game_libs 2840 (NCC NM donor): one variable per component
+   (`vx = arg2 - f16; ... vx /= len;`) gives the home store at 60 / 56 but ALSO a spill copy (32 / 28) and
+   a smaller frame; 138 decl-order / volatile variants + 120 pad / hook variants: max 81.5 (base 93.28).
+5. **post0b 4A890 EXACT (NCC `Map::build`, 95.91 -> 100).** The byte size `t0 * 2` lives across two calls; the
+   target keeps it in s1, ours spilled it in every spelling of a separate local (named / volatile / function
+   scope / blocks, kit CCLXXVII grid). Reusing the dead PARAMETER `n` (its only other use is the end pointer
+   before the loop) -- `n = t0 * 2 + 0 * (int)(n);` then both calls take `n` -- puts the size in s1 at once
+   (98.09; the folded `+ 0 * (int)(n)` is load-bearing, without it 93.08 / 348 B). The frame then lost the old
+   local's function-scope home (0x2A0 -> 0x298): an unused `volatile s32 sz;` at the same spot restores it and
+   every sp offset (98.18; `s32 sz = n;` equal, a plain unused `s32 sz;` is dropped by NCC). Last word: the end
+   pointer's `addu t1,t6,s0` (index first). Every POINTER spelling (`ids + n`, `n + ids`, `&n[ids]`, `&ids[n]`,
+   `end += n`, char-pointer casts) emits the pointer first; integer arithmetic `(s16 *)(n * 2 + (int)ids)` (or
+   `(n << 1) + (int)ids`) gives the target order -> 100. With s1 fixed the run-252 folded second read
+   (`*s + 0 * (int)(*s)`) became a loss; plain `*s`. Promotion: donor renamed to game_libs_ncc_4A890.cpp, calls
+   through gl_func_00000000 (target jal fields 0), `D_00000000 + 0x20058` for the absolute lui 2 / addiu 0x58,
+   no new pins, no rodata, same size on both paths (no clip change).
+6. **post0b 415A4 95.27 -> 95.58: the same lever twice.** At the vcall the target loads `self->vt` into a2 and
+   self into v0; a2 is the register of p's alloc web (`p = alloc(128)`, dead after its `->0x34` store). Writing
+   `p = (char *)self->vt; ((VT415A4 *)p)->fn6C(((VT415A4 *)p)->off68 + (char *)self);` reproduces both (95.53,
+   kit CCLXXIX: uopt colours a variable's webs together). Then the mode-word chain moved from p to `v` (the
+   float pointer assigned from t->v30 right after): its web takes v0 like the target's `li v0,1030` chain
+   (95.58). Recipe: when a target register in a block equals the register of some dead variable's other web,
+   route the block's temp through that variable (casts are fine; every read must follow a write on all paths).
+   Negatives with the same idea: 469A8 (cfe; p100 / p78 / pDC / m4 onto dead outer temps, 219 combos; vt onto
+   five dead char * temps) and 3B6A0 (cc onto n / v / w / tp / f / t / verts): flat or lower; gui 4568 (xl and
+   the right / bottom edges pre-computed into the dead w / h / x parameters, 8): flat or lower.
+7. **gui 4568 96.53 -> 96.63 (796 B, 86d171c01): the int-arithmetic address lever on one append.** One pkt
+   parameter per append in gSPScisTextureRectangle (kit CCLXXXVI) and the RDPHALF_2 append through
+   `Gfx *nJ() { int n = dl->n++; return (Gfx *)(n * 8 + (int)dl->buf); }`; a 7-spelling x 6-site greedy
+   (`&dl->buf[n]`, `dl->buf + n`, `(n << 3) + (int)buf`, `(int)buf + n * 8`, `&buf[dl->n++]`, nextp) finds
+   nothing more. The same lever is inert where the order comes from strength reduction (kernel 18F0's IV
+   `addu`, int forms of `rel[i]` / `&syms[k]`: flat or longer) and on NCC address CSE (2DE0: `(int)&D` in
+   any of the 7 CTX sites, 128 combos: identical code). Other negatives this run: 33094 operator-order grid
+   re-run on the current body (216): plateau; 42938 shared function-scope `d_ / n_` comma-macro appends
+   (32): longer; 4FD00 outer-SV sum shapes (copy-in / copy-out / split third add, 12): 77-87; E68 phase-2 or
+   phase-3 m routed through nine dead locals / parameters: 3052+ B; padq size x position (90): flat.
+8. **post0b 469A8 95.12 -> 95.36 (412 B, dc6e45de8): int operand order under cfe.** The target's
+   `self->0x240 + self->0x204 * 4` is `addu t9,t6,t8` with the table base first; cfe gives that for
+   `FW(arg0, 0x204) * 4 + FW(arg0, 0x240)` (index term WRITTEN first), not for the base-first spelling.
+   Swapping the other six `+` operand pairs in the body (64 combos) is inert: cfe canonicalises
+   `base + small constant` and `pointer + scaled index`; only the int + (int * 4) sum kept the source order.
+   A register-mapped scan for swapped commutative operands (map each target destination register to ours
+   through the aligned instructions, flag `addu` / `add.s` / `mul.s` whose mapped sources are crossed) is a
+   quick way to find these: this run it flagged 18F0 (strength-reduced `&syms[k]`, inert), 4568 (fixed one
+   site), 2840 / 36694 / 33094 FP sums (operator-order grids flat).
