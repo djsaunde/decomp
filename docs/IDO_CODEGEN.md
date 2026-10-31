@@ -14646,6 +14646,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCLV (agent-c 2026-10-29, run 238): **NCC frame homes: an inline's scalar locals declared BEFORE its result V3 are homed above it; one variable instead of two drops a home; `V3 &v = x; v += w;` for a member +=; a DEAD nested pool allocation `if (0) { *a.me()->me() += *b.me(); }` homes edg's pointer-temp pool slots above the next statement's temporaries; array-indexed loop pointers (uopt IVs) move the spill slot up**](#kit-cclv-agent-c-run238) -- _bootup func_00008BD4 98.83 -> 100 EXACT (836 B) and post1b gl_func_00063964 99.964 -> 100 EXACT (1120 B), NCC donors; 4B0A8 NM 99.56 -> 99.83 (CCLIV hold on a while-loop); 31C0 99.965 -> 99.975; C310 / 454C4 / 59E80 / 1DDC / 4B2F4 / 4B620 negatives._
 - [kit CCLVI (agent-c 2026-10-29, run 239): **an expression form that leaves a variable in its home gets its register back with a folded `+ 0 * (int)(v)` use before the call it crosses; a count pointer read through a block-scoped NAMED pointer is a uopt variable (slot / pointer colours) whose home is paid back by MERGING two later same-type locals; a nested pool hold `(it.me()->me(), e->flags & 2)` stops inline-return copy-propagation inside a condition; 1DDC frame layout = named V3 e + nameless then-block + one block around mm / call**](#kit-cclvi-agent-c-run239) -- _post0b 4B2F4 NM 99.36 -> 99.63; 454C4 / 1DDC structural wins not yet fuzzy gains; 31C0 / C310 / 59E80 / 48510 / 4B620 / 5F5F0 / E2D0 negatives._
 - [kit CCLVII (agent-g 2026-10-29, run 239): **an UNSIGNED literal is a different uopt expression from the same int literal: a call argument that reads a constant-holding register (`or a1,t0,zero`) where the target re-materialises (`addiu a1,zero,1`) becomes unsigned through the callee's type-neutral parameter (`unsigned int a1`; a K&R call with `1u` is UB against a prototyped definition, narrower casts fold back to int)**](#kit-cclvii-agent-g-run239) -- _game_uso 0B3C NM 99.83 -> 99.9986 (only the 4-entry jump table left); 41D40 / 37938 / 3E5E0 / 34890 / 3AE58 / 40304 / 250C8 / 31A74 / 18F0 negatives with dump diagnoses._
+- [kit CCLXXI (agent-g 2026-10-30, run 246): **timproc_b5 C310 EXACT: the uopt spill offset is set by the frame-BOTTOM word count (one per uopt IV replacing a named loop pointer, one per de-named per-iteration read), and the loop preheader emits named-variable inits first, IV inits appended, PRE hoists last -- a loop-invariant assignment written INSIDE the loop is hoisted between the IV inits (target order)**](#kit-cclxxi-agent-g-run246) ; a spill that must precede stores = promote the stores (empty tests on their copy-outs: 5F5F0); the t-ring skips every register uopt colours anywhere (4C5E4) -- _EXACT C310 (a5b5c7961); NM 5F5F0 98.80 -> 99.67, 4C5E4 88.73 -> 89.53; 48510 / 31C0 / E2D0 negatives._
+- [kit CCLXX (agent-c 2026-10-30, run 246): **post0b 37938 EXACT: a lone final reload in v0 (target v1) gets a v0 owner by routing it through a NAMED local with an earlier defined web (`Node *n = o->s;`) kept live by `if (n) {}` -- one LR over both webs; plus dump diagnosis of 41D40 (an edg pool temp is ONE uopt LR across both rotated loop-condition copies), 54E78 (target colours 0.0 / 2.0 first), 40304 (extra ugen spill word; K / d swap steerable by empty tests), 4B2F4 (a reused dead local for h fixes h = a2 but spills)**](#kit-cclxx-agent-c-run246) -- _EXACT 37938 (73e5b8296); ~1500 variants elsewhere flat._
 - [kit CCLXIX (agent-g 2026-10-30, run 245): **permute the statements of one-line inline members (by-value operator=, return-object stores, gfx hi/lo stores): uopt's emitted store order is not the source order; NCC triage of 2E354 / 30AF4 / 18F0 (cfe stays); 250C8's fontId spill is a copy-propagated temp**](#kit-cclxix-agent-g-run245) -- _NM: game_uso 3558 91.56 -> 91.62, post0b 48AEC 97.235 -> 97.260, 4F2DC 95.665 -> 95.669. 3C43C (r in s0 from the folded use), 3AE58, 3558 vb-promotion, 4F2DC top temp negatives._
 - [kit CCLXVIII (agent-c 2026-10-30, run 245): **a target t-ring one register AHEAD of ours after a call = one of our pre-call ring temps is a uopt variable in the target: hold it in a named local (reuse a dead local: no home); the ring is cyclic and its numbers record ugen's evaluation order (read with `NCC -S`); commutation-only term / operand grids on NCC dot products**](#kit-cclxviii-agent-c-run245) -- _NM: post0b 4B2F4 99.63 -> 99.88, 36694 90.68 -> 90.96. 48510 compare order not spelling-steerable (NCC or cfe); 59E80 / 4C5E4 / 46050 / 4B620 / 31C0 / E2D0 / 5F5F0 / C310 / 1824 negatives._
 - [kit CCLXVII (agent-c 2026-10-30, run 244): **a value the target keeps in a caller-saved register (v0 + save/restore) where ours takes s0 = used s-regs cost 0: make every used s-reg owner INTERFERE with it (empty tests that extend their LRs; here unset locals under the uninitialised-local exception), weight it with `if (p) {}`, void the call whose return forbids v0, and block the copy-propagation fold with a dead re-read; the pre-switch hoist of an s-coloured addiu is as1**](#kit-cclxvii-agent-c-run244) -- _EXACT mgrproc 2B7C (99.88 -> 100). 24B8 frame map reproduced but its latch t0 needs an extra v1 LR from entry (no legal source); 1824 li-at placement not spelling-steerable; C310 / 36694 / 4B2F4 / E2D0 / 5F5F0 negatives._
@@ -50904,3 +50906,149 @@ _NM: game_uso 3558 91.56 -> 91.62 (1008 B), post0b 48AEC 97.235 -> 97.260 (2076 
    without the BB split) and x / y / z interleaved adds (90.17) but vb stays memory-resident; dead
    `if (0) { f(&vb); }` escapes do not promote it. 4F2DC: the operator+ parameter temp at the frame TOP
    (412) is not reached by nesting the locals in a block or by inline helpers.
+
+## kit CCLXX (agent-c 2026-10-30, run 246): post0b 37938 EXACT -- a lone reload that colours v0 (target v1) needs a v0 OWNER in its block: route the reload through a NAMED local defined earlier (`Node *n = o->s;`) and kept live past the v0 owners with an empty test `if (n) {}` -- one uopt LR over both webs, so the reload web inherits the interference; fresh-eyes dump diagnosis of 41D40 (one pooled edg temp plays two roles across the two condition copies), 54E78 (target colours the 0.0 / 2.0 constants FIRST), 40304 (one extra ugen spill word), 4B2F4 <a name="kit-cclxx-agent-c-run246"></a>
+
+_EXACT: post0b gl_func_00037938 99.88372 -> 100 (344 B; commit 73e5b8296). Tree = agent-c branch base bced76949.
+Unchanged: 41D40 99.902916 (412 B), 40304 99.82126 (828 B), 54E78 98.659424 (552 B), 4B2F4 99.87685 (812 B)._
+
+0. **37938 recipe (the exact).** Before: `gl(c.getOut()->m30, &arg);` -- the getOut() result temp is alone in the
+   last block (after the arg statement's `if (1) {}`) and colours v0. After:
+   `o->t->mtx.getPos0(&b); Node *n = o->s; ... arg = ...; if (1) {} if (n) {} n = c.getOut(); gl(n->m30, &arg);`.
+   n is ONE LR over its two webs, so the reload web sits in an LR that overlaps the copy chain's v0 pointer temps
+   and takes v1 = target (`lw v1,200(sp); addiu a0,v1,48`). Placement matters: (a) the declaration mid-body, after
+   getPos0 -- declared with the other locals it takes a 4-byte home and shifts a / b / arg down 4; (b) the first
+   web `= o->s` after getPos0 and the empty test after the arg statement (80-variant def-value x def-position x
+   test-position grid: `n = c.getOut()` / `(Node *)o` / `0` first webs or tests before the arg statement give the
+   v0 reload or move the copy chain). Reusing the PARAMETER instead (`o = (Obj *)c.getOut();`) gives a2, not v1
+   (parameter LR colouring preference), and a fresh n whose first web is `o->t` stays v0. The empty test reads a
+   defined value (o->s). Also checked: callee declared `int` / `void *` is byte-identical (unlike 2B7C, the value is
+   not live across the call). General form: when a single register of a short final LR is wrong and the dump shows
+   no owner of the target's preferred-over register in that block, give the value an earlier web in a named local
+   and an empty test that spans the owners.
+
+1. **post0b 41D40 (NCC): which temp plays which role.** `-Wo,-zdbug:6` on the donor: the loop's two copies of
+   `it.next()` (entry / rotated bottom) share edg pool temps, and **each pool temp is ONE uopt LR across both
+   copies** (CCVI). Ours: -56vreg = {entry array, bottom idx} (colour 1 = v0), -64vreg = {entry idx, bottom
+   array} (colour 4 = a1), -52vreg = entry result (v1), -44vreg = bottom result (a0). The target is
+   entry (array v0, idx a1, result v1), bottom (idx v0, **array v1**, result a0). That is consistent with only one
+   mapping: in the target the bottom copy's array shares the ENTRY RESULT's temp (v1) and the entry idx temp is
+   not reused in the bottom copy. So the fix has to change edg's free-list order between the two copies, and a
+   register-side lever (empty tests, priorities) cannot do it: one LR cannot be both a1 and v1.
+   Read the roles quickly with a 6-register probe (`lw` at words 52 / 53 / 58 / 87 / 88 / 93): base
+   `v0 a1 v1 a1 v0 a0`, target `v0 a1 v1 v1 v0 a0`. Not reached (288 + 92 + 80 + 24 variants): dead
+   `if (0) { ... }` pairs of 12 temp-allocating expressions (it.cur() / it.next() / `(*it.a)[it.idx]` / `it.a->data`
+   / named `Elem **z = it.next()` / `AIter j = it` / calls on them) at the loop end, 23 dead forms x 4 body
+   positions, 20 next() bodies (ternary, named `r = 0` result, split ++idx, named Arr * / int, pointer
+   arithmetic, early-return) x 4 condition spellings, and int / long / signed types for idx / last / count. The
+   dead `it.cur()` family gives `a0 v0 v1 v1 v0 a1` / `v1 v0 a1 v1 v0 a1` (bottom array v1 but the entry copy then
+   takes the same temps, CCLX note).
+2. **post0b 54E78 (NCC): the colour ORDER, not the forbidden sets.** zdbug:5: ours colours d (operator*'s scale,
+   adjsave 4) and the single-block n.y / n.z loads (adjsave 3, one block each) before the 0.0 constant (adjsave 4
+   over 3 blocks) and 2.0 (3.0 over 4 blocks), so n.y / n.z / d take f0, 0.0 f2, 2.0 f14. The target's
+   0.0 f0, 2.0 f2, n.x f12, n.y f14, n.z f16, d f18, products f0 / f12 / f14 is the picture of the constants
+   being coloured FIRST (each later LR then steps past every register already used in its blocks), which is what
+   a function with FEWER uopt blocks gives (priority falls with the number of blocks an LR spans). The two
+   `if (1) {}` splits are what keep the 1.0f uses separate (per-site `mtc1 at` with one `lui at`), and without
+   them the four 1.0s CSE into one f16 (560 B). 256 per-site 1.0 spellings without splits (int / double /
+   float inline, literal: 4^4) all stay at 560 B (best 95.57); int / unsigned / short / char inline 1s are
+   identical (edg canonicalises them all to the same int-to-float fold). A const-reference operator* scale
+   (`const f32 &s`) is byte-identical to by-value here. Next: a different source of BB boundaries that keeps
+   the 1.0s apart but lets 0.0 / 2.0 span one block (the splits sit between m[2][1] / m[2][2] / m[2][3]).
+3. **post0b 40304 (cfe): the spill-slot residual is an extra ugen spill WORD.** Besides the 1/32767 f14 / f18
+   swap, the `&self->m30` spill across the case-0x72 call lands at sp+32 while the three other cases' spills (a2 /
+   a0 / a1) share sp+36 in both bodies: ours allocates two spill temp words, the target one (same frame 144).
+   Not moved: third argument `&self->scl` instead of `sp`, `*&` copies, `if (1) {}` / empty tests on v / p / cmd /
+   sp around the call, a named `Mtx44 *m` at 10 declaration positions x 3 assignment placements x 4 pad2 sizes
+   (coloured, the spill stays at 32); a BLOCK-scope `{ Mtx44 *m = &self->m30; ... }` moves the m30 spill to 36
+   but every other spill to 40 and shifts the homes (99.66). Look for the source of the second word (kit
+   CCLXVI's split-count comparison) rather than spelling the call.
+4. **post0b 37938 (NCC): the callee's return type is not the v0 owner.** Declaring `gl_func_00000000` as
+   `int` / `void *`, with or without a `(void)` cast on the final call: byte-identical (unlike 2B7C, CCLXVII:
+   there the value was live ACROSS the call). 60 empty tests `if (X) {}` (o, c.out, c.getOut(), kk, o->t, o->s,
+   `c.getOut()->m30`, &arg, arg.x / a.x / b.x, o->k) at 5 positions around the arg statement and the final
+   call: none puts the reload in v1.
+5. **post0b 4B2F4: dump reading for the next run.** In the h block (BB 15) ours colours h v0 (LR 97,
+   forbidden [a0 s0]), slot3 v1 (LR 100), cmd2 a1 (LR 106); the target has h a2 and the arg0->0x40 pointer t0,
+   i.e. both see v0 / a2 owners we lack -- consistent with one more caller-saved LR live from the h block to the
+   list call. slot3 is ONE LR over both of its webs (v1 before and after the call), as are all reassigned
+   named locals here.
+6. **Later the same run (leads for the next attempt).**
+   - *54E78 per-diagonal split.* `inline int i1s() { if (1) {} return 1; }` on every diagonal instead of the two
+     body `if (1) {}` lines (y-variant: no other split) keeps all four 1.0f uses per-site (`lui at` once, `mtc1 at`
+     per use) AND colours 2.0f FIRST (f0, adjsave 4.5): 95.57 at 560 B; the +8 is a spilled third product
+     (`swc1 f4,64(sp); lwc1 f6,64(sp)`) and 0.0 lands in f12 (the n.y / d LR owns f2). 320 i1 / i1s per-site x
+     one-body-split combos and 701 one- to three-split placements: best 552 B variant = base (98.66); the
+     552 B variants show only two colourings (base, or 2.0 f0 / zero f12), never the target's 0.0 f0 / 2.0 f2.
+   - *37938 reload colour is steerable by variable reuse.* `o = (Obj *)c.getOut(); gl(((Node *)o)->m30, &arg);`
+     (the parameter's LR now spans entry .. end, forbidden [v0 a0 a1]) moves the reload to **a2** (one diff word,
+     score = base): with v1 free, the parameter LR still did not take it (parameter colouring preference). A
+     fresh named `void * / char * / Node * / Sub * n` reused for `o->t` and the reload stays v0 and drops the
+     getPos0 `addiu` (340 B). So a NON-parameter variable whose LR overlaps a v0 owner is what the target needs.
+   - *40304 constant colour.* The 1/32767 LR (adjsave 1.5, 4 uses over 2 blocks) colours last in every variant
+     (always f18) because c / d (adjsave 2.0) go first; 140 extra-statement anchors (`kt = K`, `c = kt * K`,
+     ...) do not reorder them, and storing c / d without their named variables adds 4-12 bytes.
+   - *4B2F4.* Holding the phys() result in a dead local (i / j / k / slot1 / slot2 / flags / cmd3) with an empty
+     test at 13 positions (91 variants), or a fresh `u32 r` (frame +8): flat or lower.
+7. **Lever transfers after the 37938 exact (all flat, leads recorded).**
+   - *4B2F4:* the first h block written through the dead `cmd3` (`cmd3 = *(u32 **)(ctx + 0xC); slot3 = cmd3[1];
+     cmd3[1] = slot3 + 1;`) with `if (cmd3) {}` right after the `list = F_4B2F4_list(...)` line gives the target's
+     `lw a2,12(s0)` h (and b moves to v0, target t0), but cmd3 is then live across the list call and stored to its
+     home (`sw a2,68(sp)`, +1 word). An empty test BEFORE the call (same line or own line) splits the block and
+     adds 8 bytes; `0 * (int)cmd3` folds in the call argument are dropped. Next: an h-extending use that ends at
+     the call without a new block.
+   - *40304:* the 1/32767 / d swap (target K f14 / d f18, ours K f18 / d f14; c f16 already = target) moves with
+     empty tests on c / d (144 pairs: K lands in f12 / f14 / f16 / f0 depending on position) but no pair gives
+     K f14 with d f18 and a / b in f0 / f2 (best 21 diff lines vs base 16 on a register-only diff metric). The
+     target needs an f14 owner overlapping d but not K, which block-granular interference only allows from a block
+     d reaches and K does not.
+   - *41D40:* by the role analysis in 1, no register-side lever can work (the shared -64vreg LR must be a1 and v1
+     at once); 96 init / condition / increment me() x pad-count combinations give either base or the
+     "bottom fixed, entry = bottom" colouring `v1 v0 a1 | v1 v0 a0`.
+
+## kit CCLXXI (agent-g 2026-10-30, run 246): timproc_b5 C310 EXACT -- the frame BOTTOM (ugen temp words below the uopt spill) is set by uopt IVs / de-named expressions, and the loop PREHEADER order is set by statement kind: uopt emits the inits of NAMED variables assigned before the loop first, then APPENDS the strength-reduction IV inits, then the PRE hoists; a loop-invariant assignment written INSIDE the loop is hoisted between them <a name="kit-cclxxi-agent-g-run246"></a>
+
+_EXACT timproc_uso_b5_func_0000C310 (99.890625 -> 100, 1024 B, NCC donor `timproc_uso_b5_ncc_C310.cpp` over an empty
+placeholder, both trees; commits ebbbbf4fe (99.91 step) and a5b5c7961 (exact))._
+
+1. **Spill slot = frame-bottom words, not homes.** The uopt spill sits directly below the edg homes and the frame
+   is `align8(saves_end + B*4 + 4 + H)`; with B too small the spill floats between two offsets (here 88 / 92) as
+   homes are added, never reaching the target's 96. B grows by one per uopt IV that replaces a named loop pointer
+   (`vals[i]`, `ptrs[i]`, `fb0 + i * 6` instead of `pv++` / `pp++` / `fb += 6`: kit CCLV) and by one for a
+   per-iteration read written in place (`#define m (*(s32 *)(arg0 + 0x2BC))` instead of `m = ...;`: kit CCXVI's
+   de-naming rule) -- three IVs + m moved the spill 80 -> 96 at frame 200 (99.89 -> 99.91). Measure B quickly with
+   a two-line objdump scan (frame from the prologue `addiu sp`, spill = lowest `swc1 $f0,N(sp)` below the homes)
+   before scoring: variants with the wrong (frame, spill) pair never need a full diff.
+2. **Preheader order lever.** The last pair was `addiu s6,s2,0x230` (the hoisted `arg1 + 0x230` call argument)
+   vs `addiu s4,sp,156` (the ptrs IV): ours IVs-then-hoist, target hoist before the ptrs IV. `NCC -S` shows the
+   rule: a named variable assigned before the loop (`q = arg1 + 0x230;` above the `for`) is emitted FIRST (before
+   every IV init: wrong the other way), IV inits are appended in body first-use order, PRE hoists last. The same
+   assignment written INSIDE the loop body (`q = arg1 + 0x230;` after the mv copy, before the mode test; q passed
+   to both calls) is moved out by uopt's invariant code motion and lands between the IV inits exactly as the
+   target -- 256/256 words. q costs one home: take it from the volatile pad (3 -> 2 words, frame 200 kept).
+   Rule: a hoisted value whose preheader position is wrong relative to the IV inits -> name it and assign it
+   inside the loop (in the statement position where the target's source most plausibly computed it).
+3. **Negatives.** Arg spellings of `ptrs[i]` / `arg1 + 0x230` (25 combos), loop forms (do / while / `++i`),
+   early `while (0)` first-occurrence blocks (BB split, -1 point), folded `+ 0 * (int)(X)` uses (not free here),
+   empty memory-expression tests to add bottom words (all emit code), named pv + q with e / mv de-naming (36 + 24
+   combos: B stays one short). Also flat this run: 48510 compare-order spellings via `nv + 1 >= max590` (the
+   leaf operand is always evaluated first; uopt rewrites the `+ 1` form to the leaf-left compare), 31C0 KB
+   new-temp via `if (0) { o = 0; }` param temps / for-init declarations / nested blocks (the pool still reuses
+   the Obj2 new-temp), E2D0 `1.0f + arg4` named / spelled 48 ways (arg4 stays an f14 uopt variable), 5F5F0 z
+   colour via `if (zLook) {}` placements and x / y / z declaration orders, 4C5E4 un-CSE'd second 2.0f through an
+   int local (strength-reduced to `add.s x, x`).
+4. **post0b 5F5F0 NM 98.80 -> 99.67 (84ca58147): a spill issued after stores that the target issues before it =
+   make those stores PROMOTED.** `NCC -S` of the else arm: `v[0] = xLook; v[1] = yLook;` stored on their own
+   lines (38 / 39), while v[2] -- kept live through `z = v[2]; if (z) {}` -- is a uopt variable whose store is
+   emitted AT the normalize call (line 41) after the xEye home spill `sw a1,160`. as1 issues equal-ready
+   instructions by line, so the target order (spill first, then all three v[] stores) needs v[0] / v[1] promoted
+   too: `if (y) {}` / `if (x) {}` after their copy-outs, and the refill `if (z) {}` dropped (64-combo keep grid).
+   Left: the 10.0f constant f26 (target f22), y / z f14 / f16 (target f16 / f18).
+5. **post0b 4C5E4 NM 88.73 -> 89.53 (1e7469026): a folded counted use that fixed the ugen t-ring phase by
+   creating a uopt LR can MOVE the load it names.** `(m78 + 0 * mC0) & 4` made mC0 a CSE'd load hoisted above
+   the `if (f)` branch (target loads c0 in the arm into v0). Without it the arm lines up and the length reaches
+   209 = target, but every t-register is one off: the ring skips the registers uopt colours ANYWHERE in the
+   function (count each t-register's uses in the target: t3 0 / t5 3 = t5 is a uopt colour, t3 skipped).
+   `sb8 = sb->mB8 + 0 * (int)(sub)` colours sb into t5 as the target and restores the ring; then a bbsplit after
+   fh. Left: sb8 t3 (target t4), the m15C address spill 68 (target 72), the second 2.0f materialisation (inline
+   int / float routes of the constant all CSE or strength-reduce to `add.s`).
