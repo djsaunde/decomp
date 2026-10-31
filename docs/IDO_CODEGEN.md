@@ -14652,6 +14652,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCLXXVIII (agent-c 2026-10-31, run 250): **a pre-call float 0.0 sharing ONE constant LR with a post-call 0.0 takes its colour: clear it from an INT variable set to 0 (`i = 0; acc.x = i;`, distinct uopt expression -> f0), then re-anchor the later zero with a float zero use right after the call (`dd = 0.0f;`) to keep its single post-jal mtc1; promoting an NCC NM donor: placeholder + both-path `_DONOR` block + `<fn>_rodata` pin for its literal**](#kit-cclxxviii-agent-c-run250) -- _post0b 3C43C EXACT (99.91 -> 100); 3BE1C / 41D40 / 4B2F4 / 34890 / 3AE58 / 54E78 / 4F2DC negatives._
 - [kit CCLXXIX (agent-g 2026-10-31, run 250): **uopt colours per VARIABLE across all its webs: move one web to another dead same-type local (variable-split sweep); a redundant arm equal to a pre-branch value folds away unless the fallback is an ELSE arm; a clamp-bound float variable set from a DOUBLE literal (`b = 1.0;`) keeps the target's f2 copy (`1.0f` is constant-propagated); an unthreaded `b; nop` lands on an `insn; b`**](#kit-cclxxix-agent-g-run250) -- _NM game_libs 2E354 94.23 -> 97.48 (3684 B = target), bootup E68 96.72 -> 96.83; no exact._
 - [kit CCLXXX (agent-g 2026-10-31, run 251): **variable-split moves that ADD a variable must keep the frame (u8 into a free byte under an existing u8 home, word type in place of a pad word); CROSS-TYPE moves (u8 web onto a dead u32) reach colours the same-type sweep cannot; a kept move can flip the variable it leaves, so re-sweep; multi-arm (switch) webs need a region rename; splitting a variable can drop its priority and spill its other web; a FUNCTION-typed extern accessed as `*(T *)((char *)fn + off)` gives the target's `lui; addiu` base with the offset in the access (data symbols fold it into %lo)**](#kit-cclxxx-agent-g-run251) -- _NM game_libs 2E354 97.48 -> 97.93 (3684 B = target); 35B1C EDG class version = cfe code; no exact._
+- [kit CCLXXXI (agent-g 2026-10-31, run 252): **a store + read-modify-write pair on one global can be split across two NAMES of the object: the plain store through the alias keeps the absolute `lui at` form, the RMW through the primary name rides the held base; cfe folds `x | 6 | 0x400` constants whatever the parentheses/casts and uopt keeps every global store (no DSE); 35B1C vtable-store order is uopt def placement (the target's temp numbers match our IR order), not as1 lines -- `if (1) {}` between the `o + 4` def and its test keeps the def above the store but splits p from q (spill 0x38, one temp fewer)**](#kit-cclxxxi-agent-g-run252) -- _NM post0b 415A4 94.59 -> 94.87 (452 B = target), 4A890 94.73 -> 95.91 (348 -> 352 B = target); negatives on 2E354 / 4A890 / 4E424 / kernel 18F0; no exact._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
 - [kit CCLXXII (agent-c 2026-10-30, run 247): **a folded `+ 0` on one loop's test moves the shared edg pool temp to the OTHER loop (493AC: the second loop's next() result leaves the call-crossing s2 temp); taking a local's address through a member call (`getPos(vb)`, `e = vb - va`) makes it memory-resident like a target that stores it after init (3558 length fixed)**](#kit-cclxxii-agent-c-run247) -- _NM 493AC 99.36 -> 99.43, game_uso 3558 91.62 @ 956 B -> 92.60 @ 1008 B; 41D40 / 250C8 / 3AE58 / 46790 / 3E5E0 / BB8C / 31A74 / `+ 0` toggle sweep negatives._
@@ -51522,3 +51523,72 @@ stays on the array view because the target folds that one). Scan for it: target 
 arm's +0x14 store (`lui v1; addiu v1` right before it) -- a third symbol (or GB) is hoisted to the arm entry by
 uopt (+8 bytes); store order / BB splits around it flat. On the build path such symbols must be pinned to the
 data symbol's address.
+
+## kit CCLXXXI (agent-g 2026-10-31, run 252): post0b 415A4 94.59 -> 94.87 -- a store + read-modify-write pair on ONE global can be split across two NAMES of the object (the plain store keeps the absolute `lui at` alias, the RMW goes through the primary name the function already holds in a base register); 35B1C vptr-store order diagnosed as a uopt def-placement problem, not as1 lines <a name="kit-cclxxxi-agent-g-run252"></a>
+
+**1. Alias split for a store + RMW pair (gl_func_000415A4, NM, same length 452).** The record block writes
+`+0x28` twice (`1030`, then `|= 6 | 0x400`). The NM body had both through the second name `D_415A4_tA`
+(absolute `lui at` stores). Moving only the RMW to the primary name `D_415A4_t` (the `t` base the function
+holds in v1) -- `D_415A4_tA.a28 = 1030; D_415A4_t.a28 |= 6 | 0x400;` -- 94.59 -> 94.87: the 1030 store stays
+`lui at; sw 0x28(at)` like the target and the second store goes through v1. Grid (24 + 27 + 16 variants,
+/tmp/claude-1000/g252/s415.py-style: first-store name x RMW name x RMW spelling x v-base form):
+- `t->a28 = 1030` for the first store scores the same (cfe folds `t` to the symbol there).
+- The RMW spelling does not matter (`|= 6 | 0x400`, `= (x | 6) | 0x400`, `(unsigned)` / `(short)` / `(char)`
+  casts): cfe reassociates the two constants into one `ori 0x406` every time, and a `0 * (int)t` term
+  anywhere in the OR does not stop it (92-94, +4 bytes).
+- The target's two separate `ori 6` / `ori 0x400` on a FORWARDED 0x406 (`addiu v0,zero,0x406` beside the
+  `addiu t1` of the first store) come from a three-statement chain `= 1030; |= 6; |= 0x400` on one name (ours
+  then forwards and keeps both oris), but uopt keeps EVERY store to a global (no dead-store elimination):
+  three stores, +8 bytes. A scalar extern for the field (`D_415A4_a28`) gets a held base too (94.50).
+  Through `t->` for all statements uopt DOES forward and fold (one store, -12 bytes, 94.81 -- away from the
+  target length, not kept).
+
+**2. 35B1C vtable-store residual (2 words, NM 97.40) -- what decides it.** Target block:
+`lui t6; addiu t6 (&vtbl); addiu v1,s4,4; addiu at,-4; sw t6,12(s4); bne s4,at; sw v1,0x34(sp)`; ours issues
+`sw t6` right after `addiu t6`. The temp numbers say the target's IR order is OURS: vtable address first (t6),
+the `o + 4` temp second (t7 consumed and renamed to v1, next block starts at t8), spill at 0x34. Measured:
+- Statement order has exactly two outcomes over 96 permutations x joins and 48 more with BB splits: vtable
+  store before the `o + 4` def (97.40), or after it (94.32: uopt puts the spill right after the def and the
+  delay slot takes the vtable store; the vtable address moves to t7). Same-line joins, a condition spread
+  over several lines, the store in an inline function DEFINED AFTER the use, and every NCC class layout
+  (initializer-list lines, inline K::K before / after L) changed nothing: lines are not the lever here.
+- uopt SINKS the `o + 4` def to its first use and folds `q != 0` into `bne s4, -4` only when the def and the
+  test share a uopt block. `q = (W *)(o + 4); store; if (1) {} p = q; if (o + 4 != 0 || ...)` keeps the def
+  above the store (the target's relative order for `addiu v1` / `sw t6`) and keeps the fold, 96.14: the store
+  still precedes `li at`, p becomes its own LR (spill 0x38, not 0x34) and the t7 temp is no longer consumed
+  (every later t-register one lower). With `if (q != 0 ...)` the fold is lost (`bnez v1`, -4 bytes).
+  `p = (W *)(o + 4) + 0 * (int)q` reproduces the "o + 4 computed twice" shape (t7 and v1) but unmerged (95.73).
+- A volatile / address-taken p gives the same 96.14 layout; CCXXXIV goto blocks do NOT straighten when the
+  region jumped over is an `||` condition (`b` + nop stay, cfe and NCC alike); a comma store inside the
+  condition (`(store, q) != 0`, `c = q != 0; store; if (c ...)`) = 94.32.
+- The NCC class rewrite (`struct L { L *next; K key; int x; virtual void f(); L(Lst *, K, int); }`, member
+  ctor protocol inline) compiles to the cfe body exactly, frame 0x48 (needs two function-scope words).
+  uopt dump (`tools/ido-static-recomp-dump/.../NCC -Wo,-zdbug:6`, ./uoptlist) of the 97.40 body: after local
+  optimisation the block is `p = o+4 (CSE 412); *(o+0xC) = &vt; q = 412; o != -4`, p "not colored (-ve
+  save)" (memory home 0x34), q coloured v1 -- so uopt's IR already has the def BEFORE the store, and the
+  store-first order is made later (ugen evaluating the CSE'd `o + 4` at q's register use after the spilled
+  p's home store is folded, or as1). The 96.14 body's IR is `q = o+4; store; p = q; o != -4`. Next: compare
+  the two ugen outputs (`-Wb` / `-S` listing) rather than more source spellings.
+
+**3. Negatives (all at base or lower).** 2E354: the >= 7 arm's +0x14 store through a third function symbol
+or GB is hoisted to the arm entry (t7, 97.69); `volatile` on that store and `if (1) {}` at four points in the
+arm are flat (97.93). 4A890: the byte size refuses s1 in six spellings (plain, used after the last call,
+`if (1) {}` between the calls, r volatile): caller-saved a0/a2 + a save around the call. 4E424: the param-reuse
+role grid with dy / dz as y1 / z1 (target f0 / f2 loads) gives the target's move structure but stack params
+take callee-saved fs1 / fs2 (frame 0x20, 81.1). kernel 18F0: 12 found-test spellings (nested ifs,
+do-while break, `found == 1`) at or below 89.19. lever-sweep `all` on the NCC donors 2840 / 4FD00 / 37540 /
+4A890 and zero-use-sweep on 415A4 / 35B1C: nothing above base.
+
+**4. NM gain from the zero-use sweep (gl_func_0004A890 NCC donor).** `volatile s32 sz = t0 * 2 + 0 * (int)(n);`
+94.73 -> 94.77 and 348 -> 352 bytes = target length (the folded use keeps `n` live to the end, so its
+argument home gets stored; the target's extra word is the s1 save, still a colouring residual). post0b NM
+clip 0x2eb00 -> 0x2eb04. Then the `--exprs` pass: `list[t0++] = *s + 0 * (int)(*s);` 94.77 -> 95.51 at the
+same length (still one `lh`; the folded second read only renumbers the t-registers of the loop body toward
+the target). A spelling grid over the result (1152 probes: compare operand order, `idx++` / `++idx` /
+`+= 1`, `<` vs `>`, `299` bound spellings, `t0 * 2` / `2 * t0` / `t0 + t0` / `t0 << 1`, the order of the
+run terminator and `s++`) found one more: `if (tbl[idx] == *s)` 95.51 -> 95.91. REJECTED from the same pass on 415A4: `D_415A4_tA.a28 = 1030 + 0 * (int)(D_415A4_t.a28);`
+scores 95.89, but only because cfe treats the two names as distinct objects -- the early `lw` of
+`D_415A4_t.a28` then feeds the RMW, i.e. the body computes `old | 0x406` where the target computes
+`1030 | 0x406` (the names alias the same address). A zero-use read that changes which value a later use sees is
+not a zero-code fold. Zero-use / lever sweeps on 469A8, 4E424, kernel 18F0, and the 37540 / 4FD00 / 33094 /
+36694 / 42938 / 2840 donors: nothing above base.
