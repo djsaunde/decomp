@@ -14666,6 +14666,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCXCII (agent-c 2026-10-31, run 257): **B75C's a0 / a1 temploc order follows the first-arm call's argument form (named `temp_a1` -> a0 first; unnamed -> the target's word-before-a0 order, but the else-arm a1 web shares that word); E68's target has the phase-2 ve IV and j counter in s0 / s3 (ours t2 / t5), so the m split is an s-register-pressure outcome**](#kit-ccxcii-agent-c-run257) -- _No gain; ~330 B75C slot probes, E68 keeper grid, 41D40 next() / me() grid, gui 3714 / 329C grids, 6204 invented-parameter flip (not used)._
 - [kit CCXCIII (agent-c 2026-10-31, run 258): **uopt `spilltemps` decoded from the recomp'd binary: every colourable expression (`coloreditems`, -zdbug:4) gets a stack temp BEFORE colouring, in expression-bit order, first BB-region-disjoint temp of EXACT size, new temps descending; unused frame words = temps of coloured expressions. Applied: bootup B75C EXACT (+2096 B) -- the 0x990 load read in place at both tests (adds the never-stored item ahead of the 0x3C4 load) + the dot3 hold (one fewer home)**](#kit-ccxciii-agent-c-run258) -- _Also: gettemp / findbbtemps emit-time reuse, needsplit size / priority / appearance conditions; where the uopt.c recomp lives on this machine (references/ido is absent)._
 - [kit CCXCIV (agent-g 2026-10-31, run 259): **NCC frame-slot model: compare the sp-offset SETS first; an inline function's named local / named result gets a home per expansion at the frame BOTTOM (no overlay), unused locals get none, dead-store block locals sit in program order among the temporaries; move a named inline result to a caller function-scope local to re-place the home without losing its codegen**](#kit-ccxciv-agent-g-run259) -- _NM game_uso 3558 93.61 -> 93.68 (sp-offset set = target), BB8C 98.52 -> 98.55 (8-byte dead block home + named-result operators), post 30AF4 97.86 -> 98.08 (hv folded into sv + zero-use re-sweep); 40304 / 250C8 spill-slot probes; 31A74 store-after-clamp shape (one sb / swc1 pair left, scores lower), 2840 double-volatile memory shape, 37540 / 42938 / 0F04 / 4E424 / 40304 / 250C8 negatives._
+- [kit CCXCV (agent-c 2026-10-31, run 259): **uopt `compute_save`: priority = save / N' with N' = 2 + (N - 2) / 4, colouring in strictly descending priority; a one-use-plus-load value has priority 0 and is never coloured; the cost split compares the WHOLE save with the cheapest colour, so hot values only split eagerly; a codeless constant LR (the 0.0 of empty float tests) is coloured once it has two uses and can occupy a register; a uopt colour on f16 / f18 removes it from ugen's FP temp pool for the whole function; ugen pools = FIFO free lists (append on last free, move-to-end on reuse); the colour-choice preference step is -O3 interprocedural only**](#kit-ccxcv-agent-c-run259) -- _No gain. E68: target has 3 more coloured items (spills 2 temps lower; `if ((vidx + 2) * 2) {}` + padq[2] lands them, regs regress); E2D0: constant-LR lever reaches arg4 f16 / 1.0 f8 but strips f16 from the first-half pool -- the target's arg4 is a ugen load; 46050 / 41D40 / 329C read via the LR records; 31C0 / 34890 = edg temp-variable reuse (one var shared by two roles), ~80 probes flat._
+- [kit CCXCVI (agent-g 2026-10-31, run 260): **the spilltemps temp follows the item's FIRST MENTION: mention a spilled address expression before the overlapping item (held in a dead local -- a fresh name costs a home) to move its spill one temp up; -zdbug:6 colour numbers (GPR 1 = v0 .. 7 = t0; FPR 24..29 = f0 / f2 / f12 / f14 / f16 / f18); edg temporaries (no coloreditems) are homes, not temps**](#kit-ccxcvi-agent-g-run260) -- _NM post0b 4C5E4 89.579 -> 89.589 (sp-offset set = target); 40304 copy-propagated &scl item (12 spellings flat), 3BE1C off = T1 behind the col load, 0F04 T0/T1 pair, 3E5E0 edg slots, 18F0 register constant, 4E424 / 415A4 / 250C8 / 33094 / 2840 / 4B2F4 negatives._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
 - [kit CCLXXII (agent-c 2026-10-30, run 247): **a folded `+ 0` on one loop's test moves the shared edg pool temp to the OTHER loop (493AC: the second loop's next() result leaves the call-crossing s2 temp); taking a local's address through a member call (`getPos(vb)`, `e = vb - va`) makes it memory-resident like a target that stores it after init (3558 length fixed)**](#kit-cclxxii-agent-c-run247) -- _NM 493AC 99.36 -> 99.43, game_uso 3558 91.62 @ 956 B -> 92.60 @ 1008 B; 41D40 / 250C8 / 3AE58 / 46790 / 3E5E0 / BB8C / 31A74 / `+ 0` toggle sweep negatives._
@@ -52509,3 +52511,142 @@ recomputed / retMsg spilled) -- the target's single computed temp in slot 36 is 
 **Reproduce.** Offset set: `objdump -d -M no-aliases --disassemble=FN X.o | grep -o '[0-9]*(sp)\|sp,[0-9]*'`, sort -u,
 compare with expected/. Home probes: insert `{ T dz; dz.f = 0; }` at each statement (T in {P2, double, V3, float[2]})
 and watch which objects move; unname inline results one at a time.
+
+## kit CCXCV (agent-c 2026-10-31, run 259): uopt `compute_save` priority formula decoded (priority = total save / N', N' = 2 + (N - 2) / 4); the cost split needs the WHOLE save below the cheapest colour, so E68's m split must be the eager neighbour split; a CODELESS constant LR (the 0.0 of empty float tests) takes a colour once it has 2 uses; any uopt colour on a ugen pool register (f16 / f18) removes it from ugen's FP temp pool for the whole function; ugen's FP / GP temp pools are FIFO free lists with move-to-end on reuse; the colour-choice preference step is interprocedural-only <a name="kit-ccxcv-agent-c-run259"></a>
+
+_No report.json change, no commit (tree = a074786bd). Gate on the unchanged tree: full make ROM byte-identical (cmp),
+verify-blocks 6/6, `make non_matching_objects` 0 errors, sentinels 100. Sources: the uopt recomp (kit CCXCIII) and the
+ugen recomp `ugen.c` (3 MB, same docker-layer directory as uopt.c: `.../snapshots/34/fs/opt/ido-static-recomp/build/7.1/ugen.c`)._
+
+1. **`compute_save` (uoptreg2.p) -- the priority every LR is coloured by.** For each BB node in the LR's appearance
+   list (lr+8; the `- live bb -  B  U  D  x` lines of -zdbug:5): save += (uses(+16) + defs(+18)) x freq(bb+44), minus
+   freq x load cost when the node needs a register load (`needreglod`, unless `canmoverlod`), minus freq x store cost
+   for a needed store-back. N = number of appearance nodes + bvectcard(lr+12) (the `live bb (default)` blocks). If
+   N >= 3 then N' = 2 + ((N - 2) >> 2), else N' = N; lr+28 = N'. Priority (lr+48, printed by -zdbug:5 as
+   `adjsave, hasstore: P`) = save / N', doubled for one type class (kind byte 0xC). lr+35 = (priority > 0): only
+   those are candidates. `globalcolor` repeatedly picks the candidate with the HIGHEST lr+48 -- the E68 `assigned
+   (constrained)` order is exactly descending adjsave (146 6615, 147 6015, 144 4910, 151 4000, ... m 1718, 192 1500,
+   ...). Consequences: (a) a zero-priority LR (one use with a load: save 1 - 1 = 0) is never coloured -- that is when
+   uopt does NOT colour a parameter or a constant; one more counted use colours it; (b) BB splits barely move a long
+   LR (N' grows by one per four BBs); (c) the COST split (`priority x lr+28 <= cheapest colour cost`) compares the
+   LR's WHOLE save against the cost, so a hot multi-block value never cost-splits.
+   Helper: `/tmp/claude-1000/c259/lrp.py uoptlist` lists bit / colour / save / N from a -zdbug:5 dump; colour
+   numbers: 1 v0, 2 v1, 3-6 a0-a3, 7.. t0.., 14.. s0..; FP 24 f0, 25 f2, 26 f12, 27 f14, 28 f16, 29 f18.
+2. **E68 (98.61): what the target's m split now requires.** Our m (bit 109, var -196) has save 1718 x N' 14; it
+   is coloured 13th with all 17 allowed colours (forbidden v0-a2) still free, so it can only be split by the EAGER
+   rule (kit CCXCIII 4a: every remaining colour taken by higher-priority neighbours) -- about 17 neighbours would
+   have to outrank it (priority < ~300 vs 1718), not reachable with block splits or a few refs. Second, independent
+   clue: the target's three phase-2 spills (the TILEGEN lrt words, `sw` at 84 / 80 / 76) sit two temps BELOW ours
+   (92 / 88 / 84) with the same frame and homes, i.e. the target has three more colourable items (our `padq[3]`
+   stands in for them) and five more temps created ahead of those spills. Predicted and confirmed with the spilltemps
+   rule: `if ((vidx + 2) * 2) {}` after the vs / ve line + `padq[2]` puts all three spills on 84 / 80 / 76 at
+   frame 472 (`/tmp/claude-1000/c259/tsim.py` simulates the temp map from -zdbug:4), but registers regress (98.50;
+   8 expressions x 7 positions x 2 pads = 112 compiles, best 98.503). Negatives: m1 for phase 3 (96.20-96.25 with
+   padq 0-2), the manager in cfg / self / buf / vp / head / arr[31] for either phase (83-96.6), direct `E68_MGR` at
+   every use (77-84, reloads), removing any of the four inner-loop levers (89-98.48), lever-sweep denaming (flat),
+   vs / ve as expression tests instead of variables (the dead copies vanish, 3012 B), `uls` as `j * 64` / `ult` as
+   `(i * 2 + k2) * 32` / both (92.1-93.9, +4..16 B), `_n`-free NEXT macros (71.9, 2940 B).
+3. **E2D0 (99.54): arg4 colour, read off the LR records.** arg4 (bit 82, P 16) has priority 0.33 and is coloured
+   LAST with f0 / f2 / f12 forbidden by dot / lim / -lim, so it takes f14. The target's f16 needs a co-live LR on
+   f14 that emits nothing -- and one exists: the 0.0 constant of the empty float tests is an LR; with TWO uses (save
+   2 - 1 > 0) it gets coloured, in every BB it spans. `if (arg4) {}` after the call plus `if (dot) {}` / `if (-lim) {}`
+   after the 0x9F8 multiply (or a second `if (arg4) {}` before the call) puts the constant on f14, arg4 on f16 and
+   the 1.0 on f8 -- the target's three registers in that block. BUT a uopt colour on a ugen pool register is excluded
+   from ugen's FP temp pool for the WHOLE function (`gen_regs` removes every register uopt declares in the proc's
+   `regs` ucode): the first-half temps lose f16, the ring re-phases and two nops appear (86.8-89.4). The target uses
+   f16 as a first-half temp, so its arg4 is NOT a uopt colour: it is a ugen load. Without `if (arg4) {}` (98.21) the
+   ugen trace (`cc -Wc,-d`, `opc = ... reg = xfrN` lines) at the `1.0f + arg4` statement pops f6, f18, f8 from the
+   pool state [f6, f18, f8, f4, f10, f16]; the target needs {f8, f16, f18} first and f6 after f4, i.e. f16 near the
+   HEAD although the 0x9F8 load freed it last -- not reachable under the FIFO rule below with the same instruction
+   stream. Flat (all code-identical variants keep 1.0 in f6): 96 dot-sum shapes, 48 sqrt-argument shapes x 4 lim /
+   multiply orders, `1.0f + arg4` spellings x 13 x 2, the sum held in `s` at 5 points x 4 forms x 2, `if (arg4)` at
+   every statement (66), constant-LR placements (~500), lever-sweep all on both bodies (82). The integer form of the
+   lever also works: `if (j == 1001) {}` twice in E68's inner loop emits no compare but its constant LR takes a
+   register (three more spill pairs, +16 B) -- a way to add register pressure without code, too blunt for E68.
+4. **ugen temp pools (ugen.c, reg_mgr).** Registers live in a 12-byte table at 0x10021b70 (+4 usage count, +7
+   on-list flag). GP: free list 0x100213d4 / busy list 0x100213d8; FP: free 0x100213dc / busy 0x100213e0. Allocation
+   (`get_free_fp_reg`) takes the HEAD of the free list (spilling the busy head when empty); `free_reg` /
+   `add_to_fp_free_list` decrement the usage count and APPEND the register when it reaches zero (a multi-use tree node
+   frees at its last use); `eval` of a node that already holds a register moves that register to the END
+   (`move_to_end_fp_list` / `move_to_end_gp_list`). Initial order f4, f6, f8, f10, f16, f18 (FP) -- this is the
+   documented FIFO ring, now from the source; uopt-declared registers are removed at procedure start.
+5. **post0b 46050: the colour-choice preference step is interprocedural-only.** The step after the cost loop (scan
+   the tie mask for a colour whose byte in `*(0x1001c530)+36` is set) runs only when 0x1001c4d0 is set; `procinit`
+   loads it from the procedure record's +12 byte, and `printinterproc` is the only printer of that table -- it is
+   the -O3 (umerge) callee-register information. At -O2 equal-cost colours resolve to the lowest number, so the
+   target's t0 ctx means v1 is forbidden there by a co-live LR (a codeless one, as in item 3), not a preference.
+6. **Read-only notes.** post0b 41D40: in the bottom copy our coloured LRs are -56 (pri 30, v0, idx + 1), -60 (20,
+   v1: the address, coalesced into the result -- a CODELESS v1 holder), -44 (15, a0, result), -64 (11.5, a1, the
+   `a` load; it also spans the entry copy, hence the low priority); the target's `a` on v1 means the address temp
+   does not hold v1 there. gui 329C: x is LR 235 (ucvtl, pri 0.044) on a3 because LR 225 (ucvtl{176}, pri 0.15)
+   holds a2 and interferes; the target's x on a2 means 225 / 235 do not interfere there (or 225 is coloured
+   elsewhere).
+7. **bootup 31C0 (99.98): the KB new-temp is ONE edg temp variable shared with obj's new-temp.** -zdbug:1 shows a
+   single var {640} at -28 (sp 116) for both `new` results, so in case 1 the KB `this` overwrites 116 before the
+   B2 call and uopt can only propagate the KB argument from obj's home (120); the target keeps 116 intact (argument
+   read from 116) and gives the KB temp a fresh slot at 104 (lowest home) -- an edg temp-recycling difference, not a
+   uopt slot. Flat (60 compiles, every one still `sw v0,116` / `lw a1,120`): B2 / KB parameter types (Obj2 *, void *,
+   Obj *, reference, const), casts / `+ 0` / `me()` on the argument, an inline `mkKB` wrapper (plain / named local /
+   char * result / swapped parameters), `Obj2 *obj = new Obj2` declarations, `new Obj2()` / `new (KB)`, explicit
+   braces around the obj statement / the switch / case 1 / the KB statement, default or explicit float parameters on
+   KB, a named `self` / `aa` in the KB ctor (frame +8; with two volatile pads removed 99.96, KB temp still 116),
+   class-level `operator new` on KB or Obj2 (71-90, different lowering).
+8. **post0b 34890 (99.57) is the same class.** Besides the h home (target -4 = sp 44, ours -8 = sp 40; ours' -4 is
+   an iterator variable), the loop's next() results differ in colour (entry a2 / bottom v1 in the target, v0 / a1
+   ours): -zdbug:5 shows the bottom result sharing edg temp variable -16 with make()'s h (one LR from bb 0 to bb 28,
+   priority 0.27, forbidden v0 / a0 / a2 / a3 -> a1). Different edg temp reuse, not a uopt choice. Flat: make()
+   bodies (`if (0)` placement, named a / f / hv, block, reference h, no named a: 9), h as a function-scope local
+   instead of make() (-16 B, 8), blocks around the loop / the call (5).
+
+## kit CCXCVI (agent-g 2026-10-31, run 260): applying the kit CCXCIII temp law -- an item's temp follows its FIRST MENTION, so mentioning a spilled address expression before an overlapping item's first occurrence (held in a dead local, no new home) moves its spill one temp up; post0b 4C5E4 sp-offset set = target (89.579 -> 89.589); temp-slot diagnoses of 40304 / 3BE1C / 0F04 and edg-home (not uopt) slots in 3E5E0 <a name="kit-ccxcvi-agent-g-run260"></a>
+
+**1. Lever: first-mention order decides the temp (4C5E4).** -zdbug:4 of the NCC donor: coloreditems [19, 23, 43] =
+`this->sub` load (19), `this + 0x15C` (23, the m15C address passed to two calls and spilled across them), `this->m78`
+load (43); all three share flow nodes 9..11, so the spilltemps walk gives 19 -> T0 (72, never stored: coloured),
+23 -> T1 (68), 43 -> T2. Target spills m15C at 72. Writing `g = m15C;` (g = the dead `char *g` from the function's
+first lines) BEFORE `dl = sub[idx]...` and passing g makes the address expression's first occurrence precede the sub
+load (copy propagation turns g back into the expression, so it is still item-coloured, now with the lower bit):
+23 -> T0 = 72, every other word identical, sp-offset set = target. A FRESH `char *m = m15C;` instead costs a home
+(frame 208 -> 216) and lands nowhere useful -- reuse a dead local. Check: `-Wo,-zdbug:4` on the donor, simulate
+the walk (bit order, first region-disjoint same-size temp), compare the spilled item's temp index with the target's
+offset.
+
+**2. 40304 (cfe): why the m30 spill sits one temp low, and why source spelling can't fix it.** coloreditems
+[5, 16, 29, 123] = self+192 (&scl, first in case 0x6D), self+204 (&q), self+180 (&pos), self+48 (&m30). Cases 6D / 6E /
+6F are region-disjoint (all T0 = 36); in case 0x72 `sp = &self->scl` is COPY-PROPAGATED into item 5, whose region
+(nodes 13..15) overlaps 123 at the call node -> 123 = T1 = 32. The target's 36 needs case 0x72's a2 to be a variable,
+not item 5. Every spelling stays one item (flat, identical code): `(Vec3 *)((char *)self + 0xC0)`, `&self->scl.x`,
+`(Vec3 *)self->q - 1`, `&self->pos + 1`, `(int)self + 0xC0`, sp at function top / at each of 5 positions in the case,
+sp re-assigned before `y = *sp`, the call / `y` written with &self->scl, case 6D through sp. Dead `while (0)`
+mentions of &self->m30 (before the switch or in the 0x72 anchor) never reach the itab. Deleting sp (98.84) is the only
+form that drops item 5 from case 0x72.
+
+**3. 3BE1C (NCC): `off` (item 122, ushl) is T1** -- it overlaps item 4 (the `col` load, nodes 0, 2, 21..24); target is
+8 bytes higher. The block local n_al's home sits above the temp block (removing it: spill +4 from the frame top,
+frame 240 -> 232, 98.48). Moving each of the 26 function-scope declarations into the if / else / loop blocks (104
+compiles) is flat; `n = cc->nrm + off` (drops item 4 from nodes 21+) costs codegen (94.2, +8 bytes).
+
+**4. 0F04: the spilled dtdy mask is a `ucvtl` item in T1** (13 coloured items, 9 temps: T0 holders 56 / 75 / 275); the
+target puts it in T0 (124) and leaves 120 unused -- the opposite pair of what we emit. Not attempted beyond the walk.
+
+**5. 3E5E0: no coloreditems at all** -- the 32(sp) spill is the edg temporary var 704 (-24) that all three `new` results
+share; the target uses -12 (our block-local x's slot) for reg0 / reg1 and -24 for the loop. Holding x in `it`
+moves the shared slot to -20 (36); x as pointer types, `regx()` inline wrappers, the new result passed into reg0/1 or
+assigned to their parameter, a `char *&x` reference holder (puts a store into x's home) are all worse or flat.
+
+**6. Colour numbering in -zdbug:6 `assigned (constrained) N`:** GPR 1 = v0, 2 = v1, 3 = a0, 4 = a1, 5 = a2, 6 = a3,
+7 = t0 ...; FPR 24 = f0, 25 = f2, 26 = f12, 27 = f14, 28 = f16, 29 = f18 (f4..f10 are ugen's). Read the order of the
+lines as the colouring order. 33094: the inline set()'s parameter copies (LR 3 / 9 / 13 = x / y / z) get 24 / 25 / 26
+in bit order; the target's y f0 / z f2 / x f12 plus the else arm reloading a.x from its home says x lost its last colour
+there (the 10.0f constant takes f12) -- 36 parameter-order x assignment-order variants of set() are flat. 2840 double
+volatile: dx / dy = LR 51 / 55 colour first (f0 / f2); the target needs sum2 (LR 38) before the f16 local (LR 17).
+
+**Negatives / leads.** 18F0 (kernel): the target materialises ~8 as a uopt register constant (`addiu t5,-9`, hoisted
+to the unrolled loop's preheader and repeated in the peel) where we emit `and` + `$at`; `&= 0xFFFFFFF7` / `-9` /
+named mask / `^= 8` / `-= 8`, if-found nesting variants, IDO 5.3 and -O1/-O3 all keep the `$at` form. 4E424: writing
+dy / dz into the reassigned params y1 / z1 gives the target's min / max / half-sum block but the reassigned stack
+params take callee-saved f22 / f24 (like x1 -> f20 in the target); as new locals dy is copied. 415A4: `t->a28 = 1030;
+t->a28 |= 6; t->a28 |= 0x400;` forms (10) all fold or reorder (best 95.18 < 95.58). 250C8: fontId from the retMsg
+variable is +8 bytes. 4B2F4: the first h's v0 vs a2 (and the list pointer's a2 vs t0) is a colouring-order question
+(agent-c CCXCV: the preference step is -O3 only, so ties go to the lowest colour): 7 holder variants for h and 6 for
+the pointer are flat or worse.
