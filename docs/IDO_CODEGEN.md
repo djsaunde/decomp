@@ -14649,6 +14649,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCLXXV (agent-g 2026-10-30, run 248): **NM FRAME SCAN of every non-exact function (frame + sp-offset set vs target); under NCC every FUNCTION-SCOPE local (and every inline's locals / parameters) owns an edg home word even when promoted, block-scoped locals own none -- hoist / sink declarations to place homes without touching code**](#kit-cclxxv-agent-g-run248) -- _NM 3B6A0 96.245 -> 96.31 (frame 0x40 -> 0x80 = target), 3B9C0 95.14 -> 95.19 (d home = target); scan list; 31C0 / E2D0 / 4B620 / 48510 / 4C5E4 / 46050 / 42938 negatives._
 - [kit CCLXXVII (agent-g 2026-10-31, run 249): **NCC home allocation ORDER: function-scope declarations + function-scope full-expression temps first (initializer temps just above their variable), then each block, and an inline's internal temps / params right after the scope expanding it; a random code-neutral hoist grid places homes**](#kit-cclxxvii-agent-g-run249) -- _NM 37540 96.39 -> 96.42; 24B8 frame map re-derived (latch colour blocked); 31C0 KB new-temp reuses T (15 spellings flat); 36694 target order decoded, not reproduced; 4A890 / 42938 / 4FD00 negatives._
 - [kit CCLXXVI (agent-c 2026-10-31, run 249): **outgoing stack words copied with ALTERNATING t-registers (t8 / t7 / t8) + a param home spill/reload = ONE struct passed by value (`*r`), not three scalars (3C43C 99.47 -> 99.91); a frame-size residual with correct top offsets can be MISPLACED homes: shrink unused-tail staging records and declare the scalars in the gaps (3C43C 98.26 -> 99.47, frame 224 = target); 3BE1C loop locals hoisted before cx / cz (frame 240 = target)**](#kit-cclxxvi-agent-c-run249) -- _NM 3C43C 98.26 -> 99.91, 3BE1C 98.56 -> 98.62; acc-zero colour / 4F2DC top-V3 negatives._
+- [kit CCLXXVIII (agent-c 2026-10-31, run 250): **a pre-call float 0.0 sharing ONE constant LR with a post-call 0.0 takes its colour: clear it from an INT variable set to 0 (`i = 0; acc.x = i;`, distinct uopt expression -> f0), then re-anchor the later zero with a float zero use right after the call (`dd = 0.0f;`) to keep its single post-jal mtc1; promoting an NCC NM donor: placeholder + both-path `_DONOR` block + `<fn>_rodata` pin for its literal**](#kit-cclxxviii-agent-c-run250) -- _post0b 3C43C EXACT (99.91 -> 100); 3BE1C / 41D40 / 4B2F4 / 34890 / 3AE58 / 54E78 / 4F2DC negatives._
+- [kit CCLXXIX (agent-g 2026-10-31, run 250): **uopt colours per VARIABLE across all its webs: move one web to another dead same-type local (variable-split sweep); a redundant arm equal to a pre-branch value folds away unless the fallback is an ELSE arm; a clamp-bound float variable set from a DOUBLE literal (`b = 1.0;`) keeps the target's f2 copy (`1.0f` is constant-propagated); an unthreaded `b; nop` lands on an `insn; b`**](#kit-cclxxix-agent-g-run250) -- _NM game_libs 2E354 94.23 -> 97.48 (3684 B = target), bootup E68 96.72 -> 96.83; no exact._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
 - [kit CCLXXII (agent-c 2026-10-30, run 247): **a folded `+ 0` on one loop's test moves the shared edg pool temp to the OTHER loop (493AC: the second loop's next() result leaves the call-crossing s2 temp); taking a local's address through a member call (`getPos(vb)`, `e = vb - va`) makes it memory-resident like a target that stores it after init (3558 length fixed)**](#kit-cclxxii-agent-c-run247) -- _NM 493AC 99.36 -> 99.43, game_uso 3558 91.62 @ 956 B -> 92.60 @ 1008 B; 41D40 / 250C8 / 3AE58 / 46790 / 3E5E0 / BB8C / 31A74 / `+ 0` toggle sweep negatives._
@@ -51368,3 +51370,91 @@ _Gain (report.json): post0b gl_func_00037540 96.39267 -> 96.418846 (764 B unchan
    gives frame 104 with the same code but worse colours (96.78); member DLHead::nx() forms 69-77. 4FD00: SV
    temporaries / copy-ctor forms collapse the two SV slots but change the code (54-74). Hoist grids on 4C5E4 /
    33094 / 4FD00 / 3B9C0 / 2840 / 42938 / B75C: base best.
+
+## kit CCLXXVIII (agent-c 2026-10-31, run 250): post0b 3C43C EXACT (99.91 -> 100, 872 B) -- a pre-call float 0.0 that shares ONE constant live range with a later 0.0 across a call takes the later zero's colour; clear it from an INT variable set to 0 instead (distinct uopt expression), then re-anchor the later zero right after the call <a name="kit-cclxxviii-agent-c-run250"></a>
+
+1. **Symptom (3C43C).** Target `mtc1 zero,$f0` + three `swc1 $f0` (acc cleared before the query call), then a
+   second `mtc1 zero,$f14` right after the call for the loop's `ABS3(x) < 0.0f` compares and `0.0f + dist[best]`.
+   Ours had `$f14` in both places: the coloring dump (`-Wo,-zdbug:6`, coloring-solve.py) shows ONE constant LR
+   (lr 196 -> f14) covering both pieces; uopt only re-materialises it after the call. The target's two zeros are
+   two LRs, so the pre-call piece is free to take f0.
+2. **Fix, two steps.** (a) `i = 0; acc.x = i; acc.y = i; acc.z = i;` (i = the loop counter, re-initialised by
+   `for (i = 0; ...)` anyway, so no new home and a defined value): the int-to-float store is a different uopt
+   expression from float 0.0 (NCC folds every literal spelling, kits LXV / CCLXII) -> pre-call zero in f0.
+   A block-scoped `{ int z = 0; ... }` gives the same colour but costs an 8-byte frame word here (block scalars
+   DO get a word when the frame has no slack). (b) step (a) alone makes the loop zero re-materialise in each
+   unrolled loop preheader (+12 bytes): put a float zero use RIGHT AFTER the call -- `dd = 0.0f;` moved up from
+   the hit block to just after the call (`dd = dd + dist[best]` later) -- and the single post-jal `mtc1 zero,$f14`
+   returns: 100.0, 872 B = target. Literal spellings `(float)0`, `0`, chained `acc.x = acc.y = acc.z = 0.0f`,
+   a zero-initialised Vec3 struct assignment (+64 B) and a float `z` local all stay on f14.
+3. **Wiring the exact (pattern for promoting an NCC NM donor).** `git mv` the `_nm.cpp` to the plain name,
+   replace the post0b `#ifdef NON_MATCHING` block with a placeholder returning 0 (any body; the splice
+   replaces it), and swap the `*_NM_DONOR` Makefile block for a `*_DONOR` block on BOTH object paths. The
+   donor's 1e6 literal lives in its own `.rodata`; replace-function-body.py renames that local section reloc to
+   `gl_func_0003C43C_rodata`, pinned to the USO's RoData offset of the literal (`0x1AB8`, read off the target's
+   `lui at,0; lwc1 $f16,0x1AB8(at)`) minus the literal's donor `.rodata` offset (0).
+4. **Negatives this run (no gain, all standalone objdiff).** 3BE1C: calling face() on `cc` (`cc = col;
+   f = cc->face(i)`) puts the col copy in the target's s1 (cc stays a variable, entry + loop one LR) but drops
+   the target's `or v0,s1` this-copy (98.62 -> 98.14, 1564 B); every rvalue spelling of the object
+   (`(cc + 0)->`, `(Col *)(int)cc`, free `faceOf(cc, i)`, member `Col *c = this`) is the same; the `off` spill
+   slot (sp+76, target 84) moves only with the region between the homes and the temps (removing block `r`:
+   frame 232, spill frame-160; target frame-156). 41D40: 70 next() / condition `+ 0` spellings flat (bottom
+   copy array temp a1 = the top copy's idx temp: edg pooled-temp role assignment). 4B2F4: 35 first-h / list
+   pointer forms flat. 34890: h's spill slot follows the PARAMETER ORDER of make() (h first -> 44 = target) but
+   then h stays memory-homed (no pooled temp, 89.17); a kept `o` instead of `h` still gives the pooled temp at 40.
+   3AE58: exactly one of {pick's Ent* param, pick's vi return} becomes a uopt LR in every spelling (by-value
+   return: vi in v1; reference return: Ent* in v1); the target has both as ugen ring temps. 54E78: moving the
+   `if (1) {}` from after m[2][2] to after m[2][3] gives the target's zero in f0 (zero no longer shares the BB
+   with k) but loses the per-BB 1.0f re-materialisation (91.99). 4F2DC: the target's top-of-frame V3 at 412 is
+   operator+'s by-value parameter copy (160 -> 180 -> 412 chain) and count sits right below it at 408;
+   `count` first + top `V3 end` / assignment forms reproduce the top layout only with extra code (77-88).
+
+## kit CCLXXIX (agent-g 2026-10-31, run 250): game_libs 2E354 94.23 -> 97.48 and bootup E68 96.72 -> 96.83 -- uopt colours per VARIABLE across all of a variable's webs (re-home one web on another dead same-type local: variable-split sweep); a redundant arm assignment that equals a pre-branch value folds away unless the fallback is an ELSE arm; one clamp-bound float variable keeps the target's `mtc1 f2` + `mov.s` when its constant is a DOUBLE literal (`b = 1.0;`), `1.0f` is constant-propagated into each use; an unthreaded `b; nop` is a jump onto an `insn; b` sequence <a name="kit-cclxxix-agent-g-run250"></a>
+
+Single-function deep pass on gl_func_0002E354 (game_libs_post, cfe, 3684 B), scored with a one-unit scratch
+compile (asm_processor + cc of a copy of the whole unit, objdiff `-c functionRelocDiffs=none` against
+`expected/src/game_libs/game_libs_post.c.o`; calibrated: the unchanged file reproduces report.json 94.23453).
+
+1. **Variables, not webs, are coloured.** Renaming one assignment's web (from the assignment to the next
+   assignment of the same variable) to another local of the same type that is dead there changes the colour,
+   because uopt's priority colouring works per variable and a variable's other webs (call-argument
+   preferences especially: `var_v0` is the third argument of a later call -> a2 everywhere) drag it. Hits:
+   the switch-5 event base out of the shared u8 `var_v0_2` into `temp_v1` (v0 like the target, +0.05), the
+   o->0x60 read in `temp_v0` instead of `var_v0` (v0, not a2), the 0x22 and switch-6 selectors on other u8
+   temps (+0.08), and bootup E68's phase-3 counter in the otherwise unused `col` instead of `j` (+0.11).
+   Renaming a whole variable consistently changes nothing (cfe renames); only moving a web between variables
+   does. Sweep recipe (scratch `rn.py`): for every `X = ...;` line, take the text up to the next `X = ` line,
+   rename X -> Y for every same-type Y absent from that range whose next later occurrence is an assignment;
+   check every hit by hand for join paths.
+2. **Else-arm fallbacks keep arms alive.** switch 4 (`t = v; t = v + 1; t = v` arms after a pre-switch
+   `t = rv & 0xFF`): the case-2/3 arm equal to the pre-switch value was deleted (its beq went straight to the
+   join); with the >= 11 value as an `else { t = v; }` arm uopt still hoists the andi above the slti but every
+   arm keeps its own `b join; andi` block (block word-exact, +0.33). Same for `x = 3; if (o->14 == 1) switch`
+   -> `if (...) switch else x = 3;`: the case-2 `b; move a2,<1>` block and the unfilled bne / beq slots
+   return (+0.40). Both lengthened the function by the target's missing words (flagged in the commits).
+3. **Bound variable with a double literal.** The target keeps clamp bounds in ONE float variable coloured f2
+   (divisor, `1.0` upper clamp, table factor, 0x1724 bound; in the else arm 0x1728 then `0.5`): `c.le.s f2,f0`
+   and `mov.s f0,f2`. `b = 1.0f; if (b <= x) x = b;` is constant-propagated (fresh `mtc1` per use, identical
+   output to the literal form); `b = 1.0;` (double literal; int `1` too) is not, and reproduces the copy
+   (+1.30, length 3696 -> 3680). Double literals inside arithmetic are NOT neutral (cvt.d.s): only in plain
+   assignments to a float variable.
+4. **`b; nop` onto a `b`.** A case arm whose `b` keeps an empty slot and lands on another `b` (no threading)
+   = the destination is `insn; b` at reorg time: give the goto path its own statement before the jump
+   (`v = o->14; goto store;` with the then-arm reaching the read by `goto`), +0.24.
+5. Smaller: a direct store of a (u32) conversion keeps it in a ugen temp (t3) instead of a coloured variable;
+   `volatile` on a homed float keeps a dead first store the target has (length -> target); re-run the
+   bbsplit sweep after each structural step (a new `if (1) {}` hit appeared after the volatile).
+
+Negatives: fn-typed G base (`lui; addiu 0` + offset) lines up the else arm but the then-arm still holds the
+base (length +4); `*(f32 *)0x1C738` absolute stores, file-static floats, int-zero float clears (kit
+CCLXXVIII) at all five 2E354 zero sites, operand order of compares, literal-spelling sweep in arithmetic,
+the pick (8 / 0x40) still a2 vs v0, the then-arm o->0x14 reload (target t0 across the arm). E68: plain
+width read (3020 B), statement order of the two increments.
+
+Addendum (same run, 97.03 -> 97.48): (6) allow CROSS-TYPE candidates in the variable-split sweep -- the
+switch-6 selector as a u8 variable took the target's t0 but through an extra `andi t0,v1,0xff` copy of the
+reloaded field; as an s32 variable (`temp_v1 = o->0x14; switch ((unsigned)temp_v1)`) the reloads land in t0
+directly (+0.34); two more s32 webs moved temp_v1 -> temp_v0 / var_v0_3 (+0.10). Check u8 -> s32 hits for
+truncating arithmetic by hand. (7) E68 negative: splitting `m` (phase-2 vs phase-3 MgrE68 pointer, target
+v0 vs s1) into two variables (padq[3] to keep the frame) gives the same code either way round but costs one
+more saved s-register and hoists m->dl (96.83 -> 87.0).
