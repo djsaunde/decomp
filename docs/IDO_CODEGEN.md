@@ -14653,6 +14653,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCLXXIX (agent-g 2026-10-31, run 250): **uopt colours per VARIABLE across all its webs: move one web to another dead same-type local (variable-split sweep); a redundant arm equal to a pre-branch value folds away unless the fallback is an ELSE arm; a clamp-bound float variable set from a DOUBLE literal (`b = 1.0;`) keeps the target's f2 copy (`1.0f` is constant-propagated); an unthreaded `b; nop` lands on an `insn; b`**](#kit-cclxxix-agent-g-run250) -- _NM game_libs 2E354 94.23 -> 97.48 (3684 B = target), bootup E68 96.72 -> 96.83; no exact._
 - [kit CCLXXX (agent-g 2026-10-31, run 251): **variable-split moves that ADD a variable must keep the frame (u8 into a free byte under an existing u8 home, word type in place of a pad word); CROSS-TYPE moves (u8 web onto a dead u32) reach colours the same-type sweep cannot; a kept move can flip the variable it leaves, so re-sweep; multi-arm (switch) webs need a region rename; splitting a variable can drop its priority and spill its other web; a FUNCTION-typed extern accessed as `*(T *)((char *)fn + off)` gives the target's `lui; addiu` base with the offset in the access (data symbols fold it into %lo)**](#kit-cclxxx-agent-g-run251) -- _NM game_libs 2E354 97.48 -> 97.93 (3684 B = target); 35B1C EDG class version = cfe code; no exact._
 - [kit CCLXXXI (agent-g 2026-10-31, run 252): **a store + read-modify-write pair on one global can be split across two NAMES of the object: the plain store through the alias keeps the absolute `lui at` form, the RMW through the primary name rides the held base; cfe folds `x | 6 | 0x400` constants whatever the parentheses/casts and uopt keeps every global store (no DSE); 35B1C vtable-store order is uopt def placement (the target's temp numbers match our IR order), not as1 lines -- `if (1) {}` between the `o + 4` def and its test keeps the def above the store but splits p from q (spill 0x38, one temp fewer)**](#kit-cclxxxi-agent-g-run252) -- _NM post0b 415A4 94.59 -> 94.87 (452 B = target), 4A890 94.73 -> 95.91 (348 -> 352 B = target); negatives on 2E354 / 4A890 / 4E424 / kernel 18F0; no exact._
+- [kit CCLXXXII (agent-g 2026-10-31, run 253): **a dead `or rX, ivreg` register copy in a strength-reduced loop = a local holding the OLD IV value, read only by an empty `if (v) {}` placed AFTER the source increment (before it, uopt copy-propagates the local onto the IV and emits nothing); the copy lands at the assignment line; bootup E68's two dead copies are cfe, not an NCC tell; E68 residual = the MgrE68 pointer colours s0 unsplit where the target splits it (t0 load / v0 phase 2 / s1 phase 3)**](#kit-cclxxxii-agent-g-run253) -- _NM bootup E68 96.83 -> 97.80 (e8bd82387, 3032 of 3036); both copies give the target loop shape but one extra spill (3044); both copies + `if (1) {}` after LOADTEXTILE = 3036 with only one andi/addiu pair misplaced (97.55, the start point for the m work); m-split / variable-split / counted-use / register negatives; game_libs 2840: a volatile struct reproduces the target's vx / vy memory ops exactly (FP colours rotate, 83.2)._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
 - [kit CCLXXII (agent-c 2026-10-30, run 247): **a folded `+ 0` on one loop's test moves the shared edg pool temp to the OTHER loop (493AC: the second loop's next() result leaves the call-crossing s2 temp); taking a local's address through a member call (`getPos(vb)`, `e = vb - va`) makes it memory-resident like a target that stores it after init (3558 length fixed)**](#kit-cclxxii-agent-c-run247) -- _NM 493AC 99.36 -> 99.43, game_uso 3558 91.62 @ 956 B -> 92.60 @ 1008 B; 41D40 / 250C8 / 3AE58 / 46790 / 3E5E0 / BB8C / 31A74 / `+ 0` toggle sweep negatives._
@@ -51592,3 +51593,62 @@ scores 95.89, but only because cfe treats the two names as distinct objects -- t
 `1030 | 0x406` (the names alias the same address). A zero-use read that changes which value a later use sees is
 not a zero-code fold. Zero-use / lever sweeps on 469A8, 4E424, kernel 18F0, and the 37540 / 4FD00 / 33094 /
 36694 / 42938 / 2840 donors: nothing above base.
+
+## kit CCLXXXII (agent-g 2026-10-31, run 253): bootup E68 96.83 -> 97.80 -- the target's dead `or` register copies in a strength-reduced loop are COPIES OF THE OLD IV VALUE kept for a read after the source increment: assign the scaled operand to a block local before the use and read it only by an empty test placed AFTER the `vidx += 4` statement; before that statement uopt copy-propagates the local back onto the IV and no copy is emitted <a name="kit-cclxxxii-agent-g-run253"></a>
+
+_Harness: standalone copy of the in-tree NM body (`extern char D_000066B0, D_000066B8;` through the closing brace,
+plus the four typedefs and `extern void *func_00000000(); extern char D_00000000;`), `cc -c -G 0 -non_shared
+-Wab,-r4300_mul -O2 -mips2 -32`, objdiff `-c functionRelocDiffs=none` against expected/src/bootup_uso/bootup_uso.c.o
+reproduces report.json (96.83 base, 97.80 after). Commit e8bd82387 on agent-g._
+
+1. **Mechanism (new, general).** uopt strength-reduces `vidx * 2`, `(vidx + 3) * 2`, ... into IVs and emits the
+   IV increments at the source `vidx += 4` (the scheduler later hoists the `addiu`). A local `vs = vidx * 2;`
+   whose only read is an empty `if (vs) {}` BEFORE `vidx += 4` is copy-propagated onto the IV (no code). Put the
+   test AFTER `vidx += 4` and uopt must keep the pre-increment value: it emits `or rX, ivreg, zero` at the
+   assignment and the empty test vanishes later, leaving exactly the "dead copy of a loop counter" the target shows
+   (kit CCXLV / CCLXIII called it an NCC tell -- it is not; cfe does it). The copy lands at the ASSIGNMENT line, so
+   the assignment position steers where the copy appears (right after the CULL append = target).
+2. **E68 state.** Block-scope `s32 vs, ve;` in the phase-2 j loop, `ve = (vidx + 3) * 2; vs = vidx * 2;` on one
+   line before the CULL, `if (ve) {}` after `uls += 64;`, `if (vs) {}` after `vidx += 4;`, plain width read (the
+   `*(s32 *)(int)&w` stand-in is no longer needed), padq 4 -> 3 (block locals take no home; 2 and 3 words give the
+   same frame). One copy (vs) is emitted: 97.80 at 3032 of 3036.
+3. **Both copies = target shape but one spill too many.** Both tests after `vidx += 4` emit BOTH copies and the
+   inner loop then matches the target word for word up to registers, but the copies colour s3 / s4 (target a3 /
+   t0) and `(ult << 2) & 0xfff` (target s8) spills: 3044. Assignment-position grid (56 variants): whenever BOTH
+   copies are live across the LOADTEXTILE block -> 3044; one assigned after LOADTEXTILE -> 3036 = target length
+   but 97.67 (that copy sits next to its IV increment instead of after the CULL). Test count / order / line joins,
+   s32 vs u32, function vs block scope, tests at the top of the next iteration / after the loop (with a defined
+   init) -- all inert or worse.
+4. **Root cause of the residual (diagnosed, not fixed): `m` (the MgrE68 pointer) colours s0 in ours, but in the
+   target it is a split LR** (E68_MGR load in t0, phase-2 piece v0, phase-3 piece s1, col then takes s0). Ours
+   colours m at constrained order 12 (zdbug:6 trace): too high a priority, so it never splits; the target's
+   phase-2 loop fills all ten callee registers with loop values (veIV s0, j s3, ultsh s8) before m. Negatives:
+   a separate variable for the phase-2 or phase-3 m (new local fn/block scope, or reusing head / vp / x / y /
+   row / col / timg / arg2-4 / cfg with casts) frees an s-reg and `self` stops being spilled in phase 1 (87-90);
+   a phase-1 web on m (int-typed m taking row / n), early `m = self/buf; if (m) {}` (copy-propagated, no web),
+   `if (m) {}` / `if (m->dl) {}` after phase 3, `register` on any local, folded `+ 0 * X` counted uses on either
+   m def (117 combos): all inert. Variable-split sweep (j / k2 / uls / k / ult / i onto row / col / x / y / n):
+   j -> n makes j callee (s4, target s3) but 97.57. lever-sweep bbsplit / order / denaming / volatile: no hit.
+5. **game_libs 2840 (NCC donor, 93.28) -- the vx / vy pair is MEMORY-resident in the target.** A
+   `volatile struct { f32 y; f32 x; } d;` in place of the donor's sp3C / volatile sp38 (vx = d.x / vy = d.y loads,
+   stores back after the divide, d.x / d.y re-read for the final product) reproduces every target memory op at the
+   target homes 60 / 56 (store before the sqrt call, reload, `bc1tl` divide-in-place, store at the join, reload after
+   the calls), but the FP colouring rotates (dx LR colours f0 first, target f2; f16 / f18 locals -> f14 / f16; the
+   second compare sum f14 -> f18): 83.2. A `volatile f32 d[2]` gives 90.6 (444 B); plain single variables (x / y
+   spilled across the call) store to BOTH the home and a fresh spill temp (82.8, 448 B). Float empty tests emit
+   code (444 B). Read: the target's dx / dy are the x / y variables themselves, live across the call (so f0 / f12
+   are forbidden: x -> f2, y -> f14) and saved into their own homes; no spelling found that gets that save-to-home.
+6. **E68 target-length shape found (not kept, fuzzy lower).** From the committed body, move `if (ve) {}` next to
+   `if (vs) {}` after `vidx += 4;` (both copies) and append `if (1) {}` to the LOADTEXTILE line: 3036 B = target,
+   both dead copies at the target slots, the extra spill gone; with registers and branch targets normalised the
+   ONLY structural residual is the TRI1 third-operand `andi rX, IV4, 0xff` + its `addiu IV4, 8`, which the BB split
+   keeps out of the LOADTEXTILE region (target hoists them there). 97.55 vs the committed 97.80 because the
+   colouring is still the m-in-s0 one (item 4); start the m work from this body. `if (1) {}` after the CULL instead:
+   3036, 97.24. Separate phase-2 / phase-3 m variables on this body: still the 88 cliff (self leaves its home).
+7. **A code-free knob on m's priority: BB splits in phase 3.** Appending `if (1) {}` N times to each of the 16
+   phase-3 packet lines emits nothing but lengthens every phase-3-live LR's span: m (constrained order 12, s0)
+   drops to s3 at N = 4-5 and s6 at N = 8, and at N >= 10 goes "-ve save" (homed at 276, +52 B). It never reaches
+   the target's state (m SPLIT: phase-2 piece in a caller register, phase-3 piece s1), because the phase-2 loop
+   values still take caller registers first; scores 93.2-93.4. Empty tests on other variables in the phase-3 loop
+   (`if (col / n / i / head) {}`), `-Wo,-zmovc:N` (diagnostic) and E68_MGR re-read per packet (reloads) are
+   negatives.
