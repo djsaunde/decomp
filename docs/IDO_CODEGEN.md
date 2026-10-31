@@ -14657,7 +14657,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCLXXXIII (agent-g 2026-10-31, run 254): **an empty `if (p) {}` on a pointer the loop body dereferences, between two of its appends, is NOT the same lever as `if (1) {}` there (the test is a use of p); after a structural gain re-run the per-site append-spelling greedy (the best spelling moves); E68's m is ONE variable the allocator splits -- separate per-phase variables push the phase-3 `m->dl` expression LRs into s-registers; enough BB splits make m impossible-to-colour but split into small caller pieces; re-typing a repeated pointer load in one region (`*(s32 *)&m->dl`) gives that region its own expression LR**](#kit-cclxxxiii-agent-g-run254) -- _NM bootup E68 97.80 -> 98.61 (3036 B = target, word-for-word up to registers; residual = m only; a separate phase-2 m1 now keeps self homed and phase-3 m in s1, 97.53, m1 colours after dl / count / _n); kernel 18F0 spelling grid flat (mask hoist / out-of-line peel store)._
 - [kit CCLXXXIV (agent-c 2026-10-31, run 252): **an inline call's `this` routed through a ZERO-CODE ACCESSOR (`o->me()->sub->ctx->next()`, template `me(p)`, `ref()`) is a different edg temporary from the directly-spelled pointer and moves a whole packet's ugen order / schedule (and gives that site its own colour family); a deeper-but-folding operand tree (`((c & 0xF) * 8) << 5`) is evaluated first by ugen; verify spelling wins on the register-stripped instruction multiset (decoys raise objdiff with wrong immediates)**](#kit-cclxxxiv-agent-c-run252) -- _NM post0b 46050 92.43 -> 99.36 (1848 B; texrect block now target-scheduled, t-ring equal everywhere; left: a swap of two next() pool colours, cc a0, one delay-slot choice); template `me(p)` per-pkt greedy: gui 3714 97.41 -> 97.94, gui 329C 99.06 -> 99.37, post0b 34890 98.75 -> 99.57, 48AEC 97.26 -> 97.29 (`me(me(gctx))->load(c2)`, found once the sweep also scanned the inline members); flat on 4C5E4 / 0F04 and ten others._
 - [kit CCLXXXV (agent-g 2026-10-31, run 255): **reading `-zdbug:5` (`>>>active<<<` blocks: adjsave, forbidden set, LR = itab index): E68's phase-2 `dl` / `count` expressions are forbidden v0 / a0 because they reach the phase-3 calls -- the target's m is ONE variable that uopt split; a separate phase-2 variable's phase-2-only `count` expression (adjsave 13500) always takes v0 first, so the two-variable route is closed; the split itself is not reachable under the documented split rules**](#kit-cclxxxv-agent-g-run255) -- _No gains; E68 stays 98.61 (NCC rewrite 94.04, accessors inert on m); 42938 accessor greedy / zero-use flat, 2840 single-variable dx forms <= 90.93, 36694 accessor / named-product forms <= 90.98._
-- [kit CCLXXXVI (agent-c 2026-10-31, run 253): **a gbi macro that re-evaluates ONE pkt expression for several appends (stock gSPTextureRectangle: TEXRECT + two gImmp1 RDPHALF) hides them from the per-site accessor lever -- give the macro one pkt parameter per append, then re-run the best-improvement per-site greedy**](#kit-cclxxxvi-agent-c-run253) -- _NM post0b 46050 99.36 -> 99.58 (a3fe4a88e; residual pure colouring + one delay-slot fill); next() body variants, per-append empty tests, block-local ctx, m-base locals flat; zero-code `me()` wraps flat on 41D40 / 4B2F4 / 3BE1C / 493AC / 48AEC / 0F04 / 3714 / 329C; 34890 h-spill slot negatives._
+- [kit CCLXXXVI (agent-c 2026-10-31, run 253): **a gbi macro that re-evaluates ONE pkt expression for several appends (stock gSPTextureRectangle: TEXRECT + two gImmp1 RDPHALF) hides them from the per-site accessor lever -- give the macro one pkt parameter per append, then re-run the best-improvement per-site greedy**](#kit-cclxxxvi-agent-c-run253) then **live units: the target's result-colour sequence marks unit boundaries; drop a BB split that the target lacks, re-greedy, and add zero-code counted loads of distinct never-loaded words to move a boundary** -- _NM post0b 46050 99.36 -> 99.58 (a3fe4a88e) -> 99.77 (505a4d483; prologue = target but one ctx temp); game_uso 3558 93.49 -> 93.61 (`me(s0)->b1`, a5ea3d3cd); next() body variants, per-append empty tests, block-local ctx, m-base locals flat; zero-code `me()` wraps flat on 41D40 / 4B2F4 / 3BE1C / 493AC / 48AEC / 0F04 / 3714 / 329C; 34890 h-spill slot negatives._
+- [kit CCLXXXVII (agent-g 2026-10-31, run 256): **post0b 4D688 EXACT: a dead-epilogue `.align 5` pad that the target lacks = the function was not first in its file -- reconstruct the translation unit in the donor (preceding functions from the start whose distance makes the epilogue 32-aligned, confirmed by a shared static) and splice only the function; a temp's register via a DEAD variable whose other web holds it (old-n copy through e -> a0); NM frame audit: a function-scope declaration moved off its first assignment places a spill home (3B6A0), one more phantom volatile moves a call-crossing spill (33094); cfe segfault on an empty placeholder fixed by a prototype**](#kit-cclxxxvii-agent-g-run256) -- _EXACT post0b 4D688 (48db84c0d, clip f8e95d60b); NM post0b 3B6A0 96.31 -> 96.325, post 33094 93.62 -> 93.65, gui 2DE0 96.65 -> 96.77 (`me(me(CTX))` on RDPHALF_2), post0b 4E424 95.37 -> 95.47 (`b = (x0 + b) / 2; return b + zero;`); 4E424 colour / 4A890 / 469A8 / 4568 / 4D688 / 4FD00 negatives._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
 - [kit CCLXXII (agent-c 2026-10-30, run 247): **a folded `+ 0` on one loop's test moves the shared edg pool temp to the OTHER loop (493AC: the second loop's next() result leaves the call-crossing s2 temp); taking a local's address through a member call (`getPos(vb)`, `e = vb - va`) makes it memory-resident like a target that stores it after init (3558 length fixed)**](#kit-cclxxii-agent-c-run247) -- _NM 493AC 99.36 -> 99.43, game_uso 3558 91.62 @ 956 B -> 92.60 @ 1008 B; 41D40 / 250C8 / 3AE58 / 46790 / 3E5E0 / BB8C / 31A74 / `+ 0` toggle sweep negatives._
@@ -51853,6 +51854,21 @@ the two gImmp1 lines; no code change by itself) lets the greedy choose each appe
 RDPHALF appends' dl / n / pkt colours). gui 329C / 3714 / 0F04 already had the split (kit CLVII); their per-site
 greedy is flat.
 
+**Then live units (kit XCIX) on the prologue: 99.58 -> 99.77 (505a4d483).** zdbug:5 on the donor shows the ctx / dl / n
+temps of every plain `CTX->next()` append are ONE pooled edg LR each (v1 / a1 / a2, live in every prologue unit, the
+texrect and the epilogue), while each append's result `&buf[n]` is a unit-local LR. The target's colour sequence of the
+prologue results (a0, a3, v0, a0, a3, v0, a0, v0, a3) says appends 1 and 2 sit in ONE live unit (append 2's n is a1 like
+append 1's; append 3's result can then take v0 because append 2's dl is in the previous unit). Our `if (1) {}` after
+append 1 started a new BB there. Dropping it (alone: 84.37, the as1 schedule moves) and re-running the per-site greedy
+(append 2 `me(me(CTX))->next()`) gave 98.87 with the prologue word-for-word through the BA000C02 append; the one
+remaining block was the `&D` call argument's `lui / addiu a0` (target: before the BA000C02 append; that a0 web forces
+the BA001301 result to a3). Three zero-code counted loads of DISTINCT, never-otherwise-loaded object words in the
+BA000C02 w1 (`0 + (o->f4 & 0) + (o->f8 & 0) + (o->fC & 0)`, Font's first pad bytes declared as s32 fields) move the
+following unit boundary up so the argument web starts where the target's does: 99.77, whole prologue = target except the
+F5801000 append's ctx temp. Notes: phantoms through a global (`(&D_00000000)[k] & 0`) are folded with no effect under NCC;
+phantoms that reuse an address loaded elsewhere change colours for the wrong reason (CSE). For a sequence of unit-local
+results, read the target colour sequence first: a repeat of a colour marks a unit boundary.
+
 **Reproduce.** Template the donor body with `@P<k>@` per append site, a JSON list of spellings
 (`{CTX, me(CTX), me(me(CTX)), CTX->me()} x {next, next2, ...} x {"", " + 0"}`), and evaluate every single-site change
 of the current assignment in one batch (<= 200 objects, `timeout 600`), take the best, repeat until flat
@@ -51867,6 +51883,10 @@ these drop the target's cursor copy, 1844 B); the right-margin base as a named `
 append result registers (target v0 / a0 / a3 rotation), the F5801000 append's ctx temp (target t0), the `s3++` vs
 `addiu s8` delay-slot fill and `beq s5,a1` operand order at the switch head.
 
+**Accessor sweep elsewhere.** game_uso 3558 93.49 -> 93.61 (a5ea3d3cd): `me(s0)->b1->mtx.getPos(w)` (single-site
+`IDENT->` wrap sweep; no second site adds). Live-unit phantoms (distinct object words) are inert on gui 329C / 3714 /
+0F04 and 41D40 (no score change at any site / count).
+
 **Also flat this run** (zero-code `me()` wraps on every `IDENT->`, `obj.` method call and implicit `this` member):
 post0b 41D40 (99.90; plus next() / cur() body and call-site wraps -- the bottom condition copy's array reload colours
 a1, target v1), 4B2F4 (C-style body; `me()` on pointer locals and `P()` macro results), 3BE1C, 493AC, 48AEC (the
@@ -51875,3 +51895,86 @@ appends are inline members shared by every site; a per-site lever would need per
 h's pooled temp spills to 0x28 (target 0x2C); swapping make()'s parameters to `(int h, O *o)` puts h at 0x2C but
 turns it into a memory home (320 B); `me(o)` at the call restores the temp but at 0x28 again; a `volatile` pad in
 make() moves only the a2 / a3 spill slots (0x20 / 0x1C -> 0x1C / 0x18).
+
+## kit CCLXXXVII (agent-g 2026-10-31, run 256): NM frame / home audit after the accessor lever -- a function-scope declaration moved off its first assignment places a uopt spill home (3B6A0 count sp+52 -> sp+56 = target), one more phantom volatile in the trailing block moves a call-crossing argument spill without changing the frame (33094 sp+60 -> sp+56 = target, every sp offset now equal); `me(me(CTX))` on 2DE0's RDPHALF_2 append; 4FD00's shared SV home decoded (a function-scope SV after d2) but it drops one of the target's two forwarding copies; 4D688's 5-word pad is ugen's `.align 5` before the dead epilogue <a name="kit-cclxxxvii-agent-g-run256"></a>
+
+Scored standalone with an NCC / cfe scratch compile + objdiff (`-c functionRelocDiffs=none`), every gain
+re-confirmed in-tree (make + non_matching_objects + report generate). Scripts used (scratch, may be wiped):
+`/tmp/claude-1000/g256/scn.sh` (NCC compile, objcopy rename, objdiff score), `nd2.sh` (exact and
+register-stripped line-diff counts against the target listing -- a better structural gauge than objdiff
+when the length is off), `fs.sh` (sp-offset multiset of target vs ours), `acc2.py` (per-site spelling
+greedy that also accepts length moves toward the target), `mewrap2.py` (agent-c's mewrap with the same
+length rule), `vsplit.py` (cfe variable-split sweep: move one assignment web to another same-type local).
+
+1. **post0b 3B6A0 96.31 -> 96.325 (800 B).** The frame scan (`fs.sh`) showed one difference: `count` (the
+   triangle count, re-read after each hit) spilled at sp+52, target sp+56. A position sweep of an
+   `unsigned int count;` declaration over the function-scope list (21 spots) found exactly one hit:
+   declared right after `int nfound = 0;` (before `Col *c = col;`), assigned later as `count = c->ntri;`.
+   All sp offsets now equal the target's. Left: the target keeps `cc = c` as a real copy (`or v0,s8`) and
+   forms &tbl late (lui/addiu a2 right before the edge loop); ours folds cc onto c and forms &tbl early
+   then copies it. Dead multi-defs `if (0) { cc = 0; }` (5 spots), `if (cc) {}`, `cc = c + 0`, decl
+   swaps and the tp statement at all 9 positions: flat or worse.
+2. **post 33094 93.62 -> 93.65 (404 B).** Same audit: the only sp difference was the o+0xB4 argument
+   spill (target sp+56, ours sp+60). The trailing phantom block `{ volatile int q0, q1; }` grown to three
+   ints (or `q0, q1` + a volatile short) moves the spill to sp+56 and keeps frame 0x90; any volatile at
+   function scope grows the frame. Left: the a-vector colours (target x f12 / y f0 / z f2) and the else
+   arm's a.x reload from its home (the target's a.x forward gets no register; 10.0 takes f12) -- the
+   108-way operator-order grid, per-argument accessors on `a.set(o->pos.x, ...)` (64), `me()` greedy and
+   the zero-use sweep are all flat.
+3. **gui 2DE0 96.65 -> 96.77 (1196 of 1212 B).** Per-site accessor greedy over the three rect appends
+   (kit CCLXXXIV): only the RDPHALF_2 append moves, `me(me(CTX))->nD()`. Re-greedy over 12 spellings
+   (CTX / me / me(me) x next / nC / nD / nextp) per site, a named `Ctx **pc` (378 combos), accessors
+   on the address (`*me((Ctx **)&D)`), inline-body spellings (`me(this)->dl`, `dl->n += 1`) and the
+   zero-use sweep: flat. The &D web is still split at the third append (target rematerialises lui/addiu
+   t3 at the yl < 0 entry and both MAX exits).
+4. **post0b 4FD00 home decode (no gain).** Target layout: a 124, b 112, mid 100, d1 88, d2 76, ONE SV
+   home at 68 (both sums), the by-value V3 temp at 20. Ours: two SV homes (48, 28) each under three
+   inline-parameter words, temp at 4. A function-scope `SV s;` declared after d2, passed by reference to
+   the sum inline, gives the target's SV home and its 8 / 8 / 8 halfword traffic exactly (register-stripped
+   diff 86 -> 72) but loses one of the two forwarding copies per component on the third add (`or t6,t8;
+   or t8,t6; addu`, ours one `or`): 980 B, objdiff 83.3. Inline-local SV in a nested block / `if (1)`
+   block, block-scoped sum calls, a macro-style block in side(), a by-value `SV sumv(int)` and
+   `operator+` forms, a 2-trip loop (uopt does not unroll it): no shared home or much worse. Next lead:
+   find what makes the second copy (the inline local's own forward) while the storage is the outer SV.
+5. **post0b 4D688 (no gain).** The 5 extra words in our object are ugen's `.align 5` emitted before the
+   dead epilogue that follows the infinite loop (`-S` output); for(;;), while (1), do-while (1) and a goto
+   loop all emit it. The old-n copy (v0 vs a0) is untouched by accessors on m44 / m24 / n, ten more
+   `n++ & 1` spellings and return-type changes (int / long long / pointer / float / double / short).
+6. **Negatives.** 4E424: plain `float z0` already gives the sw a2 / lwc1 home load (the volatile only
+   re-schedules it); address-taken `*&z0` / int-reinterpreted / one-float struct by value colour zero into
+   f16 = target and dy into f0 but split dz (an extra mov); with dy / dz as fresh locals and big in y0 the
+   `y1 - y0` expression gets its own LR (f2) and is copied into dy (f0) -- zdbug:5 shows {925} active
+   separately; 80-role grid x 3 z0 forms x 6 statement orders, zero-init spellings (0.0 / 0 / int / cast):
+   max 95.37 (unchanged). 4A890: the byte size never gets s1 (named / unnamed / function-scope /
+   parameter-reuse `n = t0 * 2` / empty tests; best non-volatile 93.64 vs 95.91). 469A8: holding p78 as a
+   real pointer costs a spill (420 B); variable merges of the m2c temps and the vsplit sweep (89) flat.
+   4568: per-append pkt macro parameters (kit CCLXXXVI) x 5 accessor spellings per append (2 x 125),
+   named xl / yl / xh / yh (190) and empty-test hooks inside the Scis macro (32): flat (MAX pool temp
+   colours unchanged). 3B6A0 / 4FD00 / 4A890 / 33094 `me()` greedy: flat.
+7. **post0b 4E424 95.37 -> 95.47 (196 B, 31452d487).** A return-spelling grid (9 forms) on the cfe body:
+   storing the half-sum into the already-set `b` and returning `b + zero` gives the final `add.s` its
+   operands in the target order (`zero + (x0 + b) / 2`, `* 0.5f`, `2.0f`, `zero += ...` and the reversed
+   forms are equal or worse). The role grid (160), compare-operand flips (32) and the subtraction
+   spelling x order grid (96) re-run on top of it: flat. The remaining diff is the FP colouring only.
+8. **post0b 4D688 EXACT (97.86 -> 100, 952 B; 0c3d3f191 NM step, 48db84c0d exact, f8e95d60b clip).** Supersedes
+   item 5. (a) The old-n copy of the 'd' toggle: route it through the DEAD `e` (`e = (Ev *)n; n++;
+   if ((int)e & 1)`). e's earlier web (the poll object reloaded after the call) sits in a0, and uopt colours a
+   variable across all its webs (kit CCLXXIX), so the copy lands in a0 -- the call-argument hint the run-212 dump
+   said was unreachable arrives through the shared variable instead (kits CCLXX / CCLXXX; cross-type is fine,
+   the value is written right before it is read). (b) The `.align 5` pad: ugen ALWAYS emits `.align 5` before
+   the dead epilogue of an infinite loop (cfe and NCC alike, for(;;) / while (1) / do-while / goto). as1 pads
+   relative to the object's .text start, so the pad depends on where the function sits in its ORIGINAL file:
+   the target has none because run() was preceded by other functions. Reconstruct the unit in the donor file:
+   the preceding functions from the nearest start whose offset makes `start-to-run + 0x38C` a multiple of 32
+   (4D354: 0x334 + 0x38C = 0x6C0), each compiled to its target size (4D354 / 4D39C / 4D3E4 as extern "C" copies
+   of the post0b C bodies, 4D468's exact NCC body, 4D658), and splice only run(). The candidate start was
+   confirmed by the shared static: 4D468 stores the 0x1234567812345678 guard that run() checks, so they ARE one
+   unit. General recipe: for a dead-epilogue nop-pad mismatch (target pad != standalone pad), list the target's
+   preceding function sizes, pick the TU start with (distance mod 32) = (-epilogue offset mod 32), prefer one
+   backed by shared statics / strings, and give the donor those functions. (c) Promotion gotcha: replacing the
+   old cfe NM body with an empty placeholder made IDO cfe SEGFAULT on the NON_MATCHING copy of post0b.c (a
+   front-end crash, also at -O0; any placeholder shape alone crashes, an extra empty function or a separate
+   prototype with a named `char *arg0` parameter avoids it) -- keep `void f(char *arg0);` before the
+   placeholder. Also: after a failed NM build the half-processed object survives and is NOT rebuilt by a
+   Makefile-only change (clip edit) -- touch the unit .c, else the report shows the per-symbol resizes missing
+   (551E0 / 55B10 / 4D084 / 37938 "lost").
