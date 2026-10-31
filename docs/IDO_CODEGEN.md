@@ -14647,6 +14647,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCLVI (agent-c 2026-10-29, run 239): **an expression form that leaves a variable in its home gets its register back with a folded `+ 0 * (int)(v)` use before the call it crosses; a count pointer read through a block-scoped NAMED pointer is a uopt variable (slot / pointer colours) whose home is paid back by MERGING two later same-type locals; a nested pool hold `(it.me()->me(), e->flags & 2)` stops inline-return copy-propagation inside a condition; 1DDC frame layout = named V3 e + nameless then-block + one block around mm / call**](#kit-cclvi-agent-c-run239) -- _post0b 4B2F4 NM 99.36 -> 99.63; 454C4 / 1DDC structural wins not yet fuzzy gains; 31C0 / C310 / 59E80 / 48510 / 4B620 / 5F5F0 / E2D0 negatives._
 - [kit CCLVII (agent-g 2026-10-29, run 239): **an UNSIGNED literal is a different uopt expression from the same int literal: a call argument that reads a constant-holding register (`or a1,t0,zero`) where the target re-materialises (`addiu a1,zero,1`) becomes unsigned through the callee's type-neutral parameter (`unsigned int a1`; a K&R call with `1u` is UB against a prototyped definition, narrower casts fold back to int)**](#kit-cclvii-agent-g-run239) -- _game_uso 0B3C NM 99.83 -> 99.9986 (only the 4-entry jump table left); 41D40 / 37938 / 3E5E0 / 34890 / 3AE58 / 40304 / 250C8 / 31A74 / 18F0 negatives with dump diagnoses._
 - [kit CCLXXV (agent-g 2026-10-30, run 248): **NM FRAME SCAN of every non-exact function (frame + sp-offset set vs target); under NCC every FUNCTION-SCOPE local (and every inline's locals / parameters) owns an edg home word even when promoted, block-scoped locals own none -- hoist / sink declarations to place homes without touching code**](#kit-cclxxv-agent-g-run248) -- _NM 3B6A0 96.245 -> 96.31 (frame 0x40 -> 0x80 = target), 3B9C0 95.14 -> 95.19 (d home = target); scan list; 31C0 / E2D0 / 4B620 / 48510 / 4C5E4 / 46050 / 42938 negatives._
+- [kit CCLXXVII (agent-g 2026-10-31, run 249): **NCC home allocation ORDER: function-scope declarations + function-scope full-expression temps first (initializer temps just above their variable), then each block, and an inline's internal temps / params right after the scope expanding it; a random code-neutral hoist grid places homes**](#kit-cclxxvii-agent-g-run249) -- _NM 37540 96.39 -> 96.42; 24B8 frame map re-derived (latch colour blocked); 31C0 KB new-temp reuses T (15 spellings flat); 36694 target order decoded, not reproduced; 4A890 / 42938 / 4FD00 negatives._
+- [kit CCLXXVI (agent-c 2026-10-31, run 249): **outgoing stack words copied with ALTERNATING t-registers (t8 / t7 / t8) + a param home spill/reload = ONE struct passed by value (`*r`), not three scalars (3C43C 99.47 -> 99.91); a frame-size residual with correct top offsets can be MISPLACED homes: shrink unused-tail staging records and declare the scalars in the gaps (3C43C 98.26 -> 99.47, frame 224 = target); 3BE1C loop locals hoisted before cx / cz (frame 240 = target)**](#kit-cclxxvi-agent-c-run249) -- _NM 3C43C 98.26 -> 99.91, 3BE1C 98.56 -> 98.62; acc-zero colour / 4F2DC top-V3 negatives._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
 - [kit CCLXXII (agent-c 2026-10-30, run 247): **a folded `+ 0` on one loop's test moves the shared edg pool temp to the OTHER loop (493AC: the second loop's next() result leaves the call-crossing s2 temp); taking a local's address through a member call (`getPos(vb)`, `e = vb - va`) makes it memory-resident like a target that stores it after init (3558 length fixed)**](#kit-cclxxii-agent-c-run247) -- _NM 493AC 99.36 -> 99.43, game_uso 3558 91.62 @ 956 B -> 92.60 @ 1008 B; 41D40 / 250C8 / 3AE58 / 46790 / 3E5E0 / BB8C / 31A74 / `+ 0` toggle sweep negatives._
@@ -51282,3 +51284,87 @@ _Gains (report.json): post0b gl_func_0003B6A0 96.245 -> 96.31 (92822f1a5), gl_fu
    (vB4 180, h* 168-176, v9C 156, v90 144, v6C 108, s 96) differs from ours, but moving any V3 declaration out of its
    use position changes the code (776 B). bootup 24B8: the target's `r` is a memory home at the frame top (76) separate
    from k's spill (44); declaration order / volatile r: 96.7-99.02 (base).
+
+## kit CCLXXVI (agent-c 2026-10-31, run 249): post0b 3C43C 98.26 -> 99.91 -- (a) three consecutive stack-argument words copied with ALTERNATING registers (`lw t8; sw t8; lw t7; sw t7; lw t8; sw t8`) are ONE struct passed by value, not three scalar arguments; (b) the frame-size residual was fixed by placing the named scalars' homes BETWEEN the staging records, not by deleting any; post0b 3BE1C 98.56 -> 98.62 by the same home placement <a name="kit-cclxxvi-agent-c-run249"></a>
+
+_Gains: post0b gl_func_0003C43C 98.26147 -> 99.90826 (872 B = target; commits 06544cb33, a0ace649e), gl_func_0003BE1C
+98.55612 -> 98.61735 (1568 B = target; commit 90edc28d5). NM lengths unchanged, no clip change. No exacts._
+
+1. **Struct-by-value argument signature (3C43C, 99.47 -> 99.91).** The call's stack words sp+16 / 20 / 24 were
+   `r[0], r[1], r[2]` (int *r): ugen rotates t7 / t8 / t9 for those, while the target reads `lw t8 / t7 / t8`, the
+   alternating two-register pattern of an IDO struct copy, AND spills r to its home and reloads it right after the
+   prologue (`sw a1,228(sp); lw t6,228(sp)`). Declaring `Vec3 *r` and passing `*r` as ONE argument to the varargs
+   callee reproduces both (only the acc zero-constant colour is left). A `+ 0 * r[0]` zero-use on the int form had
+   given 99.43 by pulling r[0] into a uopt v0 -- a false lead. Check any near-miss whose consecutive outgoing stack
+   words alternate two t-registers for this before sweeping colours.
+2. **Frame residual = misplaced homes, not extra homes (3C43C).** The run-248 base (t5 of kit CCLXXIV) had frame 240
+   vs 224 with every top offset right. Measured with `-Wo,-zdbug:6` isvar lists + dead `int zz = 0` probes: the
+   frame bottom holds the ABS3 ternary temp's home, the uopt unroll-remainder home (uopt appends it after the last
+   front-end home) and exactly two uopt temp words (present whenever the abs ternary and the `> -s` test are both
+   in the loop; absent in every variant without them). So the target cannot have n / i / best / lim / row / dd below
+   tmp2 at all: they sit in the 28 bytes the GLHit-sized tmp / tmp2 records were assumed to occupy. Only `pos` of
+   tmp / tmp2 is ever used, so shrinking them (`struct { Vec3 pos; int pad[4]; } tmp;`, pad[5] for tmp2) and
+   declaring `int n; int i; float dd;` between acc and tmp and `int best; float lim;` between tmp and tmp2 keeps
+   every used offset and gives frame 224 (any split of the 5-6 scalars over the two gaps works). With the slots
+   free, dd went back to its own function-scope home (`dd = 0.0f; if (1) {} dd = dd + dist[best];` -- the add.s
+   now lands in f0 like the target) instead of reusing lim.
+3. **3BE1C (98.56 -> 98.62).** Same audit: target q at frame -52 and cx / cz at -108 / -112 means the loop locals
+   are declared (function scope) BEFORE cx / cz and q follows five of them: declared at the top in the order off, f,
+   ok, t, n, q[3], a, b, va, vb, vc, k, hi, lo, nx, fv, v0, v1, dx, dy, ex, ey, cx, cz. Writing toCell's two lines
+   inside cellOf and face() without its `r` local drops 4 inline homes: frame 240 = target, q / cx / cz exact.
+   Hoisting `r` together with off and f reschedules the loop's `-1` constant (insert/delete in objdiff, 97.85) --
+   keep `int r` block-scoped. Left: the off spill at sp+76 (target 84: the target has 1 home fewer and 2 temp
+   words more below it), the face()/call `col` value in t0 (target s1), t-ring offsets, the MAX block's a0..a3.
+4. **Negatives.** 3C43C acc zero constant (f14, target f0; the 0.0 const LR spans the call in ours and is split in
+   the target): acc init spellings (orders, chain, int / double literal, inline zero3 / set3 / ctor -- the inline
+   forms add 8 frame bytes), moving lim / best / dd / i inits around the call, bbsplits (lever-sweep all), zero-use
+   sweep: flat. 3C43C ABS3 spellings (13, incl. if/else into a named t), condition nesting / continue / goto, `-s`
+   spellings: none removes the two uopt temp words. 3BE1C: 12 zero-use / bbsplit positions around `cc = col` (t0 vs
+   s1): flat. 4F2DC (frame 424 vs 408): the target's frame top is a V3 (the operator+ parameter word copy
+   destination, sp+412) then count, then dists / surfs / hits; a dummy top V3 + count first gives the target's top
+   layout (frame 424) but 91.0, and hoisting start / e or replacing operator= by a set() member changes the code
+   (operator=(V3) and an equivalent set(V3) do NOT compile alike, 1036 B): not landed.
+
+## kit CCLXXVII (agent-g 2026-10-31, run 249): NCC home ALLOCATION ORDER refined (function-scope declarations and function-scope full-expression temporaries first, in source order; then each block in order; an inline's internal temps / parameters right after the scope that expands it) -- 37540 hz / hy homes = target by a code-neutral decl grid; 24B8 frame map re-derived (k2 split) but its latch colour stays; 36694 / 31C0 / 4A890 / 4FD00 / 42938 home-model negatives <a name="kit-cclxxvii-agent-g-run249"></a>
+
+_Gain (report.json): post0b gl_func_00037540 96.39267 -> 96.418846 (764 B unchanged; commit 337992099). No exacts, no clip change._
+
+1. **Measured order (post0b 36694, `-Wo,-zdbug:6` isvar offsets + objdump).** Top-down the NCC frame holds: (a) the
+   function-scope named locals AND the temporaries of function-scope full expressions, in source order (a
+   declaration's initializer temporaries are allocated just BEFORE the declared variable: `V3 t = p - n * k;` at
+   function scope puts the `const V3 &` binding temp of `n * k` at the frame top and t right below); (b) then each
+   block in order, its own locals and full-expression temps first; (c) the temps / parameters / locals internal to
+   the inline expansions of a scope (return temporaries, by-value parameter copies, `f32 k = s`, ref parameters =
+   one word each, ctor parameters) come after that scope's own items. Unused promoted locals keep their word
+   (36694's `f32 px, py, pz` = the 3 unused words at the top of the base build). Wrapping r / l in a second block
+   moved them below the first block's inline internals exactly as (b)/(c) predict. 36694 target order: C (operator-'s
+   bound temp) 228, r 216, l 212, 3 unused, B 188, A 172, 5 unused, B' 140, A' 120, 4 unused, t 92, 2 unused, then
+   the return-block temps 72 / 60 / 48 -- i.e. the `p - n * k` expression is at function scope while t is allocated
+   after that expression's inline internals (t behaves like an inline's by-value parameter, not a named local).
+   Not reproduced: function-scope t (z3: C 228 OK, t 216), `const V3 &t` (binding temp also at the top), a named
+   `V3 c = n * k` (C right but only two copies in `p - c`, 708 B), by-value operator- parameter, a split() helper
+   with reference outputs, for / if(1) blocks (all <= 90.95 vs base 90.96).
+2. **37540 (+0.026).** Code-neutral declarations hoisted to function scope right below vB4 in the order hz, hy,
+   p1 p2, v90, hx, v6C (hx keeps its `hx = gr(...)` assignment in place): hz / hy at the target 176 / 172. Found by a
+   190-variant random hoist / order grid (scratch `hoist.py`: move a random subset of depth-1 `T name[ = init];`
+   declarations to the top in random order, the initializer stays as an assignment). Left: the target has s (96)
+   and a (100) BELOW v9C / v90 / v6C, i.e. allocated in a later pass than the V3 locals -- hoisting v9C changes the
+   code (its member stores go to memory, 776 B), so s / a are probably inline parameters in the original.
+3. **24B8 (cfe, re-derived independently; matches kit CCLXVII item 3).** Splitting the dispatch value into its own
+   `int k2` (declared last: a3 spill at 44 = target) and declaring the latch k first (merged k / r range spills to
+   its home at 76 = target) gives every target sp offset, 98.23 vs base 99.02: the latch then colours v1 (target
+   t0) and the ugen t-ring is one off. 70 `if (1) {}` / `if (k) {}` positions: flat. Policy-blocked as noted there.
+4. **31C0: the KB new-temp shares the Obj2 new-temp T.** Ours stores the KB pointer to T's home (116) and the KB
+   ctor argument reads obj (120) -- edg reuses T for the second new-expression, so uopt cannot copy-propagate obj
+   -> T. The target has a fresh temp (104) and reads T. Not changed by: B2 / KB parameter type (Obj2 *, Obj *,
+   reference, const, void *), argument order, `obj + 0`, cast, `Obj2 *obj = new Obj2` initialiser (also first-
+   declared: shifts every home), inline factory functions, braces around the case / statement, `switch (obj = new
+   Obj2, mode)`, `new const KB` / `new volatile KB`, named block or function-scope `KB *kb` (frame +8). A class
+   operator new changes the allocation protocol (this == 0 test inside the ctor, 71.8).
+5. **Other negatives.** 4A890 (sz in s1 vs our spill; 15 spellings: volatile / plain / function-scope / blocks /
+   recomputed `t0 * 2` / `t0 + t0` / parameter n reuse / `if (1) {}` grid of 16): flat or lower -- the frame shows the
+   target's sz IS a function-scope local (removing it drops the frame 672 -> 664). 42938: a local-free next()
+   (`&(dl->count++)[dl->buf]`) keeps the count-then-base order but reschedules (74.6); `n`-only next() (no `d`)
+   gives frame 104 with the same code but worse colours (96.78); member DLHead::nx() forms 69-77. 4FD00: SV
+   temporaries / copy-ctor forms collapse the two SV slots but change the code (54-74). Hoist grids on 4C5E4 /
+   33094 / 4FD00 / 3B9C0 / 2840 / 42938 / B75C: base best.
