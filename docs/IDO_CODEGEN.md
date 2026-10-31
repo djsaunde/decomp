@@ -14662,6 +14662,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCLXXXVIII (agent-g 2026-10-31, run 257): **file-context (placement) scan of all 60 non-exact functions: no nop-run / `.align` pad, word-count or lui difference that comes from placement; IDO statics codegen like externs (no shared %hi, no reload change); an unfolded `ori` chain on a constant = the value went through a local; post0b 4A890 EXACT: a spilled value the target keeps in s1 goes into the DEAD PARAMETER n (+ an unused volatile for the old home), an index-first pointer add needs int arithmetic `(T *)(n * 2 + (int)p)`; route a temp through a dead variable whose other web holds the target's register**](#kit-cclxxxviii-agent-g-run257) -- _EXACT post0b 4A890 (6495e1c61); NM post0b 415A4 94.87 -> 95.58 (b6b2c00c8, 2c84695c5, bfd1c6edd), gui 4568 96.53 -> 96.63 (86d171c01, int-arithmetic append on one site), post0b 469A8 95.12 -> 95.36 (dc6e45de8, index term written first); 4E424 / 2840 / 469A8 / 3B6A0 / 18F0 / 2DE0 / 33094 / 42938 / 4FD00 / E68 negatives._
 - [kit CCLXXXIX (agent-c 2026-10-31, run 255): **the named-result inline append (`Gfx *r = &dl->buf[dl->n++]; return r;`) is its own per-site spelling: put it in every per-site / PAIR grid (46050's epilogue pair moved only as a pair); 46050's F5801000 ctx t0 needs a3 busy in its live unit (no LR of ours is), `beq s5,a1` order is canonicalised by uopt; cfe spill-slot / FP-candidate residuals (31A74 sb-before-swc1, 40304 K1 + m30 slot, 250C8 fontId in the spill slot) resist decl / web / spelling sweeps**](#kit-cclxxxix-agent-c-run255) -- _NM post0b 46050 99.91 -> 99.95 (a90e3ede1), gui 3714 97.94 -> 98.25 (230a82946, 999da1a78); 31A74 / 40304 / 250C8 / 30AF4 / 5A2C4 / 0F04 / 329C / 493AC / 48AEC / 41D40 / 54E78 / BB8C / 3558 / 34890 negatives._
 - [kit CCXC (agent-g 2026-10-31, run 258): **re-run the zero-use sweep after every shape / decl change (new hits appear); NCC ugen loads the LIGHTER compare operand first (`nv + 1 >= max` gets max first, `nv >= max - 1` never does while nv is a ugen temp); NCC frame homes overlay across sibling blocks (42938's tail locals in a block: frame 136 -> 112, code unchanged) but inline-expansion homes do not**](#kit-ccxc-agent-g-run258) -- _NM post0b 3B6A0 96.325 -> 96.375 (e72d5602e), 3B9C0 95.19 -> 95.24 (a85e69ca3), 48510 98.71 -> 98.73 (d60e7fbf8), 37540 96.42 -> 96.43 (06f28880f, 720-order decl grid); 36694 / 2DE0 / 42938 / 2840 / 33094 / 415A4 / 469A8 / E68 / 2E354 / 4E424 / 4FD00 negatives._
+- [kit CCXCI (agent-c 2026-10-31, run 256): **bootup B75C's phantom temp word is a real uopt temploc that an existing web takes: deleting the 0x690 else-arm call (or a clamp assignment) makes our code-identical NCC body allocate an UNUSED word between the float and a0 spills (target shape); in the full body that web shares a slot (spilltemps region sharing), so the target differs in live-range overlap, not code; a constant / call-argument web gets a temploc with no store or load; second frame-112 route (de-name temp_a1)**](#kit-ccxci-agent-c-run256) -- _No gain; negatives 31C0 (KB new-temp = reused inline-ctor this slot, 100+ variants), E2D0 (arg4 ring f14 vs f16), 34890 (h home -16 vs -12), 1824 / 24B8 / 329C read-only._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
 - [kit CCLXXII (agent-c 2026-10-30, run 247): **a folded `+ 0` on one loop's test moves the shared edg pool temp to the OTHER loop (493AC: the second loop's next() result leaves the call-crossing s2 temp); taking a local's address through a member call (`getPos(vb)`, `e = vb - va`) makes it memory-resident like a target that stores it after init (3558 length fixed)**](#kit-cclxxii-agent-c-run247) -- _NM 493AC 99.36 -> 99.43, game_uso 3558 91.62 @ 956 B -> 92.60 @ 1008 B; 41D40 / 250C8 / 3AE58 / 46790 / 3E5E0 / BB8C / 31A74 / `+ 0` toggle sweep negatives._
@@ -52144,7 +52145,12 @@ operand is now mx). That form gives the target's load order (98.71 -> 98.73) but
 so the exact shape (max first AND `addiu max, -1`) needs nv to be the heavier operand -- no zero-code spelling found
 (front end folds every no-op on nv). When nv is held in a uopt register the order flips by itself (mx first).
 Same function, still open: `&vp->buf[vp->count++]` allocates the shift before the buf load (t6 / t7 swapped vs the
-target); every pointer / int-arithmetic / split-statement / push() spelling (30+) keeps shift-first.
+target); every pointer / int-arithmetic / split-statement / push() spelling (30+) keeps shift-first. Mini-repro (loop
++ count read + `*mesh->next() = v[i]` + ids store + flush block): buf-first (target order) until the
+`if (i == 0) *full = 1;` block is added, then shift-first; 10 spellings of that block (braces, `!i`, `<= 0`, else-arm,
+inverted, `if (1) {}` after) all keep shift-first, and no-code empty tests on `mesh->vp->buf` (in next(), at the loop
+top, before / after the full block) do not restore it. The flip is the next lead (what in the target's full-store BB
+differs).
 
 **3. NCC frame homes: sibling blocks overlay, inline expansions do not.** post0b 42938 (frame 136, target 88): wrapping
 the function-scope tail locals (`Rec *r; int lo1, va, vb, lo2, vc`) in one `{ }` block drops the frame to 112 with
@@ -52173,3 +52179,77 @@ pressure also spills 3B9C0's off to its home at sp+128). 33094: set() store-orde
 
 **Reproduce.** `scripts/zero-use-sweep.py --src <donor> --fn <fn> --target expected/src/<unit>.c.o --vars <locals>`
 (<= 200 variants per call, `timeout 600`); frame probes: compile the donor with NCC and read the prologue `addiu sp`.
+
+## kit CCXCI (agent-c 2026-10-31, run 256): bootup B75C's phantom temp word is a REAL uopt temploc that an existing web takes in a code-identical body -- removing the second else-arm call (or the 0x970 clamp's -1.0 / 1.0 assignments) makes our NCC body allocate an UNUSED word between the float spill and the a0 spill, exactly the target shape; in the full body that web shares a slot (spilltemps region sharing), so the target differs only in which webs are co-live, not in its code; second frame-112 route (de-name temp_a1 instead of temp_f12); negatives on 31C0 (KB new-temp slot), E2D0 (arg4 ring), 34890 (h home order), 1824 / 24B8 / 329C read-only <a name="kit-ccxci-agent-c-run256"></a>
+
+_No report.json change, no commit (nothing gained). Gate on the unchanged tree 9f6a12aae: full make ROM byte-identical
+(cmp), verify-blocks 6/6, `make non_matching_objects` 0 errors, sentinels 100._
+
+1. **B75C: the phantom is a temploc that an existing web gets, not a missing source construct.** Scratch harness:
+   `fr.sh` = NCC compile, objdiff score, the prologue `addiu sp`, and the set of sp offsets below the homes.
+   - *Second frame-112 route.* Base donor (frame 120) with `temp_a1` deleted (arm-1 call takes `arg0 + 0x3B0`, else
+     arm `arg0 + 0x3C8`) gives frame 112, homes = target frame-relative, temps float 24 / a0 28 / a1 32 (99.86, the
+     same layout as agent-g's temp_f12 de-name, kit CCLXVI item 2). Either body lacks only the phantom word.
+   - *The phantom reproduces.* On that body, deleting the 0x690 call (second call in the `0xA18 != 0` block) gives
+     float 24, **unused 28**, a0 32 (frame 112). Same with the whole `0xA18` block removed, or with the A18 calls in
+     but the last call argument changed (`x4`: s0 saved, float 32, unused 36, a0 40). Deleting any one of
+     the 0x970 clamp's `var_f2 = -1.0f / 1.0f / var_f0` lines turns the unused word into a second real float spill
+     (swc1/lwc1 at 28). Removing the dot3 call argument (`1.0f` instead) or expanding dot3 by hand (arg0 loads CSE
+     with the early 0x3BC/0x3C0/0x3C4 loads) removes both the float spill and the phantom (frame 104).
+   - *Model (uopt `spilltemps` + caller-save templocs, kit "uopt internals" item 6).* Every uncolored item and every
+     colored caller-saved web that the allocator sees crossing a call gets a temploc, even when emission then
+     emits no store / load for it (a constant web is rematerialised, or a web that ends AS a call argument needs
+     no save: `(char *)D_00008170` for every `arg0 + 0xCC` leaves TWO unused words). In the full body the phantom
+     web shares the a1 (or float) slot because their BB regions are disjoint; in the target it cannot share, so the
+     target's live ranges / splits differ in a code-neutral way (region overlap), not in an extra statement.
+   - *Identified webs (dump tables, `-Wo,-zdbug:6`):* int LR 199 = `arg0 + 0xCC`, 200 = `arg0 + 0x3B0`, 211 =
+     `arg0 + 0x3C8` (the a1 web, gone when the 0x690 call is removed), FP LR 65 = the 0x3C4 load (split; its
+     uncolored piece = the float slot). The phantom is NOT the 0x3B0 web (all four `arg0 + 0x3B0` sites
+     replaced: the unused word stays), not 0xCC / 0x3C8, and not one of the single-site constants (0x318 / 0x2FC /
+     sp5C zeros, 0x308 / sp6C[1] / clamp 1.0, clamp -1.0 each replaced by a field read: stays).
+   - *Negatives on the frame-112 body (frame + offsets, not just fuzzy):* `temp_a1` named / unnamed at each of the
+     five `0x3B0` / `0x3C8` call sites (32 combos, copy-propagated: identical); `(void)(expr)` at every statement
+     (no-op); `*(f32 *)((char *)(arg0 + C) + (K - C))` loads near the calls (front end folds, identical); zero
+     stores spelled `sp6C[0]` (single + pairs, 55: code changes, frame stays); the top-of-function zero / 1.0
+     store order x `if (1) {}` position (30: 99.8626 best, layout unchanged); `if (1) {}` after every statement
+     (96: layout unchanged or code changes). Next: a source change that keeps the 0x690 call but shortens the a1 web
+     the same way (its last use = the 0x690 call), or makes the 0x3C4 piece / clamp web overlap the else arm.
+2. **31C0 (99.98): the KB new-temp sits in T's slot (sp+116) because edg reuses the inline-ctor this temp.**
+   With KB removed the frame and every offset stay the same: sp+104 (the target's KB temp) is an existing
+   unused word of ours. Flat / worse: B2 taking `Obj2 *` or an explicit `(Obj *)` cast, a separate inline / static
+   factory for `new KB` (`newKB`, `KBF::make`, a named `KB *k` in the inline grows the frame by 8 and the temp is
+   still T's slot), `{ }` around the new, `new KB()` / `::new` / `new (KB)` / `(new KB(...))`, `Obj2 *obj = new
+   Obj2` (also `*const`), the new in the switch condition (`switch (obj = new Obj2, mode)` 98.0), a named local or
+   volatile block in KB's ctor, member `operator new` on KB / B2 / Obj (71.8, structure breaks), the volatile pads
+   as pointer types or moved to 9 sites x 1-4 words (44: best = base).
+3. **E2D0 (99.54, cfe): the 1.0 + arg4 ring.** Target arg4 -> f16, 1.0 -> f8 (f14 never used in the whole target
+   function); ours f14 / f6. Flat: `*(volatile f32 *)&arg4`, `*&arg4`, `(&arg4)[0]`, `arg4 + 1.0f`, the sum into
+   `s` / `lim` at every statement between the call and the scale (both orders), the keeper as `if (*&arg4)`,
+   `if (arg4 == 0.0f)`, `if (arg4 != 0.0f)`, doubled, moved before / after the clamp, an extra sixth parameter,
+   five `-lim` clamp spellings. Lower: keeper removed / volatile (98.21, 520 B), `dot = dot * (...)` (99.47).
+4. **34890 (99.57): h spills to its own home sp+40; the target spills it at sp+44 (our unused top slot).** The
+   uopt list shows var -12 (sp+44) has no live range and h is var -16. Swapping make's parameters
+   `(int h, O *o)` moves h's home to sp+44 but h stops being colored (stored through t7, 89.2); with
+   `me(o)->h` it is colored again but back at -16 (99.57). Flat / lower: `O *&o`, `O &o` (99.57 / 99.5),
+   `O *const &`, a struct wrapper, the new-X unnamed or the keeper moved, `int h = o->h` in the caller (89.1),
+   `const int &h`, folded `+ 0 * x` terms on the argument.
+5. Read-only: mgrproc 1824's left diff includes the HI16-only jump-table displacement (external-table class, not
+   reachable from C); 24B8 / gui 329C residuals are colouring.
+
+**Reproduce.** Base: `src/bootup_uso/bootup_uso_ncc_B75C_nm.cpp`; frame-112 body = delete `char *temp_a1;` and
+put the two expressions in its call sites; phantom = additionally delete the 0x690 `bu_b75c_mvf` line. Compile with
+`NCC -c -G 0 -non_shared -Wab,-r4300_mul -O2 -mips2 -32` and read the sp offsets below the homes
+(`objdump -d --disassemble=func_0000B75C | grep -oE '[0-9]+\(sp\)'`); dumps with the
+tools/ido-static-recomp-dump NCC plus `-Wo,-zdbug:6`.
+
+*Addendum (same run).* Holding the dot3 value in a named float before the call (`var_f0 = dot3(arg0, sp6C);
+bu_b75c_mvf(var_a0, temp_a1, (f32) ((f64) var_f0 * -0.1), arg0);`) is code-identical to the target (the sum still
+lands in f0) and drops dot3's return-value home: base + hold = frame 112 with 76-byte homes (same layout as the
+temp_f12 / temp_a1 de-names), a1 + hold = 72-byte homes, float 28 / a0 32 / a1 36 with the rounding pad at 24.
+So three code-identical ways to remove one home exist; none adds the phantom. Holding the PRODUCT
+(`var_f0 = (f32) ((f64) dot3(...) * -0.1)`) moves the sum to f10 (99.41).
+Slot-order data on the temp_a1-de-named body (frame 112, float always 24): unchanged a0 28 / a1 32; 0x690 call
+deleted -> unused 28 / a0 32; its `arg0 + 0x3C8` -> `(char *)D_00008170` -> unused 28 / a0 32; -> `arg0 + 0x3BC`
+(0x3BC CSE'd into the next call) -> a1 28 / a0 32; its 0x690 factor -> `2.0f` -> a1 28 / a0 32. So the word below
+a0 is shared by "the unused web" and whatever a1-class web exists; the target needs it NOT shared (float 28,
+unused 32, a0 36, a1 40).
