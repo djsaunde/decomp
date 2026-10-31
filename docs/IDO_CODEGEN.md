@@ -14654,6 +14654,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCLXXX (agent-g 2026-10-31, run 251): **variable-split moves that ADD a variable must keep the frame (u8 into a free byte under an existing u8 home, word type in place of a pad word); CROSS-TYPE moves (u8 web onto a dead u32) reach colours the same-type sweep cannot; a kept move can flip the variable it leaves, so re-sweep; multi-arm (switch) webs need a region rename; splitting a variable can drop its priority and spill its other web; a FUNCTION-typed extern accessed as `*(T *)((char *)fn + off)` gives the target's `lui; addiu` base with the offset in the access (data symbols fold it into %lo)**](#kit-cclxxx-agent-g-run251) -- _NM game_libs 2E354 97.48 -> 97.93 (3684 B = target); 35B1C EDG class version = cfe code; no exact._
 - [kit CCLXXXI (agent-g 2026-10-31, run 252): **a store + read-modify-write pair on one global can be split across two NAMES of the object: the plain store through the alias keeps the absolute `lui at` form, the RMW through the primary name rides the held base; cfe folds `x | 6 | 0x400` constants whatever the parentheses/casts and uopt keeps every global store (no DSE); 35B1C vtable-store order is uopt def placement (the target's temp numbers match our IR order), not as1 lines -- `if (1) {}` between the `o + 4` def and its test keeps the def above the store but splits p from q (spill 0x38, one temp fewer)**](#kit-cclxxxi-agent-g-run252) -- _NM post0b 415A4 94.59 -> 94.87 (452 B = target), 4A890 94.73 -> 95.91 (348 -> 352 B = target); negatives on 2E354 / 4A890 / 4E424 / kernel 18F0; no exact._
 - [kit CCLXXXII (agent-g 2026-10-31, run 253): **a dead `or rX, ivreg` register copy in a strength-reduced loop = a local holding the OLD IV value, read only by an empty `if (v) {}` placed AFTER the source increment (before it, uopt copy-propagates the local onto the IV and emits nothing); the copy lands at the assignment line; bootup E68's two dead copies are cfe, not an NCC tell; E68 residual = the MgrE68 pointer colours s0 unsplit where the target splits it (t0 load / v0 phase 2 / s1 phase 3)**](#kit-cclxxxii-agent-g-run253) -- _NM bootup E68 96.83 -> 97.80 (e8bd82387, 3032 of 3036); both copies give the target loop shape but one extra spill (3044); both copies + `if (1) {}` after LOADTEXTILE = 3036 with only one andi/addiu pair misplaced (97.55, the start point for the m work); m-split / variable-split / counted-use / register negatives; game_libs 2840: a volatile struct reproduces the target's vx / vy memory ops exactly (FP colours rotate, 83.2)._
+- [kit CCLXXXIII (agent-g 2026-10-31, run 254): **an empty `if (p) {}` on a pointer the loop body dereferences, between two of its appends, is NOT the same lever as `if (1) {}` there (the test is a use of p); after a structural gain re-run the per-site append-spelling greedy (the best spelling moves); E68's m is ONE variable the allocator splits -- separate per-phase variables push the phase-3 `m->dl` expression LRs into s-registers; enough BB splits make m impossible-to-colour but split into small caller pieces; re-typing a repeated pointer load in one region (`*(s32 *)&m->dl`) gives that region its own expression LR**](#kit-cclxxxiii-agent-g-run254) -- _NM bootup E68 97.80 -> 98.61 (3036 B = target, word-for-word up to registers; residual = m only; a separate phase-2 m1 now keeps self homed and phase-3 m in s1, 97.53, m1 colours after dl / count / _n); kernel 18F0 spelling grid flat (mask hoist / out-of-line peel store)._
+- [kit CCLXXXIV (agent-c 2026-10-31, run 252): **an inline call's `this` routed through a ZERO-CODE ACCESSOR (`o->me()->sub->ctx->next()`, template `me(p)`, `ref()`) is a different edg temporary from the directly-spelled pointer and moves a whole packet's ugen order / schedule (and gives that site its own colour family); a deeper-but-folding operand tree (`((c & 0xF) * 8) << 5`) is evaluated first by ugen; verify spelling wins on the register-stripped instruction multiset (decoys raise objdiff with wrong immediates)**](#kit-cclxxxiv-agent-c-run252) -- _NM post0b 46050 92.43 -> 99.36 (1848 B; texrect block now target-scheduled, t-ring equal everywhere; left: a swap of two next() pool colours, cc a0, one delay-slot choice); template `me(p)` per-pkt greedy: gui 3714 97.41 -> 97.94, gui 329C 99.06 -> 99.37, post0b 34890 98.75 -> 99.57, 48AEC 97.26 -> 97.29 (`me(me(gctx))->load(c2)`, found once the sweep also scanned the inline members); flat on 4C5E4 / 0F04 and ten others._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
 - [kit CCLXXII (agent-c 2026-10-30, run 247): **a folded `+ 0` on one loop's test moves the shared edg pool temp to the OTHER loop (493AC: the second loop's next() result leaves the call-crossing s2 temp); taking a local's address through a member call (`getPos(vb)`, `e = vb - va`) makes it memory-resident like a target that stores it after init (3558 length fixed)**](#kit-cclxxii-agent-c-run247) -- _NM 493AC 99.36 -> 99.43, game_uso 3558 91.62 @ 956 B -> 92.60 @ 1008 B; 41D40 / 250C8 / 3AE58 / 46790 / 3E5E0 / BB8C / 31A74 / `+ 0` toggle sweep negatives._
@@ -51652,3 +51654,130 @@ reproduces report.json (96.83 base, 97.80 after). Commit e8bd82387 on agent-g._
    values still take caller registers first; scores 93.2-93.4. Empty tests on other variables in the phase-3 loop
    (`if (col / n / i / head) {}`), `-Wo,-zmovc:N` (diagnostic) and E68_MGR re-read per packet (reloads) are
    negatives.
+
+## kit CCLXXXIII (agent-g 2026-10-31, run 254): bootup E68 97.80 -> 98.61 -- re-typing one region's repeated pointer load (`*(s32 *)&m->dl`) splits its expression live range (item 8); an empty `if (p) {}` on a POINTER that the loop body dereferences, placed between two of its packet appends, is a different lever from `if (1) {}` at the same slot (the test counts as a use of p in uopt, the block split alone does not reproduce it); after it, re-run the per-site append-spelling greedy: the best spelling of a site moves when the body around it changes <a name="kit-cclxxxiii-agent-g-run254"></a>
+
+_Harness: the run-253 standalone body (`/tmp/claude-1000/g253/c3.c` shape: the committed body plus `if (1) {}`
+appended to the LOADTEXTILE line, `if (vs) {} if (ve) {}` both after `vidx += 4;`), `cc -c -G 0 -non_shared
+-Wab,-r4300_mul -O2 -mips2 -32`, objdiff `-c functionRelocDiffs=none` vs `expected/src/bootup_uso/bootup_uso.c.o`;
+every step re-confirmed on the real NM object after `make non_matching_objects`._
+
+1. **`if (m) {}` between the two TRI1 packets (98.05, 3036 B = target).** Sweep: insert `if (m) {}` / `if (1) {}`
+   at every statement slot from the `if ((self != 0) || ...)` line to the `self + 0x38` store (210 probes). Only
+   the m test between `E68_TRI1(.., vidx + 1, vidx + 2)` and `E68_TRI1(.., vidx + 2, vidx + 3)` wins, and it
+   also moves the one misplaced TRI1 `andi rX, IV4, 0xff` / `addiu IV4, 8` pair (kit CCLXXXII item 6) into the
+   target slot: the body now lines up word-for-word up to registers. m is assigned before the loop nest, so the
+   read is defined. `if (1) {}` at the same slot does not do it.
+2. **Second sweep on the result: `if (1) {}` at the end of the j body** (after the vs / ve tests; `if (m) {}`
+   before `ve = ...` scores the same): 98.17. The vidx*2+2 / +4 IVs take the target's s1 / s2. A third round
+   of the same two statements, and a round of `if (vidx / k / uls / ult / j / k2 / i / m->dl) {}` inside the j
+   body, are flat.
+3. **zero-use-sweep (`scripts/zero-use-sweep.py`, lines 126-150): `if ((vs) + 0 * (int)(vs)) {}`** 98.21. The
+   same counted use moved into the ve test (`if ((ve) + 0 * (int)(vs))`) is flat.
+4. **Per-site append spelling, re-run: `E68_NEXTB` (explicit `count = _n + 1`) at the phase-3 G_DL packet**
+   (`{ GwE68 *dl = arr[i * n + col]; E68_DMA1P(E68_NEXTB(m), ...); }`): 98.41. Run 172 had swept the same
+   NEXT / NEXTB choice per site on an older body without this hit. Eight more increment spellings
+   (`count = 1 + _n`, `++count`, `buf + _n`, `_n + buf`, `(char *)buf + _n * 8`, `&buf[0] + _n`, chained
+   `count = (_n = count) + 1`) at all 23 sites: flat. A spelling grid over the phase-3 row pointer
+   (`&vp[i * (n * 4)]` / `vp + i * (n * 4)` / `(n * 4) * i`), `n * 4` / `4 * n`, `arr[]` index operand order,
+   the `col` loop step and test, `vp = buf;` / `n = ...` order and five `vs` / `ve` assignment spellings: flat.
+5. **Residual (215 rows): only the MgrE68 pointer m.** The target loads it into t0 and copies it to v0 for the
+   packet loop nest (phase 2), reloads into t0 and copies to s1 for phase 3; ours is s0 everywhere (load temp
+   v0), and the phase-3 column counter then takes s1 instead of the target's s0. Everything else lines up.
+   What was tried, all negative:
+   - separate phase-2 variable `m1` (any declaration slot, padq 1-3, with / without separate `_n1` / `_n2`):
+     the start piece of self gets s0 (target: self fully homed at 0x1d8) -- 87.9. Adding `if (&self) {}` keeps
+     self homed (it is inert on the shared-m body) but the phase-3 `m->dl` / `->count` expression LRs then go
+     to s0 / s1 across the calls (target v1 / a1): 95.2-95.4 at 3052 B. A BB split between the phase-3 append
+     and its call (`head = E68_NEXT(m); if (1) {}`, a `g3` block local for the VTX packet) does not stop it.
+     With one shared m the expression LRs are caller-saved because the phase-2 uses dominate their weight; so
+     the target's m is ONE variable that the allocator split.
+   - span extension to demote m (coloring dump: m = lr 109, ichain {1174}, constrained order 12-14, s0):
+     moving the phase-2 assignment earlier moves the global load (91-97); an early dead def + `if (m) {}`
+     before the vertex loop is stripped (flat); `if (0) { m = 0; }` / `while (0) { m = 0; }` at every slot
+     (kit lever for CSE temps) is inert here. BB splits on the 14 phase-3 header packet lines: N = 12 per line
+     drops m to order 34 (s6, 97.44); N >= 14 makes m "impossible to color" and the allocator DOES split it,
+     but into five small caller-register pieces (a3 / a0) with the remainder "-ve save" (3112 B, 85.5) -- not
+     the target's two whole-phase pieces.
+   - empty tests of `dl / col / _n / i / n / m / 1` around the phase-3 G_DL packet: 96.4-96.8.
+   Frame note: the target's three spill words sit at 0x4c-0x54, ours at 0x54-0x5c with padq[3] keeping the
+   frame -- the target allocates two fewer spill temps and two more named words, consistent with its extra
+   split pieces.
+6. **kernel 18F0 (89.19): spelling grid flat** (null-check form, loop test / step, `continue` vs nested if,
+   the three-way match as && chain / nested ifs / `!= 0`, `found` test forms, seven `&= ~8` spellings incl.
+   `0xFFFFFFF7`, `-9`, `(s32)~8u`): every probe 89.1870 except the u32-cast store (83.4). The target hoists
+   the -9 mask into t5 (peel and loop) and lays the peel's store block out of line (`bnezl found` into
+   func_80001994); neither responds to source spelling.
+7. **Why the separate-variable route fails, from the dump.** With a phase-2 variable `m1`, uopt's first three
+   constrained picks are the `m1->dl` load (v0), the `->count` load (v1) and `_n` (a1); m1 itself comes fourth
+   (a2). The target needs m1 FIRST (v0, then dl v1, `_n` a1), and its dl / count expression LRs must also
+   contain the phase-3 call blocks (that is what keeps them off v0 / a0 in the shared-m body). Counted uses do
+   not move m1 up: `if (m1) {}` x1-x8 at every j-body slot leaves its order at 4, and `+ 0 * (int)(m1)` folded
+   into any subset of `uls += 64`, `vidx += 4`, the vs / ve assignments, `ult += 32`, `uls = 0` (126 probes)
+   changes length (3060-3072) without m1 reaching v0. A toy (`m = g;` loop, `m = g;` loop with a call) confirms
+   a re-assigned pointer keeps ONE LR across both webs (s1 in both), so the target's two pieces are an
+   allocator split we have not reproduced.
+8. **Expression-LR partition by load TYPE (98.41 -> 98.61, kept).** The target's phase-3 G_DL loop holds its dl
+   loads in v0 while the header and phase 2 use v1: its `m->dl` loads there are a separate live range. Reading
+   the head as `*(s32 *)&m->dl` (same 4-byte value; `#define E68_DL_I(m) ((DlE68 *)*(s32 *)&(m)->dl)` and an
+   E68_NEXTBI append built on it) at that one site makes uopt treat the loads as a different expression, so they
+   get their own LR, colour v0, and the loop lines up. Type-punning the load in only the count part or only the
+   buf part is worse (97.88 / flat); applying the int-typed forms at other sites (greedy, 23 sites x 6 forms):
+   flat. General lever: when the target colours ONE repeated pointer load differently in two regions, re-type
+   the load in one region (int vs pointer) to split the expression LR.
+9. **Separate phase-2 variable on top of item 8 (not kept, 97.53).** With the int-typed phase-3 loop, an `m1`
+   for phase 2 (padq[1]) no longer costs self its home: the prologue and every self access match, and phase-3 m
+   takes the target's s1. The body is 3052 B (phase-3 spills); a length-penalised per-site greedy over the six
+   append forms brings it back to 3036 at 97.53. The remaining blocker is the phase-2 order: uopt colours the
+   `m1->dl` load (v0), the `->count` load (v1) and `_n` (a1) before m1 (a2); the target has m1 in v0, dl in v1,
+   `_n` in a1. Starting point for the next pass: `/tmp/claude-1000/g254/gr11/best.c` (rebuild from the committed
+   body: rename phase 2's m to m1, declare `MgrE68 *m1;` after m, padq[1], then the greedy).
+
+## kit CCLXXXIV (agent-c 2026-10-31, run 252): post0b 46050 92.43 -> 99.10 -- under NCC an inline call's `this` that arrives through a ZERO-CODE ACCESSOR (`o->me()->sub->ctx->next()`, a template `me(o)`, `ref()`, `me()->me()`) is a different edg temporary from the same pointer spelled directly, and that alone moves a whole packet's ugen evaluation order / schedule; a deeper but folding source tree (`((c & 0xF) * 8) << 5` for `(c & 0xF) << 8`) is evaluated FIRST by ugen <a name="kit-cclxxxiv-agent-c-run252"></a>
+
+_NM post0b gl_func_00046050 92.43 -> 99.10 (1848 B, length unchanged; commits 2432b017c, bbd332d58, d285099a1)._
+
+1. **Operand tree depth decides ugen evaluation order even when uopt folds the extra node.** The glyph's RDPHALF_1
+   word is `_SHIFTL(s,16,16) | _SHIFTL(t,0,16)` with s = `(cc & 0xF) << 8`, t = `((cc & 0xF0) >> 1) << 5`. ugen
+   evaluated t first (deeper tree); the target computes s first. `s = ((cc & 0xF) * 8) << 5` (the texel column
+   then the 10.5 shift) folds to the same `andi 0xF` + one `sll 24`, but its source tree is now as deep as t's,
+   so s goes first: 92.43 -> 92.78 with an identical instruction multiset. Check the multiset (registers
+   stripped) for every "spelling" win: `(cc & 0xF0) >> 4 << 3 << 5` scored HIGHER (92.98) but emits `sra 4 /
+   sll 8` instead of the target's `sra 1 / sll 5` -- a decoy, not kept.
+2. **Accessor-routed `this` (the big one).** All 20 appends are `gW(CTX->next(), w0, w1)` with
+   `#define CTX (o->sub->ctx)` and an inline `Gfx *Ctx::next() { return &dl->buf[dl->n++]; }`; the glyph is the
+   stock gSPTextureRectangle with `CTX->next()` as pkt (three expansions). Spelling ONLY the glyph pkt as
+   `CTX->me()->next()` (`Ctx *me() { return this; }`) reproduced the target's whole texrect block: y before x in
+   w1, the 0x2000 / lineh divide after the RDPHALF_1 ctx load, the RDPHALF_2 word built first (92.78 -> 96.71).
+   Every zero-code route behaves the same (me() / me()->me() / ref() / a template `me(p)`); a NAMED local
+   (`Ctx *c = CTX;`) is CSE'd instead (one ctx load fewer, length 1832) and `nx(CTX)` (free inline taking the
+   pointer) is flat. The accessor moves the site's `this` into a different edg pool temporary, which (a) changes
+   ugen's order for the packet and (b) gives that site's next() trio its own uopt colour family.
+3. **Where to put the accessor matters for the colours.** `CTX->me()` on the glyph made every plain site's ctx /
+   n swap colours (ctx v1 -> a2). The best single spelling was on the OUTER object instead:
+   `o->me()->sub->ctx->next() + 0` (Font::me() + a folded `+ 0` on the result pointer), every other append plain:
+   99.10 with the t-register ring equal to the target in every block. Search recipe: a greedy over per-site pkt
+   spellings {plain, next2 slot form, `CTX->me()->`, `o->me()->sub->ctx->`, `+ 0`} scoring with objdiff, keep the
+   best single change per round (/tmp scratch greedy2.py: ~250 variants a round, 40 s).
+4. **Left (negatives).** A consistent swap of two next() pool colours in the plain sites (target ctx v1 / n a2,
+   ours a2 / v1), cc a0 (ours a2), the arg1 increment above the first test instead of in the beqz delay slot.
+   Flat: dead `if (0) { CTX->...next(); }` pool allocations anywhere, `if (o) {}` / `if (arg1) {}` /
+   `if (CTX) {}` empty tests after every statement (kit CCLXXXIII), decl-order / block-scope / type changes of cc,
+   `switch (ch * 1)` / `(cc)` / `(cc = ch)`, case-order permutations, next6 / next7 / next8 body spellings,
+   lever-sweep all, zero-use-sweep (185 probes), a split `Font *fp` param copy (reproduces the target's `lw t7,
+   596(a0)` first-append read but scores equal). The same accessor sweep (template `me()` around every pointer
+   prefix left of `->`, one per round) found nothing on 48AEC; 4C5E4's 2.0f re-materialisation is not touched by
+   accessors either.
+5. **Template accessor + per-site greedy, more hits (same run).** `template <class T> inline T *me(T *p) { return
+   p; }` behaves like a member `me()` and can wrap ANY pointer prefix (`me(CTX)`, `me(me(CTX))`, `me(o)`), so one
+   generic declaration serves every donor. A greedy over per-site spellings {CTX, me(CTX), me(me(CTX))} x the
+   donor's next() bodies x {"", ` + 0`} took 46050 99.10 -> 99.36 (glyph `me(CTX)->next() + 0`, first prologue /
+   first epilogue appends `me(me(CTX))->next()`, last append `me(CTX)->next() + 0`), gui 3714 97.41 -> 97.94
+   (`me(me(CTX))->nD()` for the G_TEXTURE pkt, `me(CTX)->nC() + 0` for RDPHALF_1), gui 329C 99.06 -> 99.37
+   (`me(me(CTX))->nD()` G_TEXTURE, `me(CTX)->nD() + 0` RDPHALF_2), and post0b 34890 98.75 -> 99.57 with a single
+   `for (LIter it(me(me(o))->list); ...)` (nested accessor on a for-init iterator source). Every kept variant has
+   the target's register-stripped instruction multiset. Single-wrap sweeps (one `me()` / `me(me())` around each
+   pointer prefix left of `->`, and `me(&x)->` for `x.f()` calls) were flat on 4BAF4 / 0F04 / 4F2DC / 493AC /
+   3BE1C / 54E78 / 46790 / 3AE58 / 3E5E0 / BB8C / 41D40 / 48AEC.
+   Addendum: scanning the WHOLE file (inline member bodies included, not just the function body) found post0b
+   48AEC 97.26 -> 97.29 (`me(me(gctx))->load(c2)` in the matrix else arm); nothing new on the other donors.
