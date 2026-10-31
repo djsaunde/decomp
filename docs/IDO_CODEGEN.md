@@ -14664,6 +14664,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCXC (agent-g 2026-10-31, run 258): **re-run the zero-use sweep after every shape / decl change (new hits appear); NCC ugen loads the LIGHTER compare operand first (`nv + 1 >= max` gets max first, `nv >= max - 1` never does while nv is a ugen temp); NCC frame homes overlay across sibling blocks (42938's tail locals in a block: frame 136 -> 112, code unchanged) but inline-expansion homes do not**](#kit-ccxc-agent-g-run258) -- _NM post0b 3B6A0 96.325 -> 96.375 (e72d5602e), 3B9C0 95.19 -> 95.24 (a85e69ca3), 48510 98.71 -> 98.73 (d60e7fbf8), 37540 96.42 -> 96.43 (06f28880f, 720-order decl grid); 36694 / 2DE0 / 42938 / 2840 / 33094 / 415A4 / 469A8 / E68 / 2E354 / 4E424 / 4FD00 negatives._
 - [kit CCXCI (agent-c 2026-10-31, run 256): **bootup B75C's phantom temp word is a real uopt temploc that an existing web takes: deleting the 0x690 else-arm call (or a clamp assignment) makes our code-identical NCC body allocate an UNUSED word between the float and a0 spills (target shape); in the full body that web shares a slot (spilltemps region sharing), so the target differs in live-range overlap, not code; a constant / call-argument web gets a temploc with no store or load; second frame-112 route (de-name temp_a1)**](#kit-ccxci-agent-c-run256) -- _No gain; negatives 31C0 (KB new-temp = reused inline-ctor this slot, 100+ variants), E2D0 (arg4 ring f14 vs f16), 34890 (h home -16 vs -12), 1824 / 24B8 / 329C read-only._
 - [kit CCXCII (agent-c 2026-10-31, run 257): **B75C's a0 / a1 temploc order follows the first-arm call's argument form (named `temp_a1` -> a0 first; unnamed -> the target's word-before-a0 order, but the else-arm a1 web shares that word); E68's target has the phase-2 ve IV and j counter in s0 / s3 (ours t2 / t5), so the m split is an s-register-pressure outcome**](#kit-ccxcii-agent-c-run257) -- _No gain; ~330 B75C slot probes, E68 keeper grid, 41D40 next() / me() grid, gui 3714 / 329C grids, 6204 invented-parameter flip (not used)._
+- [kit CCXCIII (agent-c 2026-10-31, run 258): **uopt `spilltemps` decoded from the recomp'd binary: every colourable expression (`coloreditems`, -zdbug:4) gets a stack temp BEFORE colouring, in expression-bit order, first BB-region-disjoint temp of EXACT size, new temps descending; unused frame words = temps of coloured expressions. Applied: bootup B75C EXACT (+2096 B) -- the 0x990 load read in place at both tests (adds the never-stored item ahead of the 0x3C4 load) + the dot3 hold (one fewer home)**](#kit-ccxciii-agent-c-run258) -- _Also: gettemp / findbbtemps emit-time reuse, needsplit size / priority / appearance conditions; where the uopt.c recomp lives on this machine (references/ido is absent)._
+- [kit CCXCIV (agent-g 2026-10-31, run 259): **NCC frame-slot model: compare the sp-offset SETS first; an inline function's named local / named result gets a home per expansion at the frame BOTTOM (no overlay), unused locals get none, dead-store block locals sit in program order among the temporaries; move a named inline result to a caller function-scope local to re-place the home without losing its codegen**](#kit-ccxciv-agent-g-run259) -- _NM game_uso 3558 93.61 -> 93.68 (sp-offset set = target), BB8C 98.52 -> 98.55 (8-byte dead block home + named-result operators); 31A74 store-after-clamp shape (one sb / swc1 pair left, scores lower), 2840 double-volatile memory shape, 37540 / 42938 / 0F04 / 4E424 / 40304 / 250C8 negatives._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
 - [kit CCLXXII (agent-c 2026-10-30, run 247): **a folded `+ 0` on one loop's test moves the shared edg pool temp to the OTHER loop (493AC: the second loop's next() result leaves the call-crossing s2 temp); taking a local's address through a member call (`getPos(vb)`, `e = vb - va`) makes it memory-resident like a target that stores it after init (3558 length fixed)**](#kit-cclxxii-agent-c-run247) -- _NM 493AC 99.36 -> 99.43, game_uso 3558 91.62 @ 956 B -> 92.60 @ 1008 B; 41D40 / 250C8 / 3AE58 / 46790 / 3E5E0 / BB8C / 31A74 / `+ 0` toggle sweep negatives._
@@ -52321,3 +52323,176 @@ verify-blocks 6/6, `make non_matching_objects` 0 errors, sentinels 100._
    operands + `t` removed (73) flat. bootup 6204: `void f(int a0, int a1) { g(&D, a1); }` does give lui-first
    (the a0 home store / incoming-a1 dependency), but the parameters are invented and an `sw a0` appears --
    not used.
+
+## kit CCXCIII (agent-c 2026-10-31, run 258): uopt temp-slot assignment READ FROM THE BINARY -- `spilltemps` gives every colourable expression ("coloreditems") a stack temp BEFORE colouring, in expression-bit order, first-fit by BB-region disjointness with EXACT size match; unused frame words are the temps of expressions that were then coloured; bootup B75C EXACT by predicting it (+2096 B) <a name="kit-ccxciii-agent-c-run258"></a>
+
+_report.json (objdiff, regenerated): matched_code 699796 -> 701892 B (91.76 -> 92.03 %), functions 3229 -> 3230 / 3288,
+func_0000B75C 99.98 -> 100. Commit e25b1e59d. Gate: full make ROM byte-identical (cmp), verify-blocks 6/6,
+`make non_matching_objects` 0 errors, no exacts lost, sentinels 100._
+
+**Source.** `references/ido` (n64decomp/ido) is NOT on this machine. What is: the static-recomp translation of the
+IDO 7.1 uopt binary with its ORIGINAL procedure names (`f_spilltemps`, `f_gettemp`, `f_findbbtemps`,
+`f_needsplit`, `f_split`, `f_globalcolor`, ...), machine-level C, 4.4 MB:
+`~/.local/share/docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/34/fs/opt/ido-static-recomp/build/7.1/uopt.c`
+(a docker layer of the ido-static-recomp image; copy it to /tmp before grepping). Data-string addresses decode
+against `tools/ido-static-recomp-dump/ido/7.1/usr/lib/uopt` (ELF section headers -> file offset); e.g.
+0x1001c740 is printed as `coloreditems` and bb+0x15c as `region` (both in `f_printscm`), and `f_spilltemps`'s
+case-error strings name `uoptreg2.p`. uoptmain calls `f_spilltemps` before `f_globalcolor` (lines ~124627 /
+124766 of the recomp file).
+
+1. **`spilltemps` (uoptreg2.p), second loop -- the rule, decoded.** Temps are a linked list (head 0x1001c320, tail
+   0x1001c324, count 0x1001c3e8; node = {index, offset, size, free flag, next}); `tempdisp` = 0x1001c31c.
+   ```
+   for i in 0 .. nexprbits-1:                      # expression BIT order (the itab bit number, -zdbug:1/4 column 2)
+       if i not in coloreditems: continue          # only kinds 4..6 are legal here (else caseerror)
+       busy = { temp(j) : j < i, some BB has both i and j in its region set (bb+0x15c) }
+       size = sizeoftyp(item type)                 # 4 for int / pointer / float loads, 8 for doubles
+       t = first temp in creation order with t not in busy and t.size == size   # EXACT size, no splitting of 8s
+       if none: t = new temp; tempdisp = roundup(tempdisp, min(size, 8)); tempdisp += size; t.offset = -tempdisp
+       item.temp = t
+   ```
+   Consequences: (a) the slot is reserved for EVERY coloured-item candidate, before `globalcolor` decides who gets a
+   register -- a word nobody stores to is simply the temp of an expression that was coloured (or rematerialised);
+   (b) slot sharing is decided on the PRE region sets (pre-colouring, pre-split), not on the final live ranges, so
+   no source change that only moves a split can move a temp; (c) int and float 4-byte items share one pool;
+   (d) creation order = descending address (the first temp is the highest word, right below the homes); the
+   frame is homes + temps + outgoing area rounded to 8, so a 3-temp block leaves a pad word under it and a 4-temp
+   block does not. The first loop of `spilltemps` only builds the interference edges (`f_intfering` per
+   register class over 0x1001c810[cls]) for `globalcolor`.
+2. **`gettemp` / `findbbtemps` (reemit, uoptemit).** Emission-time temps reuse the same list: per BB,
+   `findbbtemps` marks every temp whose coloured item is in this BB's region busy, `gettemp(size)` takes the first
+   free temp of exactly that size in creation order, else appends a new one (same alignment rule). So emit-time
+   spills sit BELOW all `spilltemps` slots.
+3. **Reading it from a dump.** `-Wo,-zdbug:4` (dump compiler `tools/ido-static-recomp-dump/build/7.1/out/NCC` or
+   `cc`) prints `region --(3) [...]` per flow node and, at the end, `coloreditems ****(3) [...]`; the bit numbers
+   are the second column of the `-zdbug:1/4/6` itab listing (`{1418|8}  65 isop uilod{493|0}` = bit 65 is an
+   indirect load off param 493). Parse the two, simulate item 1 and you have the temp map. Verified on B75C (all
+   10 coloured items, 4 compiles): base `60 62 65 89 117 201 203 208 275 287` -> T0 {60, 89, 117, 201, 208, 275, 287},
+   T1 {62, 203}, T2 {65} = sp 36 / 32 / 28 + pad 24, exactly the build (a1 36, a0 32, 0x3C4 float 28). This is the
+   exact law behind the kit CCXCII "working model" (LR-index order, below the previous slot, first BB-disjoint
+   slot) -- confirmed, with two refinements: the order is the EXPRESSION BIT (first-occurrence itab order), and
+   only exact-size slots are reused.
+4. **`needsplit` (uoptreg2.p).** Called from `globalcolor` when the highest-priority unassigned LR has no free
+   colour. Returns "split" only if the LR is small enough -- fewer than 30 BBs, or fewer than 800 BBs when its
+   lr+35 flag is clear or its priority (float at lr+48) exceeds 0.2 -- AND some BB of the LR (walked in the LR's
+   BB-list order) has an appearance (use + def counts at bbnode+16 / +18 nonzero) where the colour is not ruled
+   out (bbnode+19 flag set, or the BB's 64-bit register set at bb+44/48 differs from the per-colour mask table
+   0x1001c840). Otherwise the LR is marked uncoloured (lr+32 = -1, removed from both
+   candidate sets 0x1001c7e0 / 0x1001c7d8, neighbours' degree counts decremented) and lives in memory;
+   `-dowhyuncolor` / zdbug 6 then prints "impossible to color". needsplit first returns "no split" whenever the
+   LR still has colours left (lr+33 != 0).
+   **When a split happens (`globalcolor` call sites).** (a) EAGER neighbour split: right after LR A is assigned
+   colour c, every unassigned interference neighbour B (A's list at lr+56) that did not already forbid c gets c
+   added to its forbidden set (lr+40/44), its colours-left count (lr+33) decremented, and -- if that was its LAST
+   colour -- is split AT ONCE with `split(B, &piece, c, 0)`, repeated while `needsplit` holds. So the split of a
+   low-priority value is decided by the higher-priority neighbour that takes its last free register, at that
+   moment, long before B's own turn. (b) COST split: when colouring LR A itself, the per-colour costs are summed
+   (call-crossing / save terms) and if A's priority x lr+28 count <= the best colour's cost, A is split with
+   `split(A, &piece, c, 1)` (flag 1 = do not grow the piece into BBs with calls that clobber the colour,
+   `is_cup_affecting_regs`).
+   **How the piece is formed (`split`).** A new LR record copies the old one; the SEED is the first BB in the old
+   LR's BB list (lr+8, list order) whose node flag +20 is set and where colour c is not ruled out (bb register set
+   at +44/48 vs the mask table entry for c, or node flag +19); if none, the first BB with an appearance (use + def
+   counts nonzero) where c is not ruled out. The piece then grows breadth-first (worklist 0x1001c638): each
+   reached BB calls `addadjacents`, adding the neighbouring BBs of the old LR where c stays available; growth
+   stops at BBs with node flag +23, at BBs whose ichain op is 0x31, and (flag 1) at call BBs. `dellivbb` /
+   `formbvlivran` / `updateforbidden` / `updatecolorsleft` / `findsharedintf` then rebuild both LRs' BB sets,
+   forbidden sets and interference. Each piece is re-queued and coloured on its own priority (the piece that
+   was carved for c usually gets c). Practical reading for E68-type residuals: the target's split point is where
+   the register that m loses LAST stops being occupied by its higher-priority neighbour; to move it, change which
+   neighbour takes m's last colour (its priority = refs / BB count) or the BB-list position of m's first def.
+   **Colour choice (`globalcolor`, the loop just before the cost split).** For the LR being coloured, every
+   colour not in its forbidden set (lr+40/44) is costed: the caller-saved range with `cupcosts(lr, c, 1)` (the
+   save / restore cost around the calls it crosses; one cached value unless the colour is in the per-call
+   clobber set at sp+0xB8), then the callee-saved range with `cupcosts(lr, c, 0)` plus the first-use cost when c
+   is not yet in the used-callee set 0x1001c7d0. The STRICTLY cheapest colour wins, so among equal costs the
+   lowest-numbered colour in scan order (v0, v1, a0..a3, t0.., then s0..) is kept; equal-cost colours are also
+   collected in a tie mask (sp+212/216) for the later preference step (flags 0x1001c4d0 / 0x1001c4d4). If
+   priority (lr+48) x lr+28 <= that best cost, the LR is split with flag 1 instead (mechanism (b) above). E68:
+   our m (LR 109, var -196, adjsave 1718) is the FIRST callee-saved user (s0, first-use cost paid) and is coloured
+   whole at order 12; the target's v0 (phase 2) / s1 (phase 3) pieces are what mechanism (b) produces (the
+   phase-2 piece cannot grow into the phase-3 call BBs), i.e. in the target m's benefit fell below its best
+   colour's cost. Tried this run (no gain, all 98.6087 or lower): `if (1) {}` / `if (m) {}` after each of the 42
+   statements of phases 2-3 (84 compiles, all flat), the existing `if (m) {}` removed, and the phase-2 or
+   phase-3 m moved into a dead int variable (x / y / row, casts) -- 91.5-96.3, +16-20 B.
+5. **Applied: bootup B75C EXACT (NCC donor, 2096 B).** Target temps (frame 120): float 0x1C, unused 0x20, a0 0x24,
+   a1 0x28; base build 3 temps (a1 36 / a0 32 / float 28 + pad). By item 1 the target needs a FOURTH 4-byte
+   coloured item ahead of the 0x3C4 load (bit 65) in the same region (flow nodes 4..6 = the `var_v0 != 0` diamond
+   around sp5C), plus one fewer home. The 0x990 word was a named copy `var_v0 = *(s32 *)(arg0 + 0x990)` tested twice
+   (sp5C diamond and the later `sp60 *= 0.5`): a variable, so not an item. Reading it IN PLACE at both tests makes
+   the load an expression (bit 53, region nodes 3..6, coloured v0, never stored) -> T0; the three 0x3BC / 0x3C0 /
+   0x3C4 loads -> T1 / T2 / T3 (float spill drops one slot); `arg0 + 0x3B0` / `arg0 + 0xCC` / `arg0 + 0x3C8`
+   (bits 197 / 199 / 204) -> T0 / T1 / T0. That compile is code-identical with temps at 36 / 32 / 28 / 24 (99.977:
+   one word too low). Then the kit CCXCI "hold" (`var_f0 = dot3(arg0, sp6C);` before the -0.1 call) drops dot3's
+   return home and the whole temp block moves up one word: float 28, unused 32, a0 36, a1 40 = 100. The other two
+   home-removal routes (de-naming `temp_a1` -> 99.960: it reorders bits 197 / 199 so a0 / a1 swap; macro'ing
+   `temp_f12` -> 99.943) are worse, as item 1 predicts for the first. Spliced over a placeholder on both paths; the
+   donor's .rodata IS the USO literal pool layout (0.15 .. 0.724f at 0x8C8..0x914), so the renamed section reloc
+   is pinned `func_0000B75C_rodata = 0x8C8`; `bu_b75c_mvf = 0`, `D_00008170 = func_00008124 + 0x4C`.
+   **Lever (general): to ADD an unused temp word, turn a named single-def value that is live across a BB diamond
+   into an expression read at each use (a load of the same field, a recomputed address); to REMOVE one, name it.
+   To move a temp up or down, change the item's first-occurrence order (which statement mentions it first) or
+   add / remove a home above the temp block.**
+6. **Not slot-class (checked with the item-1 view, no change):** 31C0 (KB new-temp is an edg VARIABLE home, not a
+   uopt temp), post0b 34890 (h spills to its own home -16; the target's -12 is a home slot too -- home order, not
+   temps: -zdbug:4 shows NO coloreditems in 34890. With make's parameters swapped, `make(int h, O *o)`, h is var
+   -12 = sp+44 as in the target, but -zdbug:6 shows its LR split and both pieces "not colored (-ve save)" while
+   make's o becomes a live LR (v0) -- 89.2; `make(me(o)->h, o)` 98.57; `o + 0`, `o->h + 0`, `if (1) {}` / kept
+   tests / `int hh = h` / `h + 0 * (int)o` variants 86-89), 41D40 / 4B620 / 46050 / E2D0 / 396FC / 35B1C (register or scheduling diffs only, no sp-offset lines).
+
+## kit CCXCIV (agent-g 2026-10-31, run 259): NCC frame-slot model, empirical -- an inline function's NAMED local (or named result) gets its own home at the FRAME BOTTOM per expansion (no overlay), unused locals get NO home, block locals sit in program order among the temporaries; moving a named inline result out to a caller function-scope local fixes a whole-region slide (game_uso 3558 93.61 -> 93.68, sp-offset set = target); an 8-byte dead block home re-places one operator= temp (game_uso BB8C 98.52 -> 98.55) <a name="kit-ccxciv-agent-g-run259"></a>
+
+**1. Read the sp-offset SET first.** `objdump --disassemble=FN` both objects, collect every `N(sp)` / `addiu r,sp,N`,
+and compare the sets (frame size too). When the sets differ by a constant slide over a region, the fix is a frame-slot
+move, not a colour lever. Run 259 scan of the NCC donors: equal sets on 48510 / 3B6A0 / 469A8 / 5A2C4 / 41D40 / 4B2F4 /
+493AC / 3AE58 / 46790 / 4BAF4 / 54E78 / 2E354 / 33094 / 2DE0 / 4568; one spill word off on 3BE1C (76 vs 84), 0F04
+(120 vs 124), 4C5E4 (68 vs 72), 30AF4 (24 vs 28), 3E5E0 (32 vs 44); whole-layout differences on 37540 / 36694 / 48AEC /
+4F2DC (frame 408 vs 424) / 42938 (136 vs 88).
+
+**2. What gets a home (NCC 7.1, measured by inserting / removing declarations):**
+- an inline function's named local or named result (`float r = ...; return r;`, `int n = dl->n;`, `DLHead *d = dl;`)
+  gets a home per expansion, at the bottom of the frame, never overlaid: 3558's `len2()` named r put every low object
+  8 bytes above the target; unnaming len2x's or len2's r each slides the low region back;
+- a function-scope or block local that is never used gets NO home (pads `int pad;`, unused `P2 dz;` are no-ops: the
+  old "unused p1, p2 set the frame" effect in 37540 is because they are V3 objects with a user ctor);
+- a block local with a dead store (`{ P2 dz; dz.a = 0; }`, no code) gets a home in program order among the
+  temporaries: in BB8C, inserted before the norm statement, it pushes norm's operator= parameter temp from 156 to 164.
+
+**3. Moving a named inline result to the caller keeps the codegen and moves the home.** 3558: `len2()` written as
+`return y * y + x * x + z * z;` alone loses (93.61 -> 93.12: the named r was load-bearing for the colouring), but
+`l = w.len2(); t = f(l);` with `float l;` declared at function scope after t reproduces the named-temp codegen AND puts
+the home in the declaration region: the sp-offset set equals the target's, 93.61 -> 93.68 (in-tree). Declared in a
+block (`{ float l = w.len2(); ... }`) the home goes back to the bottom (block local of a late statement).
+
+**4. BB8C: two coupled moves.** The 8-byte block home alone grows the frame to 304; with operator* / operator-
+returning a NAMED set()-filled result (`V3 r; r.set(...); return r;`, the 36694 / 64388 kit) the frame stays 296 and
+norm's parameter temp lands on 164: every sp offset equals the target's, 98.52 -> 98.55.
+
+**Negatives / leads.**
+- 31A74 (post, cfe): writing the 0x1CAC0 store AFTER the sel clamp gives the target's shape everywhere (bgez delay
+  `lui at`, join `mfc1 a1`) except one pair -- ours `swc1; jal; sb a2,35(sp)` vs the target `sb a2,35(sp); jal; swc1`.
+  The sel store-back is always emitted right before the call, after the ACC store: argument-embedded stores
+  (`f(K, ACC = r)`, `f((ACC = r, K), r)`), read-back `f(K, ACC)`, store placements (17 positions), bbsplits, clamp
+  spellings, goto block orders, a separate clamp int (+frame) all keep it. It scores LOWER than the run-234 base
+  (97.16 vs 97.73) despite fewer differing words, so it is not committed; it is the shape to start from.
+- 2840 (game_libs): making BOTH sp3C and sp38 volatile reproduces the target's memory structure exactly (dx / dy
+  stored to their homes 60 / 56 before the sqrt call, reloaded, divided, stored back, reloaded at the end) but the FP
+  colours shift (f16 / f18 locals -> f14 / f16, sum2 f18 instead of f14): 83.2. The statement-order grid on that body
+  (180) gives dx f2 (target) at 87.45; decl orders, named sums, address-taken forms flat. Lead: what gives the
+  pre-call sum2 web f14 in the volatile body.
+- 37540: in the target hx is spilled to ITS HOME (168, right below hy) -- the returned value of gr()'s named local x
+  spills to an inline bottom home (72) in ours. `hx = s->v60.x; gyz(s, hy, hz);` removes the inline home (frame 192 ->
+  184) but costs codegen (93.85); decl / pad grids on top (360) do not recover. 
+- 42938: next() / nD() named locals are 24 of the 48 excess frame bytes (all sites -> nC: frame 112); with the tail
+  block, 88 = target is reachable, but function-scope d / n / c0 macro forms of next() cost codegen (76.6).
+- 0F04: unnaming next() or nextp() moves the spill 120 -> 124 (target) but changes the appends (95-97); caller-side
+  n0 forms (reference parameter = memory, pre-computed packet) worse.
+- 4E424: b in y0's register (f14) and dy / dz as new locals: the min / max half then matches word for word, but dy is
+  copied (`mov.s f0, f2`) and the zero constant takes f18: 78 at 204 bytes. 40304: while(0) anchor orders (216) and
+  float decl orders (120) flat. 250C8: fontId as an unnamed ASYNC_ID expression is +12 bytes.
+- Zero-use `--exprs` re-sweeps flat on 0F04 / 250C8 / 41D40 / 4B2F4 / 493AC / 3BE1C / BB8C / 3AE58 / 46790 / 3E5E0 /
+  54E78 / 48AEC / 4BAF4 / 4F2DC / 4C5E4 / 3558; 33094 += / *= operand-order grids (96) flat.
+
+**Reproduce.** Offset set: `objdump -d -M no-aliases --disassemble=FN X.o | grep -o '[0-9]*(sp)\|sp,[0-9]*'`, sort -u,
+compare with expected/. Home probes: insert `{ T dz; dz.f = 0; }` at each statement (T in {P2, double, V3, float[2]})
+and watch which objects move; unname inline results one at a time.
