@@ -14656,6 +14656,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCLXXXII (agent-g 2026-10-31, run 253): **a dead `or rX, ivreg` register copy in a strength-reduced loop = a local holding the OLD IV value, read only by an empty `if (v) {}` placed AFTER the source increment (before it, uopt copy-propagates the local onto the IV and emits nothing); the copy lands at the assignment line; bootup E68's two dead copies are cfe, not an NCC tell; E68 residual = the MgrE68 pointer colours s0 unsplit where the target splits it (t0 load / v0 phase 2 / s1 phase 3)**](#kit-cclxxxii-agent-g-run253) -- _NM bootup E68 96.83 -> 97.80 (e8bd82387, 3032 of 3036); both copies give the target loop shape but one extra spill (3044); both copies + `if (1) {}` after LOADTEXTILE = 3036 with only one andi/addiu pair misplaced (97.55, the start point for the m work); m-split / variable-split / counted-use / register negatives; game_libs 2840: a volatile struct reproduces the target's vx / vy memory ops exactly (FP colours rotate, 83.2)._
 - [kit CCLXXXIII (agent-g 2026-10-31, run 254): **an empty `if (p) {}` on a pointer the loop body dereferences, between two of its appends, is NOT the same lever as `if (1) {}` there (the test is a use of p); after a structural gain re-run the per-site append-spelling greedy (the best spelling moves); E68's m is ONE variable the allocator splits -- separate per-phase variables push the phase-3 `m->dl` expression LRs into s-registers; enough BB splits make m impossible-to-colour but split into small caller pieces; re-typing a repeated pointer load in one region (`*(s32 *)&m->dl`) gives that region its own expression LR**](#kit-cclxxxiii-agent-g-run254) -- _NM bootup E68 97.80 -> 98.61 (3036 B = target, word-for-word up to registers; residual = m only; a separate phase-2 m1 now keeps self homed and phase-3 m in s1, 97.53, m1 colours after dl / count / _n); kernel 18F0 spelling grid flat (mask hoist / out-of-line peel store)._
 - [kit CCLXXXIV (agent-c 2026-10-31, run 252): **an inline call's `this` routed through a ZERO-CODE ACCESSOR (`o->me()->sub->ctx->next()`, template `me(p)`, `ref()`) is a different edg temporary from the directly-spelled pointer and moves a whole packet's ugen order / schedule (and gives that site its own colour family); a deeper-but-folding operand tree (`((c & 0xF) * 8) << 5`) is evaluated first by ugen; verify spelling wins on the register-stripped instruction multiset (decoys raise objdiff with wrong immediates)**](#kit-cclxxxiv-agent-c-run252) -- _NM post0b 46050 92.43 -> 99.36 (1848 B; texrect block now target-scheduled, t-ring equal everywhere; left: a swap of two next() pool colours, cc a0, one delay-slot choice); template `me(p)` per-pkt greedy: gui 3714 97.41 -> 97.94, gui 329C 99.06 -> 99.37, post0b 34890 98.75 -> 99.57, 48AEC 97.26 -> 97.29 (`me(me(gctx))->load(c2)`, found once the sweep also scanned the inline members); flat on 4C5E4 / 0F04 and ten others._
+- [kit CCLXXXV (agent-g 2026-10-31, run 255): **reading `-zdbug:5` (`>>>active<<<` blocks: adjsave, forbidden set, LR = itab index): E68's phase-2 `dl` / `count` expressions are forbidden v0 / a0 because they reach the phase-3 calls -- the target's m is ONE variable that uopt split; a separate phase-2 variable's phase-2-only `count` expression (adjsave 13500) always takes v0 first, so the two-variable route is closed; the split itself is not reachable under the documented split rules**](#kit-cclxxxv-agent-g-run255) -- _No gains; E68 stays 98.61 (NCC rewrite 94.04, accessors inert on m); 42938 accessor greedy / zero-use flat, 2840 single-variable dx forms <= 90.93, 36694 accessor / named-product forms <= 90.98._
+- [kit CCLXXXVI (agent-c 2026-10-31, run 253): **a gbi macro that re-evaluates ONE pkt expression for several appends (stock gSPTextureRectangle: TEXRECT + two gImmp1 RDPHALF) hides them from the per-site accessor lever -- give the macro one pkt parameter per append, then re-run the best-improvement per-site greedy**](#kit-cclxxxvi-agent-c-run253) -- _NM post0b 46050 99.36 -> 99.58 (a3fe4a88e; residual pure colouring + one delay-slot fill); next() body variants, per-append empty tests, block-local ctx, m-base locals flat; zero-code `me()` wraps flat on 41D40 / 4B2F4 / 3BE1C / 493AC / 48AEC / 0F04 / 3714 / 329C; 34890 h-spill slot negatives._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
 - [kit CCLXXII (agent-c 2026-10-30, run 247): **a folded `+ 0` on one loop's test moves the shared edg pool temp to the OTHER loop (493AC: the second loop's next() result leaves the call-crossing s2 temp); taking a local's address through a member call (`getPos(vb)`, `e = vb - va`) makes it memory-resident like a target that stores it after init (3558 length fixed)**](#kit-cclxxii-agent-c-run247) -- _NM 493AC 99.36 -> 99.43, game_uso 3558 91.62 @ 956 B -> 92.60 @ 1008 B; 41D40 / 250C8 / 3AE58 / 46790 / 3E5E0 / BB8C / 31A74 / `+ 0` toggle sweep negatives._
@@ -51781,3 +51783,95 @@ _NM post0b gl_func_00046050 92.43 -> 99.10 (1848 B, length unchanged; commits 24
    3BE1C / 54E78 / 46790 / 3AE58 / 3E5E0 / BB8C / 41D40 / 48AEC.
    Addendum: scanning the WHOLE file (inline member bodies included, not just the function body) found post0b
    48AEC 97.26 -> 97.29 (`me(me(gctx))->load(c2)` in the matrix else arm); nothing new on the other donors.
+
+## kit CCLXXXV (agent-g 2026-10-31, run 255): bootup E68's last residual read off the zdbug:5 priorities -- the target's phase-2 `dl` / `count` expressions are forbidden v0 / a0 exactly like ours with ONE shared m (their live ranges reach the phase-3 calls), so the target's m is one variable that uopt split; a separate phase-2 variable can never reproduce it (its `count` expression is phase-2-only, adjsave 13500, takes v0 first); negatives on the fallbacks 2840 / 36694 / 42938 (accessor greedy, zero-use sweeps, dx/sp3C forms) <a name="kit-cclxxxv-agent-g-run255"></a>
+
+_No gains. Harness: committed E68 body as a standalone (`hdr.h` = the two typedef / extern lines of the run-254
+standalone, then `src/bootup_uso/bootup_uso.c` lines 728-902 = the NON_MATCHING block from the first `extern char
+D_000066B0` to the closing brace), `cc -c -G 0 -non_shared -Wab,-r4300_mul -O2 -mips2 -32`, objdiff
+`-c functionRelocDiffs=none` vs `expected/src/bootup_uso/bootup_uso.c.o`: 98.6087, 3036 B = report._
+
+1. **Reading the dump.** `cc ... -Wo,-zdbug:5` writes `uoptlist` with one `>>>active<<<{hash} LR REG` block per
+   coloured live range, followed by `adjsave`, `forbidden: [...]` (colour codes 1-6 = v0 v1 a0-a3, 7-12 = t0-t5,
+   13 = ra, 14-22 = s0-s8) and the interference list. The LR number is the itab index: in the `-zdbug:6` itab,
+   `{hash} N isvar M 3 -OFF` is a named local with home -OFF (decl order), `{h} N isop uilod{h_m}` a load through it.
+   E68 shared-m body: 146 = `m->dl` (adjsave 6616, forbidden [v0 a0] before anything is coloured: its LR reaches
+   the phase-3 calls) -> v1; 147 = `->count` (6015) -> a1; 144 = `_n` (4911) -> a2; 151 (a block-scope packet
+   `_g`, home -348, 4000) -> v0; 172 / 182 / 227 / 237 / 254 / 271 (phase-2 `_g` temps, 3000) -> a0 / v0 ...; then
+   m = 109 (adjsave 1718, forbidden [v0 v1 a0 a1 a2]) -> s0, the first s-register user.
+2. **Two variables cannot work.** With the run-254 separate phase-2 `m1` (97.53 body), m1->dl and ->count are new
+   phase-2-only expressions: `count` 13500 and `dl` 11000 colour first with NOTHING forbidden (v0, v1), `_n` a1,
+   151 a0, m1 3286 -> a2. The target has dl v1 and count/_n a1 in BOTH phases, i.e. the phase-2 expressions are
+   the same call-crossing live ranges as phase 3's -- the same m variable. Every m1 lever below confirms m1 never
+   rises above the expressions: all-NEXTB / NEXTBI / NEXTBI2 combinations over the five phase-2 appends (184,
+   best 97.55, m1 a1/a2), `while (0) { m1 = E68_MGR; }` / `{ _n = (int)m1; }` / `{ head = (GwE68 *)m1; }` and
+   `if (m1->dl) {}` / `->count` / `->buf` at every phase-2 slot (flat or worse), phase-2 m1 as a reused parameter
+   (`cfg` / arg2 / arg3 / arg4 cast to MgrE68 *: 97.84 best, it takes s0 because the parameter's LR starts at entry).
+3. **The split the target needs, and why we do not get it.** For the target shape the phase-2 piece of m must be
+   coloured while v0 is still free in phase 2, i.e. before the phase-2 `_g` temps (adjsave 3000), and after 151
+   (it holds v0 in phase 3, which is what keeps v0 off the whole m). Under the documented rules a split happens only
+   when the LR is impossible to colour or `adjsave * span <= best register cost` (<= 60 for a fresh s-register),
+   neither of which can hold for m at that rank. Probes on the shared-m body, all negative: K x `if (m) {}` at the
+   TRI1 slot or the j-body end (K = 2-16: 92.1-98.48, m stays s0), a dead-def extension of m over phase 1
+   (`m = (MgrE68 *)buf;` before the vertex loops + K x `if (1) {}` + `if (m) {}` before phase 2, K = 0-128: m
+   becomes one caller-saved LR, a3, 88.8-92.4), 8 / 16 / 32 `if (1) {}` after any phase-3 header line (97.12,
+   3052 B; with 32 m is coloured t5 -- many blocks raise the fresh-s-register cost above the call-crossing cost),
+   m replaced by a cast parameter in both phases (`cfg`: 98.6087 = tie, identical rows), the manager read as a
+   plain `extern MgrE68 *` (phase 3 only: tie; phase 2 without a local: reloads, 83-84), phase-2 or phase-3 m as a
+   parameter with the other phase a local (91.6-96.6).
+4. **E68 under NCC (C++) is not closer.** The same body as a .cpp (extern "C" wrappers): 93.95 / 3032 B (padq is
+   dropped: NCC gives no home to an unreferenced local); appends as inline members `m->next()` / `nextb()` /
+   `nextbi()`: 94.04; zero-code accessor `me(m)->next()` on phase 2, phase 3 or both (kit CCLXXXIV): identical
+   94.04, `me(me(m))`: 90.85. m stays s0 in every NCC variant.
+5. **Fallbacks, all flat.** post0b 42938 (NCC, 97.60): per-site greedy over {G.o->ctx, me(G.o->ctx),
+   me(me(G.o->ctx)), me(G.o)->ctx} x {next, nA, nB, nC, nD} x {"", " + 0"} plus `c` / `me(c)` on the viewport
+   block (215 probes): best = base; zero-use-sweep (35 probes) flat; guard spellings (`rec[idx].a`, `(&rec[idx])->a`,
+   `(rec + idx)->a`, a `u32 ix` local, `me(&rec[idx])->a`, 65 combinations) identical. The guard-constant colour
+   residual (&idx / &rec / 0x50: target t2 / t0 / t3, ours t4 / t3 / t5) comes from six one-block named inline
+   locals (homes -28..-64, adjsave 3.0, the first packet run's next() d / n) that interfere with the hoisted
+   constants and take a1 / a3 / t0 / t1 / t2 first. game_libs 2840 (NCC, 93.28): reading the target again, sp3C /
+   sp38 are MEMORY variables (store after `sp3C = dx`, reload for `vx = sp3C`, store at `sp3C = vx` after the join,
+   reload at the last call) and dx / vx are the coloured ones; in our NCC build sp3C is not a candidate at all
+   (zdbug:6: copy-propagated, vx is the coloured LR). `volatile` on both gives the target's memory pattern for both
+   but recolours the FP set (f16 -> f14 etc.): 83.25, and a 32-variant order / test grid plus lever-sweep `all` on
+   it stays 83.3; address-taken sp3C (`if (&sp3C) {}`, `(void)&sp3C;`, a pointer copy) is ignored or 81; single-
+   variable rewrites (in-place `dx /= len`, `vx = dx` copies, sp3C computed with dx a copy, 20 forms with / without
+   the volatile sp38 and the two `if (arg2) {}`) score 79-90.6; `if (dx / dy / vx / vy / len) {}` sweeps <= 90.93;
+   zero-use-sweep flat. post0b 36694 (NCC, 90.96): `rf()` / `me()` reference / pointer
+   accessors on p, n, the product and the return (12 forms) best 90.98 (`p - rf(n * dot)`, not kept: +0.02 with a
+   changed temp layout); a named function-scope `V3 v = n * dot` puts the product copy at the top of the frame
+   like the target's sp+228 but edg then elides one copy of the operator- chain (708 B, 90.07-90.26, all 48 decl
+   orders of v / r / l / px-pz).
+
+## kit CCLXXXVI (agent-c 2026-10-31, run 253): post0b 46050 99.36 -> 99.58 -- a gbi macro that re-evaluates ONE pkt expression for several appends (gSPTextureRectangle's TEXRECT + two gImmp1 RDPHALF re-evaluations) hides those appends from the per-site accessor lever; give the macro one pkt parameter per append <a name="kit-cclxxxvi-agent-c-run253"></a>
+
+**Lever.** The stock texrect macro is `{ Gfx *_g = (Gfx *)(pkt); ... gImmp1(pkt, G_RDPHALF_1, ...); gImmp1(pkt, G_RDPHALF_2, ...); }`
+-- the same `pkt` text is expanded three times, so a kit CCLXXXIV spelling (`me(CTX)->next() + 0`) lands on all
+three appends at once. Rewriting the macro as `gSPTextureRectangle(pkt, pkt2, pkt3, xl, ...)` (pkt2 / pkt3 used by
+the two gImmp1 lines; no code change by itself) lets the greedy choose each append separately. 46050: TEXRECT
+`me(CTX)->next() + 0`, both RDPHALF appends plain `CTX->next()` -> 99.36 -> 99.58 at 1848 B (the gain is the
+RDPHALF appends' dl / n / pkt colours). gui 329C / 3714 / 0F04 already had the split (kit CLVII); their per-site
+greedy is flat.
+
+**Reproduce.** Template the donor body with `@P<k>@` per append site, a JSON list of spellings
+(`{CTX, me(CTX), me(me(CTX)), CTX->me()} x {next, next2, ...} x {"", " + 0"}`), and evaluate every single-site change
+of the current assignment in one batch (<= 200 objects, `timeout 600`), take the best, repeat until flat
+(best-improvement greedy; objdiff `-c functionRelocDiffs=none`).
+
+**Negatives (46050 at 99.58, all flat or worse).** Body variants of next() (`dl->buf + dl->n++`, address-before-
+increment, `int n = dl->n++`, `(*dl).`) on every site; empty tests `if (o) {}` / `if (1) {}` / `if (CTX) {}` /
+`if (o->sub) {}` after each of the 19 appends and around the glyph; a block-local `Ctx *c = CTX;` per append
+(CCLXX one-live-range); first-read / increment placement (inside the `if`, after the read, comma in the test --
+these drop the target's cursor copy, 1844 B); the right-margin base as a named `int *m` at four positions
+(98.36, 1844 B); `switch (cc)` / `switch (cc = ch)` / `0 != ch`. The remaining residual is pure colouring: prologue
+append result registers (target v0 / a0 / a3 rotation), the F5801000 append's ctx temp (target t0), the `s3++` vs
+`addiu s8` delay-slot fill and `beq s5,a1` operand order at the switch head.
+
+**Also flat this run** (zero-code `me()` wraps on every `IDENT->`, `obj.` method call and implicit `this` member):
+post0b 41D40 (99.90; plus next() / cur() body and call-site wraps -- the bottom condition copy's array reload colours
+a1, target v1), 4B2F4 (C-style body; `me()` on pointer locals and `P()` macro results), 3BE1C, 493AC, 48AEC (the
+appends are inline members shared by every site; a per-site lever would need per-site member copies), gui 0F04
+(30-spelling x 5-site greedy), gui 3714 (35 x 5), gui 329C (26 x 7 plus `me()` on `arg0` / `spr`). 34890 (99.57):
+h's pooled temp spills to 0x28 (target 0x2C); swapping make()'s parameters to `(int h, O *o)` puts h at 0x2C but
+turns it into a memory home (320 B); `me(o)` at the call restores the temp but at 0x28 again; a `volatile` pad in
+make() moves only the a2 / a3 spill slots (0x20 / 0x1C -> 0x1C / 0x18).
