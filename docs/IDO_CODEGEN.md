@@ -14651,6 +14651,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCLXXVI (agent-c 2026-10-31, run 249): **outgoing stack words copied with ALTERNATING t-registers (t8 / t7 / t8) + a param home spill/reload = ONE struct passed by value (`*r`), not three scalars (3C43C 99.47 -> 99.91); a frame-size residual with correct top offsets can be MISPLACED homes: shrink unused-tail staging records and declare the scalars in the gaps (3C43C 98.26 -> 99.47, frame 224 = target); 3BE1C loop locals hoisted before cx / cz (frame 240 = target)**](#kit-cclxxvi-agent-c-run249) -- _NM 3C43C 98.26 -> 99.91, 3BE1C 98.56 -> 98.62; acc-zero colour / 4F2DC top-V3 negatives._
 - [kit CCLXXVIII (agent-c 2026-10-31, run 250): **a pre-call float 0.0 sharing ONE constant LR with a post-call 0.0 takes its colour: clear it from an INT variable set to 0 (`i = 0; acc.x = i;`, distinct uopt expression -> f0), then re-anchor the later zero with a float zero use right after the call (`dd = 0.0f;`) to keep its single post-jal mtc1; promoting an NCC NM donor: placeholder + both-path `_DONOR` block + `<fn>_rodata` pin for its literal**](#kit-cclxxviii-agent-c-run250) -- _post0b 3C43C EXACT (99.91 -> 100); 3BE1C / 41D40 / 4B2F4 / 34890 / 3AE58 / 54E78 / 4F2DC negatives._
 - [kit CCLXXIX (agent-g 2026-10-31, run 250): **uopt colours per VARIABLE across all its webs: move one web to another dead same-type local (variable-split sweep); a redundant arm equal to a pre-branch value folds away unless the fallback is an ELSE arm; a clamp-bound float variable set from a DOUBLE literal (`b = 1.0;`) keeps the target's f2 copy (`1.0f` is constant-propagated); an unthreaded `b; nop` lands on an `insn; b`**](#kit-cclxxix-agent-g-run250) -- _NM game_libs 2E354 94.23 -> 97.48 (3684 B = target), bootup E68 96.72 -> 96.83; no exact._
+- [kit CCLXXX (agent-g 2026-10-31, run 251): **variable-split moves that ADD a variable must keep the frame (u8 into a free byte under an existing u8 home, word type in place of a pad word); CROSS-TYPE moves (u8 web onto a dead u32) reach colours the same-type sweep cannot; a kept move can flip the variable it leaves, so re-sweep; multi-arm (switch) webs need a region rename; splitting a variable can drop its priority and spill its other web; a FUNCTION-typed extern accessed as `*(T *)((char *)fn + off)` gives the target's `lui; addiu` base with the offset in the access (data symbols fold it into %lo)**](#kit-cclxxx-agent-g-run251) -- _NM game_libs 2E354 97.48 -> 97.93 (3684 B = target); 35B1C EDG class version = cfe code; no exact._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
 - [kit CCLXXII (agent-c 2026-10-30, run 247): **a folded `+ 0` on one loop's test moves the shared edg pool temp to the OTHER loop (493AC: the second loop's next() result leaves the call-crossing s2 temp); taking a local's address through a member call (`getPos(vb)`, `e = vb - va`) makes it memory-resident like a target that stores it after init (3558 length fixed)**](#kit-cclxxii-agent-c-run247) -- _NM 493AC 99.36 -> 99.43, game_uso 3558 91.62 @ 956 B -> 92.60 @ 1008 B; 41D40 / 250C8 / 3AE58 / 46790 / 3E5E0 / BB8C / 31A74 / `+ 0` toggle sweep negatives._
@@ -51458,3 +51459,66 @@ directly (+0.34); two more s32 webs moved temp_v1 -> temp_v0 / var_v0_3 (+0.10).
 truncating arithmetic by hand. (7) E68 negative: splitting `m` (phase-2 vs phase-3 MgrE68 pointer, target
 v0 vs s1) into two variables (padq[3] to keep the frame) gives the same code either way round but costs one
 more saved s-register and hoists m->dl (96.83 -> 87.0).
+
+## kit CCLXXX (agent-g 2026-10-31, run 251): game_libs 2E354 97.48 -> 97.57 -- variable-split moves that ADD a variable must keep the frame (a u8 into a free byte under an existing u8 home, a word type in place of one pad word), and CROSS-TYPE moves (a u8 web onto a dead u32 variable) reach colours the same-type sweep cannot; a move can flip the colour of the variable it leaves, so re-sweep after every keep; multi-arm webs need a region rename <a name="kit-cclxxx-agent-g-run251"></a>
+
+Scored with the kit CCLXXIX one-unit scratch compile (asm_processor + cc of a copy of the unit, objdiff
+`-c functionRelocDiffs=none` vs `expected/...c.o`; the in-tree file reproduces report.json). Sweep generators
+(scratch, re-creatable from this description): `rng` = for every `X = ...;` line, rename X -> Y over the text
+up to X's next assignment, for every same-type Y absent from that text whose next later occurrence is an
+assignment; `rngx` = same with all word types (s32 / u32 / pointers) as one class; `rngy` = u8 <-> word pairs
+only; `rnf` = the web onto a FRESH variable (declared at the top or before the last declaration); `rnfr` = fresh
+variable declared in place of a pad (`volatile int padq[4];` -> `T nw; volatile int padq[3];`).
+
+1. **A fresh variable shifts the frame unless placed.** cfe gives every declared local a home, so a new
+   declaration moves every home below it; on 2E354 that costs a constant 0.004 (two u8 home bytes) and hides
+   small colour gains. The o->0x32 counter web split out of `temp_v1_2` into a new u8 `temp_v1_32` declared
+   right after `sp7D` (its byte lands at 0x7C, the free byte under sp7D) took the target's v1 (lbu / beqz /
+   sll) with every home unchanged (+0.022). Same-type and fresh-at-top sweeps had both shown it only as a
+   0.02 bump with a home diff.
+2. **Cross-type moves.** The switch-5 odd-case selector (o->0x29, u8 `temp_v1_5`) moved onto the u32
+   `temp_v0_7` (dead there: first later occurrence is its assignment in the race test) gave the target's v1
+   for the selector and v0 for the event base (+0.038), but flipped all of `temp_v1` (the s32 that holds the
+   switch-5 base and four other webs) to v0. Re-sweeping then found the top-of-function `temp_v1 =
+   D_stateC_E354` web (compared only as `(u32)`) -> `temp_v0_7` (+0.033): temp_v1 back on v1 everywhere else.
+   Rule: after each kept move, re-run the whole sweep (the landscape changes); check value ranges by hand for
+   u8 -> word moves (only loads of u8 fields / small constants).
+3. **Multi-arm webs.** The generators end a web at the next TEXTUAL assignment, which is wrong for switch arms
+   (`t = 8; break; case ..: t = 0xC; ...` then a use after the switch): those variants read a stale variable.
+   Rename such a web as a region (selector / all arm assignments / the use). 2E354 regions (switch-1 var_v0,
+   0x14-path var_v0, switch-4 var_t9, 0x2E var_v0_3, switch-5 base, 0x11/0x12/0x13 var_v0_2, switch-6
+   selector): all neutral or worse on the run-251 base.
+4. **Splitting a variable can drop its priority.** temp_f18's second web (`o->0 / 200 + K`, target f4) into any
+   other float spills the FIRST web (the o4 * o0 * 100 product) to its home -- the product variable alone has
+   too few references to be coloured (3684 -> 3696). Only product -> var_f4 (three webs, high priority) stays
+   neutral; then the second web lands in f0 / f16, never f4 (36-variant P/S/C grid, neutral at best).
+
+Negatives (base 97.568): 592 pairs of the 35 neutral single moves (one per web) flat; rnf / rnfr fresh splits
+flat; sp6B / var_v0_2 copy variants for the target's `or a2,v0` before the 25.0 test and second `sb v0,0x6b`
+(copy-propagated, flat); direct switch on the o->0x15 field (-1.8). Variable sweeps (rng / rngx / rngy / rnfr)
+flat on bootup E68 (96.83), 24B8 (99.02; also r / k declaration grids and the `r` removal: the 0 latch is
+spilled to a ugen temp at 0x30, the target to k's home at 0x4C), E2D0 (99.54; 28 `1.0f + arg4` spellings),
+NCC donors 2840 (93.28) and 3B9C0 (95.19), and unassigned cfe 469A8 / 415A4. 4E424: a 55-variant role grid with
+the target colours read off the diff (dy f0, dz f2, b in y0's f14, zero f16) is never better than the current body
+(fresh dy / dz variables lengthen it to 204-216 B).
+
+35B1C (post0b, unassigned, 2 words: the vtable store `sw t6,12(s4)` sits after `addiu v1,s4,4; li at,-4` in
+the target): the body as a real EDG class (`struct W { int v; W() { v = 0; } }`, `struct Obj { Obj *next; W m;
+int c; virtual void f(); Obj(L *, W, int); }`, vptr at 0xC, `W tmp = s0->m; if (tmp.v == a2.v)`) compiles to the
+cfe code word for word except frame 0x48 (target 0x50) and the same early vptr store (97.21 with the ctor
+renamed); a comma-expression placement of the store in cfe moves it all the way into the bne delay slot (94.32),
+a 63-variant BB-split sweep is flat. The order needed is ugen `p = o + 4` computed, vptr store, p's spill store.
+
+Addendum (same run, 97.57 -> 97.93): (5) **function-typed symbol = `lui; addiu` base + offset in the access.**
+The target's else-arm counter reads/writes `lui v1,%hi(G); addiu v1,v1,%lo(G); lw v0,0x14(v1) ... sw t9,0x14(v1)`
+(a `%lo` with addend 0, the field offset in the instruction), while every data spelling (array view, struct,
+scalar extern) folds the offset into `%lo(G+0x14)` and can then not put the store in the bc1fl likely slot.
+Declaring the counters through `extern void D_E354_GB(void);` and accessing `*(s32 *)((char *)D_E354_GB + 0x14)`
+reproduces the base form (cfe never folds an offset into a function symbol's relocation): else arm word-exact up
+to t-registers, +0.36 at unchanged length. Use one function symbol per region that the target materialises
+separately (here the >= 7 arm's +0 / +0x14 accesses share E354_GA, the else arm has E354_GB; the 0x2E-block read
+stays on the array view because the target folds that one). Scan for it: target `addiu rX,rX,0x0` followed by
+`lw/sw off(rX)` where the build has `%lo(sym+off)`. Residual: the target re-materialises the base for the >= 7
+arm's +0x14 store (`lui v1; addiu v1` right before it) -- a third symbol (or GB) is hoisted to the arm entry by
+uopt (+8 bytes); store order / BB splits around it flat. On the build path such symbols must be pinned to the
+data symbol's address.
