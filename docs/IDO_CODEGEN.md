@@ -14646,6 +14646,9 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCLV (agent-c 2026-10-29, run 238): **NCC frame homes: an inline's scalar locals declared BEFORE its result V3 are homed above it; one variable instead of two drops a home; `V3 &v = x; v += w;` for a member +=; a DEAD nested pool allocation `if (0) { *a.me()->me() += *b.me(); }` homes edg's pointer-temp pool slots above the next statement's temporaries; array-indexed loop pointers (uopt IVs) move the spill slot up**](#kit-cclv-agent-c-run238) -- _bootup func_00008BD4 98.83 -> 100 EXACT (836 B) and post1b gl_func_00063964 99.964 -> 100 EXACT (1120 B), NCC donors; 4B0A8 NM 99.56 -> 99.83 (CCLIV hold on a while-loop); 31C0 99.965 -> 99.975; C310 / 454C4 / 59E80 / 1DDC / 4B2F4 / 4B620 negatives._
 - [kit CCLVI (agent-c 2026-10-29, run 239): **an expression form that leaves a variable in its home gets its register back with a folded `+ 0 * (int)(v)` use before the call it crosses; a count pointer read through a block-scoped NAMED pointer is a uopt variable (slot / pointer colours) whose home is paid back by MERGING two later same-type locals; a nested pool hold `(it.me()->me(), e->flags & 2)` stops inline-return copy-propagation inside a condition; 1DDC frame layout = named V3 e + nameless then-block + one block around mm / call**](#kit-cclvi-agent-c-run239) -- _post0b 4B2F4 NM 99.36 -> 99.63; 454C4 / 1DDC structural wins not yet fuzzy gains; 31C0 / C310 / 59E80 / 48510 / 4B620 / 5F5F0 / E2D0 negatives._
 - [kit CCLVII (agent-g 2026-10-29, run 239): **an UNSIGNED literal is a different uopt expression from the same int literal: a call argument that reads a constant-holding register (`or a1,t0,zero`) where the target re-materialises (`addiu a1,zero,1`) becomes unsigned through the callee's type-neutral parameter (`unsigned int a1`; a K&R call with `1u` is UB against a prototyped definition, narrower casts fold back to int)**](#kit-cclvii-agent-g-run239) -- _game_uso 0B3C NM 99.83 -> 99.9986 (only the 4-entry jump table left); 41D40 / 37938 / 3E5E0 / 34890 / 3AE58 / 40304 / 250C8 / 31A74 / 18F0 negatives with dump diagnoses._
+- [kit CCLXIV (agent-g 2026-10-30, run 243): **a hoisted call-argument pair's order follows uopt expression numbering (first appearance): name the late-wanted operand in an EARLIER call (`t = arg0 + 0x3B0; f(arg0 + 0xCC, t, ...)`) to flip it; ugen spill temps sit top-down under the lowest home with 8-byte bottom padding, so a target with an unused word between spills has one fewer home and one extra temp**](#kit-cclxiv-agent-g-run243) -- _NM bootup func_0000B75C 99.97 -> 99.98 (only the a0 / a1 spill words left); post0b 40304 NCC port 90.7 (cfe-compiled); spill-layout negatives listed._
+- [kit CCLXIII (agent-c 2026-10-29, run 242): **bootup E68 stays cfe: normalised, the cfe body differs from the target only in the phase-2 held width address vs two dead CULL-operand IV copies, which no cfe or NCC argument-temporary / inline / BB-split shape reproduces; post0b 46050: a second explicit-slot inline `next2()` on a greedy per-site grid puts the prologue dl temp on v0**](#kit-cclxiii-agent-c-run-242) -- _post0b 46050 NM 92.27 -> 92.43; E68 NCC ports 83.8-90.4 (cfe 96.72); negatives listed._
+- [kit CCLXII (agent-g 2026-10-29, run 242): **a long-ground cfe NM body whose residuals are "cfe can't" (literal hoist order, volatile-forced reload) is edg-compiled -- port it verbatim to NCC and drop the cfe levers; a named copy of a field becomes the field read in place (uopt CSE + fresh spill slot, no home); an inline float helper's sum lands in f0; an INT variable set to 0 and converted on the store is a distinct uopt expression from float 0.0 (NCC folds all literal spellings), so later zeros re-materialise `mtc1 zero`; merged single-range temps drop homes**](#kit-cclxii-agent-g-run242) -- _NM bootup func_0000B75C (2096 B) 94.38 -> 99.97, length + frame = target; left: temp_a1 spill slot, 0.8-compare hoist order. Standalone one-unit objdiff project = in-tree fuzzy per variant without make._
 - [kit CCLXI (agent-g 2026-10-29, run 241): **a pointer the target spills around calls is a plain register variable (no `&x` in a frame-home list; post-loop `if (p) {}` reads lower its adjsave below the s-register threshold); two stores of one ugen temp = a WHOLE-STRUCT copy (`a = D; b = a;`, `b.w = (a = D).w`); a reload above a branch = `if (v) {}` before it; a dead-stored call-result vreg homed below a block's class object moves above it with a dead nested `if (0) { f(f(0)); }` before the block**](#kit-cclxi-agent-g-run241) -- _EXACT bootup func_000055A0 (2392 B, 97.29 -> 100); 41D40 / 37938 / 250C8 / 40304 / 31A74 / 4E424 / 35B1C negatives with diagnoses._
 - [kit CCLX (agent-c 2026-10-29, run 241): **NCC copy propagation stops at a derived-to-base CONVERSION on the use: type the named copy as the derived pointer, retype the parameters that should read edg's new-temp, spell the uses that must read the named home `(Base *)p`; a later `new` that reuses the same edg pool temp redefines it and stops propagation (an argument temp stays busy through an inlined call body, a statement temp does not)**](#kit-cclx-agent-c-run241) -- _bootup 31C0 NM 99.975 -> 99.980 (only the case-1 KB argument / KB temp slot left); mgrproc 1824's `lw t8,1464(at)` is a RoData layout gap (pre.bin +0x44 + 0x5B8), not an external table; C310 / 4B2F4 negatives._
 - [kit CCLIX (agent-g 2026-10-29, run 240): **the jump-table bound check (`sltiu at,x,N`) is synthesised by ugen's build_tree from the cfe table length N (`clab length`), and ugen can only DELETE it (selector `and(E,K)`, or `str X <- and; fjp(X); xjp` adjacency) -- never narrow it; a source guard always has a cfe `loc` node before the switch, a CSE'd mask keeps the check, `guard + switch (x & 3)` = target + 1 `andi`; `cc -K` + `ugen ... -d` prints the ucode trees; game_uso 57D8 (exact NCC: 7- and 4-label chains) vs 8CD8 (same 4-label shape as a table, edg temporaries) = a second, EDG-family, table-emitting C++ compiler**](#kit-cclix-agent-g-run-240) -- _Negative, no code change: 0B3C 99.9986 / 8CD8 / 116C / 76F0 / 80001ADC keep the phantom 5th label; do not reopen without a new compiler binary._
@@ -50503,3 +50506,123 @@ Lower-fuzzy NM donors in a less-ground range paid off far better than the 99.9 c
    members, inline member M4()) reproduces the cfe body with the same early vptr store. 41D40 with kit CCLX's
    derived-to-base spelling (`((IBase *)this)->a` / `->idx` / `->last` in next() / cur(), `(IBase *)&it` reads in
    the body): best = base 99.903.
+
+## kit CCLXII (agent-g 2026-10-29, run 242): bootup B75C cfe 94.38 -> NCC 99.97 in one run -- a long-ground cfe NM body whose residuals were "cfe can't" items (literal hoist order, a volatile-forced reload) was EDG-compiled: port it to NCC verbatim, drop the cfe-only levers, then (1) read a field in place instead of a named copy so uopt CSEs the load and spills it to a FRESH slot (no home); (2) an inline float helper puts its sum in f0; (3) an INT variable set to 0 and converted on the store (`v = 0; a[0] = v;`) is a different uopt expression from float 0.0 (NCC folds every literal spelling, kit LXV), so later `0.0f` stores re-materialise `mtc1 zero` instead of sharing one coloured zero; (4) single-range float temps merged into one name drop a home each (frame = target) <a name="kit-cclxii-agent-g-run242"></a>
+
+_NM: bootup func_0000B75C (2096 B) 94.37595 -> 99.97328 (new NCC NM donor src/bootup_uso/bootup_uso_ncc_B75C_nm.cpp;
+the cfe body in bootup_uso.c stays as the reference lift). 524 / 524 words, frame 120 = target._
+
+Method (scratch /tmp/claude-1000/g242/, may be wiped): `probe.py target.o tsym sym files...` = NCC compile + a
+standalone objdiff project (`od/objdiff.json` with one unit, target_path = the expected .o, base_path = the
+variant .o, `-c functionRelocDiffs=none`) -- gives the in-tree fuzzy for one function in ~0.1 s without a make
+(calibrated: in-tree NM .o as base reproduces report.json exactly); `commute.py` = every 2-operand `+` / `*`
+group swapped (skips groups with a top-level comparison / comma), one variant each; `greedy.sh` = sweep, keep the
+best, repeat; `merge.py` = rename variable B into A (non-overlapping live ranges only: check by hand);
+`spd.py` = frame + list of used sp offsets vs the target.
+
+1. **cfe-vs-edg triage (kit CCXLIII tells).** The cfe body's documented residuals were "20.0f / 30.0f hoist
+   order" and a `volatile` read forcing the 0x974 reload; a verbatim NCC compile (extern "C" wrapper, same
+   body) hoisted the literals in the target order at once and coloured the 0x974 store / reload like the
+   target. Raw NCC was 95.14 (length 522) after dropping only the sp1C home keeper.
+2. **cfe-only levers removed:** folded `+ 0 * *arg0` counted uses, the `goto block_67` tail (write
+   `var_v0 = *(0x9A8) & 1;` in both arms: the target's `andi` sits in the delay slot of the arm's own branch,
+   cfe-style shared tail cross-jumps), `sp60 *= 2` (NCC keeps `mul.s` by 2.0f anyway).
+3. **Named copy -> field read in place (+0.5).** `sp1C = *(f32 *)(arg0 + 0x3C4)` in both arms was a named
+   local with a home (`swc1 f8,104(sp)`); the target spills the value to sp+0x1C (a uopt spill slot, no home).
+   Reading the field directly in the later expression makes the load a CSE temp that uopt spills like the
+   target.
+4. **Inline helper return in f0 (+0.45).** The target's `add.s $f0,...; cvt.d.s` for the -0.1 call argument =
+   `static inline f32 dot3(char *p, f32 *v) { return ...; }` (named-temp spellings `var_f0 = dot` do not do it).
+   The inline's pointer parameter also keeps the sp6C array in memory, so the earlier dead
+   `if (0) { f(sp6C); }` became unnecessary.
+5. **Operand order** via greedy single-commute sweeps (95.7 -> 98.76) and then by hand at the first FP-ring
+   divergence: `-x * y` for a negated call argument (99.28; the commute generator does not split a unary
+   minus operand), `a08 * k600` (99.30).
+6. **Named pointer = target v0 (+0.13).** `p = *(char **)(arg0 + 0x800); if (*(s32 *)(p + 0x10) & 0x200)`
+   gives the target's `lw v0,2048(a3)`; then the `if (1) {}` between the A6C store and its compare must go
+   (target compares the OLD value: slti v0,11; with the split uopt compares the incremented one, slti v1,12).
+7. **Distinct zero expression (+0.4, length = target).** The target has three `mtc1 zero` (sp6C in f0, the
+   0x960 == 100 block in f12, sp5C in f14); every float-literal spelling under NCC is one constant that uopt
+   colours once (f14, `mov.s` copies). An int variable set to 0 and converted on the store
+   (`var_v0 = 0; sp6C[0] = var_v0; sp6C[2] = var_v0;`, var_v0 is re-assigned later) is a different expression:
+   the other zeros then re-materialise like the target. `if (1) {}` after those stores moves that zero from f2
+   to the target's f0. `static const f32 kz = 0` also separates them but loads from RoData; `(f32)(s32)0`,
+   `0u`, `(f64)` casts, `f64 dz = 0.0` do not (folded or wrong length).
+8. **Frame (sp offsets only, fuzzy-neutral).** Each named local is a home word; merging single-range float temps
+   (temp_f0_2 / temp_f2 / temp_f2_9 into var_f0 / var_f2) brought the frame 136 -> 120, and declaring temp_f12
+   right after the sp6C array moved the home block down one word (sp60 at sp+0x60 like the target).
+9. **Left (99.97):** temp_a1's spill slot (build sp+0x20 under var_a0's 0x24; target 0x28 above it, with an
+   unused word at 0x20 -- the target spill area is 5 words, ours 4; 52 call-argument variable / naming
+   variants do not move it), and the 0.8 compare block's hoisted `arg0 + 0x3B0` / `arg0 + 0xCC` order
+   (temp-variable spellings before / after the if do not change it). Plus the D_00008170 call argument's
+   +0x4C addend (a pin on promotion).
+10. **Other runs this session (negatives / leads).** game_uso 3558 (NCC NM donor, 91.56, 239 of 252 words): the
+   target keeps va / vb in their frame homes (swc1 228..248, reloaded around the matrix rows) and juggles the
+   matrix row temps through sp+0x28 / 0x2C -- `vb += stage;` (inline operator+=, `this` = &vb) +
+   `e = vb - va;` (const-ref operand = &va) + `s0->b0->mtx.getPos(vb)` give that memory shape and the
+   juggle (length 239 -> 251; then `z = s * z` in operator*= -> 252 = target) but the FP colours drop to
+   89.4 (two greedy commute / 3-term permutation rounds: 89.69) -- a lead for a longer colour pass, not taken.
+   gui 2DE0 / 4568 and post0b 415A4 compiled verbatim under NCC are far below their cfe bodies (86.6 / 74.6 /
+   93.0 vs 96.65 / 96.53 / 94.59): cfe-compiled, unlike B75C. 3AE58 (inline pick() variants, 30 spellings),
+   46790 (t8 / t9 ring parity: idx / dst spellings), 493AC (second-loop next() condition spellings: the
+   result stays in the shared edg pool temp s2), 3E5E0 (CB2 node / reg inlines / ctor init lists) flat.
+
+## kit CCLXIII (agent-c 2026-10-29, run 242): E68's dead `or` copies are not CULL / TRI1 argument temporaries in either front end (cfe or NCC); E68 is structurally cfe-correct up to one held address; per-site `next()` / explicit-slot `next2()` grid on post0b 46050 (NCC) moves the prologue dl temp onto v0 <a name="kit-cclxiii-agent-c-run-242"></a>
+
+_report.json (non_matching build): post0b gl_func_00046050 92.27056 -> 92.4329 (1848 bytes = target). No exact.
+Gate: full make ROM byte-identical (cmp), verify-blocks 6/6, `make non_matching_objects` 0 errors, no exact lost vs
+branch base 51e46a14f, sentinels 551E0 / 55B10 / EBC8 / C5B0 / 62F08 at 100. No post0b clip change (length unchanged)._
+
+1. **bootup E68: cfe vs NCC decision = keep cfe.** A standalone copy of the in-tree body (NM block + four typedefs +
+   `extern void *func_00000000(); extern char D_00000000;`) reproduces report.json exactly (96.72, 3032 of 3036), so it
+   is a valid sweep harness. With registers and branch targets normalised, the cfe body differs from the target in ONE
+   place only: the phase-2 inner loop, where ours hoists `lui; addiu` (the `*(s32 *)(int)&w` lever's held address) and
+   the target instead keeps the plain in-loop `lui; lw` width read PLUS two dead copies of the CULL operands' IVs
+   (`or a3,t5` = vidx*2, `or t0,s0` = (vidx+3)*2) right after the CULL append. Everything else (prologue, phase 1,
+   phase 3, the IV set t5 / s0 / s1 / s2, the 0x54 / 0x50 / 0x4C spills) already lines up. The same body under NCC
+   is 88.43 (3004); NCC variants with an inline `e68w` word writer (83.79), inline CULL (88.43), inline TRI1 / both
+   (87.16, 3056), inline `_SHIFTL` (90.36, 3012) never produce the copies and lose the cfe-correct phase-1 / phase-3
+   shape. Negatives in cfe (plain width read): CULL operands stored into the dead phase-1 locals x / y / col / row
+   (before, inside, after the CULL; scaled or not, 28 variants) all fold to the plain 95.62; `if (1) {}` /
+   `if (vidx) {}` after each of the 20 phase-2 lines (hoisted and plain width read, 80 variants) never adds the copies
+   (best stays 96.72). Isolated NCC loop tests (inline cull with by-value, by-reference, `a *= 2` params, a ctor
+   C(a, b), a returning inline, `int` params) emit no dead copies either. Conclusion: the copies are not front-end
+   argument temporaries; treat them as a uopt artefact of an unknown source shape and do not re-port E68 to NCC.
+2. **post0b 46050 (NCC): per-site append spelling.** The target's first two prologue appends and the last epilogue
+   append use dl = v0 / n = a1 (the rest a1 / a2 like ours). A second inline `Ctx::next2() { int n = dl->n; dl->n =
+   n + 1; return &dl->buf[n]; }` beside `next()` and a greedy per-site next / next2 toggle (22 sites) picked exactly
+   those three sites: 92.27 -> 92.43. The remaining prologue difference is n in a0 (target a1) because the target
+   still holds o in a0 through the first `o->sub` read; a second `Font *f` copy (`o`, `o + 0 * (int)(*(s32 *)o)`,
+   `o + 0 * (int)(o->mode)`; top / bottom / after-load placement; first append through o) gets the `lw 596(a0)` read
+   but swaps the prologue `or s0,a0` / `or s3,a1` order: flat at best (92.43). Folded `0 * arg2` uses in the first
+   appends (edg folds them before liveness) and uniform next() rewrites (`DL *d = dl`, `buf + n++`, pointer then
+   increment) are flat or much worse (60-86).
+
+## kit CCLXIV (agent-g 2026-10-30, run 243): bootup B75C 99.97 -> 99.98 -- a hoisted call-argument pair's order follows the uopt EXPRESSION order, so make the late-wanted operand's expression appear EARLIER (`t = arg0 + 0x3B0;` as an earlier call's argument); ugen's frame map for the leftover spill words (temps allocated top-down under the lowest home, 8-byte padding at the bottom) <a name="kit-cclxiv-agent-g-run243"></a>
+
+_NM: bootup func_0000B75C (2096 B) 99.97328 -> 99.98283 (src/bootup_uso/bootup_uso_ncc_B75C_nm.cpp). Only the
+a0 / a1 spill words are left (ours sp+0x20 / 0x24, target sp+0x24 / 0x28 with sp+0x20 unused), plus the
+D_00008170 +0x4C addend (a pin on promotion)._
+
+1. **Hoist order = expression first appearance.** The 0.8-compare block hoists the next call's `arg0 + 0xCC` /
+   `arg0 + 0x3B0` above `c.lt.d`; ours emitted a0 first, the target a1 first. In the `-Wo,-zdbug:6` uoptlist the
+   two `uadd{P} {K}` expressions were bits 199 (0xCC) and 200 (0x3B0), numbered by first appearance in the
+   function (the 0x9A8 & 1 arm's `bu_b75c_mvf(arg0 + 0xCC, arg0 + 0x3B0, ...)`). Writing that call as
+   `temp_a1 = arg0 + 0x3B0; bu_b75c_mvf(arg0 + 0xCC, temp_a1, ...)` (temp_a1 is the existing named pointer, its
+   other assignment in the other arm) gives the target order, and the a0 / a1 spill words now come out in the
+   target's relative order (a0 below a1). `0xCC + arg0` spellings, `&arg0[K]`, `temp_a1 =` placed at the 0.8 block
+   itself, var_a0 for 0xCC: flat.
+2. **Spill-word model (measured, for the next attempt).** Frame 120 = 0x18 (args + ra) + temp area + homes. uopt
+   homes (decl order, `-4 .. -80vreg` in the uoptlist; the inline dot3 return and the `+=` lvalue pointer are edg
+   homes at the bottom) sit at the top; ugen's spill temps go top-down UNDER the lowest home (a1, a0, then the
+   0x3C4 float), and the temp area is padded to 8 at the bottom (our unused sp+0x18). Tells: one extra declared
+   home (`char *kd = 0;` in some decl slots) moves all three spills down a word with frame unchanged; dropping
+   temp_a1 (de-named) drops a home and the frame to 112. So the target has one FEWER home and one EXTRA temp word
+   between a0 and the float (its unused sp+0x20) -- 76 home bytes + 20 temp bytes. Not found: `(*(s16 *)p)++`
+   without temp_v0_2 (code identical, but the post-increment's edg temp takes the freed home), de-naming
+   temp_f12 / temp_f2_2 with keepers (colours drop), `Vd *` derived-to-base temp_a1 (kit CCLX, spills move down),
+   148 x {dead `if (0) { f(f(0)); }`, `if (1) {}`} insertions and 80 keeper decl slots x 5 types: no
+   `28 / 36 / 40` layout at frame 120.
+3. **NCC-port checks.** post0b 40304's cfe body under NCC: 90.71 raw, 87.23 without the cfe levers (cfe 99.82):
+   cfe-compiled. 41D40 / 37938 / 3E5E0 / 3AE58 / 46790 / gui 329C are already NCC donors; 250C8 is the OoT audio
+   driver (C).
