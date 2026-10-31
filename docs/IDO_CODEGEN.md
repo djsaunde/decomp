@@ -14663,6 +14663,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCLXXXIX (agent-c 2026-10-31, run 255): **the named-result inline append (`Gfx *r = &dl->buf[dl->n++]; return r;`) is its own per-site spelling: put it in every per-site / PAIR grid (46050's epilogue pair moved only as a pair); 46050's F5801000 ctx t0 needs a3 busy in its live unit (no LR of ours is), `beq s5,a1` order is canonicalised by uopt; cfe spill-slot / FP-candidate residuals (31A74 sb-before-swc1, 40304 K1 + m30 slot, 250C8 fontId in the spill slot) resist decl / web / spelling sweeps**](#kit-cclxxxix-agent-c-run255) -- _NM post0b 46050 99.91 -> 99.95 (a90e3ede1), gui 3714 97.94 -> 98.25 (230a82946, 999da1a78); 31A74 / 40304 / 250C8 / 30AF4 / 5A2C4 / 0F04 / 329C / 493AC / 48AEC / 41D40 / 54E78 / BB8C / 3558 / 34890 negatives._
 - [kit CCXC (agent-g 2026-10-31, run 258): **re-run the zero-use sweep after every shape / decl change (new hits appear); NCC ugen loads the LIGHTER compare operand first (`nv + 1 >= max` gets max first, `nv >= max - 1` never does while nv is a ugen temp); NCC frame homes overlay across sibling blocks (42938's tail locals in a block: frame 136 -> 112, code unchanged) but inline-expansion homes do not**](#kit-ccxc-agent-g-run258) -- _NM post0b 3B6A0 96.325 -> 96.375 (e72d5602e), 3B9C0 95.19 -> 95.24 (a85e69ca3), 48510 98.71 -> 98.73 (d60e7fbf8), 37540 96.42 -> 96.43 (06f28880f, 720-order decl grid); 36694 / 2DE0 / 42938 / 2840 / 33094 / 415A4 / 469A8 / E68 / 2E354 / 4E424 / 4FD00 negatives._
 - [kit CCXCI (agent-c 2026-10-31, run 256): **bootup B75C's phantom temp word is a real uopt temploc that an existing web takes: deleting the 0x690 else-arm call (or a clamp assignment) makes our code-identical NCC body allocate an UNUSED word between the float and a0 spills (target shape); in the full body that web shares a slot (spilltemps region sharing), so the target differs in live-range overlap, not code; a constant / call-argument web gets a temploc with no store or load; second frame-112 route (de-name temp_a1)**](#kit-ccxci-agent-c-run256) -- _No gain; negatives 31C0 (KB new-temp = reused inline-ctor this slot, 100+ variants), E2D0 (arg4 ring f14 vs f16), 34890 (h home -16 vs -12), 1824 / 24B8 / 329C read-only._
+- [kit CCXCII (agent-c 2026-10-31, run 257): **B75C's a0 / a1 temploc order follows the first-arm call's argument form (named `temp_a1` -> a0 first; unnamed -> the target's word-before-a0 order, but the else-arm a1 web shares that word); E68's target has the phase-2 ve IV and j counter in s0 / s3 (ours t2 / t5), so the m split is an s-register-pressure outcome**](#kit-ccxcii-agent-c-run257) -- _No gain; ~330 B75C slot probes, E68 keeper grid, 41D40 next() / me() grid, gui 3714 / 329C grids, 6204 invented-parameter flip (not used)._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
 - [kit CCLXXII (agent-c 2026-10-30, run 247): **a folded `+ 0` on one loop's test moves the shared edg pool temp to the OTHER loop (493AC: the second loop's next() result leaves the call-crossing s2 temp); taking a local's address through a member call (`getPos(vb)`, `e = vb - va`) makes it memory-resident like a target that stores it after init (3558 length fixed)**](#kit-cclxxii-agent-c-run247) -- _NM 493AC 99.36 -> 99.43, game_uso 3558 91.62 @ 956 B -> 92.60 @ 1008 B; 41D40 / 250C8 / 3AE58 / 46790 / 3E5E0 / BB8C / 31A74 / `+ 0` toggle sweep negatives._
@@ -52253,3 +52254,70 @@ deleted -> unused 28 / a0 32; its `arg0 + 0x3C8` -> `(char *)D_00008170` -> unus
 (0x3BC CSE'd into the next call) -> a1 28 / a0 32; its 0x690 factor -> `2.0f` -> a1 28 / a0 32. So the word below
 a0 is shared by "the unused web" and whatever a1-class web exists; the target needs it NOT shared (float 28,
 unused 32, a0 36, a1 40).
+
+## kit CCXCII (agent-c 2026-10-31, run 257): B75C's a0 / a1 temploc ORDER follows the first-arm call's argument form (named `temp_a1` -> a0 first, unnamed -> the a1 web first with the else-arm a1 web sharing its slot: the target's "word before a0" shape, minus the sharing); E68's target puts the phase-2 `ve` IV and the j counter in s0 / s3 (ours t2 / t5), i.e. every s-register is taken before m is coloured -- the m split is an s-register-pressure outcome, not a split rule; negatives on B75C (~330 probes), E68, 41D40, gui 3714 / 329C, bootup 6204 <a name="kit-ccxcii-agent-c-run257"></a>
+
+_No report.json change, no commit. Gate on the unchanged tree 9f6a12aae: full make ROM byte-identical (cmp),
+verify-blocks 6/6, `make non_matching_objects` 0 errors, sentinels 100._
+
+1. **B75C slot map (frame 120, homes 84-116 unchanged in every probe).** Target temps: float 28, unused 32, a0 36,
+   a1 40. Base donor: float 28, a0 32, a1 36. Read the stores with
+   `objdump -d --disassemble=func_0000B75C x.o | grep -E '\s(sw|swc1)\s'` (offsets < 84, not ra).
+   - *First-arm call form decides the a0 / a1 order.* `temp_a1 = arg0 + 0x3B0; bu(arg0 + 0xCC, temp_a1, ...)` (base)
+     -> a0 32 / a1 36. The plain `bu(arg0 + 0xCC, arg0 + 0x3B0, ...)` ("nt", 99.9733: the 0.8-block hoist order
+     regresses, kit run 243) -> **a1 32 / a0 36**: the a0 web moves up to the target's 36 and the word below it is
+     the slot of a web allocated BEFORE a0, which the else-arm a1 web then shares. Grid over the first arm's a0
+     (inline / `var_a0`) x a1 (inline / `temp_a1`) x float (inline / held in `var_f0`) x statement order (16):
+     exactly these two classes. nt minus the 0x690 call -> a0 36 with 32 unused (the target's word);
+     nt minus the first-arm call -> still a1 32 / a0 36. In -zdbug:5 the only difference between base and nt is the
+     LR index order of `arg0 + 0x3B0` ({1034|1}, bbs 45/47) vs `arg0 + 0xCC` ({441|0}); the else-arm a1 web is
+     {1167|0} (bbs 36/38). So the target = nt's order with {1167} NOT sharing the first slot: the two webs would
+     have to be co-live somewhere, and no code-neutral probe made them so.
+   - *Negatives (slots + score, every one code-identical or worse):* else arm as goto / inverted A18 test /
+     same-line joins / three inline wrappers (`mvw(a, b, f, o)`, `mvb(o, k, f)`, `mv2(a, o, k, f)`) at the two
+     A18-sharing calls / `temp_a1` redefined before the 0x690 call / assigned inside the call's argument list /
+     `&arg0[K]` / `(char *)(f32 *)` (20, all base); `arg0 + 0x3C8` assigned at five earlier points (if-head, A6C
+     store, 0x800 read, 938 head, 9A8||A50 head) x first-arm form x else-arm kept / removed (30: base or nt
+     layout); `arg0 + 0x3B0` hoisted into a new local at three points and reused at the A18 / post-join calls (24:
+     the decl shifts every temp by 4, still three temps; uopt sinks it, {1034|1} stays bbs 45/47); empty tests
+     `if (E) {}` (E = the three call-arg expressions, `temp_a1`, `var_a0`) after the A18 block, after the arms and
+     after the join (30: base / nt layout or extra spills); `+ 0 * (int)(E)` in the five nearby conditions /
+     stores (30: NCC folds it, identical); `register` / `volatile` on var_a0 / temp_a1 / var_f0 / var_f2 /
+     temp_f12 in both forms (20); lever-sweep denaming / volatile / bbsplit / order on nt (187: nothing above
+     nt's 99.9733, slot map unchanged in all bbsplit compiles); zero-use-sweep on base (410: flat); single-
+     statement deletion sweeps on nt (95) and base (96, code-changing, diagnosis only: no variant gives three
+     int temps above an unused word except by deleting the a1 web; deleting `var_f12 = 0.0f` moves the float
+     slot to 24 and leaves 28 unused).
+   - *Working model (fits all seven int-slot observations above; unverified against the uopt source).* The int
+     call-crossing webs take templocs in LR-INDEX order (the -zdbug:5 `>>>active<<<` number = itab order of the
+     expression's first occurrence), each new slot BELOW the previous one, and a web reuses the earliest slot
+     whose occupants it never shares a BB with. Base: {1034|1} 201 -> 36, {441} 203 -> 32, {1167} 208 -> 36
+     (shared). nt: 441 (199) -> 36, 1034 (200) -> 32, 1167 (207) -> 32. The FP spill (28) and the unused word at
+     24 sit below. Read the target with it: slot 40 = a1-class, 36 = a0, 32 = a third int web's slot X whose
+     LR index is after a0's and which shares a BB with both earlier slots' occupants (it is live in the first
+     arm, bbs 45 / 47) yet emits no store / load. Named locals cannot be X: `if (temp_a1) {}` after the join
+     makes temp_a1 a real variable and it spills to its OWN home (decl -72 = sp+48), not a temploc. In ours the
+     only other webs live in bbs 45 / 47 are arg0 (a3, param home) and two uncolored DOUBLE constants (0.8
+     {1030|1} bbs 45 / 60, -0.1 {777} bb 36), which are 8 bytes and so do not compete for the 4-byte slots.
+     The model's best candidate for X: the `arg0 + 0xCC` web as TWO LRs in the target (an else-arm piece ordered
+     first -> 36, the first-arm piece -> 32, never stored because a0 is dead after the first-arm call; both
+     reach the post-join uses, so they cannot share). Ours is one LR ({441}, bbs 45 / 47 / 36 / 38 / ... / 82).
+     Tried to give one site its own expression: `(char *)((s32)arg0 + 0xCC)` / `(u32)` at each of the seven
+     `arg0 + 0xCC` sites in base and nt (28): edg canonicalises the cast away, identical.
+2. **E68: the target's m split comes with two more phase-2 values in s-registers.** Same instruction stream,
+   registers differ: the `ve` IV (`addiu s0, t5, 6`, then `andi t8, s0, 0xffff` / `addiu s0, s0, 8`) and the
+   j counter (`move s3, zero` / `addiu s3, s3, 1`) are s0 / s3 in the target, t2 / t5 in ours; ours spends s3 on
+   the ve dead copy (`move s3, t2`; target `move a3, t5` / `move t0, s0` for the two copies). With every
+   s-register taken by phase-2 values before m is coloured, m has no colour for its whole span and is split
+   (phase 2 v0, phase 3 s1); in ours s0 is still free and m takes it whole. The `E68_MGR` load is one PRE'd
+   expression in both builds (t0 target / v0 ours; on the zero-trip `blezl` path the phase-3 head reads `->dl`
+   through the phase-2 load). Next: what puts the ve IV / j counter ahead of the t-registers (a longer LR, an
+   earlier colouring) -- flat so far: `register` on m / a separate m1 (tie / 96.20), the vs / ve keeper grid
+   (assignment order x 7 keeper spellings x `if (1) {}` before / after / absent, 42: <= 98.6087, ve IV t2 in all).
+3. **Flat elsewhere.** post0b 41D40 (99.90; one register: the bottom copy of next()'s `a` load, target v1 /
+   ours a1): 11 next() bodies x 5 loop conditions + 6 `me()` routings x 3 conditions (73) = base or worse.
+   gui 3714: per-site greedy over the four pkt sites x 30 spellings, two rounds: flat (98.25). gui 329C (99.37,
+   the x / xh ring a2 / a1 / a0 vs ours a3 / a2 / a1): 24 orders of the x / fw / y / fh lines x 3 switch
+   operands + `t` removed (73) flat. bootup 6204: `void f(int a0, int a1) { g(&D, a1); }` does give lui-first
+   (the a0 home store / incoming-a1 dependency), but the parameters are invented and an `sw a0` appears --
+   not used.
