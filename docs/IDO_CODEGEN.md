@@ -14668,6 +14668,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCXCIV (agent-g 2026-10-31, run 259): **NCC frame-slot model: compare the sp-offset SETS first; an inline function's named local / named result gets a home per expansion at the frame BOTTOM (no overlay), unused locals get none, dead-store block locals sit in program order among the temporaries; move a named inline result to a caller function-scope local to re-place the home without losing its codegen**](#kit-ccxciv-agent-g-run259) -- _NM game_uso 3558 93.61 -> 93.68 (sp-offset set = target), BB8C 98.52 -> 98.55 (8-byte dead block home + named-result operators), post 30AF4 97.86 -> 98.08 (hv folded into sv + zero-use re-sweep); 40304 / 250C8 spill-slot probes; 31A74 store-after-clamp shape (one sb / swc1 pair left, scores lower), 2840 double-volatile memory shape, 37540 / 42938 / 0F04 / 4E424 / 40304 / 250C8 negatives._
 - [kit CCXCV (agent-c 2026-10-31, run 259): **uopt `compute_save`: priority = save / N' with N' = 2 + (N - 2) / 4, colouring in strictly descending priority; a one-use-plus-load value has priority 0 and is never coloured; the cost split compares the WHOLE save with the cheapest colour, so hot values only split eagerly; a codeless constant LR (the 0.0 of empty float tests) is coloured once it has two uses and can occupy a register; a uopt colour on f16 / f18 removes it from ugen's FP temp pool for the whole function; ugen pools = FIFO free lists (append on last free, move-to-end on reuse); the colour-choice preference step is -O3 interprocedural only**](#kit-ccxcv-agent-c-run259) -- _No gain. E68: target has 3 more coloured items (spills 2 temps lower; `if ((vidx + 2) * 2) {}` + padq[2] lands them, regs regress); E2D0: constant-LR lever reaches arg4 f16 / 1.0 f8 but strips f16 from the first-half pool -- the target's arg4 is a ugen load; 46050 / 41D40 / 329C read via the LR records; 31C0 / 34890 = edg temp-variable reuse (one var shared by two roles), ~80 probes flat._
 - [kit CCXCVI (agent-g 2026-10-31, run 260): **the spilltemps temp follows the item's FIRST MENTION: mention a spilled address expression before the overlapping item (held in a dead local -- a fresh name costs a home) to move its spill one temp up; -zdbug:6 colour numbers (GPR 1 = v0 .. 7 = t0; FPR 24..29 = f0 / f2 / f12 / f14 / f16 / f18); edg temporaries (no coloreditems) are homes, not temps**](#kit-ccxcvi-agent-g-run260) -- _NM post0b 4C5E4 89.579 -> 89.589 (sp-offset set = target), 54E78 98.66 -> 99.06 (CCXCV constant-LR empty tests); 40304 copy-propagated &scl item (12 spellings flat), 3BE1C off = T1 behind the col load, 0F04 T0/T1 pair, 3E5E0 edg slots, 18F0 register constant, 4E424 / 415A4 / 250C8 / 33094 / 2840 / 4B2F4 negatives._
+- [kit CCXCVII (agent-g 2026-11-03, run 261): **steering the FP colour ORDER with code-free tests read off -zdbug:5: an empty `if (u != v) {}` adds a use to both LRs and a BB to every LR live across it (priority up for the tested values, down for the bystanders); dump-checked random test multisets put six FP LRs in the target order; a BB split after a load demotes a GP LR the tests promoted**](#kit-ccxcvii-agent-g-run261) -- _NM post0b 40304 99.82 -> 99.99 (FP colours = target; m30 slot needs sp as a real variable, every spelling copy-propagates); 54E78 d-priority diagnosis, 31A74 / 250C8 / 4B2F4 negatives._
+- [kit CCXCVIII (agent-c 2026-11-03, run 260): **a float constant the target re-loads per use lost its colour to MORE float LRs: name the int->float conversions before a memory store (no copy propagation) so they colour; inline member appends get their own edg temps; a void prototype on a discarded call frees v0 for the next block; an expression item's spill temp follows the first tree that builds it (spell the earlier copy as the copy-propagated tree)**](#kit-ccxcviii-agent-c-run260) -- _NM post0b 4C5E4 89.59 -> 99.59 (832 -> 836 B = target length), 5A2C4 95.17 -> 95.96; 3B9C0 / 36694 negatives (off spill, &p local CSE, float tests emit code in 36694)._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
 - [kit CCLXXII (agent-c 2026-10-30, run 247): **a folded `+ 0` on one loop's test moves the shared edg pool temp to the OTHER loop (493AC: the second loop's next() result leaves the call-crossing s2 temp); taking a local's address through a member call (`getPos(vb)`, `e = vb - va`) makes it memory-resident like a target that stores it after init (3558 length fixed)**](#kit-cclxxii-agent-c-run247) -- _NM 493AC 99.36 -> 99.43, game_uso 3558 91.62 @ 956 B -> 92.60 @ 1008 B; 41D40 / 250C8 / 3AE58 / 46790 / 3E5E0 / BB8C / 31A74 / `+ 0` toggle sweep negatives._
@@ -52659,3 +52661,90 @@ zero-tests x 1..3 two-tests over n.x / n.y / n.z / d, 474 compiles) plateaus at 
 moves only one of them (98.84 / 98.44); tests placed after the matrix rows cost 4 bytes. The same lever was flat on
 40304 (cfe: tests against the 1/32767 literal), 33094 (10.0f), 46790 / 3AE58 (int constants vs the ugen ring), 4B2F4
 (flags / slot3 vs 8 / 0xFF / 2 / 0x40 / 3, 135 positions) and worse on 2840 (float tests on arg2 at 29 positions).
+
+## kit CCXCVII (agent-g 2026-11-03, run 261): steering the FP colour ORDER with code-free tests, read off -zdbug:5 -- an empty `if (u != v) {}` adds a use to both LRs AND a BB to every LR live across it (N' grows, priority falls), so tests + one `if (1) {}` can put six FP LRs in any priority order; post0b 40304 FP colours = target (99.82 -> 99.99); the 40304 m30 slot needs a non-copy-propagated sp; 54E78 / 31A74 / 250C8 / 4B2F4 diagnoses <a name="kit-ccxcvii-agent-g-run261"></a>
+
+_Commit 786f2eec3 (landed on main as part of 6e5ebb85b). Reproduce: dump with
+`tools/ido-static-recomp-dump/build/7.1/out/cc ... -DNON_MATCHING -Wo,-zdbug:5` on the asm-processor output of the unit
+(post0b's whole-file uoptlist is about 7 MB and takes about 1 s), cut out the function's section (from `LOCAL OPTIMIZATION OF fn` to
+`REEMISSION OF fn`), and list the `>>>active<<<` records (bit, colour, adjsave, forbidden, live bbs, interference)._
+
+1. **Method.** Colouring is pure descending adjsave (priority) order, ties in bit order, and each LR takes the
+   lowest free colour (FP 24 f0, 25 f2, 26 f12, 27 f14, 28 f16, 29 f18). Write down the target's colour for each FP
+   LR, work out the priority order that produces it, then move priorities with code-free statements: an empty float test
+   `if (a != b) {}` adds one use to a AND to b (an `!= K` test also to the constant's LR) but ALSO opens BBs,
+   so every LR that lives across it gets N + 1 (priority = save / N', N' = 2 + (N - 2) / 4 for N >= 3). That is the lever
+   for LOWERING a value: put the test where it is live and not referenced. Check every variant with the dump (colour
+   column), not just the score -- a correct FP order can show up at a LOWER objdiff score when the new BBs knock a GP LR off.
+2. **post0b 40304.** Base: a / b / kt / d / c = LR 34 / 37 / 40 / 43 / 68 all at 2.0, K1 (1/32767) 1.5 -> f0 f2 f12
+   f14 f16, K1 f18. Target needs a, b, kt > K1 > c > d. A random search over test multisets at two points
+   (150 variants, dump-checked) found it: `if (a != b) {} if (a != b) {}` after `d = ...` and `if (a != kt) {} if (a != K) {}
+   if (b != K) {} if (b != K) {}` after `kt = ...`: colours a f0, b f2, kt f12, K1 f14, c f16, d f18 = target. The tests cut v's
+   (the record pointer, LR 53) priority 5.5 -> 2.2 below p (3.0) and swapped v0 / v1; `if (1) {}` between `p = cmd->cur;`
+   and `cmd->cur = p + 1;` (p's N 1 -> 2: 3.0 -> 1.5) restores it. 99.82 -> 99.99, length 828.
+3. **40304's last word (m30 spill 32 vs 36).** -zdbug:4 + tsim: item 5 (`self + 192`, &scl) has region {1, 2} (case
+   0x6D) plus {27..29} (case 0x72: z store, y loads, call argument); m30 (`self + 48`) has {29, 30}: they overlap at the call
+   node, so m30 gets T1. The target spills both case 0x6D's &scl and m30 at 36 while keeping a2 = &scl from the z store to the
+   call, so its case-0x72 a2 must be a VARIABLE LR, not item 5. Every spelling copy-propagates (sp never appears in the itab):
+   three sp forms x five dead-def forms (`while (0) { sp = 0; }`, `if (0) ...`, before / after), sp at the top with a dead def, sp
+   assigned twice -- the dead defs only move the `addiu a2` earlier (98.00). Mentioning m30 first (`m3 = &self->m30` before the
+   switch, a fresh name with `float pad2[8]` keeping the frame) makes m30 T0 = 36 but pushes case 0x6D's &scl to 32. Dropping sp
+   (z store through s0) fixes the slot but loses `swc1 8(a2)` (99.00). Open: a way to stop copy propagation of sp.
+4. **54E78 (99.06, NCC) diagnosis.** Ours: d (var -60, the inlined operator*'s s) has priority 4.0 and colours FIRST (f0);
+   the target's d f18 / n.z f16 / products f0 f12 f14 need d coloured after the products and n.z, and n.z interfering with
+   f12 / f14 holders, which no BB layout of the current source gives (the 0.0f use at m[2][3] shares the products' BB, so the
+   0.0f LR and the first product can never share f0). `operator*(const f32 &s)` makes d the p.d load item (priority 3.5, same
+   code); `if (1) {}` / `if (s) {}` inside operator* drops d to 2.0 / 2.5 but colours the 1.0 constant (f18) or moves 2.0f off f2.
+   Flat or worse: empty tests at every statement (152), `if (1) {}` position subsets (175), top-test multisets (72), random
+   test / split sets (200), `f32 d = p.d` locals (90), operator* / ctor split grid (30).
+5. **Other negatives.** post 31A74: the ACC store after the sel clamp gives the target's tail except `sb` / `swc1` order in
+   the jal delay (97.16 < 97.73; 20 forms incl. goto blocks, comma, argument assignment, BB splits -- the sel spill sb always
+   lands last). post 250C8: a block-local fontId with the outer decl removed gives frame 96 and bytesRemaining's temp 36, but
+   fontId's temp lands at 44 (target shares 36) -- the bytesRemaining temp overlaps the switch (99.77 < 99.85); fontId-free
+   case bodies +12 bytes. post0b 4B2F4: the first h (LR 97, 3.0) colours before slot3 / cmd (bit order) and takes v0; the
+   target's a2 needs v0 / v1 / a0 / a1 held by higher-priority neighbours (none in the interference list) -- not a priority question.
+
+## kit CCXCVIII (agent-c 2026-11-03, run 260): a float constant the target RE-MATERIALISES per use = it lost its uopt colour to more float LRs -- name the int -> float conversions BEFORE a memory store (post0b 4C5E4 89.59 -> 99.48, 832 -> 836 bytes = target); inline member appends give an append its own edg temporaries (99.55 -> 99.59); a void prototype on a discarded call frees v0 for the following block (5A2C4); an expression item's spill temp follows the FIRST tree that builds it, so spelling an earlier copy as the copy-propagated tree moves the spill (5A2C4 95.17 -> 95.96) <a name="kit-ccxcviii-agent-c-run260"></a>
+
+**1. Re-loaded constant = colour pressure, not a literal-spelling issue (4C5E4).** Target: `lui at,0x4000; mtc1` twice
+(f4 / f8, ugen temps) and 4.0f once in f18, plus the four `cvt.s.w` results in f0 / f12 / f16 / f14. Ours: one 2.0f in
+f14 and 4.0f in f16 (both uopt-coloured constant LRs) and the conversions as ugen temps. The target therefore has
+MORE coloured float LRs (the conversions) and 2.0f, the lowest priority, lost its colour. A conversion becomes a
+coloured LR only when it cannot be copy-propagated to its use: declare `float cx = (float)x; ...` (all four) BEFORE
+`Vp *vp = &d->vph->buf[d->vph->count++];` and use them after it -- the count store may alias `this->x` so the
+loads cannot be re-read at the use. The products (`cx * 2.0f`) then sit after the append and the scheduler hoists
+the muls above the store. Then the statement order / one `if (1) {}` set which conversion takes which register
+(cx f0, cy f16 needed `cx` declared before `cy` and `vscale[0]` stored before the split). Check: count `lui at` /
+`mtc1 at` pairs per constant in target vs ours; a missing re-load means our constant is coloured.
+
+**2. Inline member appends = separate edg temporaries.** `Gfx *DL::gnext() { return &head->buf[head->count++]; }` /
+`Vp *DL::vnext()` used for the first G_DL packet and the Vp append moved the second G_MOVEMEM packet pointer to v1
+(target). The expansions cost one home word: drop one home-keeping local (here the `e3 = 8` argument local, the
+call takes the literal) to keep the frame. -zdbug:5 shows the edg temp sharing directly: `isvar M 4 -124` etc.
+and the `ustr` / `uilod` entries that use them (head1 / vph / head2 / counts share temps across appends).
+Int / pointer EMPTY tests (`if (p) {}`, `if (vp) {}`) do nothing (deleted before colouring); only the float
+compares of kit CCXCVII survive to the priority computation.
+
+**3. 5A2C4 head block: v0 is forbidden for a block whose BB defines an int call result.** The head block followed
+`func_00000000(arg0, arg1, arg10)` (int K&R prototype, result discarded): the block's base could not take v0. The
+file's existing void alias `func_00000000_5a2c4v` for that call (and for the arg4-path call after the second E7)
+gives base v0 / p v1 like the target; a folded `+ 0 * (int)(p)` on the first packet word made cnt a0 / p v1.
+
+**4. Spill temp order follows the first tree that builds the item (5A2C4 sp30 / sp2C).** -zdbug:4 coloreditems
+[62, 68, 219, 309]: 219 = the sp2C value (first built in the arg3 F6 block's p+4 word), 309 = the arg4 path's
+sp30 value whose sp38 / sp34 operands are COPY-PROPAGATED to `arg6 + arg8` / `arg7 + arg9` (the arg3 block still
+read the sp38 / sp34 variables, a different tree). Writing the arg3 block's F6 word on `arg6 + arg8 - 1` /
+`arg7 + arg9 - 1` builds the propagated tree there first -> sp30 item < sp2C item -> sp30 at 0x30 like the target.
+Statement swaps and declaration swaps of sp30 / sp2C were byte-identical (the vars are not what is spilled).
+After that change the run-212 folded use of arg4 had to go (95.90), plus one bbsplit (95.96).
+
+**Negatives.** 4C5E4: per-site spelling of the three appends (`buf + n`, parenthesised forms), count types
+(int / unsigned / long), inline free functions taking DL * and named inline locals (`int n = count++`), the 8
+combinations of inline / outer per site with 0-3 home locals dropped (120), bbsplit sweep (83): stuck at 16
+diff lines (first append a2 / a3, Vp count t0, second head a2 / count a1, else-arm sb8 t4). 3B9C0: the &p local CSE
+(`addiu t9,sp,184` used for both qa / qb) needs qa / qb in one BB, but then uopt hoists &p into a colour (t1);
+statement-order grid (120), compare spellings, float empty tests (zero const moves f20 -> f12, target f14),
+int empty tests -- the `off` spill (a1 + sw / lw 128(sp), 3 words of the 12-byte gap) not reached. 36694: float
+empty tests inside operator* emit code under NCC there (length changes). 5A2C4: the merge block (target base a3 /
+cnt v1 / p a0 / b a1 / r t0 / g t1) and the global t8 / t9 ring phase are left; u8 / s32 / u16 types for r g b,
+copy orders, block-local vs function-level base, expression base, param folds -- flat.
