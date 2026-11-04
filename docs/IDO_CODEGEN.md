@@ -55100,3 +55100,6 @@ col / x / y / k / uls / j / n) / E2D0, post0b 5A2C4 block cursors.
   `T P = P_in;`, the inverse of the 18F0 lever) over gui 0F04 / 3714 / 329C / 4568, post0b 46790 / 3AE58 / 34890 /
   4BAF4 / 4F2DC / 5A2C4, game_uso 3558, bootup E68 / E2D0: never above base (most lose 0.03-2.8).
 * `int n = 0; n = dl->n;` dead inits inside the gui next() inlines (0F04 / 329C / 3714): byte-identical.
+* The 18F0 constant-compare test idea elsewhere: E68 phase-2 `if (vidx == 4) {}` / `k == 1` / `ult == 32` / `uls == 64` /
+  `j == 1` / `k2 == 2` rounds, 42938 `if (gl_d_42938_idx == 80) {}`-style guard-constant tests and gui 0F04 loop
+  `i == 1` / `h == 1024` / `x0 == 4` tests and gui 329C / 3714 / 4568 parameter-constant tests (two rounds each): flat.
