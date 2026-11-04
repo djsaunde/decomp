@@ -14672,6 +14672,9 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCXCVIII (agent-c 2026-11-03, run 260): **a float constant the target re-loads per use lost its colour to MORE float LRs: name the int->float conversions before a memory store (no copy propagation) so they colour; inline member appends get their own edg temps; a void prototype on a discarded call frees v0 for the next block; an expression item's spill temp follows the first tree that builds it (spell the earlier copy as the copy-propagated tree)**](#kit-ccxcviii-agent-c-run260) -- _NM post0b 4C5E4 89.59 -> 99.59 (832 -> 836 B = target length), 5A2C4 95.17 -> 95.96; 3B9C0 / 36694 negatives (off spill, &p local CSE, float tests emit code in 36694)._
 - [kit CCXCIX (agent-c 2026-11-03, run 261): **GP colours steered from -zdbug:5: edg temp SHARING decides which appends colour alike (name the shared head / count as block locals, give the odd append its own pair); tie order = priority then bit, so folded `0 * x` uses lift the LRs that must colour first; a codeless coloured item at the target's skipped register is an expression item coloured before the variable that takes the next one; repeated folds need distinct spellings (`0 * (signed char)f`) or they CSE into a coloured item; `x - x` / `x & 0` do not count**](#kit-ccxcix-agent-c-run261) -- _post0b 4C5E4 EXACT (99.59 -> 99.95 -> 100, 836 B); 5A2C4 (t8 / t9 phase = as1 renaming, not ugen), 41D40, 46050, 3B9C0 negatives._
 - [kit CCC (agent-g 2026-11-03, run 262): **the kit CCXCVII code-free-test lever as a blind random search (4-7 anchors, 0-2 `if (u != v) {}` / `if (1) {}` per anchor, 150 variants) fixes FP colour swaps in NCC donors without a dump, incl. a callee-saved f20 / f22 pair; scratch harnesses for cfe units and NCC donors; 40304's m30 slot needs case 0x72's a2 to be a different item than `self + 192` (every spelling folds back)**](#kit-ccc-agent-g-run262) -- _NM post 33094 93.65 -> 94.20, game_uso BB8C 98.55 -> 98.83; 48510 (decode-correct compare block but ugen evaluates the ilod first) / 4E424 / 46790 / 415A4 / 493AC / 2840 negatives._
+- [kit CCCI (agent-c 2026-11-03, run 262): **a loop test edg emits twice (entry + bottom copy) shares edg temps across the copies, so one uopt LR can hold two unrelated roles; write the loop as an explicit `if (c1) do { } while (c2);` with different inline members per copy and a named pointer local in the bottom copy (after the increment) to give its load its own live range**](#kit-ccci-agent-c-run262) -- _post0b 41D40 EXACT (99.90 -> 100, 412 B); 31C0 / 46050 / 34890 / gui 329C / bootup E2D0 negatives with dump diagnoses._
+- [kit CCCII (agent-g 2026-11-03, run 263): **a dead store to an operand (`dy = y1 - y0; y1 = dy;`) kills the expression item that uopt would otherwise colour and copy into the variable (extra mov.s / spill to a low temp instead of the variable's home); 40304 case 0x72 exact in isolation via a folded second tree, case 0x6D then needs an a1 blocker**](#kit-cccii-agent-g-run263) -- _NM post0b 4E424 95.47 -> 96.90, game_libs 2840 93.28 -> 94.48; 3AE58 / 3E5E0 / 4B2F4 / 250C8 / 54E78 / 493AC negatives._
+- [kit CCCIII (agent-c 2026-11-03, run 263): **edg temporaries are a TYPELESS first-fit pool and un-kept inline arguments get NO temporary: split a shared temp only with a kept dummy parameter (`if (0) { d = 0; }`) or by routing args through inline calls (`new KB(me(obj), me(a3v))` puts the new temp at the target's 31C0 slot); kit CCC random code-free test search as a routine pass**](#kit-ccciii-agent-c-run263) -- _NM gui 3714 98.25 -> 98.33, post0b 5A2C4 95.96 -> 96.08; 31C0 / 46050 / 34890 / E2D0 / 329C / E68 / 4B620 / 24B8 / 59E80 negatives._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
 - [kit CCLXXII (agent-c 2026-10-30, run 247): **a folded `+ 0` on one loop's test moves the shared edg pool temp to the OTHER loop (493AC: the second loop's next() result leaves the call-crossing s2 temp); taking a local's address through a member call (`getPos(vb)`, `e = vb - va`) makes it memory-resident like a target that stores it after init (3558 length fixed)**](#kit-cclxxii-agent-c-run247) -- _NM 493AC 99.36 -> 99.43, game_uso 3558 91.62 @ 956 B -> 92.60 @ 1008 B; 41D40 / 250C8 / 3AE58 / 46790 / 3E5E0 / BB8C / 31A74 / `+ 0` toggle sweep negatives._
@@ -52856,3 +52859,143 @@ functions), and diff against the unit's expected object the same way (matches th
    FP test sets), game_uso 3558 (NCC, 150 FP test sets over six anchors) and gui 0F04 (NCC, 150 GP test sets in the
    glyph loop; `if (w) {}` / `if (h) {}` after the loader call add 8 bytes) flat -- the random search pays off only
    when the residual really is a colour-order swap among a few LRs (33094, BB8C), not an edg-temp / ugen-ring shape.
+
+## kit CCCI (agent-c 2026-11-03, run 262): post0b 41D40 EXACT (99.90 -> 100, 412 B) -- a loop test that edg emits twice (entry copy + loop-bottom copy) shares edg temporaries ACROSS the two copies, so one uopt LR can hold two unrelated roles; write the loop as an explicit `if (c1) do { } while (c2);` so each copy is its own source expression, then spell the bottom copy with a NAMED pointer local to give its array load its own live range <a name="kit-ccci-agent-c-run262"></a>
+
+_Exact: aeee4151e on agent-c (NCC donor promoted over the post0b placeholder on both build paths, `gl_func_00034458`
+calls renamed to the blank `gl_func_00041D40_c34458 = 0`, NM length unchanged). Gate: ROM byte-identical,
+verify-blocks 6/6, `make non_matching_objects` 0 errors, no exacts lost._
+
+1. **Diagnosis (-zdbug:5).** 41D40's last two diff words were the loop-bottom `lw a1,124(sp)` / `lw t0,0(a1)` (target
+   v1). LR 41 (edg temp var -64, pri 11.5) lived in BB 10 (entry copy of `it.next()`: idx + 1, a1 in both) and BB 20
+   (bottom copy: the `a` array pointer). One LR has one colour, and BB 10 already has v1 taken by the entry result
+   temp (LR 10), so no priority change can put the bottom `a` in v1 while it is the same LR. Run 261 tried folds on
+   `a` / `this->a` (memory, no effect), a fold on `this` inside an accessor (99.61) and five next() spellings (flat).
+2. **The fix: split the copies in the source.** `for (AIter it = ..; it.next() + 0; ) { .. }` ->
+   `{ AIter it = ..; if (it.first() + 0) do { .. } while (it.adv() + 0); }`. edg's own lowering of `for` / `while` is
+   the same entry + bottom pair (a plain `while` scored the same as the explicit if / do-while), but now each test
+   can use a different inline member. Grid (entry x bottom x `+ 0`, 100 + 84 + 36 compiles): entry = the ?: form
+   `return idx < last ? &(*a)[++idx] + 0 : 0;`; bottom = `if (idx < last) { int i = ++idx; Arr *p = a;
+   return &(*p)[i] + 0; } return 0;`. The named `p` makes the bottom array load its own variable (v1 = target).
+   `Arr *p = a;` BEFORE the increment let uopt hoist the load above the compare (408 B, 97.09); after `int i = ++idx;`
+   it stays below the branch as in the target.
+3. **Frame.** The for-init form kept two extra edg temps alive (frame words); the if / do-while form drops them,
+   and the function's dead volatile block went 4 -> 3 words to keep frame 0x88 (2 or 3 both match).
+4. **When to try it.** Any loop whose entry-copy and bottom-copy temps disagree with the target in a way a single
+   LR cannot express (the same edg temp var in two BBs with different target colours) -- check the dz.sh output for
+   one var spanning the entry BB and the loop-bottom BB.
+
+**Negatives.** bootup 31C0 (frame): KB new-temp / obj read in case 1 -- B2 taking `Obj2 *` / `void *`, KB taking
+`Obj *` / `Obj2 *const &`, `new KB((Obj2 *)obj, ..)`, `Obj2 *const obj = new Obj2` flat or worse. post0b 46050:
+target's F5801000 append keeps its ctx in t0 (a separate LR; ours shares LR 15 = edg var -28, v1); 217 per-site
+accessor grids on the E7 / F5801000 / F2000000 appends and 56 named-`Ctx *c` spellings flat -- a named c is its own
+LR (a3, not t0) and shifts that append's dl / n onto vars -32 / -28 (a2 / v1). post0b 34890: h's home is edg var -16
+(sp+40), target -12; make() parameter order / kept-parameter / me() nesting grid (13 + 200) flat, explicit
+if / do-while for the list walk 98.58 (frame +8). gui 329C: the MAX temp (edg var -44, LR 4, pri 3.0, a0) is t2 in
+the target (coloured after x / xl / xh / the y shift); 150 folded `0 * (cast)v` sets in the texrect arguments flat.
+bootup E2D0 (cfe): arg4 is LR 82 (var 16, pri 0.33, f14; target f16) -- 150 random code-free test sets and 76
+`if (arg4 ..)` spellings flat; nothing codeless holds f14 in our dump, so the target's f14 holder is unknown.
+
+## kit CCCII (agent-g 2026-11-03, run 263): a DEAD STORE to an operand kills a coloured expression item -- when `v = a - b;` leaves the item `a - b` alive (its operands are not redefined), uopt colours the ITEM and copies it into v (an extra `mov.s` / a spill to a uopt temp where the target keeps v in its own register or home); `a = v;` (a dead store to a parameter / dead local, no code) redefines an operand and kills the item; post0b 4E424 95.47 -> 96.90, game_libs 2840 93.28 -> 94.48; post0b 40304 case 0x72 made exact in isolation via a folded second tree, but case 0x6D's colour then needs an a1 interference; 3AE58 / 3E5E0 / 4B2F4 / 250C8 edg-temp diagnoses <a name="kit-cccii-agent-g-run263"></a>
+
+_Commits e7a510a38 (4E424) and 4956dc941 (2840) on agent-g; NM objects only, ROM unchanged, lengths unchanged. Scratch
+tools (reproducible): `ncc.py` (NCC donor compile + `--redefine-sym` from the Makefile + objdiff score), `unit.py` (copy the
+unit .c, `asm_processor.py -O2` pass 1, cfe compile, score -- 0.6 s for post, equals the in-tree score for non-donor
+functions), `rsc.py` (random slot search: each slot = (old text, [alternatives]), keep probability 0.5-0.85), and the
+`-zdbug:5` LR lister (cut the function's `global coloring` section, print bit / colour / adjsave / forbidden / interference /
+live BBs; map a bit to its variable with the `isvar M <size> <offset>` lines of the itab)._
+
+1. **The signature.** Dump: a coloured LR that is an EXPRESSION (an `isop` bit, not an `isvar`) live from the def to the
+   first uses, plus the variable's own LR starting later; code: ours computes into register A and `mov.s` / `or` copies
+   it into the variable's register B, or spills the value to a low uopt temp (sp+28 / 32) where the target stores the
+   variable to its HOME. Cause: `dy = y1 - y0;` with y1 / y0 still unchanged afterwards keeps the item `y1 - y0`
+   available, and copy propagation rewrites `if (dy < zero)` / `dy * dy` to use the item. The old spelling `y0 = y1 - y0`
+   had no such item (operand redefined in the same statement) -- that is why "computing into a parameter" looked forced.
+2. **The lever.** Add a dead store that redefines an operand right after the def: `dy = y1 - y0; y1 = dy;` (4E424, y1 a
+   stack parameter never read again) or `dx = arg2 - f16; arg2 = dx;` (2840). No code is emitted (dead store eliminated
+   after the item is killed). Pick an operand that is dead afterwards so every later read still sees a correct value.
+   4E424: dy then takes f0 like the target and the max lives in y0's f14 (b = y0); 95.47 -> 96.90 (left: the zero
+   constant / tail var f2 vs dz f16 -- zero's tail LR has priority 0.67 over dz's 0.39). 2840: dx / dy become plain
+   variables kept in their homes 60 / 56 across the sqrt and draw calls (the run-139 volatile sp38 / sp3C copy dance
+   goes), 92.82 -> 94.00, and a 300-variant random declaration-order search with unreferenced `volatile int` pads 94.18;
+   then a random code-free test search (tests only over values already defined at that line) found `if (f16 != f18) {}`
+   after the f18 load + `if (d4 != dx) {}` after the d4 load: 94.48 (commit c0eb53cea). CAUTION: under NCC some empty
+   float tests DO emit code here (a 95.48 winner was 0x1C0 vs 0x1B8) -- filter every winner on symbol size and the
+   `c.*` / `bc1*` count before keeping it (the scratch scorer rejects size changes with SIZECHK=1).
+   Spelling variants of the def (`dy = y1; dy -= y0;`, `-y0 + y1`) all normalise to the same item -- only the kill helps.
+3. **post0b 40304 (99.99, cfe) -- case 0x72 solved in isolation, case 0x6D left.** Spell case 0x72's sp as a DIFFERENT
+   item with a folded use: `sp = (Vec3 *)((int)&self->scl + 0 * (int)v);` and mention m30 first (`m3 = &self->m30;`
+   before the switch with `float pad2[8]; void *m3;` replacing `Vec3 pad2[3];`): case 0x72 is then word-for-word the
+   target including the m30 spill at 36 (the kit CCC prediction holds). But case 0x6D's `&self->scl` item, now alone,
+   takes a1 (and cmd a2) where the target has the item a2 / cmd a3: -zdbug:5 shows v0 / v1 implicitly excluded (call in
+   the LR), a0 forbidden, a1 free -- in the original build a1 was blocked by the case-0x72 m30 LR that item 5 interfered
+   with. 99.20. Lowering cmd's priority with `if (1) {}` at every case head (cmd 1.75 -> 0.875) makes the item colour
+   first but it still takes a1. Folds of m3 / &self->pos / cmd into case 0x6D's call arguments are no-ops in cfe
+   (`cmd + 0 * x` disappears); using the folded tree only for the y loads + call (`(char *)sp + 0 * (int)p`) keeps
+   item 5 in case 0x72 and the overlap (m30 is hoisted to the case head, so its region covers the whole case) -- 99.65.
+   Open: a codeless a1-coloured LR live across case 0x6D's call, or a case-0x6D item that also interferes with m30.
+   Follow-up: a call ARGUMENT spelled as a folded copy of a coloured item, `sp = &self->scl; gl_func_00000000(cmd,
+   (Vec3 *)((int)sp | 0 * (int)cmd)); x = *sp;`, is materialised as `or a1, <item reg>, zero` (the target's 0x6D shape)
+   and makes a1 forbidden for the item; in the case-0x72 call `(Vec3 *)((int)sp | 0 * (int)p)` as the third argument
+   costs no code either and moves the m30 spill to 36 -- but then item 5 is no longer an a2 argument anywhere and
+   colours v0 (the a0 / a1 / a2 picks of the case items follow the argument register they are passed in, not the lowest
+   free colour: case 0x6E's item takes a0 with v0 / v1 free), and with z / y still on item 5 case 0x6D's spill goes to 32
+   (99.14). The target's a2 for case 0x6D's item thus points at item 5 being case 0x72's third argument, which brings
+   back the call-node overlap -- the temp-region model or the m30 item identity is still missing a piece.
+4. **Negatives / diagnoses.** 3AE58 (NCC): the vi load is edg var -56 (pick()'s result temp, coloured v1; target t6 =
+   uncoloured); removing pick() makes it a ugen temp but loses 8 frame bytes and moves the ternary pointer t0 -> v1 --
+   20 pad / spelling combos <= 98.37. 3E5E0 (NCC): edg var -24 holds reg0 / reg1's CB1 `this` AND the loop's CB `this`;
+   the target puts reg's CB1 this in x's home (-12, sp+44) and reg's K this in node's s1 -- 9 restructurings flat or worse.
+   4B2F4 (NCC): the first h and the `P(arg0, 0x40)` value share BB 15; h (priority 3.0) colours first and takes v0, the
+   target needs v0 held by something codeless; reusing a / b / g for h or the 0x40 value, a direct expression, and 180
+   fold sets flat (99.88). 250C8 (cfe): the target's fontId is a uopt TEMP (sp+36, shared with bytesRemaining) -- a
+   block-local fontId is homed at 44, `ASYNC_ID(retMsg)` items 96.3. 54E78: a BB split after m[2][3] (zero / products
+   apart) colours the 1.0 constants (92.17); 200 random test sets on either base flat. 493AC: loop-test spelling grid
+   (35) and accessor variants flat. Auto `if (1) {}` searches on 493AC / 3BE1C / 3AE58 / 46790 / 3E5E0 flat; size-checked
+   random float-test searches (defined values only, 150 each) on game_uso 3558 / BB8C, post 33094, post0b 54E78 / 3BE1C /
+   48510 / 4FD00 / 4F2DC / 42938 / 37540 / 3B6A0 flat.
+
+## kit CCCIII (agent-c 2026-11-03, run 263): edg temporaries are a TYPELESS first-fit pool and un-kept inline arguments get NO temporary -- so a "shared temp" can only be split by occupying the pool slot with a KEPT parameter (`if (0) { d = 0; }`) or by routing arguments through inline calls; the kit CCC random code-free test search gives gui 3714 98.25 -> 98.33 and post0b 5A2C4 95.96 -> 96.08; 31C0 / 46050 / 34890 / E2D0 / 329C / E68 / 4B620 / 24B8 / 59E80 negatives <a name="kit-ccciii-agent-c-run263"></a>
+
+_Commits ba8aee8c1 (3714), b39257b79 and 4b91fc82d (5A2C4) on agent-c; NM bodies / donors only, ROM unchanged, no NM length change._
+
+1. **edg temporary pool facts (NCC, verified with -Wo,-zdbug:1 `isvar M` addresses).**
+   - Temporaries are reused first-fit and WITHOUT regard to type: `x = new A; ... h = new B(m);` (two unrelated
+     classes) put both new-expression temporaries at the same frame word. In bootup 31C0 the `new KB` temporary takes
+     the `new Obj2` temporary T (sp+0x74) under every spelling tried: inline factories (named or not), nested blocks,
+     a declaration initialiser, `Obj2 *const &` binding, a switch-condition comma, class / placement `operator new`
+     (those also re-emit KB's own `this == 0` alloc, 71.76), case-0 conversion spellings (49), decl orders, M / N / Obj2
+     ctor variants. The target puts it at sp+0x68 = the slot of the inlined M ctor's `this` (-40), leaving T intact so
+     the case-1 `obj` argument copy-propagates to T.
+   - Inline-function arguments that the body never assigns are SUBSTITUTED (no temporary): wrappers such as
+     `nx(Ctx *c) { return c->next(); }`, two-parameter wrappers, Ctx2 / derived casts, `const` members all compile
+     to the identical pool. Only a parameter with a dead assignment (`if (0) { d = 0; }`) gets a temporary, and it
+     takes the first free slot -- the way to push a later temporary to another slot.
+   - Routing BOTH constructor arguments through inline calls (`new KB(me(obj), me(a3v))`) makes edg allocate the
+     argument temporaries BEFORE the new-expression temporary: the KB temporary then lands at the target's sp+0x68,
+     but that word is the M-this variable, which now crosses calls and gets home stores (`sw a0,104(sp)`), 98.83.
+2. **post0b 46050, F5801000 append (target ctx t0, ours the pooled v1).** A distinct `this` variable for that append
+   only appears with a kept dummy parameter in front (`nkd(Ctx *d, Ctx *c) { if (0) { d = 0; } return c->next(); }`,
+   also int / DL / Sub dummies, 1-4 of them). The new variable flips the whole pool colouring (ctx a1, n v1: 98.45); a
+   per-site greedy on top (next2() on the B6000000 append) climbs back only to 99.70. Spelling the switch value
+   (`(int)ch`, `ch + 0`, `cc = ch`, `+ 0 * x`) never flips the first `beq 10,ch` operand order.
+3. **post0b 34890.** A kept dummy parameter in the loop test (`nk(int d, LIter &it)`) gives next()'s ?: result a
+   fresh temporary, but h then stops being a coloured pooled temp and stays memory-homed (89.15): in our body h is
+   coloured only BECAUSE it shares the loop's temporary. Entry / bottom split into separate inline spellings
+   (`if (it.nI()) do { } while (it.nR());`, 64 + 26 variants) gives the target's entry a2 but frame +8 (98.58).
+4. **Random code-free test search (kit CCC) as a routine pass.** In-tree cfe harness: copy the unit, append the
+   items at the anchor lines, `asm_processor.py -O2` from the project dir, cc with the unit flags, objdiff
+   `functionRelocDiffs=none` (absolute scratch paths: cfe cannot open a relative `_pp.c` outside the cwd). Minimise
+   every winner by subsets.
+   - **gui 3714** (NCC): `if (h != arg4) {} if (1) {}` after the loader call, 98.25 -> 98.33 (two further 150-rounds
+     flat).
+   - **post0b 5A2C4** (cfe): `if (1) {}` after the head append's cursor read + `if (sp38 != sp34) {}` after the sp34 sum,
+     95.96 -> 96.01 (either alone 95.96 / 94.85); a second round over the arg3-block appends adds `if (1) {}` after the
+     F6 append's cursor read + `if (cnt) {}` after its w0 store, -> 96.08 (commit 4b91fc82d; either alone 95.98 / 94.24).
+   - Flat: bootup E2D0 (3 x 150, plus 23 kit-CCCII dead stores to d / s), gui 329C (2 x 150, 100 `while (0)` refs on
+     locals), 46050 (150), 34890 (120), bootup E68 (2 x 120 over phases 1-3), 4B620 (150 + 48 `while (0)` dead
+     appends), bootup 24B8 (120), 59E80 (150 + 67 literal spellings of the ClipRatio constants).
+5. **Dump notes.** E2D0 FP colours (zdbug:6): d / dot 24 = f0, the arg3->x item / lim 25 = f2, -lim 26 = f12, arg4 27 = f14;
+   the target's arg4 in f16 needs one more interfering FP LR in the post-call block, none of the code-free levers adds
+   it. gui 329C: the second MAX pool temporary is M-44 (bit 4), coloured 4th (a0) and also carrying the texture
+   append's ctx; the target colours it after a0..t1.
