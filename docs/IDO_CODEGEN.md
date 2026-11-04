@@ -55476,8 +55476,8 @@ flat.
 
 ## kit CCCXLIII (agent-c 2026-11-04, run 284): a "missing uopt spill" is a register-pressure count, not a missing statement -- find the LR the target splits (its header piece stays in a caller-saved register, the body piece lives in a frame home), then (1) re-check the decode of every use of that variable against the target (the target may not use it where the donor does), (2) drop stale code-free tests that keep a competitor's priority low; uopt then runs out of callee-saved colours at the same LR as the target <a name="kit-cccxliii-agent-c-run284"></a>
 
-_Commit 3ebe2123d (post0b gl_func_0003B9C0 NM 95.72 -> 96.00, 1108 -> 1116 bytes = target; NM clip 0x2eaf8 -> 0x2eb00 in
-the run's final commit)._
+_Commits 3ebe2123d (post0b gl_func_0003B9C0 NM 95.72 -> 96.00, 1108 -> 1116 bytes = target), 646ee0947 (NM clip
+0x2eaf8 -> 0x2eb00, clip only), 7992173a8 / 597003401 / 10782592d (re-sweeps, 96.00 -> 96.52, length unchanged)._
 
 **3B9C0.** The target keeps `off` (+= 12 per triangle) in a1 in the loop header (`or a1,zero,zero`, the n / grp
 addresses), stores it to sp+128 right after the `dn` test and reloads it before `addiu a1,a1,12` at the bottom: uopt
