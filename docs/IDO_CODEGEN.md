@@ -14677,6 +14677,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCCIII (agent-c 2026-11-03, run 263): **edg temporaries are a TYPELESS first-fit pool and un-kept inline arguments get NO temporary: split a shared temp only with a kept dummy parameter (`if (0) { d = 0; }`) or by routing args through inline calls (`new KB(me(obj), me(a3v))` puts the new temp at the target's 31C0 slot); kit CCC random code-free test search as a routine pass**](#kit-ccciii-agent-c-run263) -- _NM gui 3714 98.25 -> 98.33, post0b 5A2C4 95.96 -> 96.08; 31C0 / 46050 / 34890 / E2D0 / 329C / E68 / 4B620 / 24B8 / 59E80 negatives._
 - [kit CCCIV (agent-c 2026-11-03, run 264): **edg temp pool READ FROM edgcpfe.c: every statement start frees all temps (decl initialisers too), first-fit from the oldest entry by (size, char, struct, vreg) only; inline bodies protect only pre-expansion entries; an inline with 2+ statements or any assigned parameter gives EVERY non-constant argument a temp (else none; `this` always); value-consumed calls get their result temp first; inline locals are frame variables at expansion start**](#kit-ccciv-agent-c-run264) -- _Research run, no gains: 31C0 (KB at the target word via a kept-param `kb()` but T copy-prop lost, 98.51), 34890, 46050, 329C, 3714 negatives; 5-line zdbug:1 micro-test harness._
 - [kit CCCV (agent-g 2026-11-03, run 264): **a register the target sets (or leaves set) in an argument slot at a call is a call ARGUMENT -- spell the extra argument and the LR takes that register (40304 case 0x6D: `gl_func(cmd, (Vec3 *)((int)&scl | 0 * (int)cmd), &scl)`; BB8C: `&sb->mtx` as the transform's third argument with sb reassigned to it); a pointer indexed from the loop counter starts the strength-reduced pointer in the preheader (guard delay slot = `i = 0`); folded `+ 0 * x` on a call argument / named product colour those values; `argscan.py` finds the call sites; copy-then-zero (`dy = y1; y1 = 0; .. dy -= y0;`) when the target loads an operand straight into the result register**](#kit-cccv-agent-g-run264) -- _EXACT post0b 40304 (99.99 -> 100, 828 B, IDO donor splice), game_uso BB8C (98.83 -> 100, 1008 B, NCC donor promoted; .late_rodata moved to B4B8.s) and post0b 4E424 (96.90 -> 100, 196 B, IDO donor); 493AC / 4B620 / 3558 / 250C8 / 31A74 / mgrproc 1824 negatives._
+- [kit CCCVI (agent-c 2026-11-03, run 265): **uopt homes every edg M word at frame + M, so the target's frame offsets ARE the declaration / pool order: 36694's first word M-12 is a first-declared V3 local (`V3 a = n * dot;` ahead of r / l / px..pz), plain `return V3(...)` operators, const-ref difference in a block; V3 temps made inside inline operator bodies are not reused by a later `return` while caller-level value temps are; 34890's h word needs a real loop use on M-12 to stay coloured**](#kit-cccvi-agent-c-run265) -- _NM post0b 36694 90.96 -> 95.49 (712 B = target; layout + code-free float tests on the new body); 31C0 / 34890 / 46050 negatives; argscan over the list: only 34890 call 4._
+- [kit CCCVII (agent-g 2026-11-03, run 265): **a value in an "odd" caller-saved register (t0 while v0 / v1 / a-regs are free there) is a variable whose LR also covers a busy region: hold it in the dead loop counter after the loop (`i = (s32)ptr;`) so the LR spans the loop, and spell the test `i != 4` to keep the `bne` exit; argscan "held register" variant (scan2): values the target leaves in a1-a3 up to a call are arguments (4B2F4 list call `(seg, cmd2, h1)`)**](#kit-cccvii-agent-g-run265) -- _EXACT post0b 4B2F4 (99.88 -> 99.95 -> 100, 812 B, NCC donor promoted); 54E78 / 3AE58 / 415A4 / 31A74 / mgrproc 1824 / 3E5E0 / 37540 / 48AEC negatives._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
 - [kit CCLXXII (agent-c 2026-10-30, run 247): **a folded `+ 0` on one loop's test moves the shared edg pool temp to the OTHER loop (493AC: the second loop's next() result leaves the call-crossing s2 temp); taking a local's address through a member call (`getPos(vb)`, `e = vb - va`) makes it memory-resident like a target that stores it after init (3558 length fixed)**](#kit-cclxxii-agent-c-run247) -- _NM 493AC 99.36 -> 99.43, game_uso 3558 91.62 @ 956 B -> 92.60 @ 1008 B; 41D40 / 250C8 / 3AE58 / 46790 / 3E5E0 / BB8C / 31A74 / `+ 0` toggle sweep negatives._
@@ -53145,3 +53147,115 @@ MORE argument registers than ours)._
    sel save `sb` then fills the jal delay slot (target swc1): 97.16 < 97.73. mgrproc 1824: the residual is the outer
    switch's `li at,1` above the first beqz (6 BB-split / default / unsigned spellings flat) plus the external jumptable
    addend (donor-splice class).
+
+## kit CCCVI (agent-c 2026-11-03, run 265): edg frame order PREDICTED from the target's offsets -- with every edg M word homed at frame + M, the target's frame words list the declaration / pool order directly; post0b 36694 90.96 -> 94.05 by reading its first word (M-12) as the first-declared V3 local; return-temp sharing shows which entries are caller-level; 31C0 / 34890 negatives and the argscan result <a name="kit-cccvi-agent-c-run265"></a>
+
+_Commits 62b39c4c8, 6edc573e2, 6822071c8 (comment renumber), 341317c89 on agent-c. NM length unchanged (712 = target), no clip change.
+Gate: ROM byte-identical, verify-blocks 6/6, `make non_matching_objects` 0 errors, no exacts lost, sentinels 100._
+
+1. **Read the frame as the pool.** uopt homes every edg M word at `frame + M` (34890: M-16 spill at sp+40 with frame
+   56; 36694: frame 240, M-12 = sp+228). So for an NCC near-miss, list the target's struct / scalar homes as M offsets
+   and read them with kit CCCIV's rules: function-level locals first (declaration order, verified with a 3-local micro
+   test: q / r / s = M-4 / M-8 / M-12 ahead of every temp), then pool entries in creation order, each V3 12 bytes with
+   4-byte float entries in the gaps. `/tmp/claude-1000/c265/off.sh obj fn` prints frame + every `addiu rX,sp,N` as M.
+2. **post0b 36694 (`V3 Obj::perp(V3 p, V3 n)`), 90.96 -> 94.05.** Target words: M-12 (V3, operator-'s subtrahend),
+   M-24 r, M-28 l, M-32..M-40 (px / py / pz, coloured), M-52 (product return temp), M-56 (s float), M-68 (product
+   inner). The first word is therefore a V3 LOCAL declared first: `V3 a = n * (dot); V3 r; f32 l; f32 px, py, pz;`
+   then `{ const V3 &t = p - a; px = t.x; ... }`; operator* / operator- as plain `return V3(...)` (a named `f32 k`
+   or `V3 r` adds frame words), the flip in x / y / z order (y / z / x was 708 bytes), dot `n.z * p.z + (p.x * n.x +
+   n.y * p.y)` (96-variant grid, +0.05), then the kit CCC code-free test search on the NEW body (the old body's
+   tests do not carry over): `if (py) {}` after the flip block, `if (l) {}` after the r stores, `if (px) {}` after
+   the fallback if / else -> 95.49 (3 rounds, ~570 variants, commit 341317c89). Residual: the target's sub copy goes through a FRESH entry M-100 that the
+   first `return`'s value temp reuses, the bound difference sits at M-148 (below the M-120 inner); ours copies
+   through the product's M-52 and binds at M-136. Observation (not yet read from edgcpfe): V3(...) temps created
+   INSIDE an inline operator body are never reused by the later `return` statement (its temps are all fresh), while
+   the caller-level value temp M-52 is; a by-value V3 inline parameter (`split(V3 v, f32 &x, ...)`, refs to plain
+   variables are aliased, px stays in registers) gives exactly the shared caller-level entry (its copy is reused by
+   the return) but lands it BELOW the inner and drops the third copy (84.9, 728 B). ~600 variants: t spellings (value
+   / P3 / cast / `idr` / `idv` / `.cp()` / `.self()` / `from(V3)`), operator forms (named r / set / by-value b /
+   by-value a), decl orders, operator/ forms, return spellings -- none above 94.05 at 712.
+3. **bootup 31C0 negatives.** `h = (z0() + z0(), (char *)new KB(obj, a3v))` with three Obj ctor volatiles puts the KB
+   new-temp at the target's sp+104 (M-40) but the z0 result temps take M-28 = T, so the KB argument reads obj's home
+   (98.81, 816 B); `obj->zz()` / `zo(obj)` (kept-param) consumers, value-temp routes (`me(me(new KB))`, `+ z0()` on the
+   new-expression: 764 B, value-consumed new drops the join copy), `kb()` wrappers with reference / reordered /
+   local-result parameters (64.6-99.68): all below 99.98.
+4. **post0b 34890 diagnosis.** -zdbug:5: in the current donor h's pool word M-16 is ONE uopt variable with the loop's
+   second next() result (bit 5 covers BB 0 / 16 and the loop BBs 26-28), and the loop uses give it priority 5.33 ->
+   a1. `make(int h, O *o)` puts h on the target word M-12 but M-12 is only the loop's constant `this` temp there, the
+   LR splits at BB 0 and the remainder has save 0 -> uncoloured (89.2). The target therefore needs a REAL loop use on
+   M-12 (its second result is v1, so the loop part is split / differently coloured). Reference / simple-routine `nx(it)`
+   iterators still bind a temp for `it` (identical code). Argscan (kit CCCV) over this run's list: only 34890 call 4
+   (target writes a2 = first next() result before the body call); `gl(it.cur->data, 0)`, `x = it.next()` bodies:
+   lower.
+5. **post0b 46050 (99.95) reading.** The target's F5801000-append ctx is t0 = a ugen expression register (the
+   `lw 344(t8)` value CSE'd inside the statement), not a uopt colour: its `this` temp is not a global LR there, while
+   ours shares the pool word with the neighbouring appends' `this` temps (one uopt variable, coloured v1). Flat or
+   lower: 1-6 `z0()` consumers before / after the pkt, in w1, inside `me(...)` (24 variants: before = 99.78, the temp
+   then takes another colour), a local `Ctx *c` / `DL *d`, the direct `&CTX->dl->buf[CTX->dl->n++]`, next2 / nextr /
+   me / me-me / `+ 0` / `me(next())` spellings (11).
+
+## kit CCCVII (agent-g 2026-11-03, run 265): post0b 4B2F4 EXACT (99.88 -> 100, 812 B) -- a value the target puts in an "odd" caller-saved register (t0 while v0 / v1 / a-regs are free at that point) is a variable whose live range ALSO covers a busy region elsewhere: hold it in a dead loop counter (`i = (s32)ptr;` after the loop) so its LR spans the loop, and spell the loop test `i != 4` so uopt keeps the `bne` exit; plus the argscan "held register" variant, and negatives <a name="kit-cccvii-agent-g-run265"></a>
+
+_report.json (objdiff, regenerated in the agent-g worktree): matched_code 705172 -> 705984 B (92.47 -> 92.57 %),
+functions 3235 -> 3236 / 3288; game_libs_func_0004B2F4 99.88 -> 99.95 (commit 50244ce26) -> 100 (commit f1868fd1a).
+Gate: full make ROM byte-identical (cmp), verify-blocks 6/6, `make non_matching_objects` 0 errors, no exacts lost._
+
+1. **The "odd register" signature.** After the run-265 argument step (below) the only 4B2F4 residual was the
+   list call's `arg0->0x40` pointer: target `lw t0,64(t8); jal; lw a0,96(t0)`, ours v0 (named variable) or the
+   next ugen ring register t9 (unnamed). v0 / v1 were provably free there (nothing defined before and used after
+   the pointer's 3-instruction range without crossing a call), so the target's colour is not about local
+   occupation. It is a variable whose live range has ANOTHER piece where v0 / v1 / a0-a3 are all taken: the 4x4
+   matrix product loop at the top of the function uses a0 / a1 / a2 / a3 / v0 / v1 / t1 / t2 and no t0. Reusing
+   the outer loop counter `i` (`i = (s32)P(arg0, 0x40); list = F(P(i, 0x60), ...)`; i is dead after the loop, an
+   int cast back on the read) merges the two pieces into one uopt LR, and the merged range takes t0 exactly like
+   the target. Reusing j / k breaks the loop shape (their values are live through the unrolled k loop), reusing a
+   pointer that lives in the loop (a, b) takes that pointer's register, reusing slot1 takes slot1's a3.
+2. **Keep the loop test as `!=`.** With i referenced after the loop, uopt no longer rewrites `i < 4` into the
+   end-pointer `bne a0,t2` test: it emits `sltu at,a0,t2; bnez at` (+1 word). Writing the loop as
+   `for (i = 0; i != 4; i++)` (same trip count, i only ever 0..4) restores the target's `bne` -- 99.21 -> 100.
+   `4 != i` is identical, `i <= 3` and `(unsigned)i < 4` keep the sltu form.
+3. **argscan "held register" variant (`scan2.py`).** `argscan.py` (kit CCCV) compares which a-registers are WRITTEN
+   between calls; it misses a value the target leaves in an argument register for many instructions while ours
+   puts something else there. scan2 walks every same-length NM function, finds instructions whose target
+   destination is a1-a3 where ours differs, and reports it when the target does not overwrite that register
+   before the next jal. 4B2F4's hits: the FA packet pointer (a1) and the first DL count pointer h (a2) both sit
+   in argument registers at the list call (osVirtualToPhysical per the pin comment), so the call is spelled
+   `F_4B2F4_list(P(i, 0x60), cmd2, h1)` with h1 function-scoped (h then takes a2, 99.88 -> 99.95). The other hits
+   (48AEC / 4BAF4 ctx in a3 vs a2 across the pack call, 469A8, 42938, 59E80, 493AC) did not move with extra
+   arguments: 4BAF4 `(seg, y, x, ctx)` style probes 97.39 -> 96.81, so treat scan2 as a lead list, not a rule.
+   Reproduce: dump both objects with `mips-linux-gnu-objdump -d -M no-aliases`, split per symbol, and for each
+   differing line with target dest in a1..a3 scan forward to the next jal/jalr checking no target rewrite of it.
+4. **Negatives (all flat or worse, unit compiles through the var.py harness).** 54E78: more `0.0f` code-free tests
+   at five anchors (98.44-98.74) and removing either m[2][x] BB split (88-92) -- the 0.0 LR still loses f0 to the
+   n.y / n.z / p.d load items. 3AE58: pick() spellings (return int / unsigned / reference / pointer, no kept
+   parameter, two-statement body, assigned result, ternary into an existing local, if/else) -- the lhu result is
+   either pick's coloured return temp (v1) or, without the inline, the ternary takes v1 and the frame loses the
+   two pool words (volatile pads restore the frame but not t0). 415A4: the mode word as a `|=` chain on the tA
+   symbol stores the 1030 and forwards it into an unfolded `ori` (the shape the target has), but keeps the
+   intermediate store and uses a register base instead of `lui at` (94.78-94.86 vs 95.58). 31A74: the 0x1CAC0
+   store after the sel clamp lines everything up except the swc1 / sb pair before the jal (objdiff scores the
+   swap lower than the run-234 layout); comma / in-argument / BB-split spellings do not move the spill store.
+   mgrproc 1824: the outer switch's `li at,1` hoists above the beqz in every spelling (and the jumptable
+   displacement is the documented external-rodata cap anyway). 3E5E0 (CB ctor spellings, kept-parameter drops),
+   37540 (decl orders with hx homed), 48AEC (the loop-counter lever on gctx) negative. 48510: the target's flush
+   test is literally `nv >= max590 - 1` (max loaded first, `addiu -1`, `slt nv, max-1`); that spelling lines the
+   block up word-for-word up to a t6 / t7 / t8 ring permutation but scores 98.71 vs the run-258 `nv + 1 >= max590`
+   98.73 (not kept; nine operand-order / folded-zero spellings give the same permutation). 46790 (t8 / t9 swapped
+   from the idx shift on: idx / dst operand-order and two-statement spellings flat), 59E80 (constant 3 coloured a3
+   early vs the target's late t0: one extra `if (1) {}` at every packet and code-free 3 / 0xFFFD tests flat or
+   worse), 24B8 (decl orders: the r spill is a uopt temp, not a home) and 4BAF4 (clip half-extent e in r / ctx / g)
+   negative.
+5. **Lead, not landed: 4BAF4's e and ctx look like ONE variable.** Target: the clip half-extent e is a3 in all four
+   reloads and the DL context loaded right after the tests (`lw a3,344(v1)`, spilled across the dlist call at
+   140(sp)) is a3 too, while the centre C4 sits in t0 and v0 holds self->0xCC at the call. Writing the clip with
+   `ctx = (Ctx4B *)F4B(GS4B, 0xB8, volatile int)` ... `+ (int)ctx` (no `int e`) does merge them (both a1 in ours),
+   but GS4B's base then keeps v0 (target v1: in the target the self->0xCC load is a coloured v0 that overlaps the
+   base), so x / y slide to v1 / a0 (97.39 -> 96.92). Naming the 0xCC pointer (`d`, or the dead g) gives it v1,
+   not v0, and folded `+ 0 * (int)(d)` uses do not lift its priority over the base (95.6-96.0). Next: find what
+   makes the base lose v0 (a second colour constraint on GS4B's item), then retry the merged e / ctx.
+6. **gui 2DE0 length gap (299 vs 303 words) diagnosed.** The four missing words are `lui t3; addiu t3,t3,0` (= &D,
+   the CTX global's address) placed by uopt's PRE into each arm of the dtdy ternary, feeding the last packet's
+   `lw s0,0(t3)`; ours folds that CTX read to `lui s0; lw s0,%lo(D)(s0)`. Int-cast / `+ 0` CTX spellings change
+   nothing under NCC, and a `Ctx **cp = &D` local is constant-propagated back into the folded lui/lw (96.40). The
+   target's &D must be a CSE'd address item (two or more address uses after the join), so look for a second
+   reference to the CTX base in the last packet (e.g. the count pointer read through the same base).
