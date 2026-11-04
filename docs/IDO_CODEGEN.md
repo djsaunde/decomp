@@ -14713,6 +14713,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCCXXXIX (agent-g 2026-11-04, run 280): **operand RANK sets the order of a commutative compare / add in cfe code: a named variable vs a literal keeps the canonical order whatever the spelling, but a LOAD expression or a comma expression `(0, x)` ranks like a computed operand -- `field == 0.0f` on the field load gives `c.eq.s zero,x`, `rem + (0, base)` gives `addu base,rem`; then free the webs the change leaves (a named temp that only fed the compare)**](#kit-cccxxxix-agent-g-run280) -- _NM post 2E354 99.83 -> 99.85 (87b7eaba3, e195f8dac), post0b 469A8 95.87 -> 96.02 (00763d3e0, comma-wrap sweep tool comma.py / commak.py); 3BE1C frame (fixed 20-byte block under the saved regs, target +8 below the spill), 415A4 mode word, 35B1C C++ ctor / address-taken p, 31A74 store order, 37540 / 33094 / 59E80 / 30AF4 negatives._
 - [kit CCCXL (agent-c 2026-11-04, run 283): **creation order in practice: unconstrained LRs are coloured in LR-id order, so a code-free test of the SAME expression placed before a competing variable's creation moves the expression's LR ahead (gui 4568 xh / y << 2 / packet colours = target); count `assigned (unconstrained)` first -- most donors have none, and there only equal-adjsave constrained LRs follow id order; ternary results, post-increment old values and inline parameters on ONE edg pool slot are one uopt variable (4568 / 34890 / 4B620 / 3AE58 residuals)**](#kit-cccxl-agent-c-run283) -- _NM gui 4568 96.63 -> 96.93 (9056cfd28), post0b 5A2C4 99.257 -> 99.290 (4fbb06dc4, zero-use sweep re-run); 5A2C4 head base (void call shares the BB: v0 forbidden), 54E78 product-temp priority, 4FD00 shared SV home, E2D0 arg4 load order, 3B9C0 = a missing uopt spill of `off`, dead-arm pool hold on the Scis macro (moves the MAX temp, loses arg0's s0), 0F04 / 3558 / 34890 / 3AE58 / 3714 / 46790 negatives; tools sc.py / vs.py / lr.py in /tmp/claude-1000/c283._
 - [kit CCCXLI (agent-g 2026-11-04, run 281): **kit CCCXL's creation-order lever on in-tree cfe bodies: a code-free `if (<load expression>) {}` just BEFORE the competing statement (469A8: two block-field tests before the 12-argument call block; 2E354: `if (D_raceD_E354) {}` before its load); a value-preserving narrowing `(u8)(x & 0xFF)` costs one ugen temp with no code -- use it to move a folded use's ugen-ring offset to where the target spends it**](#kit-cccxli-agent-g-run281) -- _NM post0b 469A8 96.02 -> 97.52 -> 97.57 -> 97.86 -> 97.96 (f69ae70ac, 46e8203fc, 6be9fdaeb, e08714cb2), post 2E354 99.848 -> 99.859 -> 99.891 (0a4e4b316, faa23372e); 3BE1C / 493AC / 30AF4 (sv held in v0 into case 6) / 31A74 / 35B1C / 59E80 / 3B6A0 / 33094 / 37540 / gui 2DE0 negatives; tools in /tmp/claude-1000/g281 (ins.py / prein.py / narrow.py / comma.py)._
+- [kit CCCXLII (agent-g 2026-11-04, run 282): **one C variable = one uopt colour: when the target puts two roles of an m2c-shared variable in different registers, the zdbug:5 `forbidden` / `interfere with` lists name the web that blocks the wanted register -- split the roles over existing variables (2E354: raceB out of the v1 stateC / selector variable into temp_v0; the o->0x15 selector out of the function-wide v0 variable temp_v1 into var_t9, which frees v0 for the hoisted constant 1); then the raceB global read in place at each compare (a load expression ranks like a computed operand: the hoisted constant goes first in the `beq`)**](#kit-cccxlii-agent-g-run282) -- _NM post 2E354 99.8914 -> 99.8969 -> 99.9077 -> 99.9294 (6de271f38, f986cf0ab, f074b856f), post0b 469A8 97.961 -> 98.058 -> 98.204 (a8b10b233, d630be6ad, zero-use sweep re-runs: `+ 0 * (int)(p100)` once then twice in a10); 2E354 var_v0 / temp_v1_2 colours, 469A8 (second 0x148 load coloured in the target), 415A4 (hoisted v30 constant), 31A74, 33094 (forwarded set() parameter temp), 30AF4 (folded read keeps sv a variable, a0), 35B1C negatives; tools /tmp/claude-1000/g282 (dump.sh / lrall.sh / rep.py)._
+- [kit CCCXLIII (agent-c 2026-11-04, run 284): **a "missing uopt spill" (target splits a variable: caller-saved header piece + home spill in the body) is a colour-count problem: re-check the decode of that variable's uses against the target (3B9C0's b / a / sgn reads use the i * 12 base, not `off`), then drop stale code-free tests that held competitors' priority down; read zdbug:6 `split out` to see which LR lost; the spill slot is the variable's edg home, set by declaration order**](#kit-cccxliii-agent-c-run284) -- _NM post0b 3B9C0 95.72 -> 96.52, 1108 -> 1116 = target (3ebe2123d, 7992173a8, 597003401, 10782592d); removal sweep (rm.py singles + pairs) over 16 donors flat; 4B620 / 34890 / 3AE58 / 4568 / 54E78 / 46790 / 4BAF4 negatives; tools /tmp/claude-1000/c284/t1 (sc.py / vs.py / d2.sh / nd.sh / lrq.sh / rm.py)._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
 - [kit CCLXXII (agent-c 2026-10-30, run 247): **a folded `+ 0` on one loop's test moves the shared edg pool temp to the OTHER loop (493AC: the second loop's next() result leaves the call-crossing s2 temp); taking a local's address through a member call (`getPos(vb)`, `e = vb - va`) makes it memory-resident like a target that stores it after init (3558 length fixed)**](#kit-cclxxii-agent-c-run247) -- _NM 493AC 99.36 -> 99.43, game_uso 3558 91.62 @ 956 B -> 92.60 @ 1008 B; 41D40 / 250C8 / 3AE58 / 46790 / 3E5E0 / BB8C / 31A74 / `+ 0` toggle sweep negatives._
@@ -55383,3 +55385,151 @@ CTX.h FN OUT.c [preline]` (standalone extraction of an in-tree function + its ex
 ctx_post.h / ctx_p0b.h fix stale 30AF4 / 35B1C declarations), `vs.py SPEC` (SLOTS grid or MODE='single'), `ins.py`
 (insert each snippet after every statement), `prein.py` (insert `if (<match>) {}` before each line that reads a
 regex match), `comma.py`, `narrow.py`, `dd.sh` (normalised instruction diff). All sweeps <= 200 variants per call.
+
+## kit CCCXLII (agent-g 2026-11-04, run 282): ONE C variable = ONE uopt colour -- when the target puts two roles of an m2c-shared variable in DIFFERENT registers, read the zdbug:5 `forbidden` / `interfere with` lists to find the web that blocks the wanted register, then move the roles into different existing variables (each read sees a value written on all paths); a promoted constant (`const------>` record) can be the victim: a variable web merely living in its block forbids it the register (post 2E354 99.8914 -> 99.9294) <a name="kit-cccxlii-agent-g-run282"></a>
+
+_Commits (agent-g branch): 6de271f38 (post 2E354 NM 99.89143 -> 99.89685), f986cf0ab (99.89685 -> 99.90771), f074b856f
+(99.90771 -> 99.92943); all at
+the target length 3684. Tools: `/tmp/claude-1000/g282/` (`dump.sh SRC TAG FUNC LEVEL`, `lrall.sh SRC TAG FUNC` =
+zdbug:6 colour order + zdbug:5 `>>>active<<<` records joined by agent-c's lr.py; `rep.py` = old/new replacement
+grids, <= 200 variants)._
+
+**Reading the dump.** `lrall.sh` compiles twice (the zdbug:6 `uoptlist` has the bit table and the `assigned
+(constrained) R` order, the zdbug:5 `uoptlist` has one `>>>active<<<{ichain} bit colour` record per live range with
+`adjsave`, `forbidden` and `interfere with`) and prints one line per LR: bit, colour (1 v0, 2 v1, 3..6 a0..a3, 7.. t0..,
+14 s0 in this cfe body), colouring order, adjsave, neighbour count, final forbidden set, and the bit-table name
+(`isvar M 34 -40` = the home at frame-40, so map homes to declarations by declaration order). For every register
+residual: find the LR, list its neighbours with a lower `ord` and the wanted colour -- that neighbour is the cause.
+
+**1. raceB / constant 4 swap (2E354).** Target `lui v0; lw v0 (raceB); addiu v1,zero,4; beq v1,v0`; ours had the
+word in v1 and the constant in v0. The word went through the u32 `temp_v0_7`, which also holds the stateC word at the
+top and the o->0x29 selector of switch 5 -- both v1 in the target. Its `forbidden: [1]` came from `temp_v1`
+(adjsave 3.25, v0), live across the 0x29 switch (`temp_v1 = 0x10; switch (temp_v0_7)`). So the target has two
+variables there. Reading raceB into `temp_v0` (the function's v0 variable; compared as `(u32)temp_v0 == 4`, the old
+u32 compare, value-preserving) gave raceB v0, but the 0x14 selector (`temp_v0_2`) then took the freed v1 and the
+constant went to a0; moving the selector into `var_v0` (its 8 / 0x40 web is dead in that block) gives the target's
+selector t0 and constant v1. The last words there were the operand order (`beq v1,v0` target = constant first,
+`beq v0,v1` ours; literal-first / comma-wrapped / unsigned-literal spellings with the variable are all identical):
+dropping the variable and reading the global in place at each compare (`((u32)D_raceB_E354 == 4) || ((u32)D_raceB_E354
+== 0xA)) && (((u32)D_raceB_E354 != 4) || ...`, one CSE'd load, no store in between) makes raceB a load expression,
+which ranks like a computed operand (kit CCCXXXIX), so the hoisted constant goes first: 99.9077 -> 99.9294 (f074b856f);
+without the (u32) casts it is 4 bytes short.
+
+**2. Hoisted constant 1 (2E354).** The constant-1 LR (`const------> 1`, split in pieces) took t0 in the 0x2C == 0
+arm (target v0, used by `== 1`, the switch's case-1 compare and `var_t9 = 1`). Its piece's neighbours: arg0 (s0),
+var_t9 (a2), the switch cvt (v1) and `temp_v1` (v0) -- `temp_v1 = o->0x15; switch ((u8)temp_v1)` put the
+function-wide v0 variable's web into that block. Holding o->0x15 in `var_t9` itself and switching on it uncast
+(`var_t9 = o->0x15; switch (var_t9) { case 1: var_t9 = 0; ... }`) frees v0 for the constant (`var_v0` works the same;
+temp_v0 / temp_v0_2 / var_v0_3 / the u8 locals are worse, a u32 or u8 holder adds an `or` copy).
+
+**Negatives (2E354, don't repeat).** var_v0's 8 / 0x40 pick (target v0, ours a2 then t0): its competitors are the
+switch-1 u8 holder `temp_v1_3` and its (s32) cvt (adjsave 2.0 / 2.5 vs 1.0-1.44) which take v0 / v1 in the switch head;
+more code-free compares / `if (var_v0) {}` in the head or arms (48), `while (0) { var_v0 = ...; }` ref multipliers (70,
+cfe drops them), ternary / pre-assigned / swapped if-else, s32 / u32 / s16 / u16 / s8 / u8 types, an if-chain instead
+of the switch (-24 bytes), an s32 holder (frame / -4 bytes), moving or duplicating the 0x21 read, and the pick in any
+other variable (temp_v0 lowers temp_v0's adjsave below var_v0_3 / temp_v1 and the whole v0 set moves): flat or worse.
+temp_v1_2's 0x14 copy (a0, target t0): code-free tests in its block and other variables for the copy / the 0x29 web:
+flat. prein / zero-use sweeps over the new body (globals, the eight scalar locals, lines 13150-13215 / 13440-13520):
+flat.
+
+**Other targets this run (negatives).**
+* post0b 469A8: the run-281 `if (FW(arg0, 0x240)) {}` makes the first 0x240 reload an expression LR (a1, target v1)
+  but removing it costs 0.05; single insertions of the eight block / arg0 / temp tests at every statement (272 + 272
+  without that test), moving the 0x148 test (68), `&&` / ternary / inline var_t0 spellings, assignment-in-test forms:
+  flat. Target colours: p100 a2, p78 t1, pDC t7 across the var_t0 branch, the SECOND 0x148 load coloured t5 and a10
+  ra; ours colours the FIRST 0x148 load (the creation-order test) and leaves the second a ugen temp. GAIN: re-running
+  `scripts/zero-use-sweep.py --lines` over the current body (kit CCXC: new hits after every shape change) found
+  `a10 = FW(FW(temp_v1, 0x148), 0xB8) + 0 * (int)(p100)` (p100 initialised at its declaration): 97.961 -> 98.058,
+  same length (a8b10b233); the second pass found the same term twice (`+ 0 * (int)(p100) + 0 * (int)(p100)`, two
+  refs in that unit): 98.058 -> 98.204 (d630be6ad).
+* post0b 415A4: the v30 address constant is a promoted LR hoisted to the run-210 folded use's block (`t->a4 = 2 +
+  0 * (int)(t->v30)`), so it interferes with the 1030 chain v and takes a2 (target v0); without the fold it is v0 but
+  the record stores reorder (94.04). Fold placement at every statement (60), v / a2C orders x store chains (40): flat.
+* post 31A74: the target's `sb a2,35(sp)` (sel's parameter-home spill) precedes the 0x1CAC0 `swc1` in the jal slot;
+  every spelling (store after the clamp, in the argument, comma, goto block, BB splits, sel / r tests) puts the spill
+  last (97.16).
+* post 33094 (NCC): the else arm's a.x is the inline set() parameter temp (bit -36, adjsave 2.5, f12) forwarded
+  into `b += a`; the target reloads a.x from its home there and gives f12 to 10.0f (adjsave 2.0). A volatile a.x read
+  in operator+= gives exactly that shape but loads through `addiu t9,sp,120` (92.58); 10.0f tests, by-reference /
+  local / reordered operator*= and BB splits: flat.
+* post 30AF4: `sv = (s32)&gl_state_30AF4 + 0 * (int)(<load>)` keeps sv a variable (the target's `lui v0; addiu v0`
+  before switch 1, case 6 through `12(sv)`) but sv then colours a0 behind a cvt of the gl_state lda (adjsave 2.0 vs
+  0.67) and the ugen ring shifts (<= 96.80, +4 bytes); case-4 / case-10 copies out of sv: flat. Zero-use sweep
+  (four windows): the only riser is `D_30AF4_h = sub + 0 * (int)(flag);` in case 4 (98.295) but at 2108 bytes (target
+  2112, length away -- not kept; a lead: something in the current body is a word long and something else a word short).
+  Base diff: ours is one word short up to case 5 (the missing `lui v0; addiu v0` sv hold before switch 1) and one word
+  long later. Case 5's `D_30AF4_l` chain: the target branches `bnel v1(16),v0` with the 13 store in the likely slot,
+  ours `beql` -- written `else if (D_30AF4_l == 16) { 16 } else { 13 }` the chain is word-exact (97.97 alone, ring
+  shifts elsewhere); with the case-4 fold above 98.44 at 2108; adding the folded-read sv hold restores 2112 but 97.16
+  (the folded read makes sv non-constant, so case 9 spills it to sp+36 instead of the target's `lui v0; addiu v0`
+  rematerialisation; case 9 through the global instead: 96.08). Remaining structural words vs the target after
+  flip + fold: only the sv hold before switch 1 and case 6's `sw t4,12(v0)`.
+* post0b 35B1C (vtable store order, 13 statement-order / one-line forms), 59E80 / 493AC / 3BE1C / 37540 / 3B6A0
+  re-diffs: register / slot residuals unchanged.
+* zero-use sweep re-runs (`scripts/zero-use-sweep.py --maxv 200`) this run: in-tree 31A74, 35B1C, 415A4 and the
+  NCC donors 59E80, 33094, 3B6A0, 37540, 3BE1C, and 2E354 in five line windows after the role split: no gain (only
+  469A8 moved, above). The 493AC donor sweep is inconclusive (198 of 200 probes failed to compile). Also flat after
+  the gains: `--exprs` / `--noint` passes on 469A8, 415A4, 31A74 and 2E354; `if (1) {}` at every 2E354 statement of
+  lines 131-265 (68) and every 415A4 statement (31); `if (v | t | p | t->v30[0]) {}` at every 415A4 statement (124);
+  469A8 block-pointer tests (p100 / p78 / pDC, 102) and load-expression tests (30); 59E80 `c->dl` / count / buf tests
+  before each packet (54).
+
+## kit CCCXLIII (agent-c 2026-11-04, run 284): a "missing uopt spill" is a register-pressure count, not a missing statement -- find the LR the target splits (its header piece stays in a caller-saved register, the body piece lives in a frame home), then (1) re-check the decode of every use of that variable against the target (the target may not use it where the donor does), (2) drop stale code-free tests that keep a competitor's priority low; uopt then runs out of callee-saved colours at the same LR as the target <a name="kit-cccxliii-agent-c-run284"></a>
+
+_Commit 3ebe2123d (post0b gl_func_0003B9C0 NM 95.72 -> 96.00, 1108 -> 1116 bytes = target; NM clip 0x2eaf8 -> 0x2eb00 in
+the run's final commit)._
+
+**3B9C0.** The target keeps `off` (+= 12 per triangle) in a1 in the loop header (`or a1,zero,zero`, the n / grp
+addresses), stores it to sp+128 right after the `dn` test and reloads it before `addiu a1,a1,12` at the bottom: uopt
+coloured every callee-saved register (s0-s8 + ra) before `off` and split it. Two findings got there:
+* the target's per-triangle b / a / sgn reads use the `i * 12` base (`sll a1,s3,2; subu; sll` -- a1 is reused once
+  off is spilled) that it also uses for `tris[i].d`, not `tris + off`; the donor read them through `off`, which gave
+  `off` 3-4 more body uses and the highest-but-one priority. Writing them as `self->tris[i]` is a verified decode fix
+  (equal values, the target's operand) and drops `off` to adjsave ~0.3;
+* with that alone the frame and colours moved but nothing spilled: the run-180 / run-235 `if (1) {}` splits after
+  `ok = 1` / `p.x = ...` and the run-273 inner-loop `if (qa != 0.0f) {}` / `if (self) {}` tests (added when the
+  function was 8 bytes short) kept the inner-loop LRs' adjsave low enough that 22 int colours sufficed; dropping the
+  `if (self) {}` alone gives 1116 bytes (it spills `cnt` instead -- read the zdbug:6 `split out` / lr.py table to see
+  WHICH LR lost); dropping all four plus the decode fix spills `off` like the target. A full removal grid of the six
+  remaining `if (1) {}` splits (64 cells) then picked the ok / p.x pair.
+* Re-sweep after the structural change: `zero-use-sweep.py --exprs` found `+ 0 * (int)(col->remap)` on the ib read
+  (96.00 -> 96.05, 7992173a8), then round 2 `if ((dn > -0.0001) + 0 * (int)(n->z))` (96.05 -> 96.11, 597003401;
+  round 3 flat), then the REMOVAL sweep (rm2.py) found the run-231 `+ 0 * (int)(self)` on the inner `ok = 0`
+  stale: dropping it 96.11 -> 96.52 (10782592d); another removal + zero-use (plain and --exprs) round: flat.
+  Lesson: after a structural change, sweep removals of the old levers as well as new insertions. Its other "GAIN" (`off = 0 + 0 * (int)(n->z)` in the for-init, 96.05 -> 96.11) reads
+  `n` before its first assignment -- the --exprs mode does not apply the maybe-unset filter to sub-expressions; reject
+  such hits (the legal step-position form `off += 12 + 0 * (int)(n->z)` changes the length).
+* Home of the split piece = the variable's own edg home (M offset), so its spill slot is set by declaration order:
+  `off` declared after `fv` = frame - 104 (the target's sp+128 under its 232 frame), with a dead-stored `opad` in the
+  old declaration slot keeping d / p at frame - 72 / - 48.
+* Left: frame 240 vs 232 (8 bytes of bottom area that tracks the ib / ia / sgn spelling and the test set, not any
+  edg home -- the zdbug M-offset set is identical; likely a uopt temp reservation), f in s1 (target t4: f must be
+  coloured before vt (73.3) and ia * 2 (70) but has adjsave 32.5; folded `+ 0 * (int)(f)` uses in the inner loop
+  change the length), the 0.0f constant f20 (target f14; 54 code-free 0.0f tests: <= base), 175 `if (X) {}`
+  creation-order probes over the loop body: flat.
+
+**Removal sweep (`/tmp/claude-1000/c284/t1/rm.py`, singles + pairs of every `if (...) {}` / folded `+ 0 * (int)(X)` /
+`do {} while (0);`, and `rm2.py` with `if (0) { ... }` keeps) over 34890 / 3AE58 / gui 4568 / 36694 / 42938 / 54E78 /
+46790 / 48AEC / 4BAF4 / 4F2DC / 4FD00 / gui 0F04 / 329C / 3714 / game_uso 3558 / 4B620: no gains** (most donors have
+0-6 such sites). Re-run it whenever a structural change lands.
+
+**Other probes this run (flat; don't repeat):**
+* post0b 4B620: addG / addOK post-increment as `c = count; count = c + 1` / `int c = count++` / head local (30
+  cells), next() spellings (if / named-n / `+=` / reversed tests, 11): <= base. zdbug:5: the swap is M-24 (s0,
+  adjsave 41.3: the loop's new index + an append parameter slot) vs M-32 (s3, 18.8: the append count + the loop's
+  ref address); the target needs M-32 coloured first. BB splits (`if (1) {}` / `do {} while (0);`) after each ctor
+  statement (40) and inside next() / cur() / ref() / inc() / add() / IBase / g1 (9) to dilute M-24: flat.
+* post0b 34890: make() dummy params / keeps / bodies (31 forms), next() ternary wrappers through kept inline
+  parameters (15), the loop inside make() or an lp() inline (-16 bytes), dead-arm holds in the for condition (kit
+  CCCXVIII, -8..+56 bytes). The target's two test results reuse the X-this (a2) and Mid / Base-this (v1) slots.
+* post0b 3AE58: the entry-pointer merge as a named local / if-else / accessor / pk() keep (14): v1 stays (target t0).
+* gui 4568: dummy-local / parameter / named-n next() variants per site (31), the local `n` typed unsigned / long
+  (49), `MAX(..., (s16)0)` / `0u` (81): <= base.
+* post0b 54E78: operator* spellings (const &, s * x, named r, keep, local copies; 16): <= base.
+* post0b 46790: 20 more idx narrowing / cast spellings around `(u8)(c & 15)`: <= base (the t8 / t9 pair swap).
+* post0b 4BAF4: the 0xEE append store order (target w0 first): 12 add() / inline forms, 16 code-free tests around it: <= base.
+* post0b 3B9C0 after the gain: `if (1) {}` re-inserted after each loop statement (21), f through kit CCCXII f2() /
+  kept f1() / me() at fv = f and the inner use (9), vt as `col->verts` in the loop (6), f-assignment forms (6),
+  zero-use sweep of the loop body (4 runs, 461 variants): flat. 3AE58 / 34890 / 46790 kit CCCXL creation-order
+  tests before the competing statements (64): flat. 4F2DC: the 24-byte home gap between hits and d is not a
+  missing V3 temporary (extra `V3();` / pads grow the frame); moving `start` up changes code (-12 bytes).
