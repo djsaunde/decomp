@@ -14679,6 +14679,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCCV (agent-g 2026-11-03, run 264): **a register the target sets (or leaves set) in an argument slot at a call is a call ARGUMENT -- spell the extra argument and the LR takes that register (40304 case 0x6D: `gl_func(cmd, (Vec3 *)((int)&scl | 0 * (int)cmd), &scl)`; BB8C: `&sb->mtx` as the transform's third argument with sb reassigned to it); a pointer indexed from the loop counter starts the strength-reduced pointer in the preheader (guard delay slot = `i = 0`); folded `+ 0 * x` on a call argument / named product colour those values; `argscan.py` finds the call sites; copy-then-zero (`dy = y1; y1 = 0; .. dy -= y0;`) when the target loads an operand straight into the result register**](#kit-cccv-agent-g-run264) -- _EXACT post0b 40304 (99.99 -> 100, 828 B, IDO donor splice), game_uso BB8C (98.83 -> 100, 1008 B, NCC donor promoted; .late_rodata moved to B4B8.s) and post0b 4E424 (96.90 -> 100, 196 B, IDO donor); 493AC / 4B620 / 3558 / 250C8 / 31A74 / mgrproc 1824 negatives._
 - [kit CCCVI (agent-c 2026-11-03, run 265): **uopt homes every edg M word at frame + M, so the target's frame offsets ARE the declaration / pool order: 36694's first word M-12 is a first-declared V3 local (`V3 a = n * dot;` ahead of r / l / px..pz), plain `return V3(...)` operators, const-ref difference in a block; V3 temps made inside inline operator bodies are not reused by a later `return` while caller-level value temps are; 34890's h word needs a real loop use on M-12 to stay coloured**](#kit-cccvi-agent-c-run265) -- _NM post0b 36694 90.96 -> 95.49 (712 B = target; layout + code-free float tests on the new body); 31C0 / 34890 / 46050 negatives; argscan over the list: only 34890 call 4._
 - [kit CCCVII (agent-g 2026-11-03, run 265): **a value in an "odd" caller-saved register (t0 while v0 / v1 / a-regs are free there) is a variable whose LR also covers a busy region: hold it in the dead loop counter after the loop (`i = (s32)ptr;`) so the LR spans the loop, and spell the test `i != 4` to keep the `bne` exit; argscan "held register" variant (scan2): values the target leaves in a1-a3 up to a call are arguments (4B2F4 list call `(seg, cmd2, h1)`)**](#kit-cccvii-agent-g-run265) -- _EXACT post0b 4B2F4 (99.88 -> 99.95 -> 100, 812 B, NCC donor promoted); 54E78 / 3AE58 / 415A4 / 31A74 / mgrproc 1824 / 3E5E0 / 37540 / 48AEC negatives._
+- [kit CCCVIII (agent-c 2026-11-03, run 266): **a long run of t7 / t9 swaps after one early mismatch is ugen's expression-register sequence (it carries across blocks and calls): a value-preserving narrowing cast `(u16)(f & 0x100)` costs one ugen register with no code and re-aligns it; two array loads off one local base in ONE basic block keep the target's held `addiu tX,sp,N` base; 36694's first statement has one operator* parameter temp fewer than ours (n * 2.0f reproduces the pool)**](#kit-cccviii-agent-c-run266) -- _NM post0b 5A2C4 96.08 -> 98.04, 3B9C0 95.24 -> 95.52 (1104 -> 1108 of 1116, clip 0x2eaf4 -> 0x2eaf8); 36694 / 3B9C0 off-spill / 5A2C4 scan2 negatives._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
 - [kit CCLXXII (agent-c 2026-10-30, run 247): **a folded `+ 0` on one loop's test moves the shared edg pool temp to the OTHER loop (493AC: the second loop's next() result leaves the call-crossing s2 temp); taking a local's address through a member call (`getPos(vb)`, `e = vb - va`) makes it memory-resident like a target that stores it after init (3558 length fixed)**](#kit-cclxxii-agent-c-run247) -- _NM 493AC 99.36 -> 99.43, game_uso 3558 91.62 @ 956 B -> 92.60 @ 1008 B; 41D40 / 250C8 / 3AE58 / 46790 / 3E5E0 / BB8C / 31A74 / `+ 0` toggle sweep negatives._
@@ -53259,3 +53260,45 @@ Gate: full make ROM byte-identical (cmp), verify-blocks 6/6, `make non_matching_
    nothing under NCC, and a `Ctx **cp = &D` local is constant-propagated back into the folded lui/lw (96.40). The
    target's &D must be a CSE'd address item (two or more address uses after the join), so look for a second
    reference to the CTX base in the last packet (e.g. the count pointer read through the same base).
+
+## kit CCCVIII (agent-c 2026-11-03, run 266): ugen expression-register PARITY -- a whole block of t7 / t9 (or t8 / t9) swaps after one early mismatch is ugen's temp-register sequence, not uopt colouring; a value-preserving narrowing cast `(u16)(f & 0x100)` costs one more ugen register with no code and re-aligns it (post0b 5A2C4 96.08 -> 98.04); post0b 3B9C0 95.24 -> 95.52 by putting both `pp[]` loads in ONE basic block (the target's held `addiu t9,sp,184`); 36694 stmt-1 pool reading; scan2 on 5A2C4 <a name="kit-cccviii-agent-c-run266"></a>
+
+_Commits 4be15a129 (3B9C0 donor), 9c8a5448c (5A2C4), plus one final post0b clip commit (3B9C0 NM 1104 -> 1108:
+clip 0x2eaf4 -> 0x2eaf8, 62F08 NM offset 0x2eaa8). No exacts._
+
+1. **Spot it.** In 5A2C4 the diff after the head condition was a long run of `t9` (ours) vs `t8` / `t7` vs `t9`
+   (target) on otherwise identical instructions, continuing into the next blocks (the fcsr save registers of the
+   float->u32 conversions too). uopt colours are v0 / v1 / a* / s* here; t6..t9 are ugen expression registers, and
+   their order carries ACROSS blocks and calls, so one early difference shifts everything after it.
+2. **Lever.** Wrap a sub-expression whose value range is known in a narrowing cast that changes nothing:
+   `if ((u16)(f & 0x100) && (f & 1))` (the value is 0 or 0x100). cfe emits the extra `andi 0xffff` into ugen's
+   register sequence, uopt drops it (same length), and the following expression registers move one step: the bit-0
+   test lands in t8 like the target and the whole head block re-aligns: 96.08 -> 98.04. Diagnostic hint: the
+   one-instruction-longer `(f >> 8 & 1)` spelling scoring much higher (97.48 at +4 B) says "parity", not "colour".
+   Not a fix for every swap: the next break (the index `sll` after the call: ours t9, target t7) did not move under
+   7 x 7 x 4 cast / test spellings of the condition and the index statement, 16 more condition forms, else / ternary
+   forms, `(u16)` / `(u8)` on 1-2 of the 19 masks (150 random) or 180 random code-free tests.
+3. **3B9C0 held base.** The target CSEs `&p` into t9 for both `qa = pp[ia]` / `qb = pp[ib]`; with the old
+   `if (1) {}` between them each load folded sp+184 into its displacement. Moving the split after qb
+   (`qa = pp[ia]; qb = pp[ib]; if (1) {}`) keeps the address in a register INSIDE the iteration (the run-24x note
+   that "uopt hoists &p into a colour" was the separate-statement form): 1104 -> 1108 of 1116 bytes, then folded
+   uses `pp = &p.x + 0 * (int)(ib) + 0 * (int)(ia);` and `+ 0 * (int)(pp)` on sg (zero-use sweep) 94.19 -> 95.52.
+   The last 8 bytes are the target's `off` spill (a1, `sw a1,128(sp)` after the dn test / `lw a1,128(sp)` at the
+   latch). Diagnosis: a read of an UNSET `ey` at the pp line (not keepable) gives exactly 1116 bytes, i.e. one more
+   outer-loop-carried int LR produces the spill; legal carriers tried (`v0 / v1 / fv / nx` initialised from a
+   parameter before the loop + a folded use; params on stack fold away) do not create the LR. -zdbug:5: ours colours
+   off late (priority 0.22, forbidden 1-19) into s6; in the target ia*2 / ib*2 take ra / s0 and f takes t4, so no
+   callee register is left and off is split. A kept-parameter `kp(tri->b)` (`if (0) { v = 0; }`) reaches 1116 bytes
+   but by a different shape (91.1). 190 + 190 random code-free tests, bbsplit / order / denaming / volatile sweeps
+   on the new body: flat.
+4. **36694 stmt 1 read from the pool.** Target words: value temp M-52, ONE 4-byte entry M-56, inner V3 M-68, then
+   5 words to M-88 (ctor `this`, set `this`, set a / b / c), then the sub's value temp FRESH at M-100. Ours has two
+   4-byte entries (operator*'s `a` pointer temp and `s`) and the inner at M-72. `n * 2.0f` (s constant, no temp)
+   reproduces M-52 / M-56 / M-68 and the fresh M-100 -- so in the target one operator* parameter takes no temp.
+   Not found: by-value `V3 a` (copies n), `const` / `register` / reference / double s, member operator*,
+   `scaled()` / `mul()` / `scl()` forwarders, `operator*=` routes, `f32 dd` / `l` / `px` as a named scalar (frame or
+   assignment-form changes), dot as inline member / free function, triple-inline dot in a V3(...) ctor: all
+   88.3-95.49.
+5. **scan2 (kit CCCVII) on 5A2C4.** The target keeps the first trailing-E7 append's count in a3 up to the
+   `func_00000000_5a2c4v` call: passing it (`..., arg10, e7c)` with a fresh count local, or reusing rgba / f) does
+   put it in a3, but the neighbouring appends recolour: 97.95 / 97.46 / 97.97 < 98.04 (zero-use / bbsplit flat).
