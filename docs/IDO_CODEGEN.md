@@ -54935,6 +54935,14 @@ even only splitting `V3 start; start.x = ...` onto two lines, or e by member sto
 `V3();` / `if (1) {}` at every other line, `int besti = -1` positions, line joins / splits, three random test rounds: flat.
 (36694: px / py / pz / l / r declaration permutations inert -- register-held; `V3();` / `P3();` at every line inert.
 4FD00: `SV();` -- SV has no constructor -- kills edgcpfe, don't.)
+Kit CCCXXXIV prototype check over the agent-c bodies: every typed callee is passed its declared type (3B9C0 sqrtf(float),
+36694 gl_sqrtf_36694(f32), 3558 game_uso_func_071028(Vec3 *), E2D0 func_00000000_4948_ff(float)); the rest call `(...)` /
+K&R placeholders with int / pointer arguments only (no float promotion), so no conversion-node candidates there.
+REJECTED (policy): a 48AEC random round reached 97.5125 with `if (B) {}` right after the flags30 call -- B is not assigned
+yet there (uninitialised read); `if (GS) {}` / `if (D_00000000) {}` / `&B` / `&A` / `&gctx` address tests in that slot and
+the round's other two tests alone stay <= 97.4836. Random code-free test rounds (3 each, 190 variants per round), all
+flat: 4F2DC (new base), 3AE58, 0F04, 4568, 3714, 329C, 54E78; 42938 at frame 0x58 97.89 -> 97.93 only. E68 padq[2..4] at
+every declaration position: flat.
 
 **Word counter.** `NCC -Wo,-zdbug:1` (dump compiler, diagnosis only) prints every M-variable; the lowest `isvar M 4 -N`
 offset (vreg rows included) moves 1:1 with the declared-and-referenced local words, so it is a frame counter that is not
