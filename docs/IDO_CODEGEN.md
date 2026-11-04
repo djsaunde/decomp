@@ -14690,6 +14690,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCCXVI (agent-g 2026-11-03, run 269): **a switch selector kept in ONE t-register across a call-bearing if-chain: read it into a local BEFORE the chain and re-read it right after EACH call (not once at the switch -- that gives an a0 selector + `or` copy); a late base recompute before one store is a different 0-placeholder base (decode by value semantics), not a CSE lever; `(++*p & 0xFF) == K` keeps an increment test in ugen temps**](#kit-cccxvi-agent-g-run269) -- _post 2E354 98.15 -> 98.60 at the target length 3684; post0b 59E80 NM 98.48 -> 98.50; 30AF4 / 0F04 / 42938 / 493AC negatives._
 - [kit CCCXVII (agent-g 2026-11-04, run 270): **read the USO TextRelocs (uso-reloc-symbolize.py walk_dir / build_relocmap, game_libs shim 0x1466C) to see which 0-placeholder base each access really uses; a typed array for a base BOTH arms use makes one lda LR that uopt splits + re-materialises like the target; an m2c countdown pair `t = f; t2 = t - 1; if (t) { f = t2; if (t2 == 0)` is `if (f) { if (--f == 0)` (ugen temps)**](#kit-cccxvii-agent-g-run270) -- _post 2E354 98.60 -> 99.066 at the target length 3684 (corrects kit CCCXVI's "different placeholder" guess); bootup 24B8 latch/k slot map; post0b 35B1C is a C++ ctor (NCC lead 97.35); 250C8 / mgrproc 1824 / FP-chain leads and negatives._
 - [kit CCCXVIII (agent-c 2026-11-04, run 271): **a DEAD conditional arm allocates edg pool temps without live writes: `(x * 0) ? (void)dummy(a) : (void)(real code)` -- edg keeps the dummy's parameter temp for the whole full-expression (the live arm's new-temp lands past it) and uopt folds `x * 0` and deletes the dead arm, so an entry such as another new-temp is never redefined on the live path; keep the real code INSIDE the false arm; `max - 1 < n + 1` gives ugen's addiu-then-slt order; a folded `& 0xFFFF` on an s16 store burns a ring slot**](#kit-cccxviii-agent-c-run271) -- _bootup 31C0 99.995 -> EXACT (1e20258ee); post0b 48510 98.73 -> EXACT (4f23b0b19); zero-use harness rename fix; 34890 / 36694 / E2D0 / 329C / 3714 / 3AE58 / 46790 / 54E78 negatives._
+- [kit CCCXIX (agent-c 2026-11-04, run 272): **zdbug:5 `forbidden:` = precolours + colours of neighbours coloured EARLIER (recover the colouring order from it; a target register one step past ours means a neighbour the target colours first holds the skipped one); a value read through a kept inline's RETURN temp is a coloured variable where the target has a ugen temp -- read it inline; an empty test on a load that is CSE'd into a later call argument gives the load an LR and moves the ring**](#kit-cccxix-agent-c-run272) -- _post0b 3AE58 99.26 -> 99.63 (24d23e1d0); post0b 4B620 99.66 -> 99.68 via `idx = idx + 1` in the iterator's next() (99eb6a0f6); post0b 36694 95.49 -> 95.52 (dot x product `n.x * p.x`, 9a06b36b2); 3714 spr / 3AE58 merge diagnosis; 34890 / E2D0 / 5A2C4 / 46790 / 4B620 / 54E78 / 329C / 36694 negatives._
+- [kit CCCXX (agent-g 2026-11-04, run 271): **FP ring offset = one value held in a variable the target never names (target f4 ugen temp, ours coloured f18/f0; FP colours 24..29 = f0/f2/f12/f14/f16/f18): build it in its memory destination (`d = a / K; d += g; d = d * s;` on a plain local) or inline it into its consumer; if that drops another LR's priority below a rival, an early `if (1) {}` inside the RIVAL's LR (more bbs = lower save/#bbs) restores the order; a `(s32)` cvt web of `u8 != 0` steals a0 from a hoisted constant (`if (u8var)`); a BB split after an arm (not leading inside it) un-colours the arm's load**](#kit-cccxx-agent-g-run271) -- _post 2E354 99.07 -> 99.75 at length 3684 (2022aafcc, 71baabe0a, cafdcba1b, df458b6f6); game_libs 2840 94.48 -> 95.23 by code-free `if (f0 != f2) {}` priority refs (6da083f28, 53a2707f9); remaining 40 integer diff lines classified; 30AF4 / 250C8 / 24B8 / 1824 / 59E80 / 493AC notes._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
 - [kit CCLXXII (agent-c 2026-10-30, run 247): **a folded `+ 0` on one loop's test moves the shared edg pool temp to the OTHER loop (493AC: the second loop's next() result leaves the call-crossing s2 temp); taking a local's address through a member call (`getPos(vb)`, `e = vb - va`) makes it memory-resident like a target that stores it after init (3558 length fixed)**](#kit-cclxxii-agent-c-run247) -- _NM 493AC 99.36 -> 99.43, game_uso 3558 91.62 @ 956 B -> 92.60 @ 1008 B; 41D40 / 250C8 / 3AE58 / 46790 / 3E5E0 / BB8C / 31A74 / `+ 0` toggle sweep negatives._
@@ -53962,3 +53964,130 @@ for l in open('asm/nonmatchings/game_libs/game_libs/gl_func_0002E354.s'):
    take no entry (set() body). E2D0 (cfe): empty FP tests emit code in cfe; `if (arg4) {}` moves and scale spellings
    flat. 329C per-pkt accessor greedy, 3714 spr-placement / split grid, 3AE58 pick() return / reference forms, 46790
    idx spellings and byte / mask burns, 54E78 200 code-free FP tests: flat.
+
+## kit CCCXIX (agent-c 2026-11-04, run 272): READ `forbidden:` IN zdbug:5 AS "precolours + colours of neighbours coloured EARLIER" -- a target register one step past ours (merge t0 vs v1, spr t1 vs v0) means some neighbour the target colours FIRST holds the skipped register in a block where ours has none; a value read through a kept inline parameter's RETURN temp is a coloured variable (lhu v1) where the target has a ugen temp (lhu t6): read it inline; an empty test on a load that is CSE'd into a later call argument gives that load an LR (and its register) and moves the ring (post0b 3AE58 99.26 -> 99.63) <a name="kit-cccxix-agent-c-run272"></a>
+
+1. **3AE58 decode.** The run-173 body read the entry's vertex index through `pick(Ent *e) { if (0) { e = 0; } return
+   e->vi; }`. edg makes pick's RETURN value a pool temp, uopt colours it (`lhu v1,2(t0); multu v1,s4`); the target has
+   `lhu t6,2(t0); multu t6,s4` -- a ugen expression temp. `&a1->verts[(a1->tbl ? &a1->ents[a1->tbl[i]] :
+   &a1->ents[i])->vi]` reads it inline (t6), but the frame drops by 8 (one pool word fewer: add two volatile pads below
+   `fv`) and the merged entry pointer goes from t0 to v1, because the vi variable was the only LR that held v1 there.
+2. **Empty test on a CSE'd argument load.** `fv[2] = v->z; if (a0->x2C) {}` (a0->x2C was stored before the loop, so
+   the read is defined): the test's load is CSE'd with the call argument `a0->x2C + off` after it, the expression gets
+   an LR (zdbug:5 `{1450|0}`, coloured t0) and the ring after the merge lands on the target's t6 / t5 / t8 / t9 / t1 /
+   t7 ... -- 99.26 -> 99.63 (only the merge colour and the x2C argument register, t0 vs t4, left). The test is code-free
+   (it costs no instruction: the load it reads is the argument load moved up), length 380 unchanged.
+3. **How to read the forbidden list.** In `cc/NCC -Wo,-zdbug:5` each `>>>active<<<{h} LR COLOUR` block lists
+   `forbidden: [...]`; it is NOT a static constraint set: it holds the call-block / entry precolours (a0-a3 in a block
+   whose call takes 4 arguments) PLUS the colours of every interfering LR coloured before this one. Use it to recover
+   the colouring order (an LR whose list contains v1 was coloured after the v1 owner). 3AE58: merge `{144|1}` forbidden
+   [v0 a0-a3 s0] -> v1; the target's t0 needs a neighbour coloured first that holds v1 in the arm / join blocks, and the
+   target never writes v1 in the whole function. A 64-bit return type on the loop callee (`long long` / `double`
+   placeholder) does not precolour v1 (result unused): no change. Pairs of empty tests on loads that are not used
+   elsewhere make no LR at all (dead before colouring); a named `Ent *e` merge with `+ 0 * (int)e` / `| 0 * (int)e` on
+   each call argument extends its LR into the call block but still colours v1 (and costs a frame word).
+4. **gui 3714, the same shape.** zdbug:5 shows spr (`arg0->spr`, LR in the loader-call block only) forbidden [a0-a3]
+   -> v0; the two long LRs that are v0 / v1 in the target's first append (edg pool entries M-84 = `dl`, M-80 = `n`,
+   reused by every later append) skip that block, so nothing forbids v0 / v1 for spr. The target's t1 = v0, v1, a0-a3,
+   t0 (_g) all taken, i.e. the M-84 / M-80 LRs ARE live in its loader-call block. Moving `spr = arg0->spr` before / after
+   the alloc-store split, `#define spr (arg0->spr)`, explicit dl / n locals with empty tests in that block, and 143 empty
+   tests (CTX, CTX->dl, CTX->dl->n, args, spr fields): no t1.
+5. **Negatives (all flat or worse).** 34890: dead-arm dummies in the for condition (180 variants) and kept dummies in
+   either arm or around the cur assignment (33) re-colour the alloc cascade (98.62 with the ternaries swapped v1 / a2);
+   rotation statements between make() and the loop, live temp-using calls there (the ternaries stay on M-16 / M-12
+   whatever is allocated in between), kept / unkept extra LIter ctor parameters (62), counted uses in the condition /
+   body / make args / tail (100), the loop inside an inline taking `LIter &` / `LIter *` (iterator promoted, 320 B).
+   E2D0: without `if (arg4) {}` every `1.0f + arg4` / `arg4 + 1.0f` / scale-local placement gives mtc1-before-lwc1
+   (130 words); 250 empty int / FP tests at every statement; with the keep the arg4 LR (P16, adjsave 0.33, coloured
+   last) gets f14 because only f0 / f2 / f12 neighbours exist -- the target's f16 needs an f14 neighbour that never
+   appears in its code. 5A2C4: 91 cast spellings of the two head tests, 13 spellings of the D[func()] index, nested /
+   ternary / else forms (36): the post-call `sll t7` stays t9. 46790: 286 spellings of the two idx terms, 480 empty
+   tests (variables and loads). 4B620 184 empty tests, 54E78 211 BB-split singles / pairs, 329C 294 and 36694 247 empty
+   tests: flat.
+6. **More negatives.** 34890: the ternary wrapped in a kept inline `cnd(d0..dk, r)` (98 variants) never moves the two
+   ternary results off v0 / a1 (the conditional's result temps ignore the wrapper's parameter entries). 54E78: zdbug:5
+   shows the 0.0f LR (adjsave 3.0, forbidden [f0 f2 f12] -> f14) loses the tie to the n.y / n.z load LRs (3.0) and to
+   the product-block LR (4.0); a split after `m[2][3] = 0.0f` takes it out of the product block but every extra empty
+   test adds a block (adjsave 2.5), and the 4 top-test x 24 split grid never gives `mtc1 zero,$f0`. 3714: the loader call
+   through a kept inline / member `ld()` (8 variants) re-colours the first append (93.84). 4B620: per-site append form
+   grid (63: add / addE / addO / addOK / addIK / addG / addGN / addGI at each of the 9 sites) flat. 36694: 17 spellings
+   of the bound difference (value / const value / P3 base / copies / re-reads / splits) flat or worse.
+7. **4B620: the increment spelling inside an inline iterator.** `Elem **next() { return idx < last ? &(*a)[idx = idx +
+   1] : 0; }` instead of `&(*a)[++idx]` (same code shape, 1236 B): the loop's new-index temp and the `&it` reload from
+   sp+164 swap s0 / s3 like the target, 99.66 -> 99.68 (zdbug:5: the M-24 / M-32 entry groups, adjsave 40.3 / 19.0,
+   are what take s0 / s3 -- a priority GAP, so the remaining appends-1-2 old count (s3, target s0) is entry
+   composition, not a tie). `idx = 1 + idx` / `(idx = idx + 1)` give the same 99.68, `idx += 1` / `++idx` stay at 99.66; the count
+   increments in DLHead::inc() / addO / addOK / addG (48 + 25 spellings: `(c = c + 1) - 1`, `n = c; c = n + 1`,
+   `c++` after the address) are flat or worse. The same increment grid on 46790 (idx / i / j / put, 108), 3AE58 and
+   3B9C0 (`i++, off += 12`, 8 each): flat.
+
+## kit CCCXX (agent-g 2026-11-04, run 271): an FP "ring offset" whose first wrong register is a COLOURED f18/f0 where the target has a ugen ring temp (f4) is ONE value held in a variable that the target never names -- build it in its memory destination (`d = a / K; d += g; ... d = d * s;` on a plain non-volatile local) or inline it into its single consumer; when dropping the variable shrinks another LR's priority, add a code-free `if (1) {}` BB split inside the LR that must LOSE (it lengthens that LR, priority = save / #bbs); a colourable `(s32)` cvt web of a `u8 != 0` test steals a0 from a hoisted constant (spell it `if (u8var)`) (post 2E354 99.07 -> 99.75 at the target length 3684) <a name="kit-cccxx-agent-g-run271"></a>
+
+1. **Reading the FP side of zdbug:5.** FP colours are 24..29 = f0, f2, f12, f14, f16, f18 (24 = f0 confirmed by the
+   coloured `temp_f0`, 25 = f2 by the o->0 load, 26 = f12 by the 2.0f constant). f4 / f6 / f8 / f10 are never uopt
+   colours: an f4/f6/f8/f10 in the target is a ugen ring temp, so the value is NOT a uopt LR there. In 2E354 the
+   `o->0 / 200.0f + D_16E0` sum was `temp_f18 = ...; temp_f18 += D; sp78 = temp_f18; ... sp78 = sp64 * temp_f18;` --
+   the same variable as the earlier `o->4 * o->0 * 100.0f` product, so the product's LR (bit 53) ran through the sum's
+   block and the sum came out in f18; every later FP temp was one ring step behind the target ("ring offset").
+2. **Taking the value out of the variable costs a priority.** Removing the sum from `temp_f18` (fresh local, CSE'd
+   twice-written expression, assignment chain, B2 `sp78 = X; sp78 = sp64 * sp78;` with volatile sp78) dropped the
+   product's adjsave from 1.25 to 0.667, below `sp60` (0.714), so sp60 took f18 first and the whole function moved
+   (92-93 %, +12..16 bytes). Fix: one `if (1) {}` after an early statement inside sp60's LR but before the product's
+   LR (here after `temp_v0_7 = D_stateC_E354;`): sp60's #bbs grows, its priority falls under the product's, the product
+   gets f18 again and sp60 stays in memory like the target. A fresh named local for the sum is still coloured (f0,
+   bit 130 `uadd` CSE temp, save 3.0, single BB): a colourable value in ONE BB is still a uopt LR. What the target has
+   is no LR at all: build the value in the destination itself -- `sp78 = (temp_f16 = o->0) / 200.0f; sp78 += D_16E0;`
+   then `sp78 = sp78 * sp64;` with sp78 a plain (non-volatile) local whose home is kept (both target swc1 0x78 stay):
+   the add / mul read the stored value straight from the ugen register (add.s f4; swc1 f4; mul.s f8,f4,f6; swc1 f8).
+   The `(temp_f16 = o->0)` inside the division also puts the 200.0f mtc1 before the o->0 lwc1 like the target.
+3. **Same shape for a cvt chain.** `var_f4 = (f32)(u32) o->0x26; temp_f18 = var_f4 * temp_f0; o->0x26 = (u32)temp_f18;`
+   coloured var_f4 (f2) and the product (f14); `o->0x26 = (u32)((f32)(u32)o->0x26 * temp_f0);` gives the target's
+   ugen f8/f10/f4. With sp78 non-volatile, `sp78 *= o->0x58` (compound) also restores the target's load order.
+4. **Integer twin.** zdbug:5 on the hoisted constant `1` (D_stateB / D_stateD compares) showed `forbidden: [1 2 3 4 5]`
+   with a0 taken by bit 67 = `ucvt{temp_v1_32}` (the (s32) widening of `temp_v1_32 != 0`, coloured a0 although it emits
+   nothing). `if (temp_v1_32)` has no cvt web; the constant takes a0 like the target (the dead
+   `temp_v0_2 = temp_v1_32 * 4` went with it).
+5. **BB-split placement matters for a load LR.** The run-270 `if (1) {}` leading the `D_raceC == 0` arm made the arm's
+   `o->0x38` load a 3-bb LR (216-218, coloured v0); the same split AFTER the arm's closing brace leaves it a ugen temp
+   (t3/t4 like the target): +0.02.
+6. **Remaining 2E354 regions (40 diff lines, all integer):** (a) `var_v0` (0x40 / 8, spilled to 0x58 across the
+   0x9000_0000 calls) is a2, target v0: v0 is taken by bit 176 = the ucvt of the switch scrutinee `temp_v1_3` (o->0x21,
+   priority 3.5) and the same variable's second web (o->0x22, target v0) -- moving that web to `temp_v1_5` fixes 0x8D0
+   but makes the scrutinee v0 (neutral); fresh selector / 0x40-8 variables, all decl spots: flat. (b) the hoisted `1`
+   of the 0x67C block is t0, target v0: v0 is held by `temp_v1` (o->0x15, s32 web from run 269, bit 114); every other
+   variable / inline / fresh s32 for o->0x15 changes the length. (c) the case-0 `o->0x21 == 0` test is CSE'd with the
+   dispatch's hoisted `lbu a0,0x21` (bit 33 ucvt LR, bbs 213-239): spellings (`!x`, `(u32)`, `(u8)`, `== 0U`, array,
+   nested if, volatile) flat. (d) c.eq.s operand order of `temp_f16 == 0.0f` (target f4,f2): every spelling flat.
+   (e) `temp_v1 + D_2154 % sp50` addu order, D_raceB/4 v0-v1 swap, the `(u8)(t - 1) + 0 * (int)arg0` t5 (target t4,
+   but the folded use is load-bearing: every other spelling 98.47). Zero-use sweep (c271 harness, 7 x <=200 variants
+   over the whole body), leading/trailing `if (1) {}` sweep (2 x 90), commute sweep (91), decl-type sweep (80): no gain.
+
+Reproduce: `/tmp/claude-1000/g271/` var.py (unit-copy cfe scorer, g265/unit.py) + dump.sh (zdbug:5 through
+`tools/ido-static-recomp-dump/build/7.1/out/cc` on the asm-processed copy; `col.txt` = coloring section) + act.py
+(one line per LR: bit, colour, adjsave, forbidden). Commits 2022aafcc, 71baabe0a, cafdcba1b, df458b6f6.
+7. **Side notes (no gain).** post 30AF4: the residual is the target's `lui v0; addiu v0` of &gl_state_30AF4 before the
+   switch (a coloured const LR used by case 6's `sw 256, 0xC(v0)`), absent in ours (folded `lui at; sw %lo+12`) --
+   routing case 6 / the prologue stores through `sv` re-materialises per use (+4 bytes or 95 %). post 250C8: fontId's
+   call spill lands on 0x24 in the target (0x54 ours); decl moves and inlining fontId are flat / worse. mgrproc 1824:
+   only the `li at,1` of the outer two-case switch is scheduled one slot early; 7 switch spellings identical, if/else
+   and case order worse (and the jtbl reloc keeps it NON_MATCHING anyway). bootup 24B8: `k` first in the decls is
+   99.00 with k still v1 (target t0 needs v1 forbidden over k's LR).
+8. **objdiff alignment gotcha (post 31A74).** Moving the 0x1CAC0 store after the sel clamp gives the target's
+   `bgez a2; lui at` / `or a2` / `mfc1 a1` shape with only the sb / swc1 pair around the jal swapped (3 normalised diff
+   lines vs 7), yet objdiff scores it LOWER (97.16 vs 97.73): it aligns the swap as two inserts + two deletes. Judge by
+   the objdiff number, not by a positional diff count. Store-in-argument (`f(K, ACCS2 = r)`), comma and goto-block
+   spellings of the late store: same 97.16 or worse. post 33094 code-free-test variants (`if (a.x != a.y) {}` etc.)
+   and 415A4 BB-split / zero-use sweeps: flat.
+9. **The priority reading cracked a second FP function (game_libs 2840, NCC donor, 94.48 -> 95.23).** Target colours
+   f0 = the 0xBC load, f2 = 0xDC, f12 / f14 = the two CSE'd dot-product sums (each used twice), f16 / f18 = 0xA0 / 0xA8,
+   i.e. colouring order 0xBC, 0xDC, sums, 0xA0, 0xA8; ours had 0xA0 first and the sums last. The run-263 code-free
+   `if (f16 != f18) {}` was raising the pair that must colour LAST; two `if (f0 != f2) {}` (no code, extra refs on the
+   pair that must colour FIRST) give the target's first 36 words; then a single-move declaration sweep put b4's home
+   on target. Rule: list the target's FP colours in 24..29 order, that is the priority order; add code-free refs to
+   the LRs that must come earlier, remove them from the ones that must come later. Residual: d4 is coloured (f0, spill
+   0x58) where the target keeps it in its home 0x50; dy / p homes.
+10. **30AF4 lead (not kept).** The c271 zero-use harness finds `D_30AF4_h = sub + 0 * (int)(flag);` (case 4): 98.08 ->
+    98.30 but 2108 bytes (target 2112). It removes our extra `lui v1; addiu v1` base for D_30AF4_h (case 4 becomes the
+    target's direct `lui at; sw`), so the only structural residual left is the target's hoisted &gl_state_30AF4 in v0
+    before the switch (`sw 256, 0xC(v0)` in case 6) = exactly the missing 4 bytes. Next run: keep this lever and find
+    the source shape that makes uopt keep &gl_state_30AF4 as a coloured const LR from the switch head into case 6.
