@@ -14705,6 +14705,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCCXXXI (agent-c 2026-11-04, run 278): **`s = base; s += idx;` (pointer bumped by the index) gives the target's base-first `addu rd,base,off` where `&base[idx]` / `base + idx` / char-pointer forms give offset-first; the kit CCCXXIX remove-one / remove-two lever-pruning grid (prune.py: code-free tests, `if (0) {}` dead blocks, folded uses, narrowing casts) over 19 NM bodies on target-order bases found NO stale lever -- all accumulated levers are load-bearing; check the FRAME SIZE first: an unreferenced class object (`V3 padt;`) keeps its bytes in an NCC frame where a volatile pad array is dropped**](#kit-cccxxxi-agent-c-run278) -- _kernel 18F0 89.19 -> 89.39 (79f48e471); post0b 4F2DC 95.684 -> 95.692 at the target frame 0x1A8 (0ffefa853); post0b 36694 95.52 -> 95.88 (a330b52c7: comsw.py commutative-operand scan -> target dot order, ALL fitted tests stripped, fresh random test search); 18F0 residual = -9 mask not a register candidate, constants coloured after i / found, +4-byte peel edge block (100+ spellings, IDO 5.3 identical). Negatives: 5A2C4 F7 r / base pair (ug.py / mvtog / volsw / random), 48AEC / 4F2DC / 3558 target-order bases, 54E78 n.x-vs-d load order, 4BAF4 0xEE packet, 34890 / 3AE58 ternary registers, E2D0 arg4 ugen load._
 - [kit CCCXXXII (agent-g 2026-11-04, run 277): **spill word at the wrong offset with unused words below it = try an ADDRESS-TAKEN local: a copy-propagated scalar lives in a uopt spill temp placed directly under the locals (offset follows the local count; temp / pool levers cannot add words below it), while a code-free `if (&p == 0) {}` keeps p a memory variable stored to its declared home (register forwarded to the first call, reload after each); place the declaration for the home, then re-grid the assignment's statement position (memory stores get hoisted above a preceding branch)**](#kit-cccxxxii-agent-g-run277) -- _game_libs 2840 99.97 -> EXACT (418b8ace1); post0b 3BE1C 99.11 -> 99.17 (`cc = col` before the face() expansion, called on the rvalue `cc + i * 0`: col load into cc's s1; 5726930e1). Negatives: 250C8 FinishAsyncLoad spellings, 2E354 c.eq.s order / var_v0 v0-forbidden, 59E80 0xFFFD constant LR + paired bbsplit grid, 3BE1C off spill / ugen ring._
 - [kit CCCXXXIII (agent-c 2026-11-04, run 279): **an NCC frame that is too BIG while every sp load / store offset already equals the target's = dead homes of NAMED scalar locals; a straight-line tail rewritten with no names (globals inline, record pointer via a macro) sheds them with the same instruction count; scan frames with an sp-offset multiset diff (spscan.py) before colour work**](#kit-cccxxxiii-agent-c-run279) -- _post0b 42938 97.60 -> 98.11 (frame 0x88 -> 0x70, 942fbaac9). Inline-member named counts (`int n = dl->count++`) also cost a home each (48AEC +8; removing it restores the frame but shifts the inner layout 8 low, 97.48 -> 97.35, unrecovered by prune / random / decl-order sweeps). Negatives: 4568 last-append operand order, 3B9C0 tris[i] reads + `&off` (target off spill is a range split), E68 spill words 84 vs 76 (padq forms), 0F04 spill 124 via volatile pad (+8 frame), 18F0 found polarity, 3558 vb register accumulation, 4FD00 shared SV slot._
+- [kit CCCXXXIV (agent-g 2026-11-04, run 278): **a call argument whose C type differs from the parameter type (u32 message to a `void *` OSMesg, u32 id to an s32 parameter) is a conversion node: the argument becomes its own web / temp; re-type the prototype to the argument's type (same o32 passing) before searching statement levers -- with it the OoT-faithful body that run 277 measured as a negative is exact**](#kit-cccxxxiv-agent-g-run278) -- _game_libs 250C8 99.85 -> EXACT (06a137974): fontId copy-propagated into the target's shared temp word, retMsg split a1 / v0. Negatives (prototype / spelling grids): 31A74, 2E354, 59E80, 493AC (named `pn` loop test fixes the header v0 but swaps s1 / s2), 37540 (hx home reachable, rest regresses), 33094, 35B1C, 3BE1C, 3B6A0._
+- [kit CCCXXXV (agent-c 2026-11-04, run 280): **count NCC frame words with `-Wo,-zdbug:1` (lowest M offset moves 1:1 with referenced local words): each referenced named local of an inline expansion / gbi macro block (`d`, `n`, `_g`) is one word PER EXPANSION, unreferenced locals and copy-propagated inline parameters are zero; an all-constant-argument gbi macro can become an inline function at identical code (minus its `_g` word), computed-argument packets cannot (evaluation order); read sp-offset lists as a frame map and grid declaration order (an empty-ctor temporary `V3();` is a code-free frame word)**](#kit-cccxxxv-agent-c-run280) -- _post0b 4F2DC 95.692 -> 95.722 (c15251b92, b245c7795: count / temp first, arrays on the target's offsets); post0b 48AEC 97.476 -> 97.484 (5008b42c8: gctx after A / B, home back on sp+348). 42938: frame 0x70 -> 0x68 code-neutral (fSetOtherMode), 0x58 reachable only at 97.3-97.9; the guard t0 / t2 / t3 colours = fewer append LRs interfering with the tail-live guard constants. 0F04: the extra spill word is nextp()'s named n (no-n forms land 124 but <= 98.21). Negatives: E68 per-local `&x` probes, E2D0 arg4 keep positions, 3B9C0 tris[i] grid, 34890 ternary arms, 54E78 V3 ctor keeps._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
 - [kit CCLXXII (agent-c 2026-10-30, run 247): **a folded `+ 0` on one loop's test moves the shared edg pool temp to the OTHER loop (493AC: the second loop's next() result leaves the call-crossing s2 temp); taking a local's address through a member call (`getPos(vb)`, `e = vb - va`) makes it memory-resident like a target that stores it after init (3558 length fixed)**](#kit-cclxxii-agent-c-run247) -- _NM 493AC 99.36 -> 99.43, game_uso 3558 91.62 @ 956 B -> 92.60 @ 1008 B; 41D40 / 250C8 / 3AE58 / 46790 / 3E5E0 / BB8C / 31A74 / `+ 0` toggle sweep negatives._
@@ -54855,3 +54857,119 @@ Other results from the scan (all flat / negative, don't repeat):
   `SV &` parameter / macro / temporary-SV forms give that slot but lose the double `or` copy-backs (83 / 74 / 71).
 * 54E78 operator* spellings, 34890 new-expression spellings, 46790 index-expression spellings (16), 4BAF4 0xEE
   packet spellings, 36694 / 5A2C4 / 46790 random rounds: flat.
+
+## kit CCCXXXIV (agent-g 2026-11-04, run 278): a call argument whose C type differs from the parameter type (u32 message passed to a `void *` OSMesg parameter, u32 id to an `s32` parameter) is a CONVERSION node in uopt's IR: the argument becomes its own expression / web instead of the variable or load it converts, which moves colours and spill words around it; when a near-miss's residual sits on a value that is passed to a call, re-type the prototype to the argument's own type (the o32 calling convention is identical, so this is a semantics-preserving prototype fix) before searching statement levers <a name="kit-cccxxxiv-agent-g-run278"></a>
+
+_Commit 06a137974 (game_libs 250C8 EXACT, 99.85 -> 100, 600 B, promoted out of NON_MATCHING)._
+
+**The case (OoT AudioLoad_ProcessAsyncLoad with FinishAsyncLoad inline).** At 99.85 the last residual was
+(1) case 1's fontId homed at sp+0x54 where the target keeps it in the uopt spill-temp word sp+0x24 that it
+shares with the bytesRemaining temp, and (2) the retMsg web loaded into v0 with a copy to a1 where the target
+loads a1 and copies to v0. The run-144 / 149 body read `asyncLoad->retMsg` in every case (CSE'd to the switch
+load) and re-read retMsg into the same variable for `osSendMesg(q, (void *)retMsg, 0)`. Writing it the OoT way
+(every case reads the retMsg local, `fontId = ASYNC_ID(retMsg)`, the done message sent straight from
+`asyncLoad->retMsg`) was 95.66 with the original prototypes -- run 277 measured the same family at <= 98.65 and
+called it a negative. Three prototype changes turn it into the target:
+* `SetFontLoadStatus(u32, s32)` and `RelocateFontAndPreloadSamples(u32, ...)` (was s32): fontId stops needing a
+  home -- it is copy-propagated into ONE temp shared by the status call, the index and the reloc call, and that
+  temp lands in sp+0x24 (with the s32 parameters the u32 -> s32 conversions made two separate temps, frame +8);
+* `osSendMesg(void *, u32, s32)` (was `void *` message, the C cast `(void *)` on the argument): with the
+  pointer conversion the final reload is its own web (coloured a3, then `or a1,a3`), with u32 the reload goes
+  straight into a1, retMsg's web splits a1 (load / selector) + v0 (case bodies) exactly like the target, and
+  the constant-1 web gets a3 back. void * message 98.43, s32 below 99.3, u32 = 100.
+The (s32) switch-selector cast had to stay (no cast 99.30), the unused `pad` / `doneMsg` words stay (frame), and
+the old run-144 `if (asyncLoad) {}` / run-149 retMsg reload + `if (1) {}` levers are no longer needed.
+Generator sketch (reproducible): start from the OoT body; grid {selector var, body var, final var (retMsg /
+doneMsg / pad / inline `asyncLoad->retMsg`), fontId named or not} x {callee parameter types u32 / s32 / void *}
+x {selector cast none / (s32)} -- the parameter-type axis is the one that moves.
+
+**Where it did NOT move (negatives this run).** 31A74 `_f` / `_c` prototypes (int / u32 / void * first
+parameter, s8 / int / s16 / u8 / char second, int / void return, 90 variants), sel clamp spellings x store
+position x code-free def (36): flat at 97.73 -- the sel spill `sb` is always issued directly before the jal, the
+0x1CAC0 store before it (target: store in the jal delay, so issued after the spill). 2E354 var_v0 (v0 vs a2):
+the six switch-1 calls through void / (int, s8) / (u32, s8) / (int, int) prototypes, var_v0 typed s32 / u32 / s8
+/ u8 / s16 with and without the (s8) argument cast (72 + 15): flat at 99.83, so the v0 ban is not the call
+results. 59E80 typed prototypes for the two sub-DL calls / the 0xF0 call / the final call (48) and a random
+per-site next() spelling grid (190): flat at 98.55. 493AC typed prototypes for the three first-loop calls (27):
+flat; a named `Elem **pn` loop test (`while ((pn = it.next()) != 0)`) DOES put the header test's next() result
+in v0 like the target (the edg pool temp it shared with test()'s `this` / s2 is gone) but swaps s1 / s2 (the
+iterator-copy base vs the Elem pointer): 99.11 < 99.43 with one pad dropped for the frame, flat over 48 decl
+positions / types and a prune. 37540: inline gr() variants that return into hx without a pool local (comma
+form, separate clear, reference out-parameter, `hx = s->v60.x` + gyz()) with the kit CCCXXXII declaration
+order: hx's spill word lands on 0xA8 (home) but s goes t7, the V3 v1 block / v6C / v9C stay low: <= 95.29;
+volatile pad grid (65) and b / ab / a / s order x v9C scope x pads (240) <= 94.03. 33094: `&a` / `&b` / `&k` /
+`&o` address tests (85) and a / b code-free test placements in the else arm (110): flat at 94.31 (target loads
+10.0f into f12 and reloads a.x from its home; ours keeps a.x in f12). 35B1C: statement order x code-free tests
+(84) and alloc / vtable spellings (27): flat at 97.40. 3BE1C typed `f->mat` call prototypes (120): flat.
+3B6A0 `Col *c` declaration position x `cc = col` (43): flat.
+Also flat (random code-free `if (X) {}` searches, 190 each): 35B1C (97.40), 3B6A0 (96.375), 31A74 (one
+`if (r < 0.0f) {}` reaches 98.74 but grows the frame and length 564 -> 568: away from the target, rejected),
+2E354 switch-1 region (99.83), 493AC with the named `pn` test (99.11). 3BE1C: block-scoping a function-scope
+local moves the off temp DOWN 4 (hi: sp+0x50 -> 0x4C), hoisting the block locals r / n_al / d to function scope
+does not move it (off stays 0x50, target 0x54).
+Small gain: post0b 469A8 NM 95.36 -> 95.65 -> 95.80 (ddc9af690, 0196b01bc) from three rounds of the same random
+test search: `if (temp_s1) {}` after the gl_func_00034458(temp_s1) call, after the temp_t6 read and after the
+temp_a3 = temp_s1->0xC read (length unchanged).
+
+## kit CCCXXXV (agent-c 2026-11-04, run 280): count NCC frame words before chasing a frame -- every REFERENCED named local of an inline expansion (next()'s `DLHead *d`, `int n`, a gbi macro's block `Gfx *_g`) is one word PER EXPANSION (not pooled), unreferenced declared locals and copy-propagated inline parameters are zero words; a gbi macro whose arguments are all constants can become an inline function (its `_g` disappears, same code), but macro -> inline on packets with computed / float-scaled arguments re-orders evaluation and costs far more than the frame gains <a name="kit-cccxxxv-agent-c-run280"></a>
+
+_Commits c15251b92 + b245c7795 (post0b 4F2DC NM 95.692 -> 95.722) and 5008b42c8 (post0b 48AEC NM 97.476 -> 97.484); the
+frame / spill-slot fixes below all move colours the wrong way. Measurements for the next agent._
+
+**Rule of thumb from the declaration grids: declaration order only pays where a HOME (a stored / reloaded or
+address-taken word) sits at the wrong sp offset.** 48AEC: after the run-266 named counts grew the frame 0x160 -> 0x168, gctx's
+home drifted to sp+356; a 120-order grid of gctx / A / B / mtx / cmd puts it back on the target's sp+348 when it is declared
+after A / B (12 orders tie, 97.476 -> 97.484); `Mtx *c2` / `Gfx gbi, *gp` hoisted to function scope at 9 positions, a volatile
+pad at 71 lines, empty-ctor `Pad4();` / `Pad8();` temporaries at 70 lines: flat. Register-only locals are inert to order
+(gui 3714 x / y / w / h / fw / fh / spr: 150 orders, gui 0F04 twelve locals: 150 orders, 36694 a / r / l / px..pz: 144 orders
+-- all exactly the base score).
+
+**4F2DC (the one gain): read the sp-offset lists as a frame MAP, then grid the declaration order.** The target's top-down
+layout is [V3 temp 412][count 408][dists 376][surfs 344][hits 248][start 236][e 224][d 212][dir 200]...; ours had the
+three arrays first (392 / 360 / 264) and count below them. A 120-permutation grid of count / padt / dists / surfs / hits:
+`int count; count = 0; V3 padt;` FIRST, then the arrays, puts all three arrays on the target's offsets (95.692 -> 95.714);
+the `count = 0;` statement must directly follow count's declaration (after the padt ctor statement it costs 4.7 points,
+91.03, at any later position). Replacing the unreferenced `V3 padt;` with an empty-ctor temporary `V3();` (no code, same
+frame 424) moves count to the target's 408 (95.722). Not reachable: start / e above d / dir (declaring `V3 start;` early,
+even only splitting `V3 start; start.x = ...` onto two lines, or e by member stores changes the code: 1040 / 1052 bytes);
+`V3();` / `if (1) {}` at every other line, `int besti = -1` positions, line joins / splits, three random test rounds: flat.
+(36694: px / py / pz / l / r declaration permutations inert -- register-held; `V3();` / `P3();` at every line inert.
+4FD00: `SV();` -- SV has no constructor -- kills edgcpfe, don't.)
+
+**Word counter.** `NCC -Wo,-zdbug:1` (dump compiler, diagnosis only) prints every M-variable; the lowest `isvar M 4 -N`
+offset (vreg rows included) moves 1:1 with the declared-and-referenced local words, so it is a frame counter that is not
+8-rounded (script: `/tmp/claude-1000/c280/mw2.sh SRC.cpp` prints lowest M + frame). On post0b 42938 (target frame 0x58,
+ours 0x70): base -100 / 0x70; gSPSetOtherMode as `inline void fSetOtherMode(Gfx *g, u32 cmd, u32 sft, u32 len, u32 data)`
+-92 / 0x68 at the SAME code (98.1131 both, 2 sites x one `_g` word); next() without `DLHead *d` (`int n = dl->count;
+dl->count = n + 1`) -84 (4 sites = 4 words); the gImmp1 sites on ONE function-scope `Gfx *g_` -88 (2 block words -> 1);
+the viewport block without `Ctx *c` -96 (+8 bytes of code: ctx re-read); `Ctx *c` / `Vp *v` moved to function scope,
+setvp's four f32 parameters, an extra unreferenced `int zz`: 0 words. Target 0x58 = lowest about -72: reachable with
+fSetOtherMode + d-less next() + shared g_ (frame 0x58 exactly) but that base is 97.31, and a per-site
+next / nA / nC grid on it (243) peaks at 97.89, three random code-free test rounds 97.93 (< 98.11). gImmp1 /
+gDPSetScissor / gDma1p as inline functions: 76 / 88-92 / 94.9 (the inline call evaluates next() and the scaled
+arguments in a different order; gDma1p's `_g` is the call-crossing spill temp and an inline parameter or a
+function-scope `_g` turns it into an own-home memory variable, frame 0x30). Function-scope SHARED c_ / d_ / n_ for all six
+appends (statements, not comma macros) gives the target's guard colours t1 / t2 / t3 -> close to the target's t0 / t2 / t3
+(the guard constants rec / idx / 80 are live to the `% 65535` tail and interfere with every append's LRs; in our base the
+B6 packet's _g / d / n take t0 / t1 / t2 first, zdbug:5 LRs 62 / 70 / 74) but lets the scheduler fuse the packets and loses 8
+bytes (74.5). So the target's appends are distinct LRs per site with ONE fewer of them interfering with the guard constants.
+
+**gui 0F04 (spill 120 vs target 124): the extra word is nextp()'s named `int n`.** Any nextp() spelling without the named
+local moves the RDPHALF_2 temp to 124 at the same frame: `Gfx *nextp(int n) { dl->n = n + 1; return &dl->buf[n]; }` called
+as `nextp(f->ctx->dl->n)` 98.21, `&dl->buf[dl->n++]` 97.46, `(dl->n += 1) - 1` 95.86 (base 98.59); removing `unsigned
+char c` (the target keeps c at 211) also moves it (98.40). Re-gridding the four append spellings (81 x `+ 0`) on the
+spill-fixed bases and a random round: <= 98.36. Function-scope c_ / n_ statement appends (108): <= 97.38.
+
+**Other probes (all flat or worse, don't repeat):**
+* bootup E68: `if (&x == 0) {}` on each of the 19 scalar locals (kit CCCXXXII): no form moves the three spill temps DOWN
+  (84..92 vs 76..84); `&col` / `&n` move them UP one word, `&j` / `&uls` drop one temp.
+* bootup E2D0 (arg4 f14 vs ugen f16): address-taken arg4, every position of the `if (arg4) {}` keep (before / after the
+  call, after the limit loads), `arg4 + 1.0f` / `(1.0f + arg4) * dot` / named `k = 1.0f + arg4` before / after the clamp:
+  524 bytes only with the post-call keep (= 99.542), everything else 520 or worse. The keep is what colours arg4 (zdbug:5
+  LR 82: forbidden f0 / f2 / f12 -> f14); without it arg4 is the target's ugen load but placed after the 1.0 mtc1.
+* post0b 3B9C0: ib / ia / sgn / grp through `self->tris[i]` / `self_al->tris[i]` (54): never produces the off split (the
+  target holds ia*2 / ib*2 in ra / s0 and &p in t4; ours &p in s0, ok in ra).
+* post0b 34890: the iterator ternary's condition / true arm (`it.cur->next` = same value) / false arm (0, (void *)0,
+  it.cur, it.nxt) grid (45): flat at 99.6429.
+* post0b 54E78: V3(a, b, c) parameter keeps (`if (0) { a = 0; }`, 7 subsets), named a / b / c in operator*, by-value r:
+  flat at 99.4783 or worse.
