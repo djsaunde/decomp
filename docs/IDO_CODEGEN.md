@@ -14682,6 +14682,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCCVIII (agent-c 2026-11-03, run 266): **a long run of t7 / t9 swaps after one early mismatch is ugen's expression-register sequence (it carries across blocks and calls): a value-preserving narrowing cast `(u16)(f & 0x100)` costs one ugen register with no code and re-aligns it; two array loads off one local base in ONE basic block keep the target's held `addiu tX,sp,N` base; 36694's first statement has one operator* parameter temp fewer than ours (n * 2.0f reproduces the pool)**](#kit-cccviii-agent-c-run266) -- _NM post0b 5A2C4 96.08 -> 98.04, 3B9C0 95.24 -> 95.52 (1104 -> 1108 of 1116, clip 0x2eaf4 -> 0x2eaf8); 36694 / 3B9C0 off-spill / 5A2C4 scan2 negatives._
 - [kit CCCIX (agent-g 2026-11-03, run 266): **write a stride multiply as `i * 12`, not `((i << 2) - i) << 2`: ugen's constant-multiply expansion keeps sll / subu / sll in the destination register, the shift spelling takes a t temp and shifts the t ring; a once-used pointer the target colours v0 before a call can share a local with an earlier value; V3 inline member statement-order grids pick uopt's dead-store pattern**](#kit-cccix-agent-g-run266) -- _NM post0b 3BE1C 98.62 -> 98.78, 4BAF4 97.39 -> 97.54, 48AEC 97.29 -> 97.45 (named mtx() count), post 33094 94.20 -> 94.31; 493AC / 48AEC / 46790 parity / 250C8 / 469A8 / 3B6A0 negatives._
 - [kit CCCX (agent-c 2026-11-03, run 267): **an inline member call written out in place has no `this` temp, so the pool entry it took goes back to the variable the target keeps there (34890: `make(int h, O *o)` + next()'s ternary in the for test); `switch (ch | 0)` (a non-folded selector expression) goes through a pool temp and emits the first case compare constant-first (`beq s5,a1`); `Ctx *c = this; return c->nextr();` gives a lone append's ctx t0 but shifts its n / dl entries, and a `+ 0 * (int)this` use on another append repairs the shared-var priority tie**](#kit-cccx-agent-c-run267) -- _NM post0b 34890 99.57 -> 99.64, 46050 99.95 -> 99.97 (one colour left); E2D0 / 329C / 3714 / 31C0 / 5A2C4 negatives._
+- [kit CCCXI (agent-g 2026-11-03, run 267): **the counted-use lever has an operator: `r = call() + 0 * (int)(x)` leaves an `addu a0,v0,zero` result copy where the target has `or a0,v0,zero` -- `| 0 * (int)(x)` keeps the live-range effect and emits the `or`; a zero-use sweep re-run with `|` finds new sites**](#kit-cccxi-agent-g-run267) -- _NM post0b 3BE1C 98.78 -> 99.11; `|` sweeps over 18 other NM bodies flat; 250C8 fontId copy-propagation, 3AE58 phantom-v1, 469A8 NCC port, 48AEC frame, 48510 / 46790 ring negatives._
+- [kit CCCXII (agent-c 2026-11-03, run 268): **one instance of a shared inline's operand in its OWN register (target t0) with the neighbouring pool temps unchanged: pass it through a two-statement free inline `f2(Ctx *p) { Ctx *k = p; if (0) { p = 0; } return &k->...; }` on a block local (p's pool temp keeps the entry, k is a fresh low-priority LR; the dead `p = 0` stops copy-propagation back), then restore the pool var's use count with a `+ 0 * (int)this` folded use elsewhere; a for-loop STEP of zero-code inline calls moves the bottom loop-test copy onto later pool entries**](#kit-cccxii-agent-c-run268) -- _post0b 46050 EXACT (99.97 -> 100); 34890 step / init lever reaches the target's top / bottom / Base-this colours but h loses its register (98.98 best, 99.64 kept); 3714 / 31C0 negatives._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
 - [kit CCLXXII (agent-c 2026-10-30, run 247): **a folded `+ 0` on one loop's test moves the shared edg pool temp to the OTHER loop (493AC: the second loop's next() result leaves the call-crossing s2 temp); taking a local's address through a member call (`getPos(vb)`, `e = vb - va`) makes it memory-resident like a target that stores it after init (3558 length fixed)**](#kit-cclxxii-agent-c-run247) -- _NM 493AC 99.36 -> 99.43, game_uso 3558 91.62 @ 956 B -> 92.60 @ 1008 B; 41D40 / 250C8 / 3AE58 / 46790 / 3E5E0 / BB8C / 31A74 / `+ 0` toggle sweep negatives._
@@ -53418,3 +53420,99 @@ change. Gate: ROM byte-identical, verify-blocks 6/6, `make non_matching_objects`
    && ((u16)f & 1)` reaches t7 but CSEs `(u16)f` into a real `andi v1,v0,0xffff` (+4 B, 95.51); 66 index spellings
    with `+ 0 * (int)(x)` terms (1-3 terms) all add code (1808 B). 34890: a 108-variant zero-use sweep inside the
    written-out ternary is flat.
+
+## kit CCCXI (agent-g 2026-11-03, run 267): the counted-use lever has an OPERATOR -- `r = call(...) + 0 * (int)(x)` keeps an `addu a0,v0,zero` for the result copy where the target has the plain move `or a0,v0,zero`; `| 0 * (int)(x)` gives the same live-range effect with the `or` (post0b 3BE1C 98.78 -> 98.94), and a zero-use sweep re-run with `|` finds sites the `+` sweep never did (3BE1C 98.94 -> 99.11) <a name="kit-cccxi-agent-g-run267"></a>
+
+_Commits b1794794f (3BE1C result-copy `|`), f29653607 (3BE1C two counted uses). No exacts._
+
+1. **Spot it.** A mnemonic-only diff on a register move: ours `addu rD,rS,zero`, target `or rD,rS,zero`, same
+   registers and position. IDO's move idiom is `or`; an `addu ...,zero` move is the residue of a real `+` node whose
+   other operand folded to zero after ugen chose the opcode -- here the run-210 counted use
+   `int r = gl_func_00000000(cc, f->mat) + 0 * (int)(cc);`. Scan for it across every NM donor with the side-by-side
+   diff: `grep "addu [a-z0-9]*,[a-z0-9]*,zero" sd.txt | grep "<<"` (only 3BE1C hit in this run's 30-function list).
+2. **Lever.** Same counted use, `|` instead of `+`: `... | 0 * (int)(cc);` -> `or a0,v0,zero`, length and every other
+   word unchanged (98.78 -> 98.94). `|` binds looser than `+` / `-` / `&` / `==`, so `E | 0 * (int)(x)` is always
+   `(E) | 0` = E for an int E (pointer E does not compile -- the sweep just drops it; float E is excluded as for `+`).
+3. **`|` sweep.** scripts/zero-use-sweep.py with the appended operator switched to `|` (scratch copy: one line,
+   `z = ' %s 0 * (int)(%s)' % (OP, x)` with OP from the environment, plus a 190-variant random cap) found
+   `k = 2 - t->ax | 0 * (int)(r);` (98.94 -> 99.00); the `+` / `|` re-sweep after it then found
+   `+ 0 * (int)(ia)` on the hi MAXS line (99.00 -> 99.12; that site was flat before the `k` change). Converged after:
+   both operators flat over L97-163, `^` / `-` flat on L108-141.
+4. **Negatives (same session).** `|` zero-use sweeps flat on 46790, 3AE58, 54E78, 48510, 3E5E0, 59E80, 33094, 48AEC,
+   4BAF4 (190 sampled), 42938, 37540, 3B6A0, 4F2DC, 4B620 (1 site), 493AC (flat over 1015 scored), cfe 250C8 / 469A8 /
+   415A4; `+` -> `|` / `-` / `^` per existing counted use on 3BE1C / 4BAF4 / 48AEC / 4F2DC / 3B6A0 / 415A4 / 30AF4 flat.
+   A literal `| 0` (no `0 * x`) folds away everywhere tried (46790 idx / dst / font tests, 48510 compares / stores).
+   - 3BE1C left (34 words): `cc` in t0 (target s1, a call-crossing colour with no visible use after the call; moving
+     `cc = col` above `face()`, `cc->nrm`, `if (cc) {}`, `ok = 1 + 0 * cc` all lower), the `off` spill 76 vs 84, and the
+     hi / lo block's a0..a3 rotation (target va / vb pointers in a0 / a1, ib / ia in a2 / a3; ours va in a ugen t3):
+     50 code-free `if (va) {}`-style tests around the block all lower (best 98.80).
+   - 250C8: `fontId = ASYNC_ID(retMsg)` (the local) IS copy-propagated into a temp-area spill (sp+32) -- the target's
+     mechanism -- but the switch / case operands then move to the retMsg web (608 B, 94.05); 31 combinations of
+     retMsg-vs-load operands in the three cases, fontId removal, block-scoped decls and a doneMsg variable: best 98.65.
+   - 3AE58: removing the `pick()` keep (`vp(verts, ent)` inline returning `&b[e->vi]`) puts the vi load on the ring like
+     the target (t5 vs t6) but the entry-pointer merge drops from t0 to v1; the target's v1 is never written, i.e. a
+     zero-code LR occupies it in that block (16 inline shapes, best 99.00 vs 99.26).
+   - 469A8 NCC port (real C++, cfront vcalls through +0x28 vptrs, held `&p->f78` / `&p->f100` flag structs):
+     69-74 % vs cfe 95.36 -- inline wrappers around the 12-argument call are inlined away (no argument temps).
+   - 48AEC frame (+8 since run 266): either single named-count `mtx()` costs the 8 bytes; making both unnamed restores
+     0x160 at 97.29; unnaming next() / load() / prim() / dlcall() instead all lower.
+   - 48510 `nv >= max590 - 1` ring order: 21 compare spellings and 8 `next()` address spellings are code-identical
+     (edg canonicalises); 46790 idx line: 144 cast / shift spellings flat, 53 single casts on the loop tests flat;
+     the `*1024` shift's register is fixed before the right operand is evaluated (burns inside `(u8)(c & 15) * 8`
+     move only the right operand's registers), and 16 casts on the `c < 128` test all add code (c is a plain int).
+   - Also flat: 3BE1C `while (0) { x = ...; }` duplicates of va / vb / vc / cc / k (NCC drops them), volatile pads
+     at three positions (the `off` spill stays at sp+76); gui 0F04 MAX(xh / yh, 0) ternary spellings (25 combos);
+     48AEC `A` as a #define (frame 376) and block-scoped k; 3E5E0 explicit `K() {}` / member-init / by-value PMF
+     ctor grid (20) and volatile pads (the a2 spill stays at the temp-area bottom, sp+32 vs the target's sp+44);
+     54E78 133 code-free constant tests; 4B620 counted uses inside addG / addOK / next() (20). post 30AF4 `|` sweep:
+     a +0.22 hit only at 2108 B (target 2112) -- not kept.
+
+## kit CCCXII (agent-c 2026-11-03, run 268): a value the target keeps in its OWN register (t0) while the neighbouring pool temps stay put -- read it through a two-statement free inline's LOCAL: `f2(Ctx *p) { Ctx *k = p; if (0) { p = 0; } return &k->dl->buf[k->dl->n++]; }` on a block local (post0b 46050 99.97 -> EXACT); a for-loop STEP expression of zero-code inline calls moves the bottom copy of the loop test onto later pool entries (34890 research) <a name="kit-cccxii-agent-c-run268"></a>
+
+_Commit 15243348e on agent-c (46050 exact: NCC donor over a placeholder on both build trees, old `_NM_DONOR` block
+removed, `gl_func_00046050_c34458 = 0` pinned for the blank USO jal words). NM length unchanged (1848 = target), no
+clip change. Gate: ROM byte-identical, verify-blocks 6/6, `make non_matching_objects` 0 errors, no exacts lost._
+
+1. **46050: the F5801000 append's ctx in t0.** Target: that one append's ctx is its own live range (t0, coloured last)
+   while its count / DL temps are the shared pool vars of every other append (-32 a2 / -36 a1). The append's pool
+   entries are taken first-fit in the order `this`, n, dl (a written-out append with no `this` temp puts n / dl on
+   -28 / -32, i.e. one entry early). So the spelling must (a) still consume exactly ONE entry before n / dl, and (b)
+   use a non-pool variable for the ctx. `{ Ctx *c = CTX; gW(f2(c), 0xF5801000, 0); }` with
+   ```
+   inline Gfx *f2(Ctx *p) { Ctx *k = p; if (0) { p = 0; } return &k->dl->buf[k->dl->n++]; }
+   ```
+   does both: two statements make edg give p a pool temp (kit CCCIV 5: entry -28, a dead copy of c), n / dl land on
+   -32 / -36 exactly as in the other appends, and every ctx use reads the inline local k (a frame variable, low
+   priority, coloured t0 like the target). The dead `if (0) { p = 0; }` matters: without a parameter assignment
+   (`Ctx *k = p; if (1) {} ...`, `Ctx *k = p; return ...`) uopt copy-propagates k back into p's pool var and ctx is v1
+   again (99.97). A member form `Ctx *c = this; return &c->dl->...` is propagated the same way (98.57), and `Ctx *c =
+   this; return c->nextr();` gets t0 but the inner `this` temp shifts n / dl one entry (kit CCCX 3b).
+   Side effect: var -28 loses one use, its priority (36.25) drops below -36 (36.75) and every append's ctx / dl swap
+   v1 <-> a1; one folded counted use of `this` on another append restores the order -- the glyph's RDPHALF_1 append
+   as `next0() { return &dl->buf[dl->n++] + 0 * (int)this; }` (2 of 44 compensation sites give 99.935, the remaining
+   two result colours then come right with the `if (0)` form): 100.
+   Recipe: when a target keeps ONE instance of a shared inline's operand in a fresh register, route that instance
+   through a 2-statement free inline (param assigned in a dead `if (0)` block, operand copied to an inline local) on a
+   block-local argument, then re-balance the pool var's use count with a `+ 0 * (int)this` folded use elsewhere.
+2. **34890 (still 99.64): the step lever.** In `for (init; cond; step)` edg evaluates the top copy of cond after
+   init (init temps held) and the bottom copy after step (step temps held), each first-fit from the oldest entry.
+   So: init `LIter it(m3(o)->list)` (`m3(T *p) { T *q = p; return q; }`: 2 entries) moves the TOP ternary result from
+   -16 to -24 (the target's a2, shared with `a`); a step of k nested `m3()` calls on `&it` (zero code, the values are
+   the constant `&it`) moves the BOTTOM result: k = 4 -> -28, 5 -> -32, 6 -> -36 (= the Base-ctor this, v1 like the
+   target), 7 -> a fresh entry. With the bottom off -12, h (-12) loses the loop refs that made it worth a register:
+   it is no longer coloured (length 320) unless it gets a folded counted use (`new X(o + 0 * h)` + `(o->flags & 2) +
+   0 * h`, pri 0.8); that holds for k <= 5 (best: `m3(m3(m3(me(&it))))` step, bottom -28 = v1 but Mid-this then v1
+   too, 98.98), but at k = 6 h is split into an expression again whatever counted uses / `if (h) {}` are added
+   (134 + 40 variants). Everything else (top a2, bottom v1, Base-this v1) matches at k = 6, so the open item is h's
+   priority in that layout. Why: at k = 6 the bottom result raises -36 to priority 11 (coloured first, v1), Mid-this
+   -28 (2.0) is then coloured before h (0.8) and the `a` / top var -24 (1.2) and takes a1, leaving h no register
+   (split). The target's a3 for Mid-this needs h AND -24 above 2.0 -- in the base layout they were 5.33 / 4.6 only
+   because each also held a loop item (the bottom result in -12, the `me(&it)` bottom-test temp in -24). The loop
+   body's LAST statement's temps are held through the bottom copy too (body `gl(me(&it)->cur->data)` pushes the
+   bottom result to a fresh entry; `gl(m2(it.cur)->data)` puts top AND bottom into -24, pri 6.0, 140 variants flat). Also flat: `while` / named-result loops (frame +8), condition declarations (edg rejects
+   them), loop as a free / member inline, `register` / `const` / `volatile` make() parameters, ~1100 init x cond x step
+   x body accessor variants.
+3. **Negatives.** gui 3714: the ctx pool var (-68, t2; target a1) is also the MAX ternary temps (live-through D
+   blocks); routing any of the four appends through the item-1 `f2` form or a leading `if (1) {}` leaves it t2
+   (36 + 13 variants, max 98.33). bootup 31C0: `kb(Obj2 *o, char *a)` wrappers with an inline local / named result /
+   dead parameter store all add a frame word (816 B) or are identical (20 variants).
