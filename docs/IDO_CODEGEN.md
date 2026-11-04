@@ -14688,6 +14688,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCCXIV (agent-c 2026-11-03, run 269): **why the entry block forbids a0-a3: each register parameter is an uncoloured precoloured LR in BB 0 (`- live bb -   0  0  0  R`); taking a parameter's address (`const s32 &` inline) deletes it and every later register parameter's LR; a call block forbids its argument registers except the one an LR feeds; a two-statement `id(v)` on a call argument splits the BB inside the argument list and can put the ctx pool var on an argument register; split a packet's allocation from its stores so the stores share the next call block (packet pointer t0) while the base keeps its a-register**](#kit-cccxiv-agent-c-run269) -- _NM gui 3714 98.95 -> 99.00; 34890 `|` sweep has no sites; E2D0 = ugen FP free-list order (target never uses f14); 329C / 5A2C4 / 36694 negatives._
 - [kit CCCXV (agent-c 2026-11-03, run 270): **steering an edg new-temp onto a chosen pool entry: an UNUSED inline-ctor parameter fed a non-constant argument (`Obj(void *u)` / `Obj2() : Obj(this)`) opens a pool entry at its expansion start, ahead of the member-ctor `this` temps; a two-statement wrapper inline (`mk(o, a)` with a keep) binds its parameter temps before the `new` in its body, pushing the new-temp past the first two entries; a dead-assigned dummy parameter (`loop(char *it, int d0)`, `if (0) { d0 = 0; }`) holds a pool entry through the inline body; a mem-initialiser-only ctor (`: obj(o), pmf(p) {}`) is a simple routine whose parameters take no temps; read entries with `-Wo,-zdbug:1` (`isvar M 4 -off` + `ustr`)**](#kit-cccxv-agent-c-run270) -- _post0b 3E5E0 EXACT 99.36 -> 100 (79f16f29b, 5ee5104f2); NM bootup 31C0 99.98 -> 99.995 (574f80d68), last word = T redefined by mk's first temp; 3AE58 / 46790 / 48510 / 54E78 / 4B620 / 3714 / 34890 negatives._
 - [kit CCCXVI (agent-g 2026-11-03, run 269): **a switch selector kept in ONE t-register across a call-bearing if-chain: read it into a local BEFORE the chain and re-read it right after EACH call (not once at the switch -- that gives an a0 selector + `or` copy); a late base recompute before one store is a different 0-placeholder base (decode by value semantics), not a CSE lever; `(++*p & 0xFF) == K` keeps an increment test in ugen temps**](#kit-cccxvi-agent-g-run269) -- _post 2E354 98.15 -> 98.60 at the target length 3684; post0b 59E80 NM 98.48 -> 98.50; 30AF4 / 0F04 / 42938 / 493AC negatives._
+- [kit CCCXVII (agent-g 2026-11-04, run 270): **read the USO TextRelocs (uso-reloc-symbolize.py walk_dir / build_relocmap, game_libs shim 0x1466C) to see which 0-placeholder base each access really uses; a typed array for a base BOTH arms use makes one lda LR that uopt splits + re-materialises like the target; an m2c countdown pair `t = f; t2 = t - 1; if (t) { f = t2; if (t2 == 0)` is `if (f) { if (--f == 0)` (ugen temps)**](#kit-cccxvii-agent-g-run270) -- _post 2E354 98.60 -> 99.066 at the target length 3684 (corrects kit CCCXVI's "different placeholder" guess); bootup 24B8 latch/k slot map; post0b 35B1C is a C++ ctor (NCC lead 97.35); 250C8 / mgrproc 1824 / FP-chain leads and negatives._
+- [kit CCCXVIII (agent-c 2026-11-04, run 271): **a DEAD conditional arm allocates edg pool temps without live writes: `(x * 0) ? (void)dummy(a) : (void)(real code)` -- edg keeps the dummy's parameter temp for the whole full-expression (the live arm's new-temp lands past it) and uopt folds `x * 0` and deletes the dead arm, so an entry such as another new-temp is never redefined on the live path; keep the real code INSIDE the false arm; `max - 1 < n + 1` gives ugen's addiu-then-slt order; a folded `& 0xFFFF` on an s16 store burns a ring slot**](#kit-cccxviii-agent-c-run271) -- _bootup 31C0 99.995 -> EXACT (1e20258ee); post0b 48510 98.73 -> EXACT (4f23b0b19); zero-use harness rename fix; 34890 / 36694 / E2D0 / 329C / 3714 / 3AE58 / 46790 / 54E78 negatives._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
 - [kit CCLXXII (agent-c 2026-10-30, run 247): **a folded `+ 0` on one loop's test moves the shared edg pool temp to the OTHER loop (493AC: the second loop's next() result leaves the call-crossing s2 temp); taking a local's address through a member call (`getPos(vb)`, `e = vb - va`) makes it memory-resident like a target that stores it after init (3558 length fixed)**](#kit-cclxxii-agent-c-run247) -- _NM 493AC 99.36 -> 99.43, game_uso 3558 91.62 @ 956 B -> 92.60 @ 1008 B; 41D40 / 250C8 / 3AE58 / 46790 / 3E5E0 / BB8C / 31A74 / `+ 0` toggle sweep negatives._
@@ -53810,3 +53812,153 @@ _Commits fc9830c12, 705cb7929, 3b54b312b, 9ca35a961 (post 2E354, 3684 bytes = ta
    mtx() expansion. Moving n into a simple-routine parameter (`at(int n) { return &mh->buf[n]; }` called as
    `at(mh->count++)`, or a free `mtxat(h, n)`) brings the frame back but loses the colours (96.71); `int n = ...;
    return at(n);` keeps both the colours and the frame (97.447, unchanged). Not kept.
+
+## kit CCCXVII (agent-g 2026-11-04, run 270): READ THE USO TextRelocs before guessing which 0-placeholder base an access uses -- `scripts/uso-reloc-symbolize.py`'s walk_dir / build_relocmap over the bootup.uso module (game_libs shim 0x1466C) names every lui/addiu/lw symbol of a raw-word function; a typed array for a base that BOTH arms use turns two lda LRs into one that uopt splits + re-materialises like the target; an m2c `t = f; t2 = t - 1; if (t) { f = t2; if (t2 == 0) ...}` countdown pair is the field op `if (f) { if (--f == 0) ... }` (ugen temps, no coloured variables) (post 2E354 98.60 -> 99.01 at the target length 3684) <a name="kit-cccxvii-agent-g-run270"></a>
+
+_report.json (objdiff, regenerated): gl_func_0002E354 98.60369 -> 99.06623 (3684 B, length = target); matched code
+unchanged (92.89359 %, 3238 / 3288). Commits d62084b1d, 2053b80ac, fedafda67, 8dabee576 on agent-g. Gate: full make ROM byte-identical (cmp),
+verify-blocks 6/6, `make non_matching_objects` 0 errors, no exacts lost, sentinels 100._
+
+1. **The TextReloc map (decode tool, no emulator).** The game_libs raw-word functions carry no ELF relocations, but the
+   bootup.uso module (ROM 0xD9FE28) has the Kyoto TextReloc table, and `scripts/uso-reloc-symbolize.py` already
+   parses it (`walk_dir(d, 0xD9FE28)[2]` -> `build_relocmap`; entry key = game_libs vaddr + 0x1466C; value = (symIdx,
+   kind 1 jal / 2 lo / 3 hi); `scripts/emu-symdump/bootup_uso.symnames.json` names the symIdx). A 20-line script that
+   walks the function's .s lines (`LINE_RE` from the same module) prints, per relocated word, its index and symbol.
+   For 2E354 this showed: (a) the >= 7 arm's GA base is `import_000202BC` (another module) and the 0x20 store base
+   AND the else arm's counter base are the SAME module symbol `D_01C084` (run 269's "different placeholder" guess
+   was half wrong: the late recompute is a split re-materialisation, item 2); (b) the `D_cfg` / `D_raceB` reads are
+   one symbol (D_01C0AC), `D_stateC` / `D_stateF` / the `D_E354_G + 0` read one (D_01C0B8), `D_raceA` / `D_raceD` /
+   `D_stateE` one (D_01C0B4) -- unifying those names is score-neutral (calls in between), so the distinct names are
+   harmless, but the map is the authority for which accesses share a base.
+2. **One typed array for a base both arms use = the target's split + re-materialise.** Target: GA in v1 at the top of
+   the >= 7 arm (`lui v1 ... addiu v1; lw v0,0(v1)`), then `lui v1; addiu v1` again in the 0x1724 clamp block for the
+   `sw t8,0x14(v1)` store, and the else arm's counter also on v1. That is ONE lda live range for D_01C084 (else arm +
+   store) that the colourer split at the blocks where v1 already holds GA (kit CCXCIII item 4: the piece grows only
+   through BBs where its colour is free). Our function-typed `D_E354_GB` (run 251) gave two separate LRs (store base
+   hoisted to the arm top in t7, GA in a0); `extern s32 D_E354_GB[]` with `D_E354_GB[5]` at all three sites makes it
+   one LR (a struct `.f14` or a `char[]` view does the same). It only pays once GA can take v1: the run-269 folded
+   use `+ 0 * (int)(var_v0_3)` on the GA read held the o->0x38 variable in v1 into the arm; dropping it puts o->0x38
+   in v0 (target) and GA in v1. Each alone: -0.1 / -0.2; together +0.19 (98.60 -> 98.79).
+3. **Countdown pair -> field pre-decrement.** m2c's `temp_v0 = o->48; temp_v0_2 = temp_v0 - 1; if (temp_v0 != 0) {
+   o->48 = temp_v0_2; if (temp_v0_2 == 0) ...` makes two coloured variables (v0 / v1) and shifts the whole race block's
+   t-ring by one; the target's `lw v0; beqz; addiu t9,v0,-1; bnez t9; sw t9` is `if (o->48 != 0) { if (--o->48 == 0)
+   ... }` (ugen temps only): 98.79 -> 99.01 and ~20 register diffs gone. Same family as kit CCCXVI's `(++*p & 0xFF) ==
+   K`. Not equivalent: `o->48 = t - 1; if (t - 1 == 0)` and the assignment-in-test form (98.76, +4 bytes), re-reading
+   the field (no change).
+4. **Lead (not closed): the FP chain.** The target's `o->0 / 200 + D_16E0` value is a ugen temp (f4), our temp_f18
+   (also the product of the 0x44 update) colours f18. Unnaming it alone lets sp60 steal f18 (93.x); a folded
+   `+ 0 * (int)(sp60)` on a late argument (`gl_func_000438F4(arg0 + 0 * (int)(sp60))`) stops that (98.85 vs 93) but
+   the chain value then lands in f0 and the literal load moves above o->0. The 0x1C block's `var_f4` is likely also
+   a ugen temp in the target (`(f32)(u32)` inline gives the target's pool order but a ring shifted by the chain).
+5. **Negatives (2E354, all <= 99.01 or flat):** same-symbol / int-cast / local-pointer GA-GB spellings (40);
+   distinct-extern unification (31 combos, neutral); BB-split `if (1) {}` after every assignment statement (72,
+   flat); `+` / `|` zero-use sweeps over 13120-13545 (2 x 200 sampled, flat); 0x22 / 0x14-block / raceB / raceD /
+   0x2C-copy variable renames (60); addu operand order of the 0x2154 % sp50 event argument (4 spellings, canonical).
+6. **bootup 24B8 (99.02, not kept): the latch is NOT `k`.** The target spills the edge latch (t0) to the FIRST home
+   0x4C (`sw zero,0x4c` in the gate call's slot, `lw t0,0x4c` after) and the bottom path's k (a3) to 0x2C -- two
+   variables. Declaring the latch first, k last and placing p / tb so that p = 0x40, tb = 0x38 (orders `t0, pad, v1,
+   p, v0, tb, r, s0, k` and 14 others) puts EVERY stack offset on target, but the separate latch colours v1 (target
+   t0) and the ugen t-ring shifts by one (98.23). The old shared `k` gets t0 only because its LR crosses the bottom
+   path's call blocks. Open: what forbids v0 / v1 for the target's latch.
+7. **250C8 / mgrproc 1824 notes.** 250C8: `fontId = ASYNC_ID(pad)` with `pad = retMsg` reaches the target's temp slot
+   0x24 for fontId (the expression of a non-killed local is a coloured item that spills to a temp) but copy
+   propagation folds pad into retMsg and the web moves to s1 (91.26); 160 site x header combinations <= 99.85.
+   A case-1 BLOCK-scope `u32 fontId;` gets its home BELOW every function-scope home (directly under sampleBankReloc),
+   so with no top-level fontId it sits at 0x2C (reloc +4 off, 99.77) and with a top-level dummy at 0x28 (99.73); a
+   block dummy above it grows the frame to 0x68. The target's 0x24 is the bytesRemaining temp itself (region-
+   disjoint share), so fontId must be a coloured expression, not any home.
+   mgrproc 1824: the only code diff is the outer switch's `li at,1` hoisted above `addiu t7` (target: after the
+   beqz); increment / selector spellings, `default:`, line layout and a goto if-chain (92.5) do not move it.
+8. **Later the same run: 99.01 -> 99.017 (commit fedafda67) -> 99.066 (8dabee576: a LEADING `if (1) {}` before the
+   switch-6 `o->0x38 + 1` store inside `if (D_raceC == 0)`; the trailing-`if (1) {}` sweep had missed it -- sweep
+   both positions).** The switch-6 `0x172C < o->0xC` threshold read in place
+   (target ugen ft0, not the coloured temp_f0) and the final `(o->0x10 + 1.0f) * 63.5f` sum through temp_f0 (target
+   `add.s fv0`). The whole FP diff tail (392-512, 712-776, 826-914) is ONE ugen FP-ring offset that starts at the
+   16E0 chain (our chain value colours f18, so ours allocates one ugen FP temp fewer than the target there).
+9. **post0b 35B1C is a C++ ctor (lead, not kept: 97.35 vs the cfe 97.40).** NCC donor
+   ```
+   struct Key { int v; Key() { v = 0; } int operator==(Key o) { return v == o.v; } };
+   struct Node { Node *next; Key key; int val; virtual void f(); Node(List *l, Key k, int a3); };
+   Node::Node(List *l, Key k, int a3) { int pad1, pad2; Node *n; Node *last; pad1 = pad2 = 0; if (pad1 + pad2) {}
+       val = a3; for (n = l->head; n != 0; n = n->next) { if (k == n->key) gl_func_00000000(&gl_ref_0001E6B0, &k); }
+       last = 0; for (n = l->head; n != 0; n = n->next) last = n; if (last != 0) last->next = this; else l->head = this;
+       next = 0; key = k; }
+   ```
+   (vptr after the data = 0xC, the Key member ctor = the `q = o + 4; if (q != 0 || (q = new(4)))` block, ONE `n` for
+   both loops, `k == n->key` member operator = the target's single key copy) is length-exact with frame 0x50; left:
+   the vptr store scheduled right after its lda (target: after `addiu v1,s4,4; addiu at,zero,-4`, the same residual
+   as the cfe body) and the pool temps ordered (X 0x3C, Y 0x38, key copy 0x34, Key-this 0x30) where the target has
+   (key copy 0x3C, ?, Key-this 0x34). Inert: free / member / const operator==, mem-init Key ctor, Key ctor defined
+   out of line, named `Key t` copies (93), pad homes 1-3 anywhere (97.35 cap).
+10. **gui.uso TextRelocs:** the module header is at ROM 0x58D4AC (`walk_dir(d, 0x58D4AC)`: Text 0x58D530 / 0x4880,
+   TextReloc 0x592044 / 0x624), key = gui vaddr with NO shim; as in game_libs each entry's offset is the word
+   BEFORE the patched instruction (gui 2DE0: entries at 228 / 248 / 253 = the target's re-materialised `lui t3` /
+   `addiu t3` &D pairs at 229 / 249-250 / 254, all sym 3 = gui's own data). A typed `Ctx *D[]` / struct-member /
+   scalar CTX instead of `*(Ctx **)&D_00000000` does not extend the 2DE0 &D web (96.77 / 87.7 scalar).
+
+**Reproduce (TextReloc dump).**
+```
+import importlib.util, json
+spec = importlib.util.spec_from_file_location('u', 'scripts/uso-reloc-symbolize.py'); u = importlib.util.module_from_spec(spec); spec.loader.exec_module(u)
+d = open('baserom.z64', 'rb').read(); rm = u.build_relocmap(d, *u.walk_dir(d, 0xD9FE28)[2])
+names = json.load(open('scripts/emu-symdump/bootup_uso.symnames.json'))
+for l in open('asm/nonmatchings/game_libs/game_libs/gl_func_0002E354.s'):
+    m = u.LINE_RE.match(l.rstrip('\n'))
+    if m and int(m.group(2), 16) + 0x1466C in rm:
+        s, k = rm[int(m.group(2), 16) + 0x1466C]; print(m.group(2), m.group(3), s, names.get(str(s)), k)
+```
+
+## kit CCCXVIII (agent-c 2026-11-04, run 271): a DEAD conditional arm allocates edg pool temps WITHOUT live writes -- `(x * 0) ? (void)dummy(a) : (void)(live code)` holds the dummy's parameter temp through the full-expression (the live arm's temps land past it) while uopt folds `x * 0` and deletes the dead arm, so an entry like a new-temp's never sees a redefinition on the live path (bootup 31C0 99.995 -> EXACT); a compare spelled `max - 1 < n + 1` gives ugen's addiu-then-slt order and dropping a folded `& 0xFFFF` on a halfword store frees one ring slot (post0b 48510 98.73 -> EXACT) <a name="kit-cccxviii-agent-c-run271"></a>
+
+1. **The problem kit CCCXV could not solve.** In 31C0 the target keeps edg's `obj = new Obj2` new-temp T live at
+   sp+0x74 and puts case 1's `new KB(obj, a3v)` new-temp on a FRESH pool entry (sp+0x68), and the inline KB ctor's
+   out-of-line base call `B2(o, ...)` reads T (`lw a1,0x74(sp)`), not obj's own home (0x78). edg hands out pool
+   entries lowest-offset-first, and T's entry is free again after its statement, so a plain `new KB` takes T's entry
+   (`sw v0,0x74`); every way of pushing the new-temp past it with a wrapper / comma dummy (kit CCCXV mk(o, a), a comma
+   `(mk(obj, a3v), new KB(...))`, unused or kept dummy params, reference params) puts the dummy's first parameter on
+   T's entry -- the store `T_entry := obj` (or `:= 0`) is a redefinition, so uopt's copy propagation of the B2
+   argument stops at obj and reads 0x78. Dead blocks (`if (0) { mk(...); }`) and constant-folded `0 ? :` are removed by
+   edg BEFORE temp allocation (no effect).
+2. **The lever.** A conditional whose condition edg does NOT fold but uopt does: a folded zero on a well-defined value
+   (`mode * 0`, `0 * (int)a3v`). Put the dummy in the TRUE arm (edg allocates the arms in tree order and frees the
+   temps only at the end of the full-expression) and the real code in the FALSE arm:
+   ```
+   inline char *dm(char *a) { if (0) { a = 0; } return a; }   /* kept parameter -> one pool temp */
+   ...
+   case 1:
+       (mode * 0) ? (void)dm(a3v) : (void)(h = (char *)new KB(obj, a3v), v = (char *)new WV(a3v, a3v, D_74B0));
+       fn_link(obj, v);
+   ```
+   dm's temp (and its return temp) take the free entries first, the KB new-temp lands on the next fresh one (0x68), uopt
+   deletes the dead arm and its stores, and on the live path T's entry still holds T: the B2 argument (KB's `o` :=
+   obj := T, two copy levels are fine) reads 0x74. Zero code: same 808 bytes.
+3. **Where the live code must sit.** The real code has to be INSIDE the false arm. `(mode * 0) ? (void)dm(a3v) :
+   (void)0, h = new KB(...)` (dead conditional as a comma operand before the code) still allocates the entries, but the
+   dead arm's store reaches the join, so the B2 argument reads obj again. Conversely the arm's BB shape changes
+   colouring: with only `h = new KB` in the arm the KB new-temp variable was coloured a0 through the join (h stored
+   from the register, 804 bytes vs 808); with the WV new in the same arm and the link / field store as plain
+   statements after it, every word matched except the tail's v0 / v1 pair, fixed by swapping the old BB-split
+   `if (1) {}` for a code-free `if (obj) {}` at the same spot. A link call inside the arm read T where the target reads
+   obj (a `(Obj *)obj` conversion did NOT block that inside the arm), so keep obj-home uses outside it.
+4. **Frame / pool accounting.** The dead-arm temps count toward the pool high-water mark: a conditional with a non-void
+   result (`h = (mode * 0) ? dm(a3v) : (char *)new KB(...)`) adds a result temp (frame +8, `sw a0,0x74` result
+   store); void arms add none. Re-check the frame and re-balance volatile pads (31C0 kept its three).
+5. **48510 (Strip::add) EXACT from 98.73 with two spellings** (no pool lever): `if (max590 - 1 < nv + 1)` instead of
+   `if (nv + 1 >= max590)` (ugen evaluates `max590 - 1` first, then `slt at, nv, t` -- the target's lw / addiu -1 / slt;
+   `nv >= max590 - 1` and five other spellings do not), and `out[k] = idx[k];` instead of `idx[k] & 0xFFFF` on the s16
+   store (the folded mask burned the ugen ring slot that was the one-register offset left in the copy loop). Found by
+   the comparison-spelling grid after the fixed zero-use harness came up empty.
+6. **Harness fix.** zero-use-sweep.py did not apply the donor's objcopy renames, so mangled C++ donors (48510
+   `add__5Strip...`, 54E78 `reflect__3Obj...`, 36694, 4B620) failed to score. A copy at /tmp/claude-1000/c271/zs/ adds
+   `--rename OLD=NEW` (repeatable) and by default reads the `--redefine-sym` pairs from the Makefile recipe that builds
+   `--src`; lever-sweep.py's probe applies them before the auto-pick. For a member function also pass `--lines` covering
+   the body (the def-check otherwise treats its parameters as maybe-unset). With it: 54E78 (+ / |, --exprs), 48510,
+   36694, 4B620 zero-use sweeps all flat.
+7. **Negatives this run.** 34890: the two ternary results are pool temps (zdbug:1: first M-16 := data / := 0 -> v0,
+   bottom M-12 -> a1); the target's a2 / v1 = the colours of the `a` (M-24) and Base-this (M-36) entries. A kept
+   dummy in the for-condition (`k1(o) ? 0 : (T)`) moves them to v1 / a2 (swapped) but recolours the alloc cascade
+   (98.62); dead-arm dummies, `void *d` result variables, explicit `if (C1) do ... while (C2)` (frame +8): no gain.
+   36694: dead-arm / comma dummies around the bound difference change the frame (232 / 716 B); unused V3 ctor parameters
+   take no entry (set() body). E2D0 (cfe): empty FP tests emit code in cfe; `if (arg4) {}` moves and scale spellings
+   flat. 329C per-pkt accessor greedy, 3714 spr-placement / split grid, 3AE58 pick() return / reference forms, 46790
+   idx spellings and byte / mask burns, 54E78 200 code-free FP tests: flat.
