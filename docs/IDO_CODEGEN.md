@@ -14675,6 +14675,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCCI (agent-c 2026-11-03, run 262): **a loop test edg emits twice (entry + bottom copy) shares edg temps across the copies, so one uopt LR can hold two unrelated roles; write the loop as an explicit `if (c1) do { } while (c2);` with different inline members per copy and a named pointer local in the bottom copy (after the increment) to give its load its own live range**](#kit-ccci-agent-c-run262) -- _post0b 41D40 EXACT (99.90 -> 100, 412 B); 31C0 / 46050 / 34890 / gui 329C / bootup E2D0 negatives with dump diagnoses._
 - [kit CCCII (agent-g 2026-11-03, run 263): **a dead store to an operand (`dy = y1 - y0; y1 = dy;`) kills the expression item that uopt would otherwise colour and copy into the variable (extra mov.s / spill to a low temp instead of the variable's home); 40304 case 0x72 exact in isolation via a folded second tree, case 0x6D then needs an a1 blocker**](#kit-cccii-agent-g-run263) -- _NM post0b 4E424 95.47 -> 96.90, game_libs 2840 93.28 -> 94.48; 3AE58 / 3E5E0 / 4B2F4 / 250C8 / 54E78 / 493AC negatives._
 - [kit CCCIII (agent-c 2026-11-03, run 263): **edg temporaries are a TYPELESS first-fit pool and un-kept inline arguments get NO temporary: split a shared temp only with a kept dummy parameter (`if (0) { d = 0; }`) or by routing args through inline calls (`new KB(me(obj), me(a3v))` puts the new temp at the target's 31C0 slot); kit CCC random code-free test search as a routine pass**](#kit-ccciii-agent-c-run263) -- _NM gui 3714 98.25 -> 98.33, post0b 5A2C4 95.96 -> 96.08; 31C0 / 46050 / 34890 / E2D0 / 329C / E68 / 4B620 / 24B8 / 59E80 negatives._
+- [kit CCCIV (agent-c 2026-11-03, run 264): **edg temp pool READ FROM edgcpfe.c: every statement start frees all temps (decl initialisers too), first-fit from the oldest entry by (size, char, struct, vreg) only; inline bodies protect only pre-expansion entries; an inline with 2+ statements or any assigned parameter gives EVERY non-constant argument a temp (else none; `this` always); value-consumed calls get their result temp first; inline locals are frame variables at expansion start**](#kit-ccciv-agent-c-run264) -- _Research run, no gains: 31C0 (KB at the target word via a kept-param `kb()` but T copy-prop lost, 98.51), 34890, 46050, 329C, 3714 negatives; 5-line zdbug:1 micro-test harness._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
 - [kit CCLXXII (agent-c 2026-10-30, run 247): **a folded `+ 0` on one loop's test moves the shared edg pool temp to the OTHER loop (493AC: the second loop's next() result leaves the call-crossing s2 temp); taking a local's address through a member call (`getPos(vb)`, `e = vb - va`) makes it memory-resident like a target that stores it after init (3558 length fixed)**](#kit-cclxxii-agent-c-run247) -- _NM 493AC 99.36 -> 99.43, game_uso 3558 91.62 @ 956 B -> 92.60 @ 1008 B; 41D40 / 250C8 / 3AE58 / 46790 / 3E5E0 / BB8C / 31A74 / `+ 0` toggle sweep negatives._
@@ -52999,3 +53000,90 @@ _Commits ba8aee8c1 (3714), b39257b79 and 4b91fc82d (5A2C4) on agent-c; NM bodies
    the target's arg4 in f16 needs one more interfering FP LR in the post-call block, none of the code-free levers adds
    it. gui 329C: the second MAX pool temporary is M-44 (bit 4), coloured 4th (a0) and also carrying the texture
    append's ctx; the target colours it after a0..t1.
+
+## kit CCCIV (agent-c 2026-11-03, run 264): the edg (NCC) temporary pool READ FROM edgcpfe.c -- temps are freed at the start of EVERY statement (declarations with initialisers included), reused first-fit over the whole entry list by (size, char-ness, struct-ness, register-candidate) only, protected inside an inline body only if allocated before that expansion; inline parameters get temps for EVERY non-constant argument as soon as the body has two statements or assigns any parameter, otherwise none (`this` always gets one); inline locals are frame variables allocated at expansion start, never pooled <a name="kit-ccciv-agent-c-run264"></a>
+
+_No commits: research run. 31C0 / 34890 / 46050 / 329C / 3714 negatives (below). ROM / report.json unchanged._
+
+**Source.** `edgcpfe.c` (static recomp of IDO 7.1 `/usr/lib/DCC/edgcpfe`, symbols kept) sits next to uopt.c in the same
+docker layer: `~/.local/share/docker/containerd/daemon/io.containerd.snapshotter.v1.overlayfs/snapshots/34/fs/opt/ido-static-recomp/build/7.1/edgcpfe.c`
+(551k lines; copy to /tmp, grep `^static .*f_mbe_`). The pool lives in edg's ucode back end ("mbe"): every temp is an
+`M` frame word (the `isvar M 4 -off` of -Wo,-zdbug:1), which is why pool sharing = one uopt variable for two values.
+
+1. **Data structure** (`*(0x10001a30)`, per function): +0 frame bytes used (shared with declared variables, monotone),
+   +8 entry array (24 bytes each: +0 frame end offset, +4 size in bits, +8 char flag, +12 struct flag, +16
+   register-candidate flag, +20 FREE flag), +12 BOUND (first freeable index), +16 entry count.
+2. **Allocation** `mbe_get_temporary_space_using_info` (0x51c374, line ~423375): a pointer type (type code 9) is
+   normalised to a 32-bit non-struct int first; then a FIRST-FIT scan from entry 0 (the oldest) takes the first entry
+   with FREE set and equal (size bits, char flag, struct flag, candidate flag) -- the type itself is NOT compared, so
+   int / pointer / float temps of 32 bits share. No match: a new entry at the frame end (aligned to its size, 64 for
+   structs), and a candidate temp also emits a `vreg` declaration (ucode op 0x8b; the `-NNvreg` mark in zdbug:1).
+   `char`/`signed char` (integer kind 0/1) temps and 16-bit temps are separate classes; nearly every caller passes
+   candidate=1, the inline-parameter path passes `!(param.flags45 & 0x80)`.
+3. **Freeing** `mbe_free_temporaries` (0x51c788) sets FREE on entries [BOUND, count); its ONLY caller is the head of
+   `mbe_statement` (0x51df98): every statement start (expression statement, if / switch / for / return, a block's
+   inner statements, a declaration's dynamic initialiser) frees everything allocated since BOUND. So two temps
+   share iff they are in different statements; inside one full statement (comma operator, nested calls, an `if`
+   condition up to the first inner statement) they are always distinct. Verified: `a = new A; b = new A;` and
+   `A *a = new A; A *b = new A;` share one temp, `a = new A, b = new A;` uses two.
+4. **Inline bodies** (`func_513a2c`, the expansion driver called from the call lowering `func_514184`):
+   `push_temp_space_bound` sets BOUND = count before the body and `reset_temp_space_bound` restores it after. Entries
+   allocated before the expansion stay held through the whole body (inner statements cannot free them), entries the
+   body allocates (new or reused-from-below-BOUND) stay held after the body until the next statement at the outer
+   level. A FREE entry below BOUND can still be taken first-fit inside the body -- and is then never freed again by
+   that body's statements.
+5. **Parameter binding** (`func_514184` from 0x515ec4): per parameter, a temp is made (`mbe_get_temporary_space`
+   at 0x516104) unless the argument is a CONSTANT (substituted) or the routine is "simple". The routine flag
+   (`routine+48` bit 25) is set when the body has two or more statements OR assigns any parameter; when clear, a
+   plain VARIABLE argument is aliased (no temp, even for a parameter used twice) and any other expression is
+   substituted only if the parameter is used once (`g(o + 1)`, `g(&G)`, `g(me(o))`, `nxt(it)` with a reference
+   parameter get a temp when g uses it twice, none when once); when set every non-constant argument gets a temp in
+   parameter order (a plain variable / outer parameter / `&global` / `o + 0` all get one). Micro-verified:
+   `{ use(o, h); use(o->a); }` = temps for o and h, `{ use(o->a, o->b, h); }` = none,
+   `{ int k = h; use(o->a, k); }` = none (k is a local, see 7), `{ gl(h = h, ...); }` = temps for ALL parameters.
+   `this` of a member function always gets a temp (`s.f()`, `p->f()`, `me(p)->f()`, `q->f()`, `G.f()` alike).
+   This is the mechanism behind the kit-CCCIII "kept dummy parameter": `if (0) { d = 0; }` is a second statement AND a
+   parameter assignment, so EVERY parameter of that routine starts taking pool entries.
+6. **Result temps.** A call / new-expression whose value is consumed as a value (an argument) gets a value temp
+   allocated BEFORE its `this` / parameters / new-temp (`use(new A)` = 2 temps, the first is the value; `use(p->f())`
+   = the return temp first); a call used as a condition or assigned gets its return temp lazily at the body's first
+   `return` (`func_51d308`), i.e. after the body's own temps.
+7. **Inline locals** are frame VARIABLES allocated when the expansion's block scope is entered (after the argument,
+   `this` and parameter temps); they are never pooled and never reused, so an inline body can never put a local above
+   a temp allocated earlier in the same statement. Function-level and nested-block locals are allocated when their
+   block is entered (frame order = entry order).
+
+**Applied (all flat or negative).**
+- **bootup 31C0** (99.98): with rules 3-4 the target's KB new-temp at sp+0x68 (M-40) while the new-Obj2 temp T (M-28)
+  survives needs either T held (= the switch inside an inline body expanded in the `obj = new Obj2` statement, but
+  then rule 7 puts w/h/v/r2/r3/obj BELOW T, the target has them above; all-reference-parameter wrappers 80.3-86.9) or
+  M-28/M-32/M-36 consumed earlier in the KB statement. `h = kb(obj, a3v)` with `kb(Obj2 *o, char *a) { if (0) { o = 0; }
+  return (char *)new KB(o, a); }` lands KB exactly at M-40 (rule 5: o, a take M-28 / M-36), but o's store into T's
+  word kills the T copy-propagation (the ctor argument then reads obj's home) and the shared M-40 variable gives the
+  inlined M ctor home stores, 98.51; `Obj2() {}` + a derived-to-base cast on o 99.71 (frame +8, KB new entry);
+  value-temp routes (`h = me((char *)new KB(...))`, 10 spellings) recolour to s0 (78.8). Open: what unreferenced
+  entry the target has at M-32 (ours: the run-238 local p).
+- **post0b 34890** (99.57): the M-12 entry ahead of h is make()'s `o` parameter temp (rule 5, two statements).
+  `make(int h, O *o)` puts h at the target word sp+44 but h stops being coloured (89.2); single-statement makes with
+  a modified h (`h = h`, `h += 0`, `0 && (h = 0)`, 12 spellings) still give o a temp (98.57 / 99.57); 20 loop-test
+  spellings (`!= 0`, casts, `me(&it)->next()`) never move next()'s result ahead of its `this` temp.
+- **post0b 46050** (99.95): the F5801000 append in ONE statement (`_g = CTX->next(), _g->words.w0 = ..., ...`) is
+  identical; joining it with the following F2 append (rule 3: distinct temps) 99.82 (F2 recolours, F5801000 ctx still
+  v1); joining with the preceding E7 append 85.4.
+- **gui 329C** (99.37): the two MAX temps reuse statement 1's M-40 / M-44 entries (the `me(me(CTX))` / nD() this
+  temps); a 77-variant matrix of statement-1 x statement-2 accessor spellings (me / kept-`mk` / dead-address `ma`) tops
+  at the baseline. `if (0) { (void)&p; }` does NOT set the non-candidate flag (no temp at all).
+- **gui 3714** (98.33): residual is uopt colouring of the CTX load (target a1, ours t2), not pool sharing.
+
+**New code-free lever: a pool-entry CONSUMER.** `inline int z0() { return 0; }` used as a value (`x + z0()`,
+`z0() + CTX->next()`) takes one int-class pool entry at that point of the statement (rule 6: its result temp is
+allocated before the body) and uopt folds the constant away -- same instruction count, but every later temp of
+that statement moves one entry down (verified on 329C: the two MAX temps go from M-40 / M-44 to M-44 / M-52). It is
+the only way found to push a temp DOWN the pool without a kept parameter's copy; it cannot pull one up, and it
+must not land on a word whose value is still copy-propagated (31C0's T). Sweeps: 329C 30 (w0 / w1 counts, int /
+unsigned) + 79 (random `_SHIFTL` positions) flat-or-lower; 46050 9 + 134 (per-append `z0() + CTX->next()` subsets)
+top at 99.85 (the F5801000 ctx moves to a2, the target's t0 not reached).
+
+**Harness** (/tmp/claude-1000/c264/m/): compile with the dump NCC (`-Wo,-zdbug:1`, writes ./uoptlist) and print every
+`ustr`/`uistr` into an M word with resolved operands (it.py) -- a 5-line test file answers a pool question in
+seconds (which words share, in what order entries are created, which are `vreg`).
