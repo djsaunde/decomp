@@ -14676,6 +14676,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCCII (agent-g 2026-11-03, run 263): **a dead store to an operand (`dy = y1 - y0; y1 = dy;`) kills the expression item that uopt would otherwise colour and copy into the variable (extra mov.s / spill to a low temp instead of the variable's home); 40304 case 0x72 exact in isolation via a folded second tree, case 0x6D then needs an a1 blocker**](#kit-cccii-agent-g-run263) -- _NM post0b 4E424 95.47 -> 96.90, game_libs 2840 93.28 -> 94.48; 3AE58 / 3E5E0 / 4B2F4 / 250C8 / 54E78 / 493AC negatives._
 - [kit CCCIII (agent-c 2026-11-03, run 263): **edg temporaries are a TYPELESS first-fit pool and un-kept inline arguments get NO temporary: split a shared temp only with a kept dummy parameter (`if (0) { d = 0; }`) or by routing args through inline calls (`new KB(me(obj), me(a3v))` puts the new temp at the target's 31C0 slot); kit CCC random code-free test search as a routine pass**](#kit-ccciii-agent-c-run263) -- _NM gui 3714 98.25 -> 98.33, post0b 5A2C4 95.96 -> 96.08; 31C0 / 46050 / 34890 / E2D0 / 329C / E68 / 4B620 / 24B8 / 59E80 negatives._
 - [kit CCCIV (agent-c 2026-11-03, run 264): **edg temp pool READ FROM edgcpfe.c: every statement start frees all temps (decl initialisers too), first-fit from the oldest entry by (size, char, struct, vreg) only; inline bodies protect only pre-expansion entries; an inline with 2+ statements or any assigned parameter gives EVERY non-constant argument a temp (else none; `this` always); value-consumed calls get their result temp first; inline locals are frame variables at expansion start**](#kit-ccciv-agent-c-run264) -- _Research run, no gains: 31C0 (KB at the target word via a kept-param `kb()` but T copy-prop lost, 98.51), 34890, 46050, 329C, 3714 negatives; 5-line zdbug:1 micro-test harness._
+- [kit CCCV (agent-g 2026-11-03, run 264): **a register the target sets (or leaves set) in an argument slot at a call is a call ARGUMENT -- spell the extra argument and the LR takes that register (40304 case 0x6D: `gl_func(cmd, (Vec3 *)((int)&scl | 0 * (int)cmd), &scl)`; BB8C: `&sb->mtx` as the transform's third argument with sb reassigned to it); a pointer indexed from the loop counter starts the strength-reduced pointer in the preheader (guard delay slot = `i = 0`); folded `+ 0 * x` on a call argument / named product colour those values; `argscan.py` finds the call sites; copy-then-zero (`dy = y1; y1 = 0; .. dy -= y0;`) when the target loads an operand straight into the result register**](#kit-cccv-agent-g-run264) -- _EXACT post0b 40304 (99.99 -> 100, 828 B, IDO donor splice), game_uso BB8C (98.83 -> 100, 1008 B, NCC donor promoted; .late_rodata moved to B4B8.s) and post0b 4E424 (96.90 -> 100, 196 B, IDO donor); 493AC / 4B620 / 3558 / 250C8 / 31A74 / mgrproc 1824 negatives._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
 - [kit CCLXXII (agent-c 2026-10-30, run 247): **a folded `+ 0` on one loop's test moves the shared edg pool temp to the OTHER loop (493AC: the second loop's next() result leaves the call-crossing s2 temp); taking a local's address through a member call (`getPos(vb)`, `e = vb - va`) makes it memory-resident like a target that stores it after init (3558 length fixed)**](#kit-cclxxii-agent-c-run247) -- _NM 493AC 99.36 -> 99.43, game_uso 3558 91.62 @ 956 B -> 92.60 @ 1008 B; 41D40 / 250C8 / 3AE58 / 46790 / 3E5E0 / BB8C / 31A74 / `+ 0` toggle sweep negatives._
@@ -53087,3 +53088,60 @@ top at 99.85 (the F5801000 ctx moves to a2, the target's t0 not reached).
 **Harness** (/tmp/claude-1000/c264/m/): compile with the dump NCC (`-Wo,-zdbug:1`, writes ./uoptlist) and print every
 `ustr`/`uistr` into an M word with resolved operands (it.py) -- a 5-line test file answers a pool question in
 seconds (which words share, in what order entries are created, which are `vreg`).
+
+## kit CCCV (agent-g 2026-11-03, run 264): THREE EXACTS -- post0b 40304 (99.99 -> 100, 828 B) and game_uso BB8C (98.83 -> 100, 1008 B) from call-argument register evidence, post0b 4E424 (96.90 -> 100, 196 B) via copy-then-zero; a register the target sets (or leaves set) in an argument slot at a call is a call ARGUMENT, and an LR that is an argument takes that argument register; plus: a pointer indexed from the loop counter (not stepped) starts uopt's strength-reduced pointer in the preheader, a folded `+ 0 * (int)(x)` use on a call argument colours that argument's load, and a named product colours the product <a name="kit-cccv-agent-g-run264"></a>
+
+_Commits 19e5294e9 (40304) and dbf987a61 (BB8C) on agent-g. Gate: ROM byte-identical, verify-blocks 6/6 (game_uso lo16=0),
+`make non_matching_objects` 0 errors, no exacts lost. Scratch harness (reproducible): `unit.py` = copy of the unit .c ->
+`asm_processor.py -O2` pass 1 -> cfe with the unit flags + `-DNON_MATCHING` -> `objdiff-cli diff -c functionRelocDiffs=none`
+(1.5 s for post0b); `score_ncc` = NCC compile of the donor .cpp + the Makefile's `--redefine-sym` list -> objdiff;
+`var.py` = (old, new) substitution grids, 6 in parallel; `argscan.py` = for every 85-99.99 % function, per call the set of
+a0-a3 written since the previous call in the expected .o vs the build/non_matching .o (flags calls where the target writes
+MORE argument registers than ours)._
+
+1. **post0b 40304 (cfe -> IDO -O2 donor splice).** Kit CCCII left case 0x6D: with case 0x72's sp a distinct folded item
+   (`(Vec3 *)((int)&self->scl | 0 * (int)v)`, `m3 = &self->m30;` first), case 0x6D's `&self->scl` item coloured v0 and
+   cmd a2, target item a2 / cmd a3 with `or a1,a2,zero`. The target sets a2 = self + 0xC0 BEFORE the jal and copies it
+   to a1: that is `gl_func(cmd, <copy>, &self->scl)` -- a THIRD argument. Spelled
+   `gl_func_00000000(cmd, (Vec3 *)((int)&self->scl | 0 * (int)cmd), &self->scl);` (the a1 copy as a folded `|`, kit
+   CCCII follow-up) the item is a2 (it is the a2 argument), cmd moves to a3, and with case 0x72's distinct item the m30
+   spill takes 36(sp): 100. Without the 0x72 item / m3 the 3-argument call scores 88.8 (8 bytes longer). Landed as the
+   44B78 recipe: donor `game_libs_o2_40304.c`, `.rodata` (6-entry table + 1/32767 at +0x18) renamed
+   `gl_func_00040304_rodata = 0x1AE4`, quat callee `gl_func_00040304_quat = 0`; NM length unchanged (clip 0x2eaf4).
+2. **game_uso BB8C (NCC donor promoted).** Five steps, each measured standalone:
+   - `argscan.py` flagged call 0 (the 070F38 transform): the target leaves `&sb->mtx` in a2 across the jal. Passing it
+     as a third argument (prototype `(Ray *, void *, void *)`) makes the matrix pointer a2 (98.83 -> 98.89); then
+     `sb = obj->sub; sb = (Sub *)&sb->mtx; ((M4 *)sb)->getPos(q.pos); call(.., sb);` makes sb and the adjusted pointer
+     ONE variable in a2 = the target's `lw a2; lwc1 160(a2); addiu a2,a2,112` (98.95; the agent-h negative "same-variable
+     bump" was right about the shape, it only lacked the argument).
+   - Dropping the run-210 folded `+ 0 * (int)(obj->sub)` use turned the delay-slot-duplicated obj->sub reload back into a
+     ugen temp (t0) so the hoisted 1033 constant takes t1 = target (the fold had made it a coloured v0 LR).
+   - `float s = f20 * obj->k2; w.s = s;` -> the product is f0 (coloured) instead of a ugen f10 temp.
+   - `import_80087DA8->c + 0 * (int)(import_80087DA8->b)` as the 05B614 argument: c becomes a coloured LR (v1) and &r the
+     t2 ugen temp = target (the same fold on &r or ->d gives 99.13 / flat).
+   - The last two words were the loop guard's delay slot: `for (i = 0, c = (Child *)obj; ..; i++, c = (Child *)((char *)c
+     + 36))` emits `c = obj` before the guard (delay slot = c); `for (i = 0; ..; i++) { c = (Child *)((char *)obj + i * 36);`
+     lets uopt's induction-variable pass create the stepped pointer in the PREHEADER (after the guard), so `i = 0` fills the
+     guard's delay slot = target: 100. Equivalent whenever the target's pointer init sits after the n == 0 guard.
+   - Landing: BB8C.s carried `.late_rodata` (+0x168..+0x1EC: its three doubles + the DAMAGE/STOP/SLOW strings); no C
+     function between B4B8 and BB8C references .rodata (checked with `objdump -r -j .text` on game_uso.c.o), so the words
+     moved to the end of B4B8.s's block and verify-blocks stayed lo16=0.
+3. **post0b 4E424 (cfe -> IDO -O2 donor, 96.90 -> 100, 196 B; commits 36464d2b8, 50ea40bfa).** Two steps after kit CCCII:
+   - the max of the final compare as its OWN variable `m` (zero keeps only the 0.0f constant) and the halved sum written
+     to a dead variable (`x0 = (x0 + y0) / 2; return m + x0;`): zero and m then share f16, dz f2 = target (98.73).
+   - **copy-then-zero instead of the dead-store kill:** `dy = y1; y1 = 0; dz = z1; z1 = 0; dy -= y0; dz = dz - z0;`
+     (subtractions on ONE line, halved sum via x1). The copies make dy / dz the load destinations (target
+     `lwc1 f0,32(sp); lwc1 f2,36(sp); lwc1 f4,24(sp)` then in-place `sub.s f0,f0,f14` / `sub.s f2,f2,f4`), the zeroing
+     kills the y1 / z1 parameter LRs, and the one-line subtractions give the target's y1, z1, z0 load order (on separate
+     lines z0 loads before z1: 99.76). `dy = y1 - y0; y1 = dy;` (kit CCCII) only reached 98.73 -- when the target loads
+     the operand straight into the result register, spell the copy first. Same spellings on game_libs 2840 (7 x 2) flat.
+4. **Negatives.** post0b 493AC: CCCI if / do-while split of both iterator loops (entry {next, first, +0} x bottom {next,
+   adv, adv2, +0}, 40 + 90 variants) best = baseline 99.43. post0b 4B620 (s0 / s3 swap of the first two packet counts vs
+   the a1 parameter copy, zdbug:6: count = edg var -32 coloured s3, var -24 / a1 / 225 share s0): kept Base parameter,
+   `me()` / `mek()` / `mev()` routing of a1 through Base / BB, and the 42 first-two-packet add* spellings flat or worse.
+   game_uso 3558: the BB8C same-variable matrix-pointer spelling on `s0->b0` (8 variants) <= 93.60. post 250C8: 96-variant
+   retMsg / asyncLoad->retMsg x fontId-expression grid flat (99.85). post 31A74: the 0x1CAC0 store moved after the sel
+   clamp / into the call argument / goto block (14 variants) gives the target's `lui at` in the bgez delay slot but the
+   sel save `sb` then fills the jal delay slot (target swc1): 97.16 < 97.73. mgrproc 1824: the residual is the outer
+   switch's `li at,1` above the first beqz (6 BB-split / default / unsigned spellings flat) plus the external jumptable
+   addend (donor-splice class).
