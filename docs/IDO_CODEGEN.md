@@ -14699,6 +14699,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCCXXV (agent-c 2026-11-04, run 275): **ugen t6..t9 parity is decided over the WHOLE function (a cast near the end moves the head's registers): find the LAST t-only mismatch and work at that boundary; when that boundary is a uopt copy (`or a1,t7` vs `or a3,t9`) the cause is a uopt colour order (5A2C4: F7 cursor trio, cnt before base), not ugen; a per-phase pointer fixes one phase's colour order but frees an s-reg for a whole-function macro temp (E68 `_n`)**](#kit-cccxxv-agent-c-run275) -- _post0b 5A2C4 98.45 -> 98.47 (91a8f8ae0, `(u16)` on two 12-bit fields); register-normalised decode re-read of 4B620 / 34890 / 3AE58 / 46790 / gui 329C / 3714 (register-only), 54E78 / E2D0 / 36694 / E68 negatives._
 - [kit CCCXXVI (agent-g 2026-11-04, run 274): **the 250C8 -O3 lead is REFUTED: uopt at -O3 colours call-free temps into t0..t5 (the identical -O2 body under `cc -O3` puts bytesRemaining in t0), the target leaves it uncoloured / spilled like -O2 ("not colored, not splittable" = per-level register class); bootup 24B8's `sw zero,76 / lw t0,76` is the 0/1 LATCH spilled to its home across the first call (no `r` variable; separate k for the 0x3C value: every home on target, t's colour v1 vs t0 open); 35B1C's vtable-store order is an as1 may-alias reload dependency; an unfolded ori chain on a constant = a store-forwarded read-back of the word just stored**](#kit-cccxxvi-agent-g-run274) -- _post0b 415A4 NM 95.58 -> 95.92 (602b959dd, read-back). 24B8 latch rewrite 98.23 (homes exact, not landed), 35B1C NCC port 97.21 and aliased-p order 96.17, 2E354 if-chain / var_v0 types, 31A74 call-line store: negatives._
 - [kit CCCXXVII (agent-c 2026-11-04, run 276): **a register-normalised diff hides LOAD-ORDER decode errors: also normalise sp offsets and reloc immediates, align, and flag aligned pairs whose immediate still differs (`lwc1 $f2,0(v0)` vs `8(v0)`) = statement order, not colour; fix it with a JOINT permutation grid over the related statement groups (reads x conversions), which single adjacent swaps miss; triage table of the nine functions moved from agent-g (all schedule / colour residue, 18F0 the only length diff)**](#kit-cccxxvii-agent-c-run276) -- _post0b 5A2C4 98.47 -> 98.89 (fa61c0bd4), 48AEC 97.447 -> 97.476 (a8997d14c), 4F2DC 95.669 -> 95.684 (4ee5fba3f). Negatives: 18F0 peel / mask / types / IDO 5.3, E2D0 arg4 keeps and address escapes, 4FD00 shared SV, 4568 MAX/MIN grid, 34890 / 3AE58 ternaries, 54E78 operator* forms, 0F04 / E68 order grids._
+- [kit CCCXXVIII (agent-g 2026-11-04, run 275): **a zero-code CSE candidate (folded `0 * (int)(E)` / `if (E) {}` at two sites) is a real LR for globalcolor: place it across the blocks where the target leaves a register unused so it takes that register (head `arg0[0x4C]` candidate -> v1, latch v1 -> t0); read who holds a register with zdbug:5 (`forbidden` / `interfere with` / `live bb`); each folded use costs a ugen ring slot, so re-phase the existing ones; a counted use of the variable keeps a CSE'd copy in its web; split a shared int into its two homes and keep the home-exact base even when the score dips first**](#kit-cccxxviii-agent-g-run275) -- _bootup 24B8 99.05 -> 99.91 (5 commits, length 700; a second candidate in the cam-only blocks swaps cam / cfg). Negatives: 35B1C vtable-store order, 415A4 chain spellings, 31A74 delay-slot pair, 30AF4 hoisted &gl_state, 2E354 operand orders._
+- [kit CCCXXIX (agent-c 2026-11-04, run 277): **a score-maximising permutation that leaves load / store OFFSET mismatches (`lwc1 0(v0)` vs `8(v0)`) is a false optimum: restore the target's field order even if the score dips a hair, then run a singles + pairs TOGGLE grid that REMOVES the earlier levers -- parity casts / code-free tests fitted on the mis-ordered body go stale (5A2C4: both `(u16)` parity casts dropped together fixed the whole head block)**](#kit-cccxxix-agent-c-run277) -- _post0b 5A2C4 98.89 -> 98.92 -> 99.26 (207b3072a, 693316e9c). Negatives: 48AEC w0-first prim + lever toggles, 4BAF4 0xEE order, 42938 setvp order, 3558 vb hoist, 4F2DC dead `&cam->sub`, 54E78 / E2D0 tests, 4568 shifts / locals._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
 - [kit CCLXXII (agent-c 2026-10-30, run 247): **a folded `+ 0` on one loop's test moves the shared edg pool temp to the OTHER loop (493AC: the second loop's next() result leaves the call-crossing s2 temp); taking a local's address through a member call (`getPos(vb)`, `e = vb - va`) makes it memory-resident like a target that stores it after init (3558 length fixed)**](#kit-cclxxii-agent-c-run247) -- _NM 493AC 99.36 -> 99.43, game_uso 3558 91.62 @ 956 B -> 92.60 @ 1008 B; 41D40 / 250C8 / 3AE58 / 46790 / 3E5E0 / BB8C / 31A74 / `+ 0` toggle sweep negatives._
@@ -54463,3 +54465,103 @@ bottom (480), `else found = 0` (504), a named `one` for both the compare and the
 the start copy (the target's dead `addiu v1,v1,112` = cam + 0x70 does not appear); 200-variant random code-free
 searches on 5A2C4 (new order), 4F2DC, 0F04, 4568, 3AE58, 4FD00, 48AEC; 42938 setvp target store order with one or
 two `if (1) {}` splits (97.55 best, base 97.60).
+
+## kit CCCXXVIII (agent-g 2026-11-04, run 275): a ZERO-CODE CSE candidate is a real live range for globalcolor -- place one so it takes the register the target leaves "mysteriously" unused (latch v1 -> t0); read who holds a register with zdbug:5, split a shared int into its two homes, then re-phase the folded uses <a name="kit-cccxxviii-agent-g-run275"></a>
+
+bootup func_000024B8 99.05 -> 99.91 (NM, same length 700, 5 commits; only the final p reload register is left).
+Findings, in the order they paid:
+
+1. **zdbug:5 is the tool for "why this register".** `cc ... -Wo,-zdbug:5` (dump compiler
+   tools/ido-static-recomp-dump, writes ./uoptlist) prints one `>>>active<<<{ichain|n} LR colour` block per LR
+   with `adjsave`, `forbidden: [...]` (colour codes 1 v0, 2 v1, 3..6 a0..a3, 7.. t0.., 14 s0, 15 s1),
+   `:::interfere with:::` and the `live bb` list. The globalcolor rule is "lowest non-forbidden colour"; forbidden
+   = colours of already-coloured interfering LRs plus a0..a3 in a call block. A value the target puts in t0 with
+   nothing visible in v0..a3 around it therefore needs an INVISIBLE LR in v1 (here: the latch, LR 0, adjsave 1.33,
+   coloured last; forbidden [1 3 4 5 6 14 15] -> it took v1).
+2. **Folded counted uses create such invisible LRs.** `x + 0 * (int)(E)` / `if (E) {}` keep E (or the umpy of
+   its cvt) as a CSE candidate when E appears at two or more sites; the candidate is coloured like any LR and
+   then emits nothing. Map an LR back with `-Wo,-zdbug:1` (`{844|0} 70 isop umpy{733}{0}` = the `0*(int)(*arg0)`
+   product). Two uses of `arg0[0x4C]` -- an empty test after `k = 0;` (entry block) and a folded use in the gate
+   block's `v0 = FW(arg0, 0x38) + 0 * (int)(arg0[0x4C])` -- give one candidate over the latch's blocks that
+   interferes with the gate v0 web, takes v1, and the latch falls to t0 (a0..a3 forbidden by the gate call): the
+   head became instruction-exact. The same candidate in the toggle test / `k = 1` instead lands in v0 (no
+   interference with the gate web) and does nothing for the latch.
+3. **Each folded use also costs one ugen temp-ring slot** at its site: after the head candidate the then-branch
+   temps were one late; dropping two of agent-c's `0 * (int)(*arg0)` uses and counting `*s0` in the 0x14C copy
+   instead put the ring back (a 576-variant mask/expression grid over the five existing sites).
+4. **A CSE'd copy target stays in the variable's web only with a counted use of the variable**: `s0 = v1 + 0x14C;`
+   became a v0 CSE temp (target `addiu s0,v1,332`); `s0 = v1 + 0x14C + 0 * (int)(*s0);` (s0 = cfg, set just above)
+   keeps it in s0. Same for the 0x134 copy.
+5. **Shared int split by homes**: the latch and the later `p->0x3C` value shared one int (one home, 44); the target
+   spills them to 76 and 44. Two variables + a decl-order sweep that tracks every `(sp)` offset in the output (not
+   just the score) found the order with the target's exact home set (4 20 24 28 44 56 64 76); score fell first
+   (98.2) and rose once the colouring caught up (99.26) -- keep structural home matches as a base even when the
+   score dips.
+6. Empty blocks after the three cam loads (1 / 2 / 1) dropped the cam web's adjsave under the cfg CSE once (cam v1
+   like the target); later the same grid was inert.
+7. **The same lever the other way round** (99.63 -> 99.91): the cam web coloured before the cfg CSE and took v0. A
+   second zero-code candidate, `arg0[0x40]`, at three sites that live ONLY in the cam blocks (`if (arg0[0x40]) {}`
+   at the top of both clamp ifs + a folded use in the 0x14C copy) takes v0 there; cam then gets v1 and the cfg CSE
+   (which never overlaps that candidate) gets v0. Recipe: list the blocks of the two LRs that swap (zdbug:5 `live
+   bb`), put the phantom only in the blocks of the one that must move UP. Watch the int-vs-cast trap: an empty test
+   on the raw `FW(arg0, 0x38)` made a second LR (the raw load, separate from its `(char *)` cvt LR) that grabbed v0.
+
+Negatives: an `int` / `long long` return alias on any of the four placeholder calls (no colour change for the
+latch); volatile latch (`sw` hoisted out of the jal delay slot); coloring-search.py depth 1 (EXHAUSTED);
+lever-sweep bbsplit / order / volatile / denaming on each intermediate. A test `if ((char *)FW(arg0, 0x38) != v1) {}`
+inside the k-block gave 99.91 by extending the UNINITIALISED cam variable from entry -- banned, not kept; it says the
+cfg / cam swap wanted the cam web pushed off v0 -- done legally by point 7. Left (99.91): the tail p reload is a
+coloured split piece (v0, adjsave 0.5; target reloads into the ugen temp t6) -- empty blocks / tests / volatile p in
+the poll tail are inert or worse.
+
+Also run 275 (no gain): 35B1C vtable-store order -- 12 statement orders and comma / bb-split spellings of
+`o->0xC = &D` vs `p = q = o + 4` (the store either leads the block or drops into the bne delay slot; never
+between `addiu at,-4` and the spill); 415A4 116 compound / read-back spellings of the 1030 | 6 | 0x400 chain
+(uopt always merges 6 | 0x400); 31A74 the swc1 / sb pair in the jal delay slot (24 clamp / store spellings; the
+call-site spill is always last); 30AF4 `&gl_state` hoisted into v0 before switch 1 (sv / separate pointer forms
+rematerialise); 2E354 c.eq.s / addu operand orders are not source-order (12 spellings inert); 415A4 the v30
+pointer takes a2 (target v0; v0 forbidden by a split piece of self) -- 160 random code-free tests on self / t
+fields, unlever / bbsplit sweeps, p or another symbol as the holder: inert.
+
+## kit CCCXXIX (agent-c 2026-11-04, run 277): a permutation that maximises the objdiff score but puts loads / stores at the WRONG field offsets is a false optimum -- restore the target's own field order (score may dip a hair) and then RE-TEST every lever that was fitted on top of the wrong order: levers tuned to a mis-ordered body (ugen-parity casts, code-free tests) go stale and now cost score <a name="kit-cccxxix-agent-c-run277"></a>
+
+Run 276's joint grid lifted post0b 5A2C4 98.47 -> 98.89 with a b / g / r read + convert order -- but the
+immediate scan (kit CCCXXVII) still showed `lwc1 $f2,8(v0)` where the target has `lwc1 $f2,0(v0)` and
+`sb t8,166(sp)` where the target has `sb t8,164(sp)`: the score optimum loaded / stored the colour fields in
+the wrong order. The target order is the plain one (r, g, b, a reads, conversions and read-backs).
+
+1. Restoring it alone: 98.8936 -> 98.8914 (a hair DOWN), but the raw mismatch count drops 88 -> 85 lines and
+   no immediate differs any more. A random code-free test search on that base (`rnd.py`, 200 variants, one or
+   two tests) then found `if (base) {}` on the F7 w1 line: 98.92.
+2. The win was the next step: a singles + pairs TOGGLE grid over every earlier lever (remove each `(u16)`,
+   `if (1) {}`, `if (X) {}`, `+ 0 * (int)(X)` one at a time and in pairs, 66 variants). Dropping BOTH the
+   run-266 `(u16)` on the head `f & 0x100` test and the run-275 `(u16)` pair on the ED w1 fields (both
+   ugen t-register parity levers fitted while the colour block was in the wrong order) put the whole head
+   block (0x10..0x144) on the target registers: 98.92 -> 99.26, mismatch lines 83 -> 63. Either removal
+   alone loses; only the pair wins (the two parity shifts cancel).
+3. With the base fixed, re-running the full read x convert x read-back grid (200 random of 3456) confirms
+   r / g / b / a is now also the score optimum.
+
+Recipe: after any structural / order fix, (a) run the immediate scan to make sure every load / store offset
+matches, (b) if a "better" permutation leaves offset mismatches, keep the target order, (c) run a toggle
+grid (singles + pairs) that REMOVES earlier levers before adding new ones.
+
+Negatives this run (all flat or worse, kept for the next agent):
+- post0b 48AEC: prim() back to the target's w0-then-w1 store order costs 97.476 -> 97.451 (the run-245 w1-first
+  is a score flip like 5A2C4's); toggles of all ten earlier levers on the w0-first base, prim via next() /
+  named temps / struct copy / folded uses, mtx() unnamed: none beats 97.451. The real gap is the frame
+  (0x168 vs 0x160, from the named `n` in mtx()).
+- post0b 4BAF4: the 0xEE packet written as next() + w0 + w1 fixes the store order but drops 97.54 -> 96.71
+  (t-ring offset by one; random tests reach 96.99).
+- post0b 42938: the setvp halfword order (target 0, 2, 4, 6, 12, 14, 8, 10) is a scheduler consequence of the
+  target reusing t8 / t6 for the trunc results; all 24 orders of the middle four stores x the `if (1) {}`: flat.
+- game_uso 3558: vb components into locals at the block top / adds right after each row (15 + 36 + 200
+  variants): longer (1032+) or flat.
+- post0b 4F2DC: the target's dead `addiu v1,v1,112` after the start loads is `&cam->sub` (pos = sub + 0x30);
+  M4 / getPos / named pointer spellings either CSE it away or keep it live (+4 bytes).
+- post0b 54E78: p.d is loaded before n.x because of the colouring (d f14, n.z f12 vs target d f18, n.z f16);
+  108 test-expression variants, 144 single test insertions, operator* forms: flat.
+- bootup E2D0: 144 single test insertions, 1.0f + arg4 spellings, `s` computed at every position: flat.
+- gui 4568: packet-1 shift spellings (256) and named else-branch locals (32): flat. The t3 the target never
+  uses in packet 1 points at a uopt variable in t3 in the else branch (ugen ring excludes it).
+- 34890 / 3AE58 / 46790 / 4B620 single `if (1) {}` insertions: flat.
