@@ -14684,6 +14684,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCCX (agent-c 2026-11-03, run 267): **an inline member call written out in place has no `this` temp, so the pool entry it took goes back to the variable the target keeps there (34890: `make(int h, O *o)` + next()'s ternary in the for test); `switch (ch | 0)` (a non-folded selector expression) goes through a pool temp and emits the first case compare constant-first (`beq s5,a1`); `Ctx *c = this; return c->nextr();` gives a lone append's ctx t0 but shifts its n / dl entries, and a `+ 0 * (int)this` use on another append repairs the shared-var priority tie**](#kit-cccx-agent-c-run267) -- _NM post0b 34890 99.57 -> 99.64, 46050 99.95 -> 99.97 (one colour left); E2D0 / 329C / 3714 / 31C0 / 5A2C4 negatives._
 - [kit CCCXI (agent-g 2026-11-03, run 267): **the counted-use lever has an operator: `r = call() + 0 * (int)(x)` leaves an `addu a0,v0,zero` result copy where the target has `or a0,v0,zero` -- `| 0 * (int)(x)` keeps the live-range effect and emits the `or`; a zero-use sweep re-run with `|` finds new sites**](#kit-cccxi-agent-g-run267) -- _NM post0b 3BE1C 98.78 -> 99.11; `|` sweeps over 18 other NM bodies flat; 250C8 fontId copy-propagation, 3AE58 phantom-v1, 469A8 NCC port, 48AEC frame, 48510 / 46790 ring negatives._
 - [kit CCCXII (agent-c 2026-11-03, run 268): **one instance of a shared inline's operand in its OWN register (target t0) with the neighbouring pool temps unchanged: pass it through a two-statement free inline `f2(Ctx *p) { Ctx *k = p; if (0) { p = 0; } return &k->...; }` on a block local (p's pool temp keeps the entry, k is a fresh low-priority LR; the dead `p = 0` stops copy-propagation back), then restore the pool var's use count with a `+ 0 * (int)this` folded use elsewhere; a for-loop STEP of zero-code inline calls moves the bottom loop-test copy onto later pool entries**](#kit-cccxii-agent-c-run268) -- _post0b 46050 EXACT (99.97 -> 100); NM gui 3714 98.33 -> 98.95 (uopt forbids entry-block argument registers / call-block argument registers for any LR touching the block: isolate the first append in its own BB); 34890 step / init lever reaches the target's top / bottom / Base-this colours but h loses its register (98.98 best, 99.64 kept); 31C0 negatives._
+- [kit CCCXIII (agent-g 2026-11-03, run 268): **a stack local reloaded into a COLOURED register (v0, not a ring temp) and re-stored just before a jal is one spilled variable: write the value straight into it instead of copying a temp into it (2E354 decode fix, region word-exact); one-use test operands read in the test (ring temp); a field held in one register over a long region goes through the later switch selector variable at its first test. Census of the big NM bodies (objdiff json, non-ARG pairs only): 2E354 direct `switch (*(u8 *)(o + 0x15))` fixes the selector copy but costs +4 bytes elsewhere; 30AF4 target holds &gl_state in v0 in the switch head (case 6 `sw 0xc(v0)`), no spelling keeps sv live; 48AEC frame +8 = mtx()'s named n; 35B1C NCC ctor redraft = frame / homes exact, vptr store order is an as1 order inside the ctor's single `.loc` group; 31A74 store-after-clamp forms put the sel spill in the jal slot**](#kit-cccxiii-agent-g-run-268) -- _NM post 2E354 97.93 -> 98.15 (04e52615c, d13137fd9; length 3684 -> 3688, flagged decode fix); no exacts; 30AF4 / 48AEC / 35B1C / 31A74 / 250C8 / 4BAF4 / 42938 negatives._
+- [kit CCCXIV (agent-c 2026-11-03, run 269): **why the entry block forbids a0-a3: each register parameter is an uncoloured precoloured LR in BB 0 (`- live bb -   0  0  0  R`); taking a parameter's address (`const s32 &` inline) deletes it and every later register parameter's LR; a call block forbids its argument registers except the one an LR feeds; a two-statement `id(v)` on a call argument splits the BB inside the argument list and can put the ctx pool var on an argument register; split a packet's allocation from its stores so the stores share the next call block (packet pointer t0) while the base keeps its a-register**](#kit-cccxiv-agent-c-run269) -- _NM gui 3714 98.95 -> 99.00; 34890 `|` sweep has no sites; E2D0 = ugen FP free-list order (target never uses f14); 329C / 5A2C4 / 36694 negatives._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
 - [kit CCLXXII (agent-c 2026-10-30, run 247): **a folded `+ 0` on one loop's test moves the shared edg pool temp to the OTHER loop (493AC: the second loop's next() result leaves the call-crossing s2 temp); taking a local's address through a member call (`getPos(vb)`, `e = vb - va`) makes it memory-resident like a target that stores it after init (3558 length fixed)**](#kit-cclxxii-agent-c-run247) -- _NM 493AC 99.36 -> 99.43, game_uso 3558 91.62 @ 956 B -> 92.60 @ 1008 B; 41D40 / 250C8 / 3AE58 / 46790 / 3E5E0 / BB8C / 31A74 / `+ 0` toggle sweep negatives._
@@ -53525,3 +53527,136 @@ clip change. Gate: ROM byte-identical, verify-blocks 6/6, `make non_matching_obj
 4. **Negatives.** gui 3714 before the isolation: routing any of the four appends through the item-1 `f2` form or a
    leading `if (1) {}` alone leaves the ctx t2 (36 + 13 variants). bootup 31C0: `kb(Obj2 *o, char *a)` wrappers with an inline local / named result /
    dead parameter store all add a frame word (816 B) or are identical (20 variants).
+
+<a id="kit-cccxiii-agent-g-run-268"></a>
+### kit CCCXIII (agent-g run 268): a stack local that is reloaded into a uopt register (not a ugen temp) and re-stored right before a jal is a SPILLED VARIABLE -- merge the copy into it (2E354 97.93 -> 98.15); big-body structural census (30AF4 / 48AEC) + 35B1C NCC ctor redraft + 31A74 delay-slot probes
+
+**The lever (post 2E354, decode fix).** The target's pick block reads `sb v0,0x6b(sp); or a2,v0` (before the 25.0 test),
+then in the call arm `lbu t5,0x28(s0); sb v0,0x6b(sp); jal; ...; lbu v0,0x6b(sp)`, and the 0x48 != 0 path has
+`bnezl ..; lbu v0,0x6b(sp)` in its slot. Two stores of the same value and every reload landing in **v0** (a coloured
+register, not a ring temp) mean sp6B is ONE variable living in v0 and spilled to its home: a spill at the definition
+join and a spill just before the call, reloads into its own register. The old body had `var_v0_2 = pick; sp6B =
+var_v0_2; if (..) { sp6B = var_v0_2; call(.., var_v0_2, ..); }` (cfe drops the redundant second store and sinks the
+a2 move to the call). Writing the pick straight into sp6B (`sp6B = 0x11; if (..) sp6B = 0x13; ...; call(.., sp6B,
+..)`) made that 40-word region word-exact up to registers. It also exposed that the old equal length was a
+coincidence (the missing re-spill offset a still-open selector copy), so the length went 3684 -> 3688 with the fuzzy
+going up (flagged decode fix). Two follow-ups: a one-use test operand read through a variable (`temp_v1 = o->48;
+if (temp_v1 == 0)`) is a v0 LR where the target has a ring temp (t2) -- read the field in the test; and a field the
+target holds in ONE register across a long region (o->0x14 in t0 from the 0x23-block test down to the switch-6 default
+arm's `+2`) should go through the switch selector variable at its first test too (98.05 -> 98.15). Still open there:
+the switch-6 selector is our a0 + `or v1,a0` copy (target t0, no copy). That copy takes the raceC lui's delay slot
+(the +4 bytes). A direct `switch (*(u8 *)(o + 0x15))` removes the identical copy at switch 4/5 (`or v1,v0`) but frees
+t0 and shifts the whole t-ring (-1.5).
+
+Census tool: `objdiff-cli diff -c functionRelocDiffs=none <fn> --format json`, then print every instruction pair whose
+`diff_kind` is not ARG_MISMATCH (script was /tmp/claude-1000/g268/od.py: walk `left/right.symbols[name].instructions`
+in parallel). Structural (non-register) residuals at run start:
+
+- **post 2E354 (3684 B, 97.93)**: 166 register-only pairs + 11 structural: `lui at,0x4348` / `lwc1 fv1,0(s0)` order
+  (o->0 load sits after the 200.0 mtc1 in the target), the switch-on-o->0x15 selector copy (`or v1,v0` in the beq
+  delay slot; target compares the loaded byte in v1 directly against the held `1` in v0), a moved `or a2,v0` /
+  `sb v0,0x6b(sp)` pair, the D_E354_1C738_b store order, an `addiu v1,v1,0` base, a `lui t1` raceC base.
+  `switch (*(u8 *)(arg0 + 0x15))` (no named selector) removes the copy and gives the target's compare chain word for
+  word (v0/v1 swapped only), but grows the body 3684 -> 3688 elsewhere (a hoisted stateF / D_E354_G lui and
+  a sunk `addiu a1,0x10`): 96.40. Next step if anyone continues: keep the direct switch and look for the
+  length fix in the 0x22 / sp6B jump-table region.
+- **post 30AF4 (2112, 98.08)**: the target materialises `&gl_state_30AF4` into v0 in the switch head block (after the
+  460D0 call, before `sltiu 14`) and case 6 stores `sw t4,0xc(v0)` through it; case 4 stores D_30AF4_h with
+  `lui at; sw` (no held base) and copies sub into v0 (`or v0,t9`). Writing case 6 through sv
+  (`((GlState30AF4 *)sv)->fC = 256`) makes cfe rematerialise the address inside case 6 (+4 bytes, 96.80); routing
+  case 4 through sub / sv (`sv = sub; D_30AF4_h = sv;`, `gl_cmd = sub + 4`, `sub == 6`) shortens to 2108 (97.03).
+  The held-v0 head base needs sv live (not const-propagated) at the switch head -- no spelling found (36 variants).
+- **post0b 48AEC (2076, 97.45)**: the +8 frame since run 266 is the named `n` in `Ctx::mtx()` (one home per
+  expansion). Unnamed `&mh->buf[mh->count++]` in both arms restores frame 0x160 but scores 97.29; mixed forms
+  97.20-97.42. Remaining slot deltas vs target: 0x100 / 0xf4 / 0xe4 homes (ours 0x104 / 0xe8 / 0xdc with the
+  frame fixed).
+
+**35B1C (308 B, 97.40 cfe) as an NCC ctor reaches the same 2-word residual from scratch** (kit CXXXII / CCXVII /
+CCXVIII): `struct W { int v; W() { v = 0; } int operator==(W o) { return v == o.v; } };`, `struct Obj { Obj *next;
+W w; int a8; Obj(List *, W, int); virtual void f(); };` (vptr lands at 0xC), body `a8 = a3;` + the two list loops
+with `if (a2 == s0->w)` (by-value operator== puts the node copy at the target's tmp home and &a2 in s3) +
+`w = a2;` and one trailing dead `{ int u1 = 0; }` block: frame 0x50 and every home = target. Only the vptr store
+order is left (ours `sw t6,0xc(s4)` right after `addiu t6`; target after `addiu v1,s4,4; li at,-4`). `cc -S`
+shows the whole ctor prologue in ONE `.loc` group (the `{` line) with ugen order `la; sw vptr; addu; sw 52;
+lw 52; bne` -- as1 keeps the store first. Inert: mem-init spellings / `w()` on its own line, `W() : v(0)`, an
+out-of-line-defined inline W ctor, virtual dtor, second virtual, `a8(a3)` mem-init. W (or a W-holding base)
+as a BASE class moves the vptr store after the whole member ctor (82-88). A base whose implicit ctor is inline
+adds a second this==0 / new(0x10) test.
+
+**31A74 (564, 97.73)**: target tail is `bgez a2; lui at (delay); move a2,0; mfc1 a1; sb a2,0x23(sp); jal; swc1
+(delay)`. Moving the 0x1CAC0 store after the sel clamp (own line, same line as the call, comma operand, call
+argument `f(K, ACCS2 = r)`, goto block) all give `mfc1; swc1; jal; sb (delay)` = 97.16: as1 fills the jal slot
+with the sel spill `sb`, which ugen emits right before the jal, after the store. Kept run 234's form.
+
+Other negatives: **250C8** (99.85) fontId is homed in the dead resetStatus slot (sp+0x54); the target puts it in
+the temp area (sp+0x24, shared with the bytesRemaining temp). Reading fontId as `ASYNC_ID(asyncLoad->retMsg)` /
+`ASYNC_ID(retMsg)` / through `pad` at each use, block-scoping it, s32, and reusing resetStatus all lose (93.7-99.75).
+Folded `0 * resetStatus` uses keep resetStatus live and grow the frame. **42938** the vtrans[3] `sh zero,0xe`
+issues early whatever the source order (8 positions x BB splits, one-line forms): the inline's stores are one
+as1 group. **4BAF4** `andi t6,t5,0x7fff` after the addu is a t-ring reuse (WAR on t6), not an evaluation order:
+add2 / explicit next() / kept-parameter forms only move it around. **30AF4** routing every gl_state access
+through `sv` makes sv a real variable that is SPILLED (`sw v1,0x1c(sp)`), where the target rematerialises it.
+
+## kit CCCXIV (agent-c 2026-11-03, run 269): WHY the entry block forbids a0-a3 -- the register PARAMETERS are uncoloured precoloured live ranges in BB 0 (`- live bb -   0  0  0  R`, R = 3..6 = a0..a3), and taking a parameter's address deletes them (IDO aliases that and every later register parameter); a call block forbids its argument registers EXCEPT the one an LR itself feeds; a two-statement `id(v)` on a call argument splits the BB inside the argument list; a packet pointer gets a call block's restriction while its allocation keeps the ctx on a1 by putting the BB split BETWEEN the allocation and the stores (gui 3714 98.95 -> 99.00) <a name="kit-cccxiv-agent-c-run269"></a>
+
+_Commit 302aaedbd (gui 3714 NM donor, 98.95 -> 99.00) on agent-c; ROM unchanged, no NM length change._
+
+1. **Entry-block rule, read off -zdbug:5 (gui 3714, NCC).** Each register parameter shows up as an UNCOLOURED LR
+   whose BB-0 line is `- live bb -   0  0  0  R` (no uses / defs, column 4 = the incoming register: 3 = a0 .. 6 = a3)
+   and whose remaining BBs are listed as `(default)` up to its first reload block. Every LR with an appearance in BB 0
+   then starts with those colours in its `forbidden:` list (3714 with the texture append in BB 0: the n / dl pool vars
+   `[3 4 5 6]`, the packet `_g` `[1 2 3 4 5 6]` -> t0, the ctx -> t1). Parameter LRs that run THROUGH a later block
+   without an appearance there (`(default)`) do not forbid anything in it -- only BB 0 (and call blocks) do.
+2. **Call-block rule.** In a block with a call every LR gets the call's argument registers forbidden except the one
+   it feeds: 3714's `h` (4th argument) is allowed a3 and `spr->w` a2 (`forbidden [1 3 4 5]` / `[1 3 4 6]`), spr
+   (only dereferenced) gets all four. So a value can sit in an a-register inside a call block only if it IS that
+   argument (or an edg pool temp shared with one, item 4).
+3. **Address-taken parameters drop out.** `inline f32 toF(const s32 &v) { return (f32)v; }` on `(f32)arg1` removes
+   the parameter LRs of arg1, arg2 AND arg3 (only arg0's `0 0 0 3` line is left): a1-a3 become free in BB 0 (3714:
+   `_g` a1, ctx a2). The arg1 / arg2 reads then go through memory with a different schedule (1020 B, 74.9), so the
+   target does not alias arg1; `(void)&arg1;`, `if (&arg1) {}`, `*&arg1` are dropped by edg (no effect).
+4. **A two-statement inline on a call argument.** `inline int id(int v) { if (0) { v = 0; } return v; }` around one
+   argument (a) gives v a pool temp -- when that temp is the ctx pool var, the var becomes an argument value and may
+   take that a-register (3714 base layout: `id(spr->w)` -> ctx a1 kept, `id(spr->tex)` -> ctx a2; texture-in-call-block
+   layout: `id(spr->tex)` -> ctx a3), and (b) splits the BB inside the argument list: on the 8th (stack) argument
+   `id(h)` gives the all-in-one-statement layout (no `if (1) {}` after the texture append) exactly the base colours
+   (ctx a1, `_g` a0, 98.945). On register arguments the extra temps add frame words (frame 96 -> 176).
+5. **3714: split the packet's allocation from its stores (98.95 -> 99.00).** The target's first append has `_g` t0
+   (a0-a3 forbidden) while the ctx keeps a1 -- neither BB 0 (ctx forced off a1 by arg1's LR) nor the call block (ctx not
+   an argument) allows both for one block. Two blocks do: gSPTexture written out as
+   `{ Gfx *_g = me(me(CTX))->nD(); if (1) {} _g->words.w0 = ...; _g->words.w1 = ...; }` with NO split before
+   `spr = arg0->spr` puts the alloc (ctx, n, dl) in its own block and the two stores in the loader-call block: the
+   ctx LR never touches the call block (a1), `_g` does (-> t0). The two stores must share one source line (on separate
+   lines 98.92). The pre-split `if (arg4) {}` is still required (`if (1) {}` / other params / none: 92.9-94.8: its arg4
+   use sets arg4's priority). LEFT: spr v0 (target t1: spr, priority 4.0, is coloured long before `_g`, 0.75, and only
+   the call constraint is on it) and the w / rect-packet t2 / t3 swap (arg4's split piece 291 is coloured before the
+   packet LR 134). Recipe: when a target packet pointer is in a t-register right after an append whose base keeps an
+   a-register, look for a call block the stores can share and split between allocation and stores.
+6. **Negatives.** 3714: split-position grid (none / `if (1) {}` / `if (arg4) {}` before the texture, after it, after
+   spr, after h; three tails: 200), entry-layout copies of arg0-arg2 into locals (6), aliasing helpers x layouts (14 +
+   64), `id` / `id2` on each call argument x 4 layouts (48 + 162), two 190-mutant hill-climb rounds adding call-argument
+   `id` mutations: all <= 98.945; on the item-5 body: two more hill-climb rounds (380), spr placement / split grid
+   (36), zh x split-token grid (56), `+` and `|` zero-use sweeps (incl. --exprs), folded uses and splits inside the
+   rect / gImmp1 macros (88), spr as a direct `arg0->spr` expression (18), store-order / split-inside-stores forms
+   (24): all <= 99.004. The item-5 split on gui 329C's texture append (32) and on 5A2C4's append blocks (190 random
+   `if (1) {}` / `if (p) {}` / `if (cnt) {}` after the base / cnt / p lines): flat. post0b 36694: 21 pool-temp
+   spellings of the `p - a` subtraction (kept-param wrappers, z0() consumers, by-value / reference binds): best =
+   base 95.49 (z0() consumers shift the whole frame by 8 per entry). post0b 34890: the `|` zero-use sweep finds no site (no assignment / condition in
+   the donor body outside the for header). bootup E2D0: the target never touches f14 (ours puts arg4 there; the code
+   before it is identical), so the open item is ugen's FP free-list order, not a uopt colour.
+7. **A kept inline parameter WITHOUT a BB split (run 269).** `template <class T> inline T *kt(T *p) { T *k = p; p = 0;
+   return k; }` (unconditional dead store to the parameter, no `if (0)`) still gives p an edg pool temp, but adds no
+   basic block -- unlike the `if (0) { p = 0; }` form, it can be used inside a block whose shape must not change (3714:
+   the `if (0)` helpers on the spr read split the loader-call block and send `_g` back to a0). On 3714 `spr =
+   kt(arg0->spr)` puts p on the ctx pool entry (ctx loses a1: 97.82); `kt(kt(kt(kt(arg0)))->spr)` (and other chains of
+   4+ held temps) move spr v0 -> v1 at an equal score (99.004; the target's t1 needs `_g` coloured before spr). Flat
+   on 329C loader arguments (48), 31C0 `new KB(kt^i(obj), kt^j(a3v))` (30, best 99.71), and in two 3714 hill-climb
+   rounds with kt accessors on every packet (380).
+8. **More negatives (run 269).** post0b 34890: kit CCCXII step lever (`m3^k` / `m2^k` steps, k = 4-9, plain or `m3(o)`
+   init) x four make() forms with folded `0 * h` uses on the X ctor / flags arguments (72): best 98.80 < 99.64. bootup
+   E2D0: `k = 1.0f + arg4` hoisted to five positions / either operand order / `dot = (1.0f + arg4) * dot` (17): all
+   99.54 (uopt copy-propagates k; the FP ring is unchanged). post0b 5A2C4: 100 cast spellings of the two head tests
+   ((u16) / (s16) / (u32) / (u8) chains) and 20 spBC index spellings: flat at 98.04. gui 329C: the second MAX pool
+   temp is M-44 (LR 4, forbidden [v0 v1 s0] -> a0; target t2); item-7 `kt` / `ki` temps in the loader calls can push
+   it to t2 (`ki(ki(h))` in all three loads) but the edits break the three identical case bodies' tail merge (85-96);
+   190 per-case combinations of ten loader-argument forms: best 98.90 < 99.37.
