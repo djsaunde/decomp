@@ -53806,3 +53806,7 @@ _Commits fc9830c12, 705cb7929, 3b54b312b, 9ca35a961 (post 2E354, 3684 bytes = ta
    types (7), block-scoped fontId with function-scope pads (42: block locals go just below the function-scope ones,
    0x2c, and push the reloc struct up), ASYNC_ID(retMsg) expressions in place of fontId (612 bytes) and
    retMsg-vs-field spellings of the case arguments (31): all <= 99.85.
+8. **Kit CCCXV follow-up on 48AEC (frame 0x168 vs 0x160).** The extra 8 bytes are the run-266 `int n` frame word per
+   mtx() expansion. Moving n into a simple-routine parameter (`at(int n) { return &mh->buf[n]; }` called as
+   `at(mh->count++)`, or a free `mtxat(h, n)`) brings the frame back but loses the colours (96.71); `int n = ...;
+   return at(n);` keeps both the colours and the frame (97.447, unchanged). Not kept.
