@@ -14680,6 +14680,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCCVI (agent-c 2026-11-03, run 265): **uopt homes every edg M word at frame + M, so the target's frame offsets ARE the declaration / pool order: 36694's first word M-12 is a first-declared V3 local (`V3 a = n * dot;` ahead of r / l / px..pz), plain `return V3(...)` operators, const-ref difference in a block; V3 temps made inside inline operator bodies are not reused by a later `return` while caller-level value temps are; 34890's h word needs a real loop use on M-12 to stay coloured**](#kit-cccvi-agent-c-run265) -- _NM post0b 36694 90.96 -> 95.49 (712 B = target; layout + code-free float tests on the new body); 31C0 / 34890 / 46050 negatives; argscan over the list: only 34890 call 4._
 - [kit CCCVII (agent-g 2026-11-03, run 265): **a value in an "odd" caller-saved register (t0 while v0 / v1 / a-regs are free there) is a variable whose LR also covers a busy region: hold it in the dead loop counter after the loop (`i = (s32)ptr;`) so the LR spans the loop, and spell the test `i != 4` to keep the `bne` exit; argscan "held register" variant (scan2): values the target leaves in a1-a3 up to a call are arguments (4B2F4 list call `(seg, cmd2, h1)`)**](#kit-cccvii-agent-g-run265) -- _EXACT post0b 4B2F4 (99.88 -> 99.95 -> 100, 812 B, NCC donor promoted); 54E78 / 3AE58 / 415A4 / 31A74 / mgrproc 1824 / 3E5E0 / 37540 / 48AEC negatives._
 - [kit CCCVIII (agent-c 2026-11-03, run 266): **a long run of t7 / t9 swaps after one early mismatch is ugen's expression-register sequence (it carries across blocks and calls): a value-preserving narrowing cast `(u16)(f & 0x100)` costs one ugen register with no code and re-aligns it; two array loads off one local base in ONE basic block keep the target's held `addiu tX,sp,N` base; 36694's first statement has one operator* parameter temp fewer than ours (n * 2.0f reproduces the pool)**](#kit-cccviii-agent-c-run266) -- _NM post0b 5A2C4 96.08 -> 98.04, 3B9C0 95.24 -> 95.52 (1104 -> 1108 of 1116, clip 0x2eaf4 -> 0x2eaf8); 36694 / 3B9C0 off-spill / 5A2C4 scan2 negatives._
+- [kit CCCIX (agent-g 2026-11-03, run 266): **write a stride multiply as `i * 12`, not `((i << 2) - i) << 2`: ugen's constant-multiply expansion keeps sll / subu / sll in the destination register, the shift spelling takes a t temp and shifts the t ring; a once-used pointer the target colours v0 before a call can share a local with an earlier value; V3 inline member statement-order grids pick uopt's dead-store pattern**](#kit-cccix-agent-g-run266) -- _NM post0b 3BE1C 98.62 -> 98.78, 4BAF4 97.39 -> 97.54, 48AEC 97.29 -> 97.45 (named mtx() count), post 33094 94.20 -> 94.31; 493AC / 48AEC / 46790 parity / 250C8 / 469A8 / 3B6A0 negatives._
+- [kit CCCX (agent-c 2026-11-03, run 267): **an inline member call written out in place has no `this` temp, so the pool entry it took goes back to the variable the target keeps there (34890: `make(int h, O *o)` + next()'s ternary in the for test); `switch (ch | 0)` (a non-folded selector expression) goes through a pool temp and emits the first case compare constant-first (`beq s5,a1`); `Ctx *c = this; return c->nextr();` gives a lone append's ctx t0 but shifts its n / dl entries, and a `+ 0 * (int)this` use on another append repairs the shared-var priority tie**](#kit-cccx-agent-c-run267) -- _NM post0b 34890 99.57 -> 99.64, 46050 99.95 -> 99.97 (one colour left); E2D0 / 329C / 3714 / 31C0 / 5A2C4 negatives._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
 - [kit CCLXXII (agent-c 2026-10-30, run 247): **a folded `+ 0` on one loop's test moves the shared edg pool temp to the OTHER loop (493AC: the second loop's next() result leaves the call-crossing s2 temp); taking a local's address through a member call (`getPos(vb)`, `e = vb - va`) makes it memory-resident like a target that stores it after init (3558 length fixed)**](#kit-cclxxii-agent-c-run247) -- _NM 493AC 99.36 -> 99.43, game_uso 3558 91.62 @ 956 B -> 92.60 @ 1008 B; 41D40 / 250C8 / 3AE58 / 46790 / 3E5E0 / BB8C / 31A74 / `+ 0` toggle sweep negatives._
@@ -53302,3 +53304,113 @@ clip 0x2eaf4 -> 0x2eaf8, 62F08 NM offset 0x2eaa8). No exacts._
 5. **scan2 (kit CCCVII) on 5A2C4.** The target keeps the first trailing-E7 append's count in a3 up to the
    `func_00000000_5a2c4v` call: passing it (`..., arg10, e7c)` with a fresh count local, or reusing rgba / f) does
    put it in a3, but the neighbouring appends recolour: 97.95 / 97.46 / 97.97 < 98.04 (zero-use / bbsplit flat).
+
+## kit CCCIX (agent-g 2026-11-03, run 266): ugen's multiply-by-constant expansion stays in the DESTINATION register (`off = i * 12` = `sll a2,i,2; subu a2,a2,i; sll a2,a2,2`; a hand-expanded `((i << 2) - i) << 2` takes a t temp and shifts the t ring); a once-used pointer the target colours v0 right before a call can share a local with an earlier value; V3 inline member statement-order grids pick uopt's dead-store pattern; scan2 / loop-counter / narrowing-cast negatives <a name="kit-cccix-agent-g-run266"></a>
+
+_report.json (objdiff, regenerated in the agent-g worktree): post0b gl_func_0004BAF4 97.39 -> 97.54 (commit 4a98f70db),
+post0b gl_func_0003BE1C 98.62 -> 98.78 (9e39262dc), post gl_func_00033094 94.20 -> 94.31 (db0ea15dd), post0b
+gl_func_00048AEC 97.29 -> 97.45 (20003264e: `Mtx *mtx() { int n = mh->count++; return &mh->buf[n]; }`, the kit CXVII
+named-count form next() already used -- gctx a3 / MtxHead v1 like the target in both matrix arms, frame +8 from n's
+edg homes; the same rewrite on 4BAF4 / 493AC / 42938 / 48510 / 59E80 appends is flat or lower); no length changes,
+no exacts (3236 / 3288, 92.57 %). Gate: full make ROM byte-identical, verify-blocks 6/6, `make non_matching_objects` 0 errors._
+
+1. **Multiply by a constant: write the multiply.** 3BE1C's 12-byte triangle stride is `sll a2,s4,2; subu a2,a2,s4;
+   sll a2,a2,2` in the target -- all three in the destination register a2. ugen expands `x * 12` exactly that way (the
+   expansion reuses its result register). The donor spelled it `((i << 2) - i) << 2`, which ugen evaluates as an
+   expression tree: the first shift gets a fresh t register (t6), the subtract lands in a2, and the extra ring step
+   shifts every t register for the rest of the loop head (t6/t8/t9 swaps for ~30 instructions). `off = i * 12` lines
+   the block up word for word (`i * 3 * 4`, `(i * 3) << 2`, `12 * i`, `i * sizeof(Tri)` are identical; the
+   `((i << 2) - i) * 4` hybrid is the old shape). Score first drops (98.62 -> 97.75, the old zero-use levers were
+   tuned to the shifted ring) and a fresh zero-use sweep on the new body then finds `if ((r & 0x100) + 0 * (int)(cc))`
+   -> 98.78. Diagnostic: in a diff, `sll X,Y,k` followed by `subu/addu X,X,Y` in the target vs a t temp in ours = a
+   source-level shift spelling of a multiply (titproc_uso has the same note for `* 30`). A scan of all NM functions
+   for that target shape (mulscan) found no other donor with the hand-expanded form.
+2. **One local for two short-lived values (4BAF4).** The target loads self->0xCC into v0 right before the dlist call
+   (`lw v0,204(t3); lw a0,96(v0)`), ours a2 / t8. Naming the pointer alone gives v1 (kit CCCVII lead). Writing the
+   four volatile clip half-extent reads into the SAME local as the pointer (`char *d` in the old `int e` home slot,
+   `d = (char *)F4B(GS4B, 0xB8, volatile int) ... + (int)d`, then `d = F4B(self, 0xCC, char *)`) makes it one uopt
+   LR and the pointer takes v0: 97.39 -> 97.54 (the old folded `+ 0 * (int)(spr->h)` on ctx is dropped with it).
+   The half-extent itself is still v0 (target a3, the ctx colour); merging it into ctx instead (kit CCCVII 5.) with
+   d kept for the pointer is 97.04; spr->dl64 / self->0x14 / self->0xD0 through d, g or r are all lower (95.9-97.1);
+   a zero-use sweep on the new body (260 variants) is flat.
+3. **Member statement-order grid (33094).** The donor's `V3::set` / `operator*=` / `operator+=` inlines each have three
+   independent member statements; the order decides which intermediate stores uopt's dead-store pass keeps. The target
+   stores b.x / b.y after the copy and after the scale, and b.z only once at the end. All 216 orders scored: set
+   x y z, *= x y z, += z y x reproduces that store pattern (94.20 -> 94.31; the remaining residual is a.x reloaded
+   from its home in the else arm while 10.0f takes f12). Same grid flat on 54E78 (cp / V3 ctor, 36 orders), game_uso
+   3558 (+= / *= / getPos, 108 orders) and the IBase ctor of 493AC / 4B620 / 48AEC (6 orders each, current best).
+4. **Negatives.** scan2 / argscan re-run on the run-265 list: 493AC (third arguments `it.cur()` / `it.idx` on the
+   two first-loop calls: 99.26 / 97.86 < 99.43), 4BAF4 ctx-merge grids (0xEE / scissor / B4 / B3 appends through ctx,
+   inline accessors returning the 0xCC / dl64 pointer: 95.5-97.38), 48AEC (gctx in the dead loop counter i with
+   `i != 4`: i takes t0 like 4B2F4 but the frame grows, 96.09; j / k break the loop; folded B uses / A-B order flat).
+   46790 t8 / t9 parity (kit CCCVIII lever): `(u16)` / `(u8)` / `& 0xFF` narrowing on the idx terms, c, the
+   `c < 128` test, the mask tests and px (60 spellings, singles and pairs): either identical code (cfe proves the
+   range) or a longer body; the extra ugen register has to land between the dst load and the idx `sll`, and no
+   value-preserving cast there emits-then-drops. 250C8 (99.85): fontId shares the bytesRemaining temp slot sp+36 in
+   the target (a uopt temp, not a home); fontId as ASYNC_ID(retMsg) / block-scoped / moved decl / split
+   retMsg-doneMsg variables all lower (94-99.83), lever-sweep all (46) and zero-use (80) flat. 469A8: the vt / obj
+   temps (target v0, ours a1) do not move with variable identity or a prototyped function-pointer type (copy
+   propagation); p78 held only from a fresh `FW(arg0, 0x240)` read (+8 bytes). 3B6A0: the target's `or v0,s8` face()
+   `this` copy does not appear for c / cc / col spellings, a Col::face member or a kept-parameter free inline.
+   3AE58 / 46790 / 54E78 zero-use and lever sweeps flat.
+5. **More negatives (same run).** 3AE58: the target's vi `lhu` is a plain ugen temp (t6) fed by the Ent pointer in
+   t0 (pick's kept-parameter temp); returning the scaled offset from pick (`return e->vi * 6`, added to
+   `(char *)a1->verts` either side) makes the lhu a t temp and keeps e in t0, but the product becomes pick's v1
+   return and the verts base is allocated after the lhu (t6 / t5 swapped): 99.16 < 99.26; returning the address
+   (`&b[e->vi]`, b / e order and keeps in all 16 combinations) loses t0 (99.0). 48510: uopt canonicalises the
+   flush compare before ugen, so `nv >= max590 - 1` spellings (12) and code-free max590 / nv pre-reads cannot change
+   ugen's operand order (target evaluates max590 - 1 before nv). 3E5E0: the target's reg0 / reg1 new-result spill
+   word is sp+0x2C (ours 0x20 shared with the loop's); block-scoped node / it and unused pads do not move it.
+   gui 2DE0: the &D address the target keeps in t3 across the three packets (PRE re-materialises it in the dtdy
+   ternary arms) is folded back into `lui s0; lw s0,%lo` for the last packet with every me() / next() spelling of
+   pkt3 (96.50-96.65). gui 4568: the t3 / t4 split after `sll t9,a1,2` (x << 2 of the first texrect) does not move
+   with x / y shift, multiply, mask or narrowing-cast spellings (25). 250C8 under IDO 7.1 `-O3` with OoT's separate
+   static FinishAsyncLoad (inlined by umerge) is 608 bytes / 90.9 -- not the shape; the -O2 manual inline stays.
+   A generic member statement-order grid (3-4 independent assignments in one-line inline bodies, one site at a
+   time) on 37540 / 4FD00 / 4F2DC / 48AEC / 493AC / 4B620 / 4BAF4: no gains.
+
+## kit CCCX (agent-c 2026-11-03, run 267): edg temps you can REMOVE -- writing an inline member call out in place (no `this` temp) frees its pool entry for the variable the target keeps there (post0b 34890 99.57 -> 99.64); a switch on a NON-VARIABLE selector (`switch (ch | 0)`) is stored in a pool temp and its first case compare comes out constant-first (the target's `beq s5,a1`; post0b 46050 99.95 -> 99.97); how far a fresh `this` variable gets towards a target t0 colour <a name="kit-cccx-agent-c-run267"></a>
+
+_Commits d9334bb1f (34890 donor), 07bedb866 (46050 donor) on agent-c. NM lengths unchanged (336 / 1848 = target), no clip
+change. Gate: ROM byte-identical, verify-blocks 6/6, `make non_matching_objects` 0 errors, no exacts lost, sentinels 100._
+
+1. **34890: the parameter order picks the first pool entry; an inline call's `this` is a temp you can delete.** Target
+   frame: h's spill at M-12. `make(O *o, int h)` gives o the first parameter temp (M-12) and h M-16; `make(int h, O *o)`
+   (call `make(o->h, o)`) puts h at M-12, but the loop's `it.next()` then reuses h's coloured word for its `this` temp
+   (89.2). Writing next() out in the for condition -- `for (LIter it(o->list); (me(&it)->cur = it.nxt) ? (it.nxt =
+   it.nxt->next, it.cur->data) : 0; )` -- has no `this` temp, so h keeps M-12 coloured a1 with the target's spills:
+   99.57 -> 99.64 (`me(&it)` on the first store; `it(me(me(o))->list)` became plain `it(o->list)`). -zdbug:5 then shows
+   the two ternary results as pool vars M-16 (top copy, v0) and M-12 (bottom copy, shared with h, a1); target a2 / v1.
+   Not moved by: 200 accessor placements in the written-out test, kept-parameter `mk()` accessors, named result `d`
+   (frame +4), ternary / `&&` / `!= 0` forms, make() test positions (~450 variants).
+2. **46050: `switch (expr)` vs `switch (var)`.** With a plain variable selector edg emits `ch == 10` for every case. A
+   non-folded expression (`ch | 0`, `ch * 1`, `ch ^ 0`, `ch + 0 * cc`; NOT `ch + 0`, `(int)ch`, `(ch)`, `cc = ch`, an
+   inline identity call -- those are folded or treated as the variable) is stored into a pool temp first and the FIRST
+   compare is `uequ 10, sel` -> `beq s5,a1` (the remaining cases stay `beq a1,s6` / `beql a1,s7`), exactly the target's
+   order. The expression item takes v0 at priority 20 and pushes the o->x load to v1; one `if (1) {}` after `cc = ch`
+   (kit CCC random search, 160 variants) restores v0: 99.95 -> 99.97. The whole function is now the target except the
+   F5801000 append's ctx (target t0, ours the shared edg var -28 = v1).
+3. **Towards that t0 (not yet matching, for the next run).** zdbug:5 colours: 1 v0, 2 v1, 3 a0, 4 a1, 5 a2, 6 a3, 7 t0;
+   the prologue appends share edg vars -28 ctx (v1, priority 36.75), -36 dl (a1, 36.75), -32 n (a2), and per-append
+   result items. (a) Any F58 spelling that takes one extra temp (kept-parameter `mk(CTX)`, `nz(int z, Ctx *c)` wrappers,
+   member `this` accessors) shifts that append onto the next entries (ctx = -32's var, a2). (b) `Ctx *c = this; return
+   c->nextr();` as the F58 method gives ctx = t0 (item priority 1.5, coloured last) but n / dl / result move one entry
+   (v0 / a1 / a0 instead of a1 / a2 / v0), and var -28 loses one append so its priority ties below -36: every append's
+   ctx / dl swap v1 <-> a1 (98.51). A folded counted use `return &dl->buf[dl->n++] + 0 * (int)this;` on ANY other append
+   restores -28 above -36 (26 of 36 placements, 99.87). The remaining step is an F58 form whose ctx is a low-priority
+   item while n / dl stay on -32 / -36. The t0 item appears only when the innermost append has a NAMED result (`Gfx *r
+   = ...; return r;` -- nextr(), a static fnr(c), me(c)->nextr()) under a `Ctx *c` local (Ctx member, Font member
+   `Ctx *c = sub->ctx` or free `gA(Font *o)`: 70 forms); every such form also shifts n / dl one entry (probably the
+   two-statement inline's return-value temp), and wrapping every other append in a temp-taking `mk()` / `m2()` to shift
+   them alike wrecks the function (66-82). 180 random form x compensation-site pairs: best 99.87. (c) Re-using a function local (`cc = (s32)CTX;` -- cc is re-assigned before
+   every loop read) gives a3 with global recolouring (97.58); `ch` gives s1. (d) Written-out appends without a `this`
+   (`&CTX->dl->buf[CTX->dl->n++]`, free `fp(Ctx *c)`) re-load ctx (+8 bytes) or stay identical.
+4. **Negatives.** bootup E2D0 (99.54): the 1.0f + arg4 FP colours (ours f6 / f14, target f8 / f16): 340 statement
+   spellings of the clamp / scale / lim lines, 252 code-free test sets around `if (arg4) {}`, 39 value-preserving float
+   ops (`x * 1.0f`, `x / 1.0f`, `(f32)(f64)x`, `-(-x)`, `+ 0.0f`) on lim / dot / arg4 / 1.0f: flat (the no-test body
+   gives 1.0f f6 / arg4 f18 / sum f8, target f8 / f16 / f18: not a one-step FIFO shift). gui 329C: 200 random code-free
+   tests (kit CCC) flat. gui 3714: 162 written-out / static-helper spellings of the four appends (`fD / fR / fC / fP(Ctx
+   *)`) flat. bootup 31C0: the target's case-1 obj read at M-28 = T is consistent with KB's ctor parameter temps
+   allocated BEFORE the new-temp (o -> M-28, store removed as redundant), which edg does not do for `new KB(obj, a3v)`;
+   not reproduced. post0b 5A2C4: with ugen's GP pool as a FIFO free list (kit CCXCV), the index `sll` after the head
+   call needs TWO more phantom allocations after the bit-0 test (ours t9, target t7); not attempted beyond kit CCCVIII.
