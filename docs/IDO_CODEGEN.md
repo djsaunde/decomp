@@ -54565,3 +54565,15 @@ Negatives this run (all flat or worse, kept for the next agent):
 - gui 4568: packet-1 shift spellings (256) and named else-branch locals (32): flat. The t3 the target never
   uses in packet 1 points at a uopt variable in t3 in the else branch (ugen ring excludes it).
 - 34890 / 3AE58 / 46790 / 4B620 single `if (1) {}` insertions: flat.
+- kit CCCXXVIII zero-code CSE candidates (`if (E) {}` on well-defined memory values, one or two sites) tried
+  at once on the register-only set: 3AE58 (161 variants: a1->tbl / n / ents / verts, a0->m / x2C, every loop
+  position and before/inside-loop pairs), 34890 (60: o->h / list / flags), E2D0 (189: 0x9F8 / 0x9FC / arg3->x /
+  v[1] fields over the clamp block): all flat. zdbug:5 on 3AE58 (NCC dump build) shows why: the ternary result
+  is uopt LR {144} coloured v1 (colour 2, forbidden only v0 / 14) with priority 15 -- the target's t0 for it
+  looks like a ugen temp, i.e. the target's ternary result was never a uopt LR at all (if/else with a named
+  `Ent *e` scores the same 99.63). 46790 t8 / t9 parity: 384 spelling / cast variants on the last mismatches
+  (`dst += 312`, `idx += 120`, font tests): flat.
+- game_uso 3558: its z-row operand order (m[0][2], m[2][2], m[1][2]) is also a score flip (target loads
+  m[1][2] before m[2][2]); the natural order + operator+= x, y, z (stale x, z, y dropped) reaches 93.15 with no
+  offset mismatches but stays below the flipped 93.68. 4F2DC: run-276's y, x, z operator*= and KV-first e
+  ctor are flips too (target loads KV.x first); the x-first base is 95.665 vs 95.684 and no lever toggle lifts it.
