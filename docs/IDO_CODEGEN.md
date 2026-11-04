@@ -14697,6 +14697,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCCXXIII (agent-c 2026-11-04, run 274): **cfe t-ring / v0-v1 parity residual -> lever-sweep `order` on independent conversions (colv[2] / fb first) after every gain; re-run mv.py first (an old paying test can become dead weight)**](#kit-cccxxiii-agent-c-run274) -- _post0b 5A2C4 98.04 -> 98.45 (4709a19e4, d7aab5552, c5c28c540, 6d0e857f3 code-free `if (g) {}`); 56 index spellings + 84 phantom-term burns on the 5A2C4 head, ins.py on 9 targets, 46790 idx grid, 3AE58 merge forms, 54E78 V3 ctor forms all negative._
 - [kit CCCXXIV (agent-g 2026-11-04, run 273): **a local the target spills to the uopt SPILL AREA (sharing the slot with an unrelated temp) is an -O3-INLINED callee's local, not a C variable: post 250C8 as the OoT split (static FinishAsyncLoad) at cc -O3 puts fontId at 0x24 / frame 0x60 like the target (lead, per-file -O3 is a policy call, not landed); an lda address held across arms (30AF4 pre-switch v0, gui 2DE0 t3) is a uopt constant LR; decl-order PAIR-SWAP hill climb on NCC donors finds homes single moves miss**](#kit-cccxxiv-agent-g-run273) -- _game_libs 2840 NM 95.23 -> 95.26 (4db0f6fb2, dy / d4 homes = target). Negatives: 2E354 compare / scrutinee placements + zdbug priority numbers, 493AC loop tests, 33094 operator grids, kernel 18F0 loop / mask / bitfield / IDO 5.3, bootup 24B8 address escapes, 31A74 store placement, mv.py and lever-sweep over 13 NCC donors._
 - [kit CCCXXV (agent-c 2026-11-04, run 275): **ugen t6..t9 parity is decided over the WHOLE function (a cast near the end moves the head's registers): find the LAST t-only mismatch and work at that boundary; when that boundary is a uopt copy (`or a1,t7` vs `or a3,t9`) the cause is a uopt colour order (5A2C4: F7 cursor trio, cnt before base), not ugen; a per-phase pointer fixes one phase's colour order but frees an s-reg for a whole-function macro temp (E68 `_n`)**](#kit-cccxxv-agent-c-run275) -- _post0b 5A2C4 98.45 -> 98.47 (91a8f8ae0, `(u16)` on two 12-bit fields); register-normalised decode re-read of 4B620 / 34890 / 3AE58 / 46790 / gui 329C / 3714 (register-only), 54E78 / E2D0 / 36694 / E68 negatives._
+- [kit CCCXXVI (agent-g 2026-11-04, run 274): **the 250C8 -O3 lead is REFUTED: uopt at -O3 colours call-free temps into t0..t5 (the identical -O2 body under `cc -O3` puts bytesRemaining in t0), the target leaves it uncoloured / spilled like -O2 ("not colored, not splittable" = per-level register class); bootup 24B8's `sw zero,76 / lw t0,76` is the 0/1 LATCH spilled to its home across the first call (no `r` variable; separate k for the 0x3C value: every home on target, t's colour v1 vs t0 open); 35B1C's vtable-store order is an as1 may-alias reload dependency; an unfolded ori chain on a constant = a store-forwarded read-back of the word just stored**](#kit-cccxxvi-agent-g-run274) -- _post0b 415A4 NM 95.58 -> 95.92 (602b959dd, read-back). 24B8 latch rewrite 98.23 (homes exact, not landed), 35B1C NCC port 97.21 and aliased-p order 96.17, 2E354 if-chain / var_v0 types, 31A74 call-line store: negatives._
+- [kit CCCXXVII (agent-c 2026-11-04, run 276): **a register-normalised diff hides LOAD-ORDER decode errors: also normalise sp offsets and reloc immediates, align, and flag aligned pairs whose immediate still differs (`lwc1 $f2,0(v0)` vs `8(v0)`) = statement order, not colour; fix it with a JOINT permutation grid over the related statement groups (reads x conversions), which single adjacent swaps miss; triage table of the nine functions moved from agent-g (all schedule / colour residue, 18F0 the only length diff)**](#kit-cccxxvii-agent-c-run276) -- _post0b 5A2C4 98.47 -> 98.89 (fa61c0bd4), 48AEC 97.447 -> 97.476 (a8997d14c), 4F2DC 95.669 -> 95.684 (4ee5fba3f). Negatives: 18F0 peel / mask / types / IDO 5.3, E2D0 arg4 keeps and address escapes, 4FD00 shared SV, 4568 MAX/MIN grid, 34890 / 3AE58 ternaries, 54E78 operator* forms, 0F04 / E68 order grids._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
 - [kit CCLXXII (agent-c 2026-10-30, run 247): **a folded `+ 0` on one loop's test moves the shared edg pool temp to the OTHER loop (493AC: the second loop's next() result leaves the call-crossing s2 temp); taking a local's address through a member call (`getPos(vb)`, `e = vb - va`) makes it memory-resident like a target that stores it after init (3558 length fixed)**](#kit-cclxxii-agent-c-run247) -- _NM 493AC 99.36 -> 99.43, game_uso 3558 91.62 @ 956 B -> 92.60 @ 1008 B; 41D40 / 250C8 / 3AE58 / 46790 / 3E5E0 / BB8C / 31A74 / `+ 0` toggle sweep negatives._
@@ -54330,3 +54332,134 @@ _Commit 91a8f8ae0 (5A2C4). No exacts, no length changes, no clip change._
    (target f16): replacing it by a named `k = 1.0f + arg4` before the clamps (44 placements), address reads
    `*(f32 *)&arg4` / volatile (20 forms) or other test spellings: <= 99.54. 36694: float code-free tests now add
    4 B under NCC (716, 93.0).
+
+## kit CCCXXVI (agent-g 2026-11-04, run 274): the -O3 lead for post 250C8 is REFUTED by the caller half: uopt run at -O3 colours call-free temps into t0..t5 (the identical -O2 body compiled with `cc -O3` puts bytesRemaining in t0 / `bnezl`), while the target leaves that temp uncoloured and spills it (`sw t7,36(sp)` in the `bnez` slot) exactly as -O2 does -- so the unit is -O2 and fontId's spill-slot home must come from something else; a uopt LR that dies "not colored, not splittable" at -O2 with plenty of free t-colours is the per-level register class, not interference; bootup 24B8: the `r` latch is NOT a separate variable -- the target spills the 0/1 LATCH itself to its home 0x4C across the first call (store in the jal delay slot), the 0x3C value is a second variable, and with both every frame home lands on target; 35B1C's vtable-store order is an as1 store/load dependency, not statement order <a name="kit-cccxxvi-agent-g-run274"></a>
+
+_One NM gain: post0b 415A4 95.57522 -> 95.92036 (452 bytes, commit 602b959dd). Numbers quoted from report.json
+otherwise unchanged: 250C8 99.846664 (600), 24B8 99.045715 (700), 35B1C 97.402596 (308), 2E354 99.77741 (3684),
+31A74 97.7305 (564)._
+
+0. **Unfolded constant-OR chain = a store-forwarded read-back (415A4).** The target writes the +0x28 mode word as
+   `addiu v0,1030` (hoisted with the record's other constants) ... `ori v0,v0,6` ... `ori v0,v0,0x400; sw v0,40(at)`,
+   although 1030 | 6 | 0x400 == 1030. uopt folds `v = 1030; v |= 6; v |= 0x400` completely (no ori, even with BB
+   splits or `v = 1030` moved into an earlier block: 128 placements). Reading the value back from the word just
+   stored -- `t->a28 = 1030; if (1) {} v = (float *)(t->a28 | 6); if (1) {} D_415A4_tA.a28 = (int)v | 0x400;` --
+   gives the load-forwarded register (redundant-load elimination runs after constant folding), so the ors survive
+   (here merged into one `ori 0x406`; a separate `v |= 0x400` statement re-folds: 96 three-step forms <= 95.58):
+   95.58 -> 95.92. Use it wherever a target keeps arithmetic on a known constant unfolded.
+
+1. **250C8: -O3 is not the unit's level (decided).** Repro: extract the in-tree NM body plus its typedef block into a
+   standalone file (`#include` of the unit's 250C8 typedefs; /tmp/claude-1000/g274/o2/base.c + hdr.h) and compile with
+   the project flags. `-O2` reproduces report.json exactly (99.846664, 600). The SAME file at `-O3` (no static, so
+   nothing is inlined; only uopt's level changes) scores 96.73 at 596 bytes: `lw t0,16(s0); bnezl t0,..; lw a2,20(s0)`
+   -- bytesRemaining's CSE temp is coloured t0. zdbug:6 (dump compiler, -Wo,-zdbug:6) on the -O2 build says
+   `24: 24 not colored, not splittable` for that LR (adjsave 2.5, forbidden only a0-a3, no t-colour taken by anyone:
+   no LR in the whole -O2 function gets a colour >= 7), while at -O3 the same LR is `assigned (constrained) 7` and the
+   hoisted constant 1 gets colour 8. The target keeps the temp uncoloured (`sw t7,36(sp)` in the bnez delay slot,
+   reloads at the sltu and the AsyncDma delay slot) and the constant 1 in a3 -- the -O2 behaviour. So the inlined
+   static of kit CCCXXIV cannot be the explanation (umerge inlining only happens at -O3), and no per-file -O3 split
+   was made. Side facts for anyone revisiting: single-file `cc -O3 -c` leaves an 8-byte `jr ra; nop` stub for the
+   deleted static (harmless for a REPLACE_FUNC_BODY donor, but not in the target TU); variants of the inlined callee
+   (fontId as variable / direct ASYNC_ID(retMsg or asyncLoad->retMsg), pad, doneMsg, retMsg init, 96 per-use
+   retMsg / asyncLoad->retMsg grids) top out at 96.73. Still-open -O2 question: fontId (case 1) lives in the SPILL
+   slot 0x24 that the bytesRemaining temp also uses, i.e. it is a spilled uopt temp, not a home. Tried at -O2:
+   `register u32 fontId` (no change), fontId block-scoped in case 1 / in the finish branch (home moves to 0x2C,
+   99.77), fontId replaced by ASYNC_ID(retMsg) / ASYNC_ID(asyncLoad->retMsg) / `(retMsg >> 8 & 0xFF)` in all three
+   uses (+12 bytes: the expression gets two spill temps), 32 retMsg-vs-load grids: none above 99.85.
+2. **bootup 24B8: latch spilled to its home.** The target's `sw zero,76(sp)` (jal delay) / `lw t0,76(sp)` is the
+   0/1 latch `t` (k = 0 at the top) being live across the first 4-argument call in caller-saved t0 -- uopt stores it
+   to its HOME (0x4C, so it is the first-declared local) and reloads it; there is no `r` out-variable. That also
+   explains why the latch is t0, not v1/a3: its LR covers the call block, where a0-a3 are precoloured. Rewrite:
+   drop `r` and `k = r`, give the latch its own `int t` (k = 0 / k = 1 / both `if (k != 0)` tests) and keep `k` only
+   for FW(p, 0x3C); decls `t; v0; s0; p; volatile pad0; tb; v1; volatile pad1; k` put t at 76, p 64, tb 56, the k
+   spill 44 = target (all homes on target, store in the jal delay slot). Score 98.23 < 99.05 because t colours v1
+   (forbidden v0 a0-a3 s0 s1; interferes only with v0 / s-reg LRs and two -ve constants), and v1 is free; making t
+   live into the ramp blocks (empty tests, `+ 0 * t` counted uses, `t != (int)v1`: 23 forms) gives t0 but adds 2-6
+   instructions (t then crosses the active-branch calls); mv.py over the rewrite and a 36-pair decl swap: flat.
+   Not landed (lower score); the rewrite is the right decode, the open lever is t's colour. Micro test
+   (/tmp/claude-1000/g274/mt/m1.c vs m2.c): the same latch takes t0 when the head's two `cfg->0x10` reads are ONE
+   CSE'd load coloured v1 (`lw v1,16(v0)`, both andi from it), and v1 when they are two loads (one int, one u32) --
+   so the target's t0 means some LR held v1 across the head; the target shows two loads (`lw s0` / `lw a1`), so
+   that LR is still unidentified. In-tree check: the latch rewrite with both reads as int (one CSE'd `lw v1,16(v0)`)
+   does give `or t0,zero,zero` / `lw t0,76(sp)` and the target's ring (`lw t7,24(s0); andi t8`), diff lines 68 -> 58,
+   but scores 95.34 (head one load short, alignment shift) -- the next step is a head that keeps two loads AND a v1
+   LR across bb0-bb5.
+   Also: an address-taken / array / volatile `r` declared FIRST does land at 76 (the run-273 note "r homes at 52"
+   was with r declared later), but then the store cannot sink past the argument loads (no .noalias) -- the latch
+   form above is the real one.
+3. **35B1C: the vtable-store order.** The target issues `lui t6; addiu t6; addiu v1,s4,4; addiu at,-4; sw t6,12(s4);
+   bne; sw v1,52(sp)`. Ours (cfe and an NCC port `struct L { Node *next; W w; int a3; virtual void f(); L(List *, W,
+   int); }` with an inline `W() { v = 0; }` member ctor, which reproduces the whole body except a frame 8 bytes short,
+   97.21) keep `sw t6` before `addiu v1`. Cause: the o+4 temp's LR runs from the head to the final `*p = a2` (CSE'd),
+   adjsave -6.2, so it is wholly uncoloured and ugen emits `addu $15; sw $15,52($sp); lw $3,52($sp)`; the reload is
+   a may-alias load after `sw t6,12(s4)`, so as1 cannot hoist the `addiu v1` (converted reload) above that store.
+   Making p address-taken (`pp = &p;`) with `q = (W35B1C *)(o + 4)` first, then the vtable store, then `p = ..`
+   removes the reload and gives `lui; addiu t6; addiu v1; sw t6; addiu at; bne; sw v1` (one swap from target) but the
+   t-ring is then one register short everywhere after (target t8 at `lw 92(sp)`, ours t7): 96.17. Line joins (16 x 5
+   orders), vtable through p+8 / q+8, a `vt` local, test on p, ?: / if-else allocation spellings: flat.
+4. **Negatives.** 2E354: switch 1 as if-chains (5 forms, 3660-3740 bytes, <= 98.55), case order, var_v0 typed s8 / u8
+   / s16 / u32 (<= 99.78). 31A74: the 0x1CAC0 store moved to the call line (`ACCS2 = r; f(..), g(..)`, in-argument,
+   comma, clamp spellings: 97.16): the join block comes out `mfc1; swc1; jal; sb` vs target `mfc1; sb; jal; swc1`
+   (uopt's spill store of sel is emitted after the store). gui 2DE0: `Ctx **const cp = &D` at the head (and at the
+   top of the decls), a non-const pointer, an inline `ctxp()` / `Ctx *&ctxr()` accessor for CTX: 87.5-92.6 (from
+   96.77; the named base is coloured instead of the target's lda constant). post0b 59E80: one `if (1) {}` at each of
+   26 statement boundaries / removing either existing one, and `+ (o->f104 & 0)` / `+ (*(int *)c & 0)` on each
+   packet word (edg folds them), and the per-site next() spelling grid re-run on the run-269 base (54 single-site
+   changes, best 98.48): flat at 98.50 -- the early 0xFFFD materialisation does not move. post 33094: 200
+   one- and two-test placements of float code-free compares (a.y / a.z / a.x vs 10.0f / b.x / b.z) inside the
+   else arm: flat at 94.31. post0b 37540 (kit CCCXXVII immediate scan): the target's `v90 += o->v30` adds x (0x30)
+   first into a v90 homed at 144..152 where ours adds z first into 136..144; an x-first `add()` per site (8 combos,
+   <= 96.43) and the 36 decl pair swaps: flat. Scratch: /tmp/claude-1000/g274/ (o2/, o3/, b/, c35/, n35/, e/, s/, g/, n59/, n33/).
+
+## kit CCCXXVII (agent-c 2026-11-04, run 276): a register-normalised diff hides LOAD-ORDER decode errors -- normalise registers, sp offsets AND reloc immediates, align with difflib, then report every aligned pair whose remaining immediate still differs (`lwc1 $f2,0(v0)` vs `lwc1 $f2,8(v0)`): those are field loads issued in a different order, i.e. statement order, not colouring; such a group needs a JOINT permutation grid over every related statement group (5A2C4: colour reads x colour conversions, 6 x 6), because single adjacent swaps (lever-sweep `order`) walk through worse intermediate states and stop (post0b 5A2C4 98.47 -> 98.89) <a name="kit-cccxxvii-agent-c-run276"></a>
+
+Tool: `/tmp/claude-1000/c276/tri.py TGT.o MY.o FN [show]` prints `len`, raw differing lines, `nonreg` (insert /
+delete / replace blocks after normalising v/a/t/s/ra/at registers, $f registers, `N(sp)` offsets, `addiu R,sp,N`,
+lui / lo immediates and branch targets) and `immdiff(non-reloc)` (aligned equal-shape pairs whose immediate still
+differs and whose donor side carries no relocation). `nonreg` = 0 with `immdiff` > 0 is the signature of a
+load / store ORDER difference. `/tmp/claude-1000/c276/sc.py DIR FN TGT.o` scores every `v*.c` (cfe through
+asm-processor, -DNON_MATCHING) and `v*.cpp` (NCC) in DIR; `/tmp/claude-1000/c276/rnd.py` writes N variants with
+1..K random code-free tests on random statement lines.
+
+**Triage of the functions moved from agent-g (donor objects scored directly; NM object for kernel 18F0).**
+`raw` = differing instruction lines, `nonreg` = non-register instructions after normalisation, `imm` = non-reloc
+immediate diffs on aligned pairs.
+
+| function | report % | bytes | len t/o | raw | nonreg | imm | what the non-register residue is |
+|---|---|---|---|---|---|---|---|
+| post0b 48AEC | 97.447 | 2076 | 519/519 | 281 | 1 | 2 | prim() pair: target `sw w0,0(v0)` then `sw w1,4(v0)`, ours w1 first through a0 (schedule) |
+| gui 0F04 | 98.588 | 1252 | 313/313 | 73 | 2 | 0 | `or a3,zero,zero` slot, one uopt spill slot 124 vs 120 |
+| gui 4568 | 96.633 | 796 | 199/199 | 112 | 2 | 0 | MAX arm: target coalesces the `(xl*dsdx)>>7` web with the result (a0, nop delay), ours copies `or a0,v1` |
+| post0b 42938 | 97.599 | 1556 | 389/389 | 176 | 5 | 0 | setvp halfword store order (vscale[1] / vtrans[3]) + one addu slot |
+| post0b 4BAF4 | 97.537 | 1692 | 423/423 | 163 | 5 | 2 | 0xEE packet: andi / sw order (w1 before w0), `or` zero slots |
+| post0b 4FD00 | 95.506 | 1004 | 251/251 | 211 | 8 | 1 | entry hoist of &temp (sp+20) / &mid (sp+100) / 12; SV home 48 vs 68 (target shares one); `li v0,0` late |
+| post0b 4F2DC | 95.669 | 1064 | 266/266 | 131 | 9 | 2 | target DEAD `addiu v1,v1,112` (cam+0x70), frame 424 vs 408 (count at 408, a V3 temp at 412), start reloads |
+| game_uso 3558 | 93.679 | 1008 | 252/252 | 100 | 14 | 2 | transform block: vb loads hoisted above the products, z terms m[1][2] before m[2][2] |
+| kernel 18F0 | 89.187 | 492 | 123/122 | 108 | 6 | 0 | odd-peel `bnezl found / b tail` (one word longer) + `~8` hoisted into t5 in peel and body |
+
+Ranking by (few non-register diffs x bytes): 48AEC, 0F04, 4568, 42938, 4BAF4 -- all schedule / colour residue, no
+decode bug found in any of the nine; 18F0 is the only length difference.
+
+Gains: 48AEC 97.447 -> 97.476 (`if (this) {}` after the FOURTH `func(GS->ctx, &gbi)` call; ins.py sweep -- note
+the four calls are textually identical, an Edit on the first copy scores the base); 4F2DC 95.669 -> 95.684
+(in-place `*=` as y, x, z with the `e` ctor's x product spelled `KV.x * end.x`: order x operand grid); 5A2C4
+98.47 -> 98.89 (fb, fg, fr reads and colv[2], colv[1], colv[0] conversions).
+
+Negatives (all flat or worse): kernel 18F0 -- `if (found)` / `if (!found) {} else` / goto / found types s32 u32 s16
+u8 / info u32 / mask local or `0xFFFFFFF7` / `~8U` / base-first `(char *)syms + idx * 12` / IDO 5.3 -O1..-O3 (5.3
+-O2 = 7.1 -O2 bytes): the peel shape and the hoisted -9 do not move. bootup E2D0 -- arg4 is coloured f14 in every
+`if (arg4) {}` placement; an address-taken arg4 (`if (0) { f(&arg4); }`, `*(f32 *)&arg4`, `(&arg4)[0]`) makes it a
+ring temp (f18) but then the load schedules after `mtc1` and the nop vanishes (130 words); named `sc = 1.0f + arg4`
+at four positions. 4FD00 -- one shared SV (by reference / by value / returned) gets home 68 like the target but
+loses the double move (980 bytes); += / -= / /= statement permutations; 200 random this / f1 / f2 tests. 4568 --
+MAXP / MINP spelling grid (5 x 5) on the product arms and 60 param tests. 34890 -- 14 loop-test ternary spellings
+and `new X(o)` as the call argument. 3AE58 -- 12 ternary spellings, 200 random tests. 54E78 NCC -- by-reference
+`operator*(const f32 &)`, explicit V3 ctor, friend `f32 * V3`, 170 p.n / p.d code-free compares. 0F04 -- fh / x / y
+x u / v / w joint order grid (36). 3558 -- vb loads named before the products, interleaved `vb.x += x`. bootup
+E68 -- the four 1.0f stores x the three arg stores (144). lever-sweep `all` on 0F04 / 4FD00 / 3558: no hits.
+Late run-276 negatives: 18F0 as a `rel++` pointer walk (476 bytes), a `while` loop with the index bumped at the
+bottom (480), `else found = 0` (504), a named `one` for both the compare and the flag, a trailing `if (found) {}`;
+4568 MAXP / MINP as inline functions (identical to the macros, or shorter); 4F2DC `Cam::sub` sub-object spellings of
+the start copy (the target's dead `addiu v1,v1,112` = cam + 0x70 does not appear); 200-variant random code-free
+searches on 5A2C4 (new order), 4F2DC, 0F04, 4568, 3AE58, 4FD00, 48AEC; 42938 setvp target store order with one or
+two `if (1) {}` splits (97.55 best, base 97.60).
