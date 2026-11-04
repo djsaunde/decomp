@@ -53413,4 +53413,8 @@ change. Gate: ROM byte-identical, verify-blocks 6/6, `make non_matching_objects`
    *)`) flat. bootup 31C0: the target's case-1 obj read at M-28 = T is consistent with KB's ctor parameter temps
    allocated BEFORE the new-temp (o -> M-28, store removed as redundant), which edg does not do for `new KB(obj, a3v)`;
    not reproduced. post0b 5A2C4: with ugen's GP pool as a FIFO free list (kit CCXCV), the index `sll` after the head
-   call needs TWO more phantom allocations after the bit-0 test (ours t9, target t7); not attempted beyond kit CCCVIII.
+   call needs TWO more phantom allocations after the bit-0 test (ours t9, target t7). 112 cast / nesting spellings of
+   the two tests give only (t6, t8) -> t9 [current], (t6, t9) -> t8, (t7, t6) -> t8, (t9, t6) -> t8; `((u16)f & 0x100)
+   && ((u16)f & 1)` reaches t7 but CSEs `(u16)f` into a real `andi v1,v0,0xffff` (+4 B, 95.51); 66 index spellings
+   with `+ 0 * (int)(x)` terms (1-3 terms) all add code (1808 B). 34890: a 108-variant zero-use sweep inside the
+   written-out ternary is flat.
