@@ -14722,6 +14722,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCCXLIX (agent-g 2026-11-04, run 285): **lever (a) (void prototype) only bites once a coloured LR spans the call; a folded `0 * (int)(x)` is itself a coloured `umpy{x}{0}` LR that can take the target's register; folded uses of a copy of a promoted global are credited to the global's LR -- fold the copy where the global is dead; a pre-switch `lui v0` base is reproducible as the `ucvt` CSE LR of an int cast that occurs twice (not the variable); diff with registers normalised to find structural residue first (a bnel/beql arm-order flip)**](#kit-cccxlix-agent-g-run285) -- _post 30AF4 NM 98.08 -> 98.48 (void switch-3 emits + 44F18, 01f296461) -> 98.65 (case-4 / case-6 folds + fC through sv, 8455284df) -> 98.79 (register-normalised diff exposes a bnel/beql arm-order flip, aaded3d9b); hoist in v0 reachable (98.29) but moves the selector spill 28 -> 24; blind lever (a) flat on 31A74 / 493AC / 3BE1C / 469A8 / 415A4 / 59E80 / 33094 / 35B1C / gui 2DE0._
 - [kit CCCL (agent-g 2026-11-04, run 286): **a spill slot one word LOW with every home equal is a reserved, never-used spill word of a CSE temp (here the bare `ucvt` of an int-cast base); fold a defined zero into the def (`+ 0 * (int)(flag)`) so the CSE becomes a `uadd` without the reserved word; find it with a one-at-a-time removal grid that prints the spill slot**](#kit-cccl-agent-g-run286) -- _post 30AF4 NM 98.790 -> 98.797 (460243ebd, spill 24 -> 28 = target) -> 99.138 (4ab68f765: case-9 `sv = (u32)&gl; if (sv) {}` def coloured v0 + void 42364 alias + store / test through the global; the run-259 ring-compensating 13 fold dropped; everything after case 6 now word-exact); hoist + spill together reachable (98.34) but the hoist loses v0 to the case-6 D_30AF4_m load LR; jump-index ring mapped (case-2 / case-6 folds compensate it); 3BE1C off-spill negatives._
 - [kit CCCLI (agent-c 2026-11-04, run 288): **the NCC frame is sized by the home of the deepest SPILLED variable: move a spilled macro-block local to a function-scope variable under an unreferenced class-type pad (`PadK<11> pz; Gfx *g;`) to set the frame; `E <= 0 ? 0 : E` for a gbi `MAX(E, 0)` drops the pre-branch zero; the kit CCCXLVIII phantom lever is flat across the register-only list**](#kit-cccli-agent-c-run288) -- _post0b 42938 frame 112 -> 88 = target (98.11311 -> 98.118256, 9fa4d88b9); 4BAF4 97.54 -> 97.88 (8d6a4a7ce); 48AEC 97.48 -> 97.53 (two --exprs folds, dbf0cc21d / 97bbf6094); game_uso 3558 operator+= x, y, z + k2 operand swap 93.68 -> 93.85 (0f4c40fda); byte-identical lever removals 5A2C4 / E68; phantom / naming negatives on 4B620, 34890, E2D0 (arg4 is a coloured parameter LR), 46790, 54E78, 5A2C4, 3B9C0, gui 329C / 3714 / 0F04 / 4568, 48AEC, 36694, 4FD00, 4F2DC._
+- [kit CCCLII (agent-c 2026-11-05, run 289): **edg frame-home order: an expression-statement class temporary or one bound to a CONST-REFERENCE parameter is homed at the block top, ahead of the named locals; named locals in declaration order, then nested-block locals, then the inline parameter / return pool temps (by-value class parameters are pooled: one home for every expansion); a target frame-top temp block = a const-reference operand**](#kit-ccclii-agent-c-run289) -- _post0b 4F2DC 95.7218 -> 95.733086 (e9b89715d: `operator+(const V3 &o)` + PadK<4>, frame 424 = target) -> 95.770676 (39cce1b3a: operand-order grid on the new operator+); nested-block locals / pool temps homed in creation order; 48AEC frame 352 reachable (unnamed mtx(), 97.28) but the load() spill homes are not; negatives on 42938, E2D0, 34890, 46790, 54E78, gui 3714 / 329C, 4FD00 (pooled by-value SV), 36694, windowed --exprs sweeps._
+- [kit CCCLIII (agent-g 2026-11-05, run 287): **a code-free `if (v) {}` grid that looks inert may be masked: the LR it raises is also forbidden v0 by an int call result in one of its blocks -- void the never-read call first, then re-run the grid; an int-cast base's pre-switch hoist appears with `if (sv) {}` after its def, and a "both paths" `lui; beq; addiu` base is a def placed before the if**](#kit-cccliii-agent-g-run287) -- _post 30AF4 NM 99.138 -> 99.356 (944fb802f: hoist + case-9 / tail through sv, structurally exact) -> 99.451 (c8cc8f85f: void 460D0 alias + two counted `if (sv) {}` in case 6, hoist v0 / D_m v1) -> 99.555 (c7f313f04: a second folded sv use on the D_30AF4_n store, random fold grid); open: switch-1 index ring + case-9 sub colour; negatives 59E80 (the t1 packet is 0x402, not 0x602), 3BE1C off spill (PadK / cell reuse: off at the target's distance from the frame top but frame 232), 35B1C NCC ctor rewrite (same vptr schedule), 33094 += order x tests._
 - [kit CCCXLV (agent-g 2026-11-04, run 283): **an `or tN,vM` copy that no holder spelling moves is uopt copy propagation (the register is the source's u8 -> int cvt LR; deleting the copy variable gives the same bytes): put the copy in the variable the target colours that way (2E354: the switch-6 selector, t0), kill the propagation with a value-preserving re-read of the source on the use path, then a BB split after the copy; zero-use-sweep.py on a mangled-name NCC donor needs `--lines` (otherwise it sweeps every body and most probes fail to compile)**](#kit-cccxlv-agent-g-run283) -- _NM post 2E354 99.9294 -> 99.9403 (5f0f54272); 2E354 pick / 0x15 holder (cfe switch temp + cvt phantoms take v0), 493AC / 3B6A0 / 3BE1C proper-window sweeps, 30AF4 (un-propagated sv), 415A4, 59E80, 31A74, 35B1C negatives; tools /tmp/claude-1000/g283 (g2.py insertion grid, mk*.py role movers)._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
@@ -56089,3 +56091,173 @@ zero init hoisted; 192 + 81 + 81 + 81 + 30): flat. E68 (per-phase m variable 96.
 levers (by-value / reference operands, named results, block scopes, declaration order; ~100): flat -- 4F2DC's
 residue is homes only (the copied operand of `start + d * -100000.0f` at the target's sp+412; start probably declared
 before d, but that changes length to 1052-1080).
+
+## kit CCCLII (agent-c 2026-11-05, run 289): edg frame-home ORDER rules measured on NCC micro-tests -- a class temporary that is a whole expression statement (`V3();`) or that is BOUND TO A CONST-REFERENCE PARAMETER is homed at the BLOCK TOP, ahead of every named local of that block; named locals follow in declaration order, then nested-block locals, then the inline parameter / return pool temps (by-value class parameters are POOLED: one home shared by every expansion); post0b 4F2DC's frame-top block is operator+'s const-reference operand temporary (95.7218 -> 95.733086 -> 95.770676 with an operand-order re-grid) <a name="kit-ccclii-agent-c-run289"></a>
+
+_Commits (agent-c): e9b89715d (post0b 4F2DC NM donor, 95.7218 -> 95.733086, length 1064 unchanged, frame 424 = target),
+39cce1b3a (operator+ operand order, 95.733086 -> 95.770676)._
+
+**Home-order rules (NCC 7.1 -O2, measured with address-taken probes `sink(&v)` in /tmp micro files):**
+- `int a; a = q; V3(); int b;` -> the `V3()` temporary takes M-4..M-12, a M-16, b M-20: an expression-statement class
+  temporary is homed BEFORE the named locals even when it comes textually after one.
+- `int a; a = q; *o = *u + *u; int b;` (operator+ by value) -> a M-4, b M-8, the operator's parameter / return temps
+  below them: inline-expansion temps come AFTER all named locals of the block, whatever their statement position.
+- `int a; { int c; } int b;` -> a M-4, b M-8, c M-12: nested-block locals after the outer block's named locals, before
+  the pool temps. Sibling blocks do NOT share homes (two `{ SV s; ... }` blocks: two homes).
+- A by-value class parameter of an inline function is a pool temp REUSED by every expansion (4FD00 probe: an
+  `add3(V3 &o, SV s, int f)` helper gives both sums ONE SV home, where `SV s;` locals in the two inline expansions get
+  two). A by-value copy is a struct copy (lwl/lwr/swl/swr for a 6-byte SV), not member loads.
+- `const V3 &end = expr;` homes the bound temporary at the block top as well (4F2DC: end moved to M-24, 95.63).
+- "Block top" is the top of the block the full expression sits in (-g3 probe: `*o = *u + twice(*u);` with
+  `operator+(const V3 &, const V3 &)` -> the bound `twice()` result at M-12 above `int q` at function scope; the same
+  statement inside `{ int b; ... }` -> the bound temp right after the outer named locals and before b); the inline
+  functions' own return objects (`__V`) come after everything named (twice -52, operator+ -104).
+- Below the outer named locals, nested-block locals and pool temps are homed in CREATION order: `int q; *o = *u + *u;
+  { int b; } int r;` -> q M-4, r M-8, the operator temps, then b BELOW them (M-84); with the block before the
+  expression, b is M-12 above the temps. So a target variable homed under the pool temps (4F2DC's end at M-340) is a
+  nested-block local opened after those temps were first created (or a pool temp itself).
+- Operand-order grids are worth re-running after any structural change: on the const-reference operator+ the 8-way
+  per-component grid gave `V3(o.x + x, o.y + y, z + o.z)` (95.733 -> 95.771, 39cce1b3a).
+- The DECLARATION POSITION of a class local with a user-declared (empty) default ctor is not free: 4F2DC's `V3 start;`
+  moved from its use to before `Cam *cam` / `d = dir;` / the dir stores changes the code (95.11 at 1064, or 1044-1060
+  bytes: `d * k` then reads the copy's registers instead of reloading d), although the home order only needs the
+  declaration earlier. Treat "declare earlier to move a home up" as a code change, not a layout-only lever.
+- **Naming the homes (diagnosis tool).** `NCC -O2 -g3` writes an ECOFF `.mdebug` whose local symbols carry every edg
+  NAMED variable -- including the named locals of each inline expansion (`g`, `n`, `t`, the iterator `it`, the
+  `__V<n>` return-value object) -- with its frame offset (M-relative), in block order; unnamed pool temps are the gaps.
+  `/tmp/claude-1000/c289/t1/mdl.py OBJ` dumps them (HDRR at the section start, 12-byte SYMRs, st 4 = Local), and
+  `g3l.sh SRC FUNC` compiles + prints `frame` and `off name` pairs. -g3 CHANGES the schedule (4F2DC / 36694 .text
+  differ), so use it only for the home ORDER; on 48AEC the -g3 homes of the spilled g / g2 / cmd matched the -O2
+  spill slots (244 / 232 / 256 on frame 352).
+- **48AEC with the names.** Base (frame 352: `Ctx *gctx;` first, function-scope `Mtx *c2;` before cmd, unnamed mtx()):
+  gctx -4, A -8, B -12, mtx -76, i / j / k -80..-88, c2 -92, cmd -96 (= the target's c at 256), then-arm load() `g`
+  -124 (target -108), else-arm `g` -132 (target -124), first loop `it` -144 (target -144). The then-arm written
+  `func_00000000(mt, cmd = gctx->mtx()); gctx->load(cmd);` (no push) puts g at -108 = target (only load's this / m
+  pool words above it), else-arm g at -120 and it at -136; no else-arm spelling tried (push / push2 / push5 / me()
+  depth / me(c2) / void* cast, 10 + 12) gives -124 with it at -144, and these then-arm shapes score 95.4 (registers).
+- **4FD00 with the names.** Ours: a -12 ... d2 -60, the two inline sum() `SV s` at -88 / -108 (target ONE SV at -68).
+  Two explicit `{ SV s; ... }` blocks with the named `p1` / `p2` floats folded into the test put the first s at -68 =
+  target (the second at -88; frame 120, 71.5) -- p1 / p2 do reserve homes ahead of the nested locals; one
+  function-scope `SV s;` after d2 shared by both sums (4 shapes): frame 112-136, <= 83.3. ONE nested block
+  `{ SV s; <sum a>; <sum b>; }` (s reused) with p1 / p2 moved into a later nested block gives exactly the target's
+  single s at -68, but frame 120 / length 988 (target 136 / 1004), 74.1 -- a layout lead for the next run (the
+  missing 16 frame bytes / 4 insns are the inline sum() parameter traffic). Keeping the inline sum as
+  `sum2(V3 &o, int f, SV &s)` on that one nested s: frame 136 = target and s -68, but 980 bytes (83.3): the target's
+  length (1004) needs the per-expansion local-s code shape on a shared home -- not reached.
+- The same dump works for cfe (in-tree C through asm-processor + `cc -g3`, multi-FDR string bases handled): bootup E68
+  homes are timg -4 ... ult -40, arr -168, ..., padq -216, vs / ve, then 30 gbi-macro `_g` block locals -228..-344.
+  E68's three spill slots are 8 LOW in the target (76 / 80 / 84, ours 84 / 88 / 92, frame 472 both; the spill area
+  sits right above the s-register saves, so padq size does not move it). Folded `+ 0 * (int)(import_8001FFA0[0])`
+  uses at 842 / 845 / 847 / 860 / 861 / 866 each move the slots by one word (80 / 84 / 88, same 3036 length at best
+  97.99-98.27) and pairs give the target's 76 / 80 / 84 -- but only at 3040-3048 bytes (<= 98.04, base 98.61): the
+  slot is tied to code changes, not a free lever (zero-use variant files re-scored with `spl.py`, which prints frame +
+  spill offsets per variant).
+
+**post0b 4F2DC (95.7218 -> 95.733086).** The target's 12 bytes at the frame top (sp+412, M-12) are the operand of
+`start + d * -100000.0f` (copy chain 160 -> 180 -> 412, then the add reads 412). With `V3 operator+(const V3 &o)` the
+returned `d * k` value is materialised into a temporary bound to `o`, which is homed at the block top -- exactly the
+target's 412; the run-280 `V3();` stand-in is gone. The frame then drops to 408; an unreferenced `PadK<4> pz;`
+(kit CCCLI pad object) restores 424 (any of 8 declaration positions, k = 4 / 5 the same; k + k split pads: flat).
+LEFT (target order from the top: Z, count, dists, surfs, hits, start M-188, e M-200, d M-212, dir M-224, the operator=
+`v` temp M-244, the product M-264, ..., the add result M-312, end M-340 = BELOW the pool temps): start / e declared
+before d / dir (as named locals, members stored instead of the e ctor, nested blocks: 24 + 12 + 6 variants) changes
+the length to 1040-1104 (an early `V3 start;` makes `d * k` read the copied registers instead of reloading d); end
+as an inline by-value parameter (`mulk(V3 end, V3 &s)`, 7 variants): frame 448-504, <= 90.7. With the -g3 names
+(see below) ours is `__V`(bound operand) -12, count -16, ..., hits -176, pz -192, d -204, dir -216, cam -220, start
+-232, end -244, e -256, p -260, besti -264, op* `__V` -296, op+ `__V` -344 (the add result's sp+80); return-value
+`__V` objects are homed after the pool temps, so the target's end at -340 behaves like a return object, not a named
+local. `V3 end(...)` / `= V3(...)` / assign-after-declare (3), `(start + d * k).kmul()` member on the result (4),
+dead `if (0) { V3 q = d + d * 0.0f; }` expansions before a nested end block (9): all longer or lower (82.9-95.65).
+
+**48AEC frame (target 352, ours 360).** The 8 bytes are the two homes of the named `n` in Ctx::mtx() (agent-g run
+266); unnamed `&mh->buf[mh->count++]` gives frame 352 at 97.28. Spill homes on the 352 frame: gctx 348 / cmd(c) 256
+are reachable together (`Ctx *gctx;` first, a function-scope `Mtx *c2;` declared right before cmd, unnamed mtx(),
+original push(): 97.29); the target's then-arm load() `g` 244 and else-arm `g2` 228 are not (ours 228 / 220 in every
+one of 112 + 80 + 80 then-arm x else-arm x declaration x mtx-form variants; scores <= 97.36, base 97.53 on 360). The
+target has 2 pool words between c and g (ours 6) and 2 more after g2 (ours 0), with equal totals.
+
+**Other negatives this run.** 42938 on the correct frame: windowed `--exprs` sweeps (lines 74-127, 220) and the per-site
+next()/nA..nD grid (28): flat. bootup E2D0: `if (&arg4)`, `*&arg4`, volatile reads (address-taken arg4 drops the
+`if (arg4) {}` length to 520), `arg4 + 1.0f` / named-k / product forms (16), the empty test at 10 positions x 3 forms
+(60): flat or lower -- the target loads arg4 into f16 BEFORE the 1.0f mtc1 (f8), a ring-temp shape we cannot get
+while keeping the 131-insn length. 34890: `a` typed void* / Base* / Mid* x Link::data type (16): flat. 46790: the
+`(c / 16) * 1024 + (u8)(c & 15) * 8` spelling grid (60) and the `q = &dst` / `if (1) {}` placements (9): flat (the
+t8 / t9 ring swap starts at the `sll 0xa`). 54E78: operator* by const-reference s / free operator / s * x order /
+ctor forms (36 + 20): flat (by-ref s gives the target's f0 / f12 results but CSEs the 1.0f diagonals). gui 3714: spr
+spellings (`me(arg0)->spr`, no local, h folds; 19): flat. gui 329C: the three rect packets x 5 accessor spellings
+(125): flat. 4FD00: SV temporaries (`(SV(v0) += v1) += v2`, operator+ by value, sv() return, user copy ctor + pooled
+by-value SV parameter; 25): 49-79 -- the target's single SV home at M-68 is plausibly a pooled by-value parameter
+with a member-wise copy, but every such shape changes the frame (128-192). 36694 `const V3 &t = p - n * dot` (15):
+frame 240 but length 704 (target 712). Windowed `--exprs` sweeps flat on 4B620, 34890, 46790, gui 3714, bootup E68
+(771-902, 339 variants), 4F2DC (new base)._
+
+## kit CCCLIII (agent-g 2026-11-05, run 287): a code-free `if (v) {}` that looks INERT may only be masked -- the LR it raises is ALSO forbidden a register by an int call result in one of its blocks; void the call first, then re-run the grid (post 30AF4 NM 99.138 -> 99.356 -> 99.451: pre-switch hoist in v0, structurally exact) <a name="kit-cccliii-agent-g-run287"></a>
+
+_Commits 944fb802f (99.356), c8cc8f85f (99.451) and c7f313f04 (99.555) (agent-g run 287). No exacts; no clip change._
+
+4. **A third counted use beats the "right" colour (99.451 -> 99.555, same length).** A 150-variant random grid of
+   `+ 0 * (int)(x)` folds on assignment right-hand sides found one: a SECOND `+ 0 * (int)(sv)` on the D_30AF4_n store.
+   The hoist goes back to v1 (D_m to a0, case 5's 13 / 16 web to a1) but the rings from case 5 on line up better,
+   so more words match. Dropping either case-6 `if (sv) {}` with it falls to 98.84 (hoist t0). A further 150-fold
+   grid on top: flat. Keep chasing the score, not the colour you reasoned toward.
+
+1. **Getting the hoist at all (99.138 -> 99.356, same length).** Three edits together: `if (sv) {}` straight after the
+   pre-switch def `sv = (s32)&gl_state_30AF4 + 0 * (int)(flag);` (the def stays a variable, its `uadd{ucvt}{0}` LR is
+   materialised before the switch like the target's `lui v0; addiu v0`); case 9 stores AND re-reads through sv
+   (`sv = (u32)&gl; if (sv) {} *(s32 *)sv = sub; if (*(s32 *)sv == 1)`); and the tail sets
+   `sv = (u32)&gl_state_30AF4;` BEFORE the `if (D_30AF4_t != 5)` test with both else-arm accesses through
+   `((GlState30AF4 *)sv)->f14 / ->f4` -- the target's `lui; beq; addiu` there is that def (address computed on both
+   paths). With the hoist alone (no tail def) the else arm loses its base register (98.23); every case-9 form other
+   than store+read through sv is 2108 / 2120. Register-normalised diff after this step = jump-table relocs only.
+2. **Colouring the hoist v0 (99.356 -> 99.451).** zdbug:5: hoist LR `{120|0}` adjsave 0.667 forbidden
+   [1 3 4 5 6], the case-6 `D_30AF4_m` load LR `{638|0}` 0.8 coloured v0 first. Raising the hoist with code-free
+   `if (sv) {}` in case 6 was flat (all 65 single/pair positions byte-identical) and so were `if (1) {}` splits,
+   D_m spellings (`(u32)` / `*(u32 *)&` / casts, 64 combos: uopt normalises them), D_m folds (`+ 0 * (int)(D_30AF4_m)`
+   on later stores / args: a fold of a GLOBAL load is not a counted use) and D_m held in the unused K&R `arg2`
+   (a var LR, still 0.8; a fold past the next call spills it, 2116). The diagnosis came from an `arg2` variant where
+   D_m took v1 and the hoist was STILL forbidden v0 with no v0-coloured neighbour (kit CCCXLVII): the int result of
+   `gl_func_000460D0()` in the def block. With a void alias (`gl_func_00030AF4_460D0v`, result never read) the same
+   65-position `if (sv) {}` grid has 21 / 65 pairs giving the hoist v0 and D_m v1 (99.451): two counted code-free uses
+   in case 6 lift it over 0.8. Kept: after `w = 35;` and after the D_30AF4_n store. LESSON: an "inert" code-free use
+   grid is not evidence when the target LR is call-forbidden -- void every never-read int call inside the LR's blocks
+   first (kit CCCL had concluded "voiding 460D0 is inert" while the priority was also wrong; both are needed).
+3. **Still open in 30AF4 (ring only).** (a) switch-1 index `sll t9,t9` vs the target's `sll t0,t9`: the selector is the
+   `uadd{mode}{0}` CSE LR (spilled to 28(sp), shared with switch 2 and `mode != 4`); `switch (mode + 0 * (int)(sv))`
+   gives the fresh t0 index but drops the spill (frame shrinks, 2116); 40 fold combinations over switch 1 / switch 2 /
+   `mode != 4` with sv / flag / prev / sub / w: best 99.37. (b) case 9 sub coloured v1 (a split piece of the sub
+   parameter LR `{1037|0}`, 2 uses in the case block, adjsave 0.5) where the target reloads it as a ugen temp t9; 24
+   store / test / def spellings flat. With both, the join-block ring (target t8, ours t6) and case 2's 16 (drop the
+   run-207 `16 + 0 * prev` fold, target v1) should follow. On the new base, flat: 200 random code-free `if (x) {}`
+   pairs, 200 random `if (1) {}` singles / pairs, void aliases for each of the 44 other never-read call sites (all
+   byte-identical: no other call result sits in a contested LR), 80 case-9 def x store x test spellings. The
+   case-9 sub piece (`{1037|0}` split 282: 2 uses in the case block, blocks 100..102 default) stays coloured; the
+   case-10 piece with the same 2 uses has adjsave 0 because it carries a second needreglod block -- folds of sub are
+   NOT counted uses (parameter folds vanish before the LR build) and do not move it.
+* post0b 59E80 correction: the packet whose pointer takes t1 in the target is the 0xBA000402 one (5th), not 0x602 --
+  the next packet's `lui/ori` w0 is hoisted above the `addu` of the current pointer. 96 code-free tests at every gap
+  (`if (1) / (c->dl) / (c) / (r2) / (r1) {}`) and 200 random spelling (PKT / B / C / D at two sites) + test combos: flat.
+* post0b 3BE1C off spill (ours 80, target 84, frame 240 both): `PadK<1..3>` (kit CCCLI) at every declaration position
+  and at four loop-block positions only moves off to 76 or the frame to 248; `int off` declared in the loop block:
+  same 80. Reusing `i` for the cell index (drop `int cell`) puts off 156 bytes below the frame top LIKE THE TARGET but
+  the frame becomes 232: the target has 8 more bytes BELOW off (the 56..79 region, no stores in either object).
+  A referenced named int pad (`int padz; padz = 0; if (padz) {}`) at every declaration position after off (70
+  variants, on the cell-reuse base) ALSO lands above off (80 / 240): off's 80 is always the LOWEST word of the locals
+  area, so it is a ugen SPILL-AREA word, not off's named home -- the same shape as kit CCCLI's gui 0F04 (target spill
+  area one word larger with only the upper word used). Frame-home levers cannot move it; look for what sizes the
+  ugen spill area (a second simultaneously-spilled temp in the target) instead.
+* post0b 35B1C rewritten as a real cfront constructor under NCC (`struct X { X *next; M m; int f8; virtual ...;
+  X(List *, W, int); }` with an inline `M() { v = 0; }` member): 93.68, and the target's vtable-store schedule
+  (`sw t6,12(s4)` after `addiu v1,s4,4; addiu at,-4`) is missing in exactly the same way as in the C body -- the
+  residual is not a C-vs-C++ decode artefact.
+* post 33094: `operator+=` member order (6) x code-free test form (8), `mul` x `set(const V3 &)` member orders (36)
+  and else-arm `b += a` spellings (8; member-wise `b.z = b.z + a.z ...` reaches 95.25 but at 408 bytes, an extra
+  store -- away from the target's 404) on the run-266 base: flat (94.31 best = base).
+* post0b 35B1C (C body, standalone 97.40 = report): vtable-store forms (`+ 0 * (int)(p / q / o)` folds, through
+  `p + 8`, `((int **)o)[3]`, `if (1) {}` before / after) x 3 statement orders (27) and the store moved INTO the
+  member test as comma expressions (7): all flat or lower -- as1 keeps the store ahead of `addiu v1,s4,4`.
+* post0b 493AC: the two `AIter` loop tests (10 x 10 spellings) and 8 `next()` bodies x 3 x 3 test spellings: flat.
+* post0b 3BE1C: 150 random code-free `if (x) {}` insertions in the loop body: flat (99.166).
+* post0b 59E80: 200 random PAIRS of code-free tests (`if (1) / (c->dl) / (c) / (r2) / (c->dl->count) /
+  (c->dl->buf) / (o) / (o->f104) {}`) over every packet gap: flat (98.553 = base); NCC `if (1) {}` after the 0x402
+  packet is byte-identical (no BB split there).
+* post0b 3B6A0 / 37540: 150 random code-free `if (id) {}` insertions each (ids from the body): flat (96.375 / 96.429).
