@@ -57512,7 +57512,7 @@ statement-level unused call result (singles / pairs / all) on 48AEC (107), 42938
 flat. 4F2DC: `char *p` / `int besti` declared after dir put `end` on the target's sp+160 (score-neutral: the
 target's sp+180 V3 is the operator=(V3) by-value pool temp homed among the named locals, ours sits in the pool
 area at sp+140; named-copy operator= shapes 89.8). Also flat: agent-c's kit CCCLXVII parameter-base appends
-(`at(DL *d)` / `atc` / `atp` / `atr` called as `X->at(X->dl)`, 129) on 329C: 97.0-97.3 at 1140 B; 48AEC's else-arm
+(`at(DL *d)` / `atc` / `atp` / `atr` called as `X->at(X->dl)`, 129; and the texture append as `{ DL *d = CTX->dl; ... at(d) / atc(d) }`, 4: 95.6-96.2) on 329C: 97.0-97.3 at 1140 B; 48AEC's else-arm
 void alias as a stepping stone (97.31) + else-arm mtx / load receiver grid (43): <= 97.42. Random 1-3-op mutation
 searches (method / receiver / partition / code-free test, 200 each) on 329C, 4FD00, 48AEC; random code-free tests on
 bootup E2D0 (199) and game_uso 3558 (199); zero-use sweeps on 46790 (--exprs, 103), 3B9C0 (183), 4BAF4 (199),
