@@ -14716,6 +14716,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCCXLII (agent-g 2026-11-04, run 282): **one C variable = one uopt colour: when the target puts two roles of an m2c-shared variable in different registers, the zdbug:5 `forbidden` / `interfere with` lists name the web that blocks the wanted register -- split the roles over existing variables (2E354: raceB out of the v1 stateC / selector variable into temp_v0; the o->0x15 selector out of the function-wide v0 variable temp_v1 into var_t9, which frees v0 for the hoisted constant 1); then the raceB global read in place at each compare (a load expression ranks like a computed operand: the hoisted constant goes first in the `beq`)**](#kit-cccxlii-agent-g-run282) -- _NM post 2E354 99.8914 -> 99.8969 -> 99.9077 -> 99.9294 (6de271f38, f986cf0ab, f074b856f), post0b 469A8 97.961 -> 98.058 -> 98.204 (a8b10b233, d630be6ad, zero-use sweep re-runs: `+ 0 * (int)(p100)` once then twice in a10); 2E354 var_v0 / temp_v1_2 colours, 469A8 (second 0x148 load coloured in the target), 415A4 (hoisted v30 constant), 31A74, 33094 (forwarded set() parameter temp), 30AF4 (folded read keeps sv a variable, a0), 35B1C negatives; tools /tmp/claude-1000/g282 (dump.sh / lrall.sh / rep.py)._
 - [kit CCCXLIII (agent-c 2026-11-04, run 284): **a "missing uopt spill" (target splits a variable: caller-saved header piece + home spill in the body) is a colour-count problem: re-check the decode of that variable's uses against the target (3B9C0's b / a / sgn reads use the i * 12 base, not `off`), then drop stale code-free tests that held competitors' priority down; read zdbug:6 `split out` to see which LR lost; the spill slot is the variable's edg home, set by declaration order**](#kit-cccxliii-agent-c-run284) -- _NM post0b 3B9C0 95.72 -> 96.52, 1108 -> 1116 = target (3ebe2123d, 7992173a8, 597003401, 10782592d); removal sweep (rm.py singles + pairs) over 16 donors flat; 4B620 / 34890 / 3AE58 / 4568 / 54E78 / 46790 / 4BAF4 negatives; tools /tmp/claude-1000/c284/t1 (sc.py / vs.py / d2.sh / nd.sh / lrq.sh / rm.py)._
 - [kit CCCXLIV (agent-c 2026-11-04, run 285): **an 8-byte frame excess with the homes at the right top-relative offsets = declared words below the last real home: re-seat a register-only local into a dead-stored pad's word and pack an s16 into another s16's hole (3B9C0 240 -> 232); swap a BB-split code-free test for a folded use on the next call's argument when the merge web must share the argument block (3AE58 merge t0); `if (0) { f = 0; }` dead multi-def sweep; a hand-strength-reduced cursor pair = an index loop**](#kit-cccxliv-agent-c-run285) -- _NM post0b 3B9C0 96.52 -> 96.83 (4dbe4f58e, b5f885798, 4452a3a93; the last via zero-use `--keep-float`), 3AE58 99.63 -> 99.79 (b49ba0b71); dead-def / frame-word / fold negatives on 48AEC, 0F04, 46790, 5A2C4, 329C, 3714, 4F2DC, 36694, 4B620, 34890, 54E78, E2D0; tools /tmp/claude-1000/c285/t1 (sc.py / vs.py prints frame, mw.sh word counter, ins.py / insn.py, frall.py frame scan)._
+- [kit CCCXLVI (agent-c 2026-11-04, run 286): **move an LR in the colouring order by its adjsave: a folded use of a loop-invariant variable is hoisted (preheader weight), put it in an in-loop conditional arm (loop weight; two uses = double); an LR colour absent from the disassembly is a PHANTOM (copy-propagated named variable with a counted fold) blocking that register; name the value the target keeps in its own LR (3B9C0 t numerator, verts via self->col): 96.83 -> 99.07**](#kit-cccxlvi-agent-c-run286)
+- [kit CCCXLVII (agent-g 2026-11-04, run 284): **a register in an LR's `forbidden` list with no coloured interfering neighbour is a CALL RESULT (an int-returning call inside the LR defines v0): give the unused-result call a void prototype, raise the LR with n-fold folded uses `+ 0 * (int)(x + x + x)` until it colours first, hold competing selectors in an unused PARAMETER (fresh s32 web, no cvt phantom, no new home) and reuse that variable for a disjoint role that needs the same colour**](#kit-cccxlvii-agent-g-run284) -- _post 2E354 EXACT 3684 bytes (NM 99.9403 -> 100.0 d42b7bffe; match_imports port with natural pins, spliced on both paths 024ca4d51); 30AF4 (sv = promoted constant LR, not the variable), 31A74 tail, 493AC, 3BE1C, 3B6A0, 415A4, 33094 negatives._
 - [kit CCCXLV (agent-g 2026-11-04, run 283): **an `or tN,vM` copy that no holder spelling moves is uopt copy propagation (the register is the source's u8 -> int cvt LR; deleting the copy variable gives the same bytes): put the copy in the variable the target colours that way (2E354: the switch-6 selector, t0), kill the propagation with a value-preserving re-read of the source on the use path, then a BB split after the copy; zero-use-sweep.py on a mangled-name NCC donor needs `--lines` (otherwise it sweeps every body and most probes fail to compile)**](#kit-cccxlv-agent-g-run283) -- _NM post 2E354 99.9294 -> 99.9403 (5f0f54272); 2E354 pick / 0x15 holder (cfe switch temp + cvt phantoms take v0), 493AC / 3B6A0 / 3BE1C proper-window sweeps, 30AF4 (un-propagated sv), 415A4, 59E80, 31A74, 35B1C negatives; tools /tmp/claude-1000/g283 (g2.py insertion grid, mk*.py role movers)._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
@@ -55647,3 +55649,134 @@ temp_v0_2 also gives the t0 selector but pushes the (s8) argument spill 0x2C -> 
   (g2.py) at every statement of 30AF4 (189), 415A4 (140), 469A8 (135), 35B1C (68), 33094 (51), 37540 (75),
   31A74 (the only riser, `if (r) {}` after the first call, keeps r live across it: 99.17 at 568 bytes, target 564,
   not kept): flat.
+
+## kit CCCXLVI (agent-c 2026-11-04, run 286): read the uopt priority (adjsave) of the LR you need to move and change it with code-free uses in the RIGHT block -- a folded use of a loop-invariant variable is hoisted to the preheader (outer weight), one inside an in-loop conditional arm counts loop weight; a named variable assigned a CSE'd load is copy-propagated but keeps a PHANTOM variable LR (coloured, never in the code) that blocks a register; name the value the target keeps in its own LR (post0b 3B9C0 96.83 -> 99.07) <a name="kit-cccxlvi-agent-c-run286"></a>
+
+_Commits (agent-c): 183d916ae (3B9C0 NM 96.83 -> 97.13), f3539dfe0 (97.13 -> 98.94), 55be8844f (98.94 -> 99.00, frame
+back to 232), 2522eea5f (99.00 -> 99.01), 479b8fc7f (99.01 -> 99.07: `+ 0 * (int)(num)` on the ok clear, zero-use
+`--keep-float --vars num,dn,t,qa,qb,sg`). report.json 3B9C0 96.82796 -> 99.0681 (1116 bytes = target); NM length unchanged (no clip change). Tools: `/tmp/claude-1000/c286/t1/`
+(`pr.sh SRC TAG FUNC EXP 'regex'` = score + the matching zdbug LR lines; `zu2.py` = zero-use-sweep.py with the DOUBLE
+fold `+ 0 * ((int)(X) + (int)(X))`)._
+
+**Reading the dump.** `lrq.sh` / `c283/lr.py` columns: `col` 1 v0, 2 v1, 3-6 a0-a3, 7.. t0.., 14-22 s0-s8; in this NCC
+dump the float colours were 24 f0, 25 f2, 26 f12, 27 f14, 28 f16, 29 f18, 30 f20, 31 f22, 32 f24 (map them yourself
+from two or three LRs whose register you can see). LRs are coloured in `ord` order = descending adjsave, each taking
+the first register not in its forbidden list. NCC `isvar M 5 -N` homes follow declaration order from the top (cnt -4,
+i -8, ...), so an unnamed M offset can be identified by counting declared words.
+
+**Raising one LR between two others (3B9C0 f: 32.5 -> 82.5).** The target order f, vt (73.3), ia*2 / ib*2 (70) needed f
+in (73.3, 100). `0 * (int)(f)` on a statement in the inner loop body moved f only +2.5: the folded term is
+loop-invariant, uopt hoists it and it counts preheader weight. The same fold on the `ok = 0` statement inside the
+loop's `if (...) { }` arm counts loop weight (+25 per use here); two uses `+ 0 * ((int)(f) + (int)(f))` -> 82.5: f / vt /
+ia*2 / ib*2 = t4 / t5 / ra / s0 like the target (96.83 -> 97.13). Weights are not additive guesses -- re-read adjsave
+after each change.
+
+**Phantom LR.** An LR colour that appears NOWHERE in the disassembly is a variable whose real uses were copy-propagated
+away but which still has a reference uopt counts (here the run-285 `ok = ... + 0 * (int)(nz)` fold): `nz = n->z` with
+n->z already a CSE'd load LR, so the load LR carries the value and nz's own LR (M-60) sat across the whole loop in f14,
+keeping the hoisted 0.0f constant off f14 (target f14). Deleting the fold + the name was flat on its own; the gain came
+from the decode below. The same mechanism can be used on purpose: in 3AE58 `int pk; ... pk = (int)a1->tbl;` + `0 * (pk + pk)`
+on the call argument (with one volatile pad removed to keep the frame) made pk a phantom v1 LR and the entry merge took
+t0 like the target -- but the ugen ring for the m / x2C / x54 loads shifted (99.68 < 99.79, not kept).
+
+**3B9C0 decode: the t numerator is a named variable.** The target computes `sub.s f2,f4,f8; neg.s f6,f2; div.s f22,f6,f12`
+-- the pre-negation value sits in an LR (f2), a ugen temp would be f4-f10. `num = a->x * n->x + a->y * n->y + a->z * n->z;
+t = -(num - self->tris[i].d) / dn;` (num in nz's old declaration word, n->z read inline): 97.13 -> 99.00, frame 232. The
+fuller `num = ... - d; t = -num / dn;` gives the target's sub / neg shape but t's variable is then propagated into an
+expression LR (`isop udiv` instead of `isvar M -32`) and uopt reserves 8 more bytes of temp area (frame 240, every home
++8; 98.94). `if (0) { t = 0; }` after the p.z line keeps t a variable (frame 232) but breaks the off split (96.7); other
+t forms (`t = -num; t = t / dn;`, `if (1) {}` either side, `-(num + 0.0f)`, `num -= d`) stay 240 or lose 8 bytes.
+
+**3B9C0: verts from the self->col web.** The target's `lw t5,96(s5)` reads verts through s5 (self->col reloaded per
+iteration), not through the col copy: `vt = self->col->verts;` alone drops to 95.30 (off loses its a1 split colour), the
+zero-use re-sweep then finds `nx = (s16 *)&D_00000000 + 0 * (int)(col);` -> 99.01.
+
+**Left in 3B9C0 (99.07).** Floats: the 0.0f constant (adjsave 12.5, target f14 / ours f20) must outrank the n->x / n->y /
+n->z loads (15); dropping the dn-test `0 * (int)(n->z)` fold gives num f2 / dn f12 like the target but n->x f14 (98.94);
+the old `if (qa != 0.0f) {}` inner-loop splits give the full float order but break the int colours (<= 98.92). Ints: col
+t0 (target v0: col must die before &tris[i]; all three col folds removed gives col v0 but moves the off split, 96.76),
+remap load v1 (a0), &p base an LR in v1 (target t9, ugen), ia a1 (v1).
+
+**Negatives (don't repeat).** zu2 double-fold sweeps flat on 3AE58, 4B620, 34890 (0 sites), 36694, 42938, 48AEC, 4F2DC,
+4FD00, 54E78, 46790, 4BAF4, gui 0F04 / 329C / 3714, game_uso 3558, post0b 5A2C4, bootup E2D0 / E68 (gui 4568's base
+does not compile standalone in the sweep). 3AE58: the x2C fold moved to other arguments / a0->m / a1 fields (18 forms):
+<= 99.79. 3B9C0 after the gains: single / double zero-use sweeps of the loop, `if (0) { f / col / ib / pp / num = 0; }`
+insertion sweep (200), `if (0) { t / num = 0; }` on the full-num base (108): flat. After the 99.07 gain: `if (0) { n / vt / ok /
+col / t / dn / sg / qa = 0; }` (336), `if (1) {}` / `if (col) {}` / `if (f) {}` / `if (ok) {}` / `if (num | dn | t) {}`
+insertions (267), single / double / `--exprs` / `--keep-float` zero-use sweeps of the loop, operand-order grids of the
+num and dn sums (19), pp spellings (7), v1 reused as a phantom int LR before the remap test (12): flat. The rm.py
+removal sweep shows four stale levers (col's `if (1) {}`, the sg-line `if (1) {}`, `+ 0 * (int)(n)` on the remap arm,
+`+ 0 * (int)(vt)` on the hit test): removing all four is byte-identical (99.07), kept for now. Also flat this run:
+`--exprs` zero-use sweeps of 46790, 4FD00, 4B620, 48AEC, 4F2DC, 4BAF4, 42938, 34890, gui 0F04 / 329C / 3714 (with
+`--keep-float`), game_uso 3558, bootup E2D0; `--exprs --keep-float` on 54E78 / 36694 (every float hit costs code);
+`--keep-float --vars` on 4F2DC / 4BAF4; windowed single sweeps of 5A2C4 (L23430-23600) and bootup E68 (L820-903);
+gui 4568 single / double (needs `--flags` with `-I src/gui_uso`; 29 variants). 34890: named ternary result r, cast
+`(void *)0` arm, folded o uses / a phantom pk: <= base. bootup E2D0 (standalone cfe copy of the NM body reproduces
+99.54): `s = lim / dot / arg4` copies with `if (s) {}` / `if (lim) {}` / `if (dot) {}` phantoms (20): flat.
+
+## kit CCCXLVII (agent-g 2026-11-04, run 284): a register that is "forbidden" with no coloured neighbour in the interference list is a CALL RESULT -- an int-returning call inside the LR defines v0, so the LR can never take v0 however high its priority; give the unused-result call a void prototype, then raise the LR's adjsave with folded uses until it colours first (post 2E354 NM 99.9403 -> 100.0) <a name="kit-cccxlvii-agent-g-run284"></a>
+
+_Commit (agent-g branch): d42b7bffe (post 2E354 NM 99.9403 -> 100.0, 3684 bytes = target; report.json 93.36 -> 93.84 %
+code, 3244 -> 3245 functions); EXACT on the ROM path in 024ca4d51 via the match_imports recipe (kit XLIV item 7):
+`src/match_imports/gl_func_0002E354.c` = the NM body, `scripts/match-origins-gl_func_0002E354{,-nm}.ld` with NATURAL
+pins -- each callee at its own address (gl_func_00043824 = 0x43824 ...: the target's baked jal words), the float
+tables / scalars at the value in their names (D_E354_1C330 = 0x1C330, D_E354_1C738_* = 0x1C738 ...), the module's two
+jump tables as ONE `.rodata` block at 0x16E4 (0x16E4 / 0x16F8 contiguous), everything else 0 -- then
+`bind-native-relocations.py` renames every remaining reloc to `snw_port_gl_func_0002E354_*` (= 0 in
+undefined_syms_auto.txt). Check before writing any Makefile stanza: link the standalone object with the ld script and
+compare its 921 words with `expected/` (`objdump -d | awk '{print $2}' | md5sum` both sides): equal on the first try
+here, because the target .s carries no relocations inside this function (the 17 relocs objdump -dr prints near it
+belong to other functions). Tools: `/tmp/claude-1000/g284/` (`k*.py`
+rep.py variant files, `pg.py` pick x selector variable grid, `sc3.py` = sc.py with `-I include -I src -DNON_MATCHING`)._
+
+**Recognising it.** 2E354's 8 / 0x40 pick (var_v0, target v0) stayed a2 / v1 under every holder, priority and
+creation-order lever of runs 272-283. Reading the zdbug:5 record of the pick LR after its adjsave had been pushed ABOVE
+every competitor (ord 2, before the selector at ord 7): it still got v1, and `forbidden: [1 3 4]` listed v0 although
+NO interfering LR was coloured v0. The pick lives across `func_00000000(0x90000000, 6)` (int result, unused): the call
+writes v0 inside the LR, so v0 is forbidden, exactly like a0 / a1 (the call's argument registers). The target's pick
+sits in v0 up to each jal (`sw v0,88(sp)` in the delay slot) and is reloaded into v0 after it, so in the target that
+call has no result. A dedicated `extern void gl_E354_v(s32, s32);` for the two switch-1 0x90000000 calls (result never
+read, value-preserving) removes the v0 ban.
+
+**The three steps (each alone is flat).**
+1. Selector without a cvt phantom and without a new home: the switch-1 selector in the otherwise unused PARAMETER
+   `arg1` (`arg1 = o->0x21; switch (arg1)`). A u8 holder adds a u8 -> int cvt LR (phantom, adjsave 2.5, took v0); an
+   existing s32 local merges into that variable's function-wide web (temp_v0 / var_v0_3: adjsave 3.5-4.2, always v0);
+   a NEW s32 local is a separate web but gets a home word (the (s8) argument spill moved 0x2C -> 0x28). The parameter
+   is a fresh web with its home in the caller's frame. Keep the code-free `if (var_v0 != arg1) {}` (without it the
+   case-compare chain changes shape, 3680 bytes).
+2. Priority: folded counted uses of the pick on the first call of each arm, `6 + 0 * (int)(var_v0 + var_v0 +
+   var_v0)` / `0x60 + ...` (kit CCCXLVI: an n-fold sum counts n uses): pick adjsave 1.25 -> 1.75 (x2, one arm) ->
+   3.0 / 3.25 (x3 / x4 in both arms), above arg1's 2.5. Without step 3 it is still v1 (forbidden v0): 99.918.
+3. The void prototype above: pick v0, selector v1 = target, 99.9403 -> 99.9837.
+
+**Then the o->0x15 holder (target v1, constant 1 in v0).** Every earlier holder either took v0 (s32 locals: their
+webs outrank the promoted constant 1, adjsave 0.2) or added a cvt (u8). Holding it in `arg1` too -- the same variable as
+the switch-1 selector, now coloured v1 -- gives `lbu v1,21(s0)` with the constant in v0: 99.9837 -> 100.0. One C
+variable = one colour (kit CCCXLII) used in reverse: reuse a variable that ALREADY has the target's colour for a
+second role whose live range is disjoint (both roles are written right before their reads).
+
+**Negatives this run (don't repeat).**
+* 2E354 before the void prototype: s32 selector in every existing variable x pick in every variable (62, `pg.py`),
+  code-free selector / pick tests in the switch-1 region and over the whole body (`if (arg1) {}` at 130 points), switch 2
+  on its own variable (12) / `(int)` / `(s8)` / volatile, selector types u16 / s16 / u32, pick types u32 / s16 / u16 /
+  u8 / s8, ternary / swapped / default-first pick: flat or worse. The dead `var_v0_2 = 1;` store is inert.
+* post 30AF4 (sv non-propagatable): `if (sv) {}` after the def keeps sv a real variable (pre-switch `lui; addiu` in a
+  register, case-6 `12(reg)`, case-9 `0(reg)` like the target) but uopt SPILLS it across the case-9 call (sw/lw 28(sp))
+  where the target rematerialises -- the target's v0 is a promoted CONSTANT LR, not the variable; sv as a pointer,
+  `(char *)` / `+ 0 * prev` / `.f0` spellings, earlier defs, the sweep / prev accesses through sv, case-6 / case-9
+  address spellings (15): flat or worse (best 98.08 = base).
+* post 31A74 tail: goto-block store after the call (kit CCXXXIV form), store inside the call argument / comma (12),
+  BB splits around the clamp (20): all `mfc1; swc1; jal; sb` (target `mfc1; sb; jal; swc1`), 97.16 < 97.73.
+* post0b 493AC: both loops' tests x 10 spellings (100), next() body spellings x one / both loops (24), test() / p34()
+  call spellings (35): flat at 99.43. 3BE1C: an extra local at every declaration point x 4 types (116) leaves the off
+  spill at sp+80 (target 84): flat. 3B6A0: cc = c copy kept (target `or v0,s8`) by a `c = col` re-read is not CSE'd
+  here (+4..+12 words), the remap / faces base mix (32): flat. 415A4: the 1030 / |6 / |0x400 chain x store spelling x
+  BB splits (96): flat. 33094 member-operator order (36) + code-free tests (6): flat. gui 2DE0: the &D constant LR
+  still ends before the RDPHALF_2 append (reading only).
+* post 30AF4 case-4 copy (`or v0,t9` in the target, ours a0): sv's case-4 LR (zdbug:5 `M 34 -20`, adjsave 0.67) is
+  forbidden v0 by `uilod{23|0}` (adjsave 2.0, col v0) -- the D_30AF4_h re-read after `D_30AF4_h = sub`, store-forwarded
+  to t9 so it emits nothing: a PHANTOM (kit CCCXLVI). Reading `sub` / `sv` instead of D_30AF4_h at the + 4 and == 6
+  uses changes the case shape (93-97); the copy in the unused K&R parameter arg2 (fresh web) and void prototypes for
+  the 0x42364 / 0x41ED4.. calls, `sv = (D_30AF4_h = sub)` / chained / `D_h = sv = sub` copies (5): flat at 98.08 or
+  worse. Open: kill the phantom load LR itself (the + 4 and == 6 uses must stay D_h reads to keep the case shape).
