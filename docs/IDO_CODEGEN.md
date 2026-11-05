@@ -14715,6 +14715,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCCXLI (agent-g 2026-11-04, run 281): **kit CCCXL's creation-order lever on in-tree cfe bodies: a code-free `if (<load expression>) {}` just BEFORE the competing statement (469A8: two block-field tests before the 12-argument call block; 2E354: `if (D_raceD_E354) {}` before its load); a value-preserving narrowing `(u8)(x & 0xFF)` costs one ugen temp with no code -- use it to move a folded use's ugen-ring offset to where the target spends it**](#kit-cccxli-agent-g-run281) -- _NM post0b 469A8 96.02 -> 97.52 -> 97.57 -> 97.86 -> 97.96 (f69ae70ac, 46e8203fc, 6be9fdaeb, e08714cb2), post 2E354 99.848 -> 99.859 -> 99.891 (0a4e4b316, faa23372e); 3BE1C / 493AC / 30AF4 (sv held in v0 into case 6) / 31A74 / 35B1C / 59E80 / 3B6A0 / 33094 / 37540 / gui 2DE0 negatives; tools in /tmp/claude-1000/g281 (ins.py / prein.py / narrow.py / comma.py)._
 - [kit CCCXLII (agent-g 2026-11-04, run 282): **one C variable = one uopt colour: when the target puts two roles of an m2c-shared variable in different registers, the zdbug:5 `forbidden` / `interfere with` lists name the web that blocks the wanted register -- split the roles over existing variables (2E354: raceB out of the v1 stateC / selector variable into temp_v0; the o->0x15 selector out of the function-wide v0 variable temp_v1 into var_t9, which frees v0 for the hoisted constant 1); then the raceB global read in place at each compare (a load expression ranks like a computed operand: the hoisted constant goes first in the `beq`)**](#kit-cccxlii-agent-g-run282) -- _NM post 2E354 99.8914 -> 99.8969 -> 99.9077 -> 99.9294 (6de271f38, f986cf0ab, f074b856f), post0b 469A8 97.961 -> 98.058 -> 98.204 (a8b10b233, d630be6ad, zero-use sweep re-runs: `+ 0 * (int)(p100)` once then twice in a10); 2E354 var_v0 / temp_v1_2 colours, 469A8 (second 0x148 load coloured in the target), 415A4 (hoisted v30 constant), 31A74, 33094 (forwarded set() parameter temp), 30AF4 (folded read keeps sv a variable, a0), 35B1C negatives; tools /tmp/claude-1000/g282 (dump.sh / lrall.sh / rep.py)._
 - [kit CCCXLIII (agent-c 2026-11-04, run 284): **a "missing uopt spill" (target splits a variable: caller-saved header piece + home spill in the body) is a colour-count problem: re-check the decode of that variable's uses against the target (3B9C0's b / a / sgn reads use the i * 12 base, not `off`), then drop stale code-free tests that held competitors' priority down; read zdbug:6 `split out` to see which LR lost; the spill slot is the variable's edg home, set by declaration order**](#kit-cccxliii-agent-c-run284) -- _NM post0b 3B9C0 95.72 -> 96.52, 1108 -> 1116 = target (3ebe2123d, 7992173a8, 597003401, 10782592d); removal sweep (rm.py singles + pairs) over 16 donors flat; 4B620 / 34890 / 3AE58 / 4568 / 54E78 / 46790 / 4BAF4 negatives; tools /tmp/claude-1000/c284/t1 (sc.py / vs.py / d2.sh / nd.sh / lrq.sh / rm.py)._
+- [kit CCCXLIV (agent-c 2026-11-04, run 285): **an 8-byte frame excess with the homes at the right top-relative offsets = declared words below the last real home: re-seat a register-only local into a dead-stored pad's word and pack an s16 into another s16's hole (3B9C0 240 -> 232); swap a BB-split code-free test for a folded use on the next call's argument when the merge web must share the argument block (3AE58 merge t0); `if (0) { f = 0; }` dead multi-def sweep; a hand-strength-reduced cursor pair = an index loop**](#kit-cccxliv-agent-c-run285) -- _NM post0b 3B9C0 96.52 -> 96.83 (4dbe4f58e, b5f885798, 4452a3a93; the last via zero-use `--keep-float`), 3AE58 99.63 -> 99.79 (b49ba0b71); dead-def / frame-word / fold negatives on 48AEC, 0F04, 46790, 5A2C4, 329C, 3714, 4F2DC, 36694, 4B620, 34890, 54E78, E2D0; tools /tmp/claude-1000/c285/t1 (sc.py / vs.py prints frame, mw.sh word counter, ins.py / insn.py, frall.py frame scan)._
+- [kit CCCXLV (agent-g 2026-11-04, run 283): **an `or tN,vM` copy that no holder spelling moves is uopt copy propagation (the register is the source's u8 -> int cvt LR; deleting the copy variable gives the same bytes): put the copy in the variable the target colours that way (2E354: the switch-6 selector, t0), kill the propagation with a value-preserving re-read of the source on the use path, then a BB split after the copy; zero-use-sweep.py on a mangled-name NCC donor needs `--lines` (otherwise it sweeps every body and most probes fail to compile)**](#kit-cccxlv-agent-g-run283) -- _NM post 2E354 99.9294 -> 99.9403 (5f0f54272); 2E354 pick / 0x15 holder (cfe switch temp + cvt phantoms take v0), 493AC / 3B6A0 / 3BE1C proper-window sweeps, 30AF4 (un-propagated sv), 415A4, 59E80, 31A74, 35B1C negatives; tools /tmp/claude-1000/g283 (g2.py insertion grid, mk*.py role movers)._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
 - [kit CCLXXII (agent-c 2026-10-30, run 247): **a folded `+ 0` on one loop's test moves the shared edg pool temp to the OTHER loop (493AC: the second loop's next() result leaves the call-crossing s2 temp); taking a local's address through a member call (`getPos(vb)`, `e = vb - va`) makes it memory-resident like a target that stores it after init (3558 length fixed)**](#kit-cclxxii-agent-c-run247) -- _NM 493AC 99.36 -> 99.43, game_uso 3558 91.62 @ 956 B -> 92.60 @ 1008 B; 41D40 / 250C8 / 3AE58 / 46790 / 3E5E0 / BB8C / 31A74 / `+ 0` toggle sweep negatives._
@@ -55533,3 +55535,115 @@ coloured every callee-saved register (s0-s8 + ra) before `off` and split it. Two
   zero-use sweep of the loop body (4 runs, 461 variants): flat. 3AE58 / 34890 / 46790 kit CCCXL creation-order
   tests before the competing statements (64): flat. 4F2DC: the 24-byte home gap between hits and d is not a
   missing V3 temporary (extra `V3();` / pads grow the frame); moving `start` up changes code (-12 bytes).
+
+## kit CCCXLIV (agent-c 2026-11-04, run 285): an 8-byte frame excess with locals at the right TOP-relative offsets is a declared-word count BELOW the last fixed home -- re-seat a register-only local into a dead-stored pad's word (and pack an s16 into another s16's alignment hole) instead of deleting code; a BB-split code-free test can be swapped for a folded use on the next call's argument when the target needs the merge web in the SAME block as the argument setup; `if (0) { f = 0; }` dead multi-defs reorder a constrained LR without code <a name="kit-cccxliv-agent-c-run285"></a>
+
+_Commits 4dbe4f58e (post0b 3B9C0 NM 96.52 -> 96.65), b5f885798 (3B9C0 96.65 -> 96.77), 4452a3a93 (3B9C0 96.77 ->
+96.83), b49ba0b71 (post0b 3AE58 NM 99.63 -> 99.79). report.json before / after: 3B9C0 96.519714 -> 96.82796 (1116
+bytes), 3AE58 99.63158 -> 99.789474 (380 bytes); NM lengths unchanged (no clip change)._
+
+**Float identifiers in the zero-use sweep.** zero-use-sweep.py skips float variables by default; `--keep-float --vars
+<the float locals>` found `ok = 0 + 0 * (int)(i) + 0 * (int)(nz);` in 3B9C0 (nz is set before the inner loop on every
+path; the (int) conversion folds away, size unchanged): 96.77 -> 96.83. Run it with an explicit float `--vars` list (an
+unrestricted sweep hits the 200 cap on the int identifiers first). Flat with float vars on 54E78, 36694, 4FD00, 0F04,
+3714, 329C, 3558, E2D0, 5A2C4.
+
+**3B9C0 frame 240 -> 232 (target).** The kit CCCXXXV counter (`NCC -Wo,-zdbug:1`, lowest `isvar M` offset; a script
+is just the dump NCC plus `grep -o 'isvar *M *[0-9]* *-[0-9]*'`) read -124; d (M-72), p (M-48) and off (M-104) were
+already at the target's top-relative homes, so the excess was the six words below off (v0 / v1 / ey / dx / dy and the
+loop-block `self_al`). Block-scoped locals are homed AFTER all function-scope ones, so self_al cannot move up (making
+it function scope changes code, 1132 bytes). What works: `s16 *v0` declared in the dead-stored `opad`'s place (opad and
+its `opad = 0;` deleted: v0 is register-only, the word still keeps d / p on their homes) and `s16 ey` declared next to
+`s16 ex` (shares ex's alignment hole above vt): lowest M -116, frame 232, code unchanged. Frame size is 8-rounded:
+-118 still gave 240. Rule: list the M offsets, mark the words that are real homes (stored / reloaded), and move only
+register-only locals into dead words above the last real home.
+
+**3B9C0 dead multi-def.** An insertion sweep of `if (0) { X = 0; }` over the body found ONE position (after the ib
+line) for X = f that re-colours the i * 12 tris base a1 like the target (96.65 -> 96.77). The same sweep with col / vt /
+ok / nx / fv / v0 / v1 / ib / pp (320 variants), cnt / i / n / dn / t / off / nz / self_al, and `while (0)` forms:
+flat. The remaining residual: f in s1 (target t4) -- zdbug:5 shows f adjsave 32.5 below vt 73.3 / ia*2 70 / ib*2 70
+(the target order f, vt, ia*2, ib*2, ok explains every remaining int colour: f must land between 73.3 and the 100.0
+dx / dy group); folded uses of f in the inner loop and `if (f) {}` tests: flat.
+
+**3B9C0 inner loop as an index loop (decode note, not committed: same score).** `k = 0; do { v0 = vt[f->vi[k]];
+v1 = vt[f->vi[D_3B9C0_t[k]]]; ... } while (ok && ++k < 3);` with an `extern s16 D_3B9C0_t[3]` gives byte-identical
+code to the donor's hand-strength-reduced `fv` / `nx` pointers (uopt's strength reduction + linear-function test
+replacement make the target's `fv++` delay slot and `nx != table + 6` compare). Likely the original source; `for`
+forms (test at the top) are 8-16 bytes off. Keep in mind when a loop's cursor pair looks hand-written.
+
+**3AE58 merge colour (v1 -> t0).** The run-272 `if (a0->x2C) {}` after the fv stores was a BB split: the entry merge's
+block no longer contained the call's argument setup, so only v0 / s0 were forbidden and it took v1. Replacing it with
+`gl_func_00000000(a0->x2C + off + 0 * (int)(a0->x2C), fv, ...)` keeps the extra x2C use (its LR still exists) in one
+block with the merge: a0-a3 plus the x2C LR's v1 are forbidden and the merge takes t0 (99.63 -> 99.79). LEFT: the x2C
+load is an LR in v1 (target: ugen t4, no LR) and the count reload t4 (t6). Folding `a0->m` instead gives the target's
+ugen x2C / m loads (t2 / t4) but the merge falls back (99.68): the target forbids v1 for the merge without any visible
+v1 web. Other folded identifiers on the argument (a1, i, off, v, v->x, tbl, verts, ents): 93.9-98.4.
+
+**Negatives (don't repeat):** frame-word moves on 48AEC (gp / A de-naming, next() / mtx() unnamed, Flags keep, setup
+keep; next() without its named n gives frame 352 = target but 97.34 < 97.48); 0F04 code-free word removals (texture
+macro as an inline, u / v de-named: 92.4-97.1); 46790 index spelling grid (80) and narrowing / folded-cast ring burns
+(32): flat; 5A2C4 single + pair removal of all ten levers (57) and folding its `if (g) {}` / `if (base ...) {}` /
+`if (cnt) {}` into the stores: <= base; 329C / 3714 code-free test insertion (200 / 182) flat; 3714 / 48AEC tests folded
+into call arguments flat; dead multi-def sweeps flat on 3AE58, 46790, 48AEC, 4F2DC, 36694, 4B620 (iterator members),
+34890, 54E78, bootup E2D0 (arg4 / dot / lim); 54E78 operator* by const reference / named result: <= base. Frame scan
+of every non-100 function (target vs NM object): only 42938, 48AEC and the capped 76F0 differ. Also flat this run:
+zero-use `--exprs` re-sweeps (4B620, 54E78, 46790, 36694, 4BAF4, 0F04, 329C, 3714, 3B9C0 middle / loop windows),
+`while (0) { ... }` ref-multiplier anchors for f in 3B9C0 (174), remap if / else shapes (`== 0` arms swapped: 95.07),
+self_al through a zero-code accessor (frame word saved, 90.6), and the 48AEC frame-352 base (next() without n) re-tuned
+by removal / zero-use sweeps (<= 97.34).
+
+## kit CCCXLV (agent-g 2026-11-04, run 283): an `or tN,vM` copy that no named temp moves is usually uopt's COPY PROPAGATION at work -- the plain copy `x = y; ... if (x == 0)` is folded into the test and the register you see is the u8 -> int cvt LR of y, so every holder spelling is flat; to give the target's copy register, make the copy a variable whose web the target colours that way (here the switch-6 selector, t0) and kill the propagation with a value-preserving re-read of the SOURCE on the copy's use path; then a BB split after the copy settles who gets v0 (post 2E354 99.9294 -> 99.9403) <a name="kit-cccxlv-agent-g-run283"></a>
+
+_Commit (agent-g branch): 5f0f54272 (post 2E354 NM 99.92943 -> 99.94029, length 3684 = target). Tools:
+`/tmp/claude-1000/g283/` (`g2.py BASE FN TARGET TAG A B 'stmt|stmt'` = code-free statement insertion grid over
+lines A..B, `ins.py`, `mk*.py` variable-role movers, `k*.py` / `w*.py` rep.py grids); dump reader `/tmp/claude-1000/g282/lrall.sh`._
+
+**Recognising it.** 2E354's `lbu v0,0x14; lbu v1,0x2C; or t0,v0,zero; beql v0,v1` (ours `or a0,v0`) stayed a0 for
+every holder of the copy (u8 / s32 / u32 locals, chained assignment, copy-of-load, ...), and DELETING the copy
+variable altogether (`if (var_v0_2 == 0)` directly) gave identical bytes. The zdbug:5 dump shows why: the `or` is
+the LR `isop ucvt{<ichain of var_v0_2>|1}` -- the int conversion of the u8 source, which uopt keeps live from the
+copy point to the propagated zero test -- not a variable at all.
+
+**Fixing it.** The target's copy register (t0) is the colour of the switch-6 selector, whose 0x23-block web is
+forbidden v0..a3 by the argument registers of the calls there. So (1) the selector role moves out of the pick
+variable (var_v0) into a variable whose earlier web is dead there (temp_v0_2), plus one code-free read
+`if (temp_v0_2) {}` in the D_E354_1C73C arm so its LR keeps the target's priority; (2) the copy goes into that same
+variable at the head (`temp_v0_2 = var_v0_2;`); (3) the else arm re-reads the source before the test
+(`var_v0_2 = o->0x14; if (temp_v0_2 == 0)` -- no store in between, so the value is unchanged and the load is
+CSE'd: no code) -- with the source redefined on the use path uopt can no longer propagate the copy, so the copy is
+a real `or t0,v0`. Alone that hands v0 to the copy's cvt LR (adjsave 3.0) and var_v0_2 drops to v1 (99.88);
+(4) a BB split right after the copy (`temp_v0_2 = var_v0_2; if (1) {}`; also `if (var_v0_2) {}` or a code-free
+`var_v0_2 != o->0x2C` test there) restores var_v0_2 = v0: 99.9294 -> 99.9403.
+
+**Negatives (2E354, don't repeat).** The 8 / 0x40 pick (target v0, ours a2 once the selector left var_v0, t0
+before): its v0 blocker is a cfe switch-1 LR, either the `ucvt` of the u8 holder temp_v1_3 or -- with the switch
+spelled on the field expression -- the cfe SWITCH TEMP variable (`isvar M 34 -80`, below the declared homes;
+cfe shares ONE temp between switches on the same expression: switch 1 and switch 2 both on o->0x21); both are
+phantoms (no instruction uses their v0) but take v0 by priority (2.0-3.5 vs the pick's 1.0-1.25). s32 holders /
+casts on either switch / un-sharing the temp / pick-use code-free tests at 11 points x 8 forms / pick in any other
+variable: flat or worse (an s32 holder drops the cvt but costs 4 bytes). The o->0x15 holder (target v1 with the
+constant 1 in v0): switching on the field expression gives the 0x15 cvt v0 and the constant v1 (swapped, 99.92);
+every other holder variable / cast and code-free tests around it: flat (a u8 holder such as temp_v1_3 loads into
+v1 like the target but adds its cvt LR -- an `or v0,v1` copy -- and pushes the constant 1 to t0; the u32 stateC
+variable temp_v0_7, v1 in the target, as holder raises its priority over temp_v1 and the two swap v0 / v1
+function-wide, 99.80; `if (temp_v1) {}` at 115 points does not swap them back). A new `s32` selector local instead of
+temp_v0_2 also gives the t0 selector but pushes the (s8) argument spill 0x2C -> 0x28 (one more home).
+
+**Other targets this run (negatives).**
+* zero-use-sweep.py on a MANGLED-name NCC donor (493AC `run__3MgrFv`, 3B6A0, 3BE1C): without `--lines` the
+  script cannot find `--fn` by name and sweeps every function body with the whole file's vocabulary (inline
+  methods get out-of-scope identifiers: 198 / 200 probes fail to compile). Always pass `--lines <body range>`
+  (e.g. 85-214 for 493AC). Re-run properly over 493AC (7 windows + `--exprs` / `--noint`), 3B6A0 and 3BE1C:
+  no gain.
+* post 30AF4: the target's pre-switch `lui v0; addiu v0` is the variable sv (= &gl_state, coloured v0: the case-4
+  `or v0,t9` copy is the same variable) that the target keeps un-propagated into cases 6 / 9 and rematerialises
+  after the case-9 call; ours propagates the constant (sv's LR is only the case-4 web, a0). `((s32 *)sv)[3]` /
+  `[0]` stores, `(int)` / `.f0` address spellings, folded global-load uses and case-4 sv / D_h orders (72 + 36 + 48):
+  flat or worse.
+* post0b 415A4 (v initialisation hoisted into the record-constant group x first-store / or-chain spellings, 72),
+  post0b 59E80 (code-free tests at every packet, 144), post 31A74 (r store after the clamp / in the call / comma:
+  the spill and store swap but cost 0.57), post0b 35B1C (vtable store inside the q test / ctor / comma forms: the
+  scheduler still hoists it): flat or worse. Code-free `if (1) {}` / variable / field test insertion grids
+  (g2.py) at every statement of 30AF4 (189), 415A4 (140), 469A8 (135), 35B1C (68), 33094 (51), 37540 (75),
+  31A74 (the only riser, `if (r) {}` after the first call, keeps r live across it: 99.17 at 568 bytes, target 564,
+  not kept): flat.
