@@ -14724,6 +14724,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCCLI (agent-c 2026-11-04, run 288): **the NCC frame is sized by the home of the deepest SPILLED variable: move a spilled macro-block local to a function-scope variable under an unreferenced class-type pad (`PadK<11> pz; Gfx *g;`) to set the frame; `E <= 0 ? 0 : E` for a gbi `MAX(E, 0)` drops the pre-branch zero; the kit CCCXLVIII phantom lever is flat across the register-only list**](#kit-cccli-agent-c-run288) -- _post0b 42938 frame 112 -> 88 = target (98.11311 -> 98.118256, 9fa4d88b9); 4BAF4 97.54 -> 97.88 (8d6a4a7ce); 48AEC 97.48 -> 97.53 (two --exprs folds, dbf0cc21d / 97bbf6094); game_uso 3558 operator+= x, y, z + k2 operand swap 93.68 -> 93.85 (0f4c40fda); byte-identical lever removals 5A2C4 / E68; phantom / naming negatives on 4B620, 34890, E2D0 (arg4 is a coloured parameter LR), 46790, 54E78, 5A2C4, 3B9C0, gui 329C / 3714 / 0F04 / 4568, 48AEC, 36694, 4FD00, 4F2DC._
 - [kit CCCLII (agent-c 2026-11-05, run 289): **edg frame-home order: an expression-statement class temporary or one bound to a CONST-REFERENCE parameter is homed at the block top, ahead of the named locals; named locals in declaration order, then nested-block locals, then the inline parameter / return pool temps (by-value class parameters are pooled: one home for every expansion); a target frame-top temp block = a const-reference operand**](#kit-ccclii-agent-c-run289) -- _post0b 4F2DC 95.7218 -> 95.733086 (e9b89715d: `operator+(const V3 &o)` + PadK<4>, frame 424 = target) -> 95.770676 (39cce1b3a: operand-order grid on the new operator+); nested-block locals / pool temps homed in creation order; 48AEC frame 352 reachable (unnamed mtx(), 97.28) but the load() spill homes are not; negatives on 42938, E2D0, 34890, 46790, 54E78, gui 3714 / 329C, 4FD00 (pooled by-value SV), 36694, windowed --exprs sweeps._
 - [kit CCCLIII (agent-g 2026-11-05, run 287): **a code-free `if (v) {}` grid that looks inert may be masked: the LR it raises is also forbidden v0 by an int call result in one of its blocks -- void the never-read call first, then re-run the grid; an int-cast base's pre-switch hoist appears with `if (sv) {}` after its def, and a "both paths" `lui; beq; addiu` base is a def placed before the if**](#kit-cccliii-agent-g-run287) -- _post 30AF4 NM 99.138 -> 99.356 (944fb802f: hoist + case-9 / tail through sv, structurally exact) -> 99.451 (c8cc8f85f: void 460D0 alias + two counted `if (sv) {}` in case 6, hoist v0 / D_m v1) -> 99.555 (c7f313f04: a second folded sv use on the D_30AF4_n store, random fold grid); open: switch-1 index ring + case-9 sub colour; negatives 59E80 (the t1 packet is 0x402, not 0x602), 3BE1C off spill (PadK / cell reuse: off at the target's distance from the frame top but frame 232), 35B1C NCC ctor rewrite (same vptr schedule), 33094 += order x tests._
+- [kit CCCLIV (agent-c 2026-11-05, run 290): **to move an edg home up, declare the class local EARLY and leave a code-free statement (pad object / `if (1) {}`) at its old declaration point -- a mid-block empty-ctor declaration is a code barrier, so the bare move costs bytes; NCC frames only count referenced homes (register-only named scalars still reserve)**](#kit-cccliv-agent-c-run290) -- _post0b 4F2DC 95.770676 -> 95.8421 (d8c2d3294: start / e after hits = the target's M-188 / M-200 / d M-212 / dir M-224, e through set()); 4FD00 one shared s + 1004 bytes via `o.set((s += v1) += v2)` in sum3 (95.45, frame 144: each chained += is 4 pool bytes ahead of the set() parameter); 36694 named k in operator* = the target's product home (95.64, registers worse); negatives 34890, gui 0F04 packet grid + zero-use sweeps; colour-only home maps listed._
+- [kit CCCLV (agent-g 2026-11-05, run 288): **count the t-ring offset change points: a store + read-back of the same word through a DIFFERENT-SIGNEDNESS type (`*(s32 *)p = x; if (*(u32 *)p == 1)`) keeps x a ugen ring temp and spends one extra ring slot; a K&R parameter declared s32 (not u32) gives the jump-table index a fresh ring temp; a constant store written plain joins the coloured constant LR (`K + 0 * x` keeps K out of it); an extern float pinned between two jump tables in RoData is a source LITERAL (read the word)**](#kit-ccclv-agent-g-run288) -- _post 30AF4 EXACT 2112 bytes (99.555 -> 99.905 c19e69b82, NM 100 acd4c8390, match_imports natural-pin port 8f536a771; 0.1f at RoData 0x18AC); post0b 37540 NM 96.429 -> 96.518 (c12fae76e, -g3 home-order map); post0b 59E80 NM 98.553 -> 98.663 (a906c3cb4, a PAIR of individually inert `if (1) {}` splits); 59E80 (zdbug node map of the 0x402 pointer / ClipRatio li hoist), 493AC, 469A8, 3BE1C off spill, 31A74 tail store, 415A4 mode word negatives._
 - [kit CCCXLV (agent-g 2026-11-04, run 283): **an `or tN,vM` copy that no holder spelling moves is uopt copy propagation (the register is the source's u8 -> int cvt LR; deleting the copy variable gives the same bytes): put the copy in the variable the target colours that way (2E354: the switch-6 selector, t0), kill the propagation with a value-preserving re-read of the source on the use path, then a BB split after the copy; zero-use-sweep.py on a mangled-name NCC donor needs `--lines` (otherwise it sweeps every body and most probes fail to compile)**](#kit-cccxlv-agent-g-run283) -- _NM post 2E354 99.9294 -> 99.9403 (5f0f54272); 2E354 pick / 0x15 holder (cfe switch temp + cvt phantoms take v0), 493AC / 3B6A0 / 3BE1C proper-window sweeps, 30AF4 (un-propagated sv), 415A4, 59E80, 31A74, 35B1C negatives; tools /tmp/claude-1000/g283 (g2.py insertion grid, mk*.py role movers)._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
@@ -56261,3 +56263,161 @@ _Commits 944fb802f (99.356), c8cc8f85f (99.451) and c7f313f04 (99.555) (agent-g 
   (c->dl->buf) / (o) / (o->f104) {}`) over every packet gap: flat (98.553 = base); NCC `if (1) {}` after the 0x402
   packet is byte-identical (no BB split there).
 * post0b 3B6A0 / 37540: 150 random code-free `if (id) {}` insertions each (ids from the body): flat (96.375 / 96.429).
+
+## kit CCCLIV (agent-c 2026-11-05, run 290): fix edg home ORDER by declaring a class local EARLY and leaving a code-free statement at its old declaration point -- an empty-ctor class declaration in the middle of a block is a code BARRIER (it changes what the following expression reads from registers), so moving the declaration alone costs bytes; keep a pad object / `if (1) {}` where it stood (post0b 4F2DC 95.770676 -> 95.8421, frame / length unchanged) <a name="kit-cccliv-agent-c-run290"></a>
+
+_Commit (agent-c): d8c2d3294 (post0b 4F2DC NM donor, 95.770676 -> 95.8421, length 1064 = target, frame 424 = target)._
+
+**The lever.** kit CCCLII's -g3 names put the target's homes in the order hits, start (M-188), e (M-200), d (M-212),
+dir (M-224); ours had d / dir first and start / e far below. Declaring `V3 start; V3 e;` right after `hits` gives the
+target's four homes, but on its own it changes the code (1040 bytes: `d * k` then reads d's copied registers instead of
+reloading d -- the run-289 note "declaration position of a class local is not free"). The cause is the DECLARATION
+STATEMENT, not the home: an empty-ctor class declaration between `d = dir;` and the product is a code-free statement
+that still separates them. Putting ANY code-free statement back at start's old position restores the target's code:
+the existing pad object (`PadK<4> pz;`, moved there), `if (1) {}`, `V3 q;`, `V3();`, `PadK<1>` -- all 1064 bytes,
+95.7932 with start alone. The early `e` then needs its ctor body as a member call (`e.set(a, b, c)` with
+`void set(f32 a, f32 b, f32 c) { x = a; y = b; z = c; }`, 95.8421); `e = V3(...)` (by-value operator=) is 1104-1116
+bytes and member stores `e.x = ...` are 1052. Recipe: for a home that sits too low, declare the variable earlier and
+leave a code-free statement (pad object or `if (1) {}`) where the declaration was; re-check length first.
+
+**Frame accounting (NCC -O2), measured:** a named local or pool temp that ugen never references does not take frame
+space unless something referenced is homed below it (a mini body with only `mid.set(a)` drops the unused named V3s
+entirely); named scalars that are only ever in registers (4FD00's `p1` / `p2`) DO reserve their homes (block-nested
+`p1` / `p2` land below the pool and grow the frame by 8). Homes keep creation order, so moving one referenced object
+shifts every later one -- compare M-relative offsets (`/tmp/claude-1000/c290/t1/hmm.sh DONOR.o TARGET.o FUNC`
+prints offset - frame sets, T-only / O-only), not raw sp offsets.
+
+**4F2DC, what is left (95.8421).** M-relative pool: target `d = dir` by-value operator= parameter / return-copy temp
+-244, product -264, add return copy -292, add result -312, end -340 (below the pool), outgoing args -408..-388.
+Ours: v-temp -284, product -296, add -344, end -256 (named). end inside a nested block with the pad object moved to a
+late nested block gives the target's v-temp -244 (frame 424) but the add operand temp then binds at the nested block
+top instead of the frame top (95.68); end as a by-value parameter (`e.mulk(start + d * k, start)` member or free,
+`s *= KV; if (1) {} set(...)` inside): v-temp -268, frame 464-480 (95.46); `const V3 &end`, nested-only-end, cam
+expression (1072 bytes) / cam block scope, p / besti / cam declared early (no homes: flat), V3() stand-in + nested end,
+operand / member-order grids on the new base (32), zero-use sweeps (--lines 49-62, plain and --exprs): flat.
+
+**4FD00 (base 95.505974, unchanged).** `void sum3(V3 &o, int f, SV &s) { s.set(v0); o.set((s += v1) += v2); }` on ONE
+block-scoped `SV s` gives the target's single s home and 1004 bytes (95.45, frame 144) -- the chained += inside
+o.set() is what produces the target's double `move` pairs (`s += v1; s += v2; o.set(s);` is 980 bytes;
+`s += v1; o.set(s += v2);` 1004 but deeper pool). Folding p1 / p2 into the test (frame 136, s at the target's sp+68,
+every home but the set() parameter equal) costs 12 bytes (1016): the target evaluates both dots before the branch,
+i.e. p1 / p2 are named -- and the target's 20 unreferenced bytes BELOW the set(V3) parameter (sp+0..20) fit block-
+nested p1 / p2 plus a named `f32 r` in each dot expansion (both measured: they land below the parameter). What does
+not fit: each chained `+=` adds 4 bytes of pool ahead of the parameter (target parameter M-116, ours M-132; zero +=
+gives M-116); return-void / by-value / pointer-return / member `add()` / direct member arithmetic / loop forms all
+change the length (952-1276). const-ness grid of every SV / V3 member (63): invariant.
+
+**36694 (base 95.89888, unchanged).** A named `f32 k = s` in operator* moves the product __V to the target's M-68,
+and operator/ WITHOUT k then gives frame 240 / 712 (95.64): homes closer, registers worse. The target's sub chain
+120 -> 140 -> 92 (fresh return copy, final copy below the sub temps) is consistent with the subtraction sharing a full
+expression with the product (`p - n * dot` without `a`) but every such shape is 704 bytes; operator= by value into r,
+an inline `split(V3 t, ...)` by-value parameter (px / py / pz then address-taken: 720-736): lower.
+
+**Other negatives.** 34890 loop-condition spellings (20): flat (a2 / v1 vs our v0 / a1 is the loop test temp).
+gui 0F04 next() / nextp() / nextc() / nexti / nextq per-packet grid (100) and zero-use sweeps (plain 107, --exprs
+lines 66-85): flat -- the target hoists only the xh MAX zero (a3) because its yh MAX temp is a0, ours v1 (free at the
+hoist point). Home maps equal to the target (colour-only residuals): 4B620, 34890, 3B9C0, 54E78, 46790, 42938,
+4BAF4, gui 4568 / 329C / 3714, game_uso 3558.
+Later in the run, all flat: 200 random single / paired `if (1) {}` insertions each on 4F2DC (new base), 36694 (base
+and the named-k / no-k operator/ shape), 4FD00, gui 3714 / 329C / 4568, post0b 54E78; 48AEC `register` / `const`
+named n in mtx() / next() (frame stays 360) and the A / B / gctx order x function-scope c2 grid (17); 4F2DC
+`const V3 &dk = d * k;` + `start + dk` (1060 bytes) and `V3 end; end = ...` through the by-value operator= (1092);
+game_uso 3558 x / y matrix-row term orders x the stage / vb store interleave (108, spelling-grid).
+gbi MAX / MIN spellings (`MAX(E,0)` / `E <= 0 ? 0 : E` / `0 < E ? E : 0`, MIN mirrored) on 4BAF4 (3 + 4 sites,
+64 + 256), gui 3714 / 329C / 0F04 texrect xh / yh / xl / yl (81 each), 0F04 coordinate spellings (36): all flat.
+54E78 `p.n * p.d` forms (const-ref s, free / member / Plane::pt() helpers, named d; 15): flat or lower. 34890 loop
+inside make() / a walk() inline (320 bytes), named `void *d` loop value (homes shift): lower. 4FD00 as an unrolled
+2-trip loop over arrays (1004 bytes but opcode similarity 80 % vs the straight body's 98 %): not the original.
+gui 4568: texrect MAX / MIN spellings (81 + 81), arm-1 shift spellings `x << 2` / `x << 1 << 1` / `x * 4` x y / xh / yh
+(81): flat; any extra code-free test next to arm 1's `if (y << 2) {}` (28) is 828 bytes (79.8). The arm-1 residual is
+a one-step t-ring phase (the target's xl & 0xfff in t4, ours t3).
+
+## kit CCCLV (agent-g 2026-11-05, run 288): three no-code ring / colour levers close post 30AF4 (99.555 -> 100, EXACT 2112 bytes) -- a store-then-read-back of the same word through a DIFFERENT-SIGNEDNESS type keeps the stored value a ugen ring temp and spends one extra ring slot; a K&R parameter's signedness decides whether the jump-table index reuses the switch temp; a constant written plain (not `K + 0 * x`) joins the function's coloured constant LR; and a literal between two jump tables in RoData is a source literal, not an extern <a name="kit-ccclv-agent-g-run288"></a>
+
+_Commits (agent-g branch): c19e69b82 (99.555 -> 99.905), acd4c8390 (NM 99.905 -> 100.0), 8f536a771 (EXACT on the ROM path via
+the kit CCCXLVII match_imports natural-pin recipe: `src/match_imports/gl_func_00030AF4.c`,
+`scripts/match-origins-gl_func_00030AF4{,-nm}.ld`, `scripts/match-bindings-gl_func_00030AF4{,-nm}.json`, 37
+`snw_port_gl_func_00030AF4_*` carriers; the linked body equals all 528 target words on the first link)._
+
+**Reading the residual first.** The run-287 hand-off said "two register colours left"; a straight objdump diff showed
+four separate families: (a) the pre-switch hoist in v1 (target v0) with case 5 / 6 one colour up (D_m a0, 13 a1); (b)
+the switch-1 index `sll t9,t9,2` (target `sll t0,t9,2`) and every t-ring temp of cases 0-2 one slot early; (c) case
+2's `16` in a ring temp (target v1); (d) case 9 `sub` coloured v1 (target ring t9) with cases 9-11 + the tail two ring
+slots LATE. Treat a "t-ring offset" as a COUNT: walk the paste of target | ours and note where the offset changes (+1
+at the switch index, -1 at case 2's 16, +2 in case 9) -- each change point is one lever site.
+
+**Levers (each emits no code):**
+1. *Read-back through a different-signedness type* (case 9, family d). `*(s32 *)sv = sub; if (*(u32 *)sv == 1)`:
+   uopt forwards the store, but the u32 read of the s32 word is a no-code `cvt` of the forwarded value, so `sub` is no
+   longer one coloured web with two uses -- it stays a ugen ring temp (target `lw t9,60(sp); sw t9,0(v0); bne t9,at`)
+   and the cvt takes the next ring slot (t0), which is exactly the +2 the tail needed. `*(s32 *)sv == 1` (same type)
+   colours sub v1; a volatile read-back gives t9 but an extra `lw` (2116 bytes). Same word, well-defined value.
+2. *Parameter signedness and the jump-table index* (family b). With `u32 mode` ugen computes the index in place
+   (`sll t9,t9,2`); with `s32 mode` (the value is stored to an s32 field and only compared / switched on) the index
+   takes a fresh ring temp (`sll t0,t9,2`), `sltiu` range check unchanged. `switch ((s32)mode)`, `mode + 0`,
+   `mode + 0 * x` and other expression spellings of the SWITCH OPERAND do not move it -- only the declared type does.
+3. *Plain constant joins the coloured constant LR* (family c). The constant {16} was coloured v1 for cases 5 / 8
+   (zdbug:5 `>>>active<<<{16|1}`, `const 16`, live bbs of both cases); case 2's `gl_cmd = 16 + 0 * prev` kept its 16 as
+   an operand of the folded uadd ({16|0}, no LR), so it was a ring temp. Written plain, case 2's 16 is one more
+   use of the {16|1} LR and lands in v1 like the target. Check the constant's `>>>active<<<` record before adding
+   a fold on a constant store: a fold there REMOVES the constant from its LR.
+4. *Undo compensating folds after a real fix* (family a). The run-287 second `0 * (int)(sv)` on the case-6 D_n line
+   only offset the case-9 ring; with lever 1 in place one fold gives the hoist v0, D_m v1, 13 a0 (the second fold's
+   ucvt LR `{844|5}` took v0 ahead of the hoist: ord 2 vs 13, a shared neighbour).
+
+**Literal vs extern between jump tables (decode fix, needed for the port).** The f14 store read `lwc1 $f4,0x18AC(at)`
+between the switch-1 table at 0x1874 and the switch-2 table at 0x18B0 (switch-3 at 0x18E0). With `extern f32
+D_30AF4_flt` IDO packs the TU's tables contiguously (0x00 / 0x38 / 0x68 from the .rodata base), so no single .rodata
+placement reproduces 0x1874 / 0x18B0 / 0x18E0. A float LITERAL that needs the pool (0.3f, not 0.5f which is a `lui`)
+is emitted in code order between the tables (0x00 / 0x38 literal / 0x3C / 0x6C). The value: bootup.uso RoData word
+0x18AC = ROM 0xD9FE44 + 0x18AC = 0x3DCCCCCD = 0.1f (the jtbl entries around it read as game_libs text + 0x1466C). So
+any extern float pinned INSIDE a run of jump tables is a literal: read its value from the RoData and spell it.
+
+**Port checklist that held:** callees and the void aliases at their callee's address (baked jal words), the two
+arena addresses at the values in their names, `.rodata 0x1874`, everything else 0; `nm -u` of the stripped object
+lists exactly the symbols to pin; md5 of the linked 528 words = expected; `sha.py`-style `text_bytes_for` gives the
+`raw_sha256`; ROM path logs `replace-body-skip: ... already matches donor`, NM path `replace-body ... 0x840->0x840 +
+imported 186 donor reloc(s)`.
+
+**Negatives (same run).** post0b 59E80: dead stores `r1 = 0` / `r2 = r1` / `r1 = r1` and `if (1)` / `if (c->dl)` /
+`if (o)` after every packet (67 + 67): flat 98.553. The zdbug:5 dump explains the 0x402 pointer: uopt cuts the
+straight-line packet run into ~3-packet nodes, the 0x402 packet's `n` (dl->count++) is the node-2 -> node-3 LR {0|1}
+(col t1) and its pointer is a node-3 var (v0); the ClipRatio constants 3 / 0xFFFD are coloured t0 / t1 in nodes
+8-11 only, and as1 hoists their `li` up the one real basic block to the first point t0 / t1 are free (ours: line 37,
+target after the 0x402 packet) -- so the visible `ori t1,0xfffd` position is a CONSEQUENCE of the 0x402 pointer's
+colour, not a separate lever. post0b 493AC first-loop test spellings (13 x 5, `!= 0`, `!!`, `for (;;)`, `(int)`,
+`- 0`, `while (1) { if (!...) break;`) x test() spellings: flat 99.432. post0b 469A8: the 0x254 store / 0x158 store
+with read-backs through `*(char **)` / `*(int *)` / `*(u32 *)` of the D word (16): flat or 416 bytes. post0b 3BE1C off
+spill (80 vs 84): every `0 * (int)(x)` fold re-cast (u32 / s32 / long / unsigned) or removed (51), and paired
+code-free cast tests around the material call (53): off stays 80 (narrowing `(u16)off` gives 88 but +8 bytes). post
+31A74: the 0x1CAC0 store moved to every tail position / `if (1)` split / inside the call arguments / through a
+pointer (72 + 84): best 97.73 = base; after the clamp the only residual is `sb a2,35(sp)` in the jal delay slot
+(target before the jal, `swc1` in the slot). post0b 415A4: `tA.a28 = 1030; tA.a28 |= 6; tA.a28 |= 0x400` and
+`= ... | 6 | 0x400` read-back forms (108): the forwarded constant folds (440 bytes, 95.18).
+
+**Addendum (same run): post0b 37540 NM 96.429 -> 96.518 (c12fae76e) by the kit CCCLII -g3 name map.** Map the
+target's sp offsets to M-relative words (frame 192: 168 = M-24, 156 / 144 = M-36 / M-48, 108 = M-84, 100 = M-92, 96 =
+M-96) and compare with `g3l.sh` on ours: the target homes hx right under hy (its call-spill word 168 IS hx's home),
+v9C above v90, then the unused p1 / p2 pads, v6C, b, a, s, ab. Declaring them in that order (v9C moved up, a code-free
+`if (1) {}` left at its old mid-block declaration point, kit CCCLIV) gives frame 192 with s / a / v6C / v9C / v90 at
+the target words; 96 decl orders measured, b-a-s-ab and ab-a-s-b tie best. Left: the call spill of hx still uses the
+inline gr()'s named `x` home (M-120 = 72, target 168) and the ctor-built v1 sits 8 bytes low (M-132, target M-124);
+L3 at nine declaration positions / nested / macro, and five gr() spellings (by-reference x, x read after y, clear
+outside gr, `if (x) {}`, no `if (0)` param keep): flat or worse. 3B6A0's -g3 homes already equal the target's (31
+register-only diffs).
+37540 hx spill, mechanism confirmed: the call spill of a copy-propagated `hx = gr(...)` lands in the INLINE's named
+`x` home (uopt keeps x's web, hx is propagated away); writing the reads in the caller through a block-local copy
+(`{ Node *n = s; if (0) { n = 0; } hx = n->v60.x; hy = n->v60.y; hz = n->v60.z; n->v60.x = 0.0f; }`) puts the spill in
+hx's own home (168 = target) and v1 at the target's 68..76, but the named n is loaded early into v1 (target: s into v0
+at the reads) and the operator= parameter-temp word order flips: 95.04 (10 spellings of that block, 92.3-95.04).
+31A74 tail, ordering read: with the 0x1CAC0 store written after the sel clamp the only residual is the jal delay
+slot (ours `mfc1 a1; swc1; jal; sb a2,35(sp)`, target `mfc1 a1; sb a2,35(sp); jal; swc1`): as1 fills the slot with the
+LAST independent instruction, and ugen emits the call-crossing home store of sel right before the jal, after the
+statement's own stores -- any extra spilled value (`if (mode) {}` near the call: `sw a3,24(sp)` in the slot, 568
+bytes) takes the slot instead. So the target's swc1 was emitted AFTER the sel home store; no spelling of the store
+statement (before / after / inside the argument list, 156 variants) gets there.
+post0b 59E80 NM 98.553 -> 98.663 (a906c3cb4): an all-pairs `if (1) {}` grid over the first ten packet gaps (46
+variants) found the pair after the 0x402 and the 0xC02 packets -- each alone byte-identical (that is why the single-
+position grids of runs 202-287 were flat) -- which gives the 0xC02 / 0x2000 packet pointers the target's v0 / a0. The
+0x402 pointer (target t1) is unchanged; re-run a FULL pair grid on code-free BB splits even where every single
+position is flat.
