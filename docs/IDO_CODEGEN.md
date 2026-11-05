@@ -14720,6 +14720,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCCXLVII (agent-g 2026-11-04, run 284): **a register in an LR's `forbidden` list with no coloured interfering neighbour is a CALL RESULT (an int-returning call inside the LR defines v0): give the unused-result call a void prototype, raise the LR with n-fold folded uses `+ 0 * (int)(x + x + x)` until it colours first, hold competing selectors in an unused PARAMETER (fresh s32 web, no cvt phantom, no new home) and reuse that variable for a disjoint role that needs the same colour**](#kit-cccxlvii-agent-g-run284) -- _post 2E354 EXACT 3684 bytes (NM 99.9403 -> 100.0 d42b7bffe; match_imports port with natural pins, spliced on both paths 024ca4d51); 30AF4 (sv = promoted constant LR, not the variable), 31A74 tail, 493AC, 3BE1C, 3B6A0, 415A4, 33094 negatives._
 - [kit CCCXLVIII (agent-c 2026-11-04, run 287): **replace a CSE'd folded use that fixes one colour but shifts the ugen ring with a PHANTOM int (`pk = (int)<existing load>` at the block top + `0 * (pk + pk)` on the call argument); NAME a call argument in a local before the call to have ugen evaluate it first (argument-load ring order)**](#kit-cccxlviii-agent-c-run287) -- _post0b 3AE58 EXACT 380 bytes (NM 99.79 -> 100, 3415a1384); 3B9C0 99.07 -> 99.12 (col phantom held in the unused parameter, 432e6a7d8); kit CCCXLVII lever (a) checked on every agent-c body (flat), 3B9C0 / 46790 / 54E78 / 34890 / 4B620 / E2D0 negatives._
 - [kit CCCXLIX (agent-g 2026-11-04, run 285): **lever (a) (void prototype) only bites once a coloured LR spans the call; a folded `0 * (int)(x)` is itself a coloured `umpy{x}{0}` LR that can take the target's register; folded uses of a copy of a promoted global are credited to the global's LR -- fold the copy where the global is dead; a pre-switch `lui v0` base is reproducible as the `ucvt` CSE LR of an int cast that occurs twice (not the variable); diff with registers normalised to find structural residue first (a bnel/beql arm-order flip)**](#kit-cccxlix-agent-g-run285) -- _post 30AF4 NM 98.08 -> 98.48 (void switch-3 emits + 44F18, 01f296461) -> 98.65 (case-4 / case-6 folds + fC through sv, 8455284df) -> 98.79 (register-normalised diff exposes a bnel/beql arm-order flip, aaded3d9b); hoist in v0 reachable (98.29) but moves the selector spill 28 -> 24; blind lever (a) flat on 31A74 / 493AC / 3BE1C / 469A8 / 415A4 / 59E80 / 33094 / 35B1C / gui 2DE0._
+- [kit CCCL (agent-g 2026-11-04, run 286): **a spill slot one word LOW with every home equal is a reserved, never-used spill word of a CSE temp (here the bare `ucvt` of an int-cast base); fold a defined zero into the def (`+ 0 * (int)(flag)`) so the CSE becomes a `uadd` without the reserved word; find it with a one-at-a-time removal grid that prints the spill slot**](#kit-cccl-agent-g-run286) -- _post 30AF4 NM 98.790 -> 98.797 (460243ebd, spill 24 -> 28 = target) -> 99.138 (4ab68f765: case-9 `sv = (u32)&gl; if (sv) {}` def coloured v0 + void 42364 alias + store / test through the global; the run-259 ring-compensating 13 fold dropped; everything after case 6 now word-exact); hoist + spill together reachable (98.34) but the hoist loses v0 to the case-6 D_30AF4_m load LR; jump-index ring mapped (case-2 / case-6 folds compensate it); 3BE1C off-spill negatives._
+- [kit CCCLI (agent-c 2026-11-04, run 288): **the NCC frame is sized by the home of the deepest SPILLED variable: move a spilled macro-block local to a function-scope variable under an unreferenced class-type pad (`PadK<11> pz; Gfx *g;`) to set the frame; `E <= 0 ? 0 : E` for a gbi `MAX(E, 0)` drops the pre-branch zero; the kit CCCXLVIII phantom lever is flat across the register-only list**](#kit-cccli-agent-c-run288) -- _post0b 42938 frame 112 -> 88 = target (98.11311 -> 98.118256, 9fa4d88b9); 4BAF4 97.54 -> 97.88 (8d6a4a7ce); 48AEC 97.48 -> 97.53 (two --exprs folds, dbf0cc21d / 97bbf6094); game_uso 3558 operator+= x, y, z + k2 operand swap 93.68 -> 93.85 (0f4c40fda); byte-identical lever removals 5A2C4 / E68; phantom / naming negatives on 4B620, 34890, E2D0 (arg4 is a coloured parameter LR), 46790, 54E78, 5A2C4, 3B9C0, gui 329C / 3714 / 0F04 / 4568, 48AEC, 36694, 4FD00, 4F2DC._
 - [kit CCCXLV (agent-g 2026-11-04, run 283): **an `or tN,vM` copy that no holder spelling moves is uopt copy propagation (the register is the source's u8 -> int cvt LR; deleting the copy variable gives the same bytes): put the copy in the variable the target colours that way (2E354: the switch-6 selector, t0), kill the propagation with a value-preserving re-read of the source on the use path, then a BB split after the copy; zero-use-sweep.py on a mangled-name NCC donor needs `--lines` (otherwise it sweeps every body and most probes fail to compile)**](#kit-cccxlv-agent-g-run283) -- _NM post 2E354 99.9294 -> 99.9403 (5f0f54272); 2E354 pick / 0x15 holder (cfe switch temp + cvt phantoms take v0), 493AC / 3B6A0 / 3BE1C proper-window sweeps, 30AF4 (un-propagated sv), 415A4, 59E80, 31A74, 35B1C negatives; tools /tmp/claude-1000/g283 (g2.py insertion grid, mk*.py role movers)._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
 - [kit CCLXXIII (agent-g 2026-10-30, run 247): **post0b 5F5F0 EXACT: a whole register group colored one step off (constant f26 vs f22, v[1] / v[2] f14 / f16 vs f16 / f18) = EXTRA uopt LRs the target never had -- delete the intermediate temporaries (work in the existing array: `v[i] *= 10.0f; xLook = v[i];`), then restore the lost edg home words with unused volatile locals placed by grid (frame + uopt spill slots)**](#kit-cclxxiii-agent-g-run247) ; coloring-dump diagnosis recipe (NCC -Wo,-zdbug:6 + coloring-solve.py); audit NM FRAMES first (5A2C4's run-243 grid had grown the frame 0xC0 -> 0xE0); 3B9C0 frame layout via named ia minus the self_al alias -- _EXACT 5F5F0 (66b93b941); NM 4C5E4 89.53 -> 89.58, 5A2C4 95.16 -> 95.17 (frame = target); 31C0 / E2D0 / 48510 / 59E80 / 46050 / 3B9C0 / 4B620 negatives._
@@ -55915,3 +55917,175 @@ bootup E2D0: `if (arg4) {}` forms x seven `dot *= 1.0f + arg4` spellings (42): f
   the same cast it is used: `sw t0,28(sp)` / `lw t0,28(sp)` around the 42364 call; with a separate case-9 cast the
   word stays reserved but unused); 415A4 1030 / |6 / |0x400 BB-split grid (16, flat); 493AC loop-test spellings
   (64) and inline test()/p34() forms (8); 469A8 fold forms (`0 * (arg1 + arg1)`, `& 0`, `| 0 * x`; 42, flat).
+
+## kit CCCL (agent-g 2026-11-04, run 286): a selector spill one word LOW (ours `sw t9,24(sp)`, target 28) with every home equal is a RESERVED spill word of a CSE temp that is never used -- here the bare `ucvt{&gl_state}` of an int-cast base (`sv = (s32)&gl_state`); folding a defined zero into the def (`sv = (s32)&gl_state_30AF4 + 0 * (int)(flag);`, flag = 0 there) makes the CSE a `uadd{ucvt}{0}` with no reserved home and the selector spill moves back to 28 (post 30AF4 NM 98.790 -> 98.797, same length); then a case-local `sv = (u32)&gl; if (sv) {}` def coloured v0 + dropping an old ring-compensating fold: 99.138 <a name="kit-cccl-agent-g-run286"></a>
+
+_Commits 460243ebd (spill slot, 98.797) and 4ab68f765 (case 9, 99.138) (agent-g run 286). No exacts; no clip change._
+
+0. **Biggest step: a case-local def coloured where the target holds it (98.797 -> 99.138).** The target's case 9 is
+   `jal; lw t9,60(sp); lui v0; addiu v0; ...; bne t9,at; sw t9,0(v0)`: sub a ugen temp, &gl_state in v0. Ours had sub
+   coloured v1 (two uses: the store and the `== 1` test) and the address as a temp. Fix, all in case 9:
+   `gl_func_00030AF4_42364v(3);` (void alias, kit CCCXLVII -- the int result forbade v0), `sv = (u32)&gl_state_30AF4;
+   if (sv) {}` (a fresh def kept a VARIABLE by the code-free test, coloured v0), and both the store and the test
+   through the global (`gl_state_30AF4.f0 = sub; if (gl_state_30AF4.f0 == 1)` -- the test reads back the value just
+   stored, so sub drops to one use and stays a temp). That alone is 98.41 because the ring shifts; it only pays with
+   the run-259 compensating fold removed (`gl_cmd_30AF4 = 13 + 0 * (int)(sub)` -> `13`): every word after case 6 then
+   matches. LESSON: when a fold was kept only because it re-aligned the ugen ring, re-test removing it after every
+   structural fix -- old compensators become the residue.
+
+1. **Find the reserved word first.** Listing the `N(sp)` offsets of both objects (`grep -o "[0-9]*(sp)" | sort | uniq -c`)
+   showed every home identical and only the mode-selector spill one word low. A one-at-a-time removal grid of the
+   body's folds / casts (fx.py printing the spill slot next to the score) isolated the case-6 `((GlState30AF4 *)sv)->fC`
+   store: with it through the global the spill was 28 again (but 2108 bytes). The int-cast base occurring twice is a
+   `ucvt` CSE LR, and that LR keeps a spill home even when it is coloured; folding `+ 0 * (int)(flag)` into the def
+   changes the CSE expression and the word is gone. `+ 0 * (int)(prev / mode / sub / D_30AF4_e)` folds do NOT do it
+   (prev / mode / sub: the spill stays at 24; mode makes the selector a non-CSE).
+2. **Hoist + v0 still open.** With the new def plus `if (sv) {}` after it and a separate case-9 cast
+   (`sv = (u32)&gl_state_30AF4; *(s32 *)sv = sub;`) and the run-259 `wv = 523 + 0 * (int)(sub)` fold dropped, the target's
+   pre-switch `lui; addiu` hoist appears AND the spill stays at 28 -- but the hoisted `uadd` LR (zdbug:5 `{120|0}`,
+   adjsave 0.67, blocks 7-9 + 62-78) takes v1, because the case-6 `D_30AF4_m` load LR (`{638|0}`, adjsave 0.8, target v1)
+   colours first and takes v0: 98.34 < 98.80. Folded sv uses inside case 6 are not counted to `{120}` (they grow the
+   code to 2120-2144), extra code-free `if (sv ...) {}` forms in the head are all one use (14 forms, identical), voiding
+   gl_func_000460D0 is inert here.
+3. **The jump-index ring.** Register-normalised diff (t-regs -> T) of the base: the only structural residue is the
+   hoist; the t-ring is one behind from the switch-1 index (`sll t9,t9` vs the target's `sll t0,t9`) through case 2,
+   where the run-207 `16 + 0 * prev` fold re-aligns it by putting the 16 in a temp instead of the target's v1
+   (dropping that fold gives v1 but leaves the whole tail one behind, 98.30), and from case 9 on. Dropping the run-259
+   `13 + 0 * (int)(sub)` fold instead gives cases 3-6 word-exact (a0 = 13 like the target) but 98.65. Switch 2 in the
+   TARGET reuses its index register (`lw t2,28(sp); sll t2,t2`), so the switch-1 non-reuse is specific to the block
+   that defines the selector CSE. Flat: 22 selector spellings (`(u32)` / `(s32)` / `+ 0` / `- 0` / `(u32)(long)` ...; the
+   `| 0` / `* 1` / `& ~0` / `<< 0` forms break the CSE, 2108), a selector local `m` (3 declaration points x 3 assignment
+   points x 3 use sets, copy-propagated, flat), folded uses on case 0's argument / flag store (16, flat).
+* Negatives (don't repeat): pointer-typed carrier for the base (unused K&R `arg2` re-declared `GlState30AF4 *`: the
+  constant is propagated, 2104-2108); the 48-way grid case-6 / case-9 base form x `if (sv)` x D_n fold x void 460D0.
+  On the 99.138 base: zero-use sweeps (in-tree, `--exprs`) over every window of the body, a code-free
+  `if (mode / sub / prev / sv / flag) {}` insertion after every statement (350 probes), selector spellings for both
+  switches and `mode != 4` (60, incl. `*(&mode)`), a selector held in w / wv / arg2 (homed, 2108), the pre-switch hoist
+  again (with the new case 9 every hoist form is 2108 or v1): all flat. The ring compensation for the switch-1 index
+  is now the run-207 `16 + 0 * prev` case-2 fold alone (dropping it: 16 in v1 like the target, tail one behind, 98.10).
+* post0b 3BE1C (same symptom, NCC): off spill sp+80 vs the target's 84 with q / cx / cz homes equal. Removing a
+  pre-q local moves q and the spill together (frame 240 -> 232); moving any post-q declaration before q, merging
+  the else-branch pointers (v0 / v1 / nx) into va / vb / vc or the s16 pairs into hi / lo, rewriting MAXS / MINS without
+  the outer ternary, removing each of the seven folds, the second t reload or the n_al copy: the spill never reaches
+  84 (best 99.166 = base). The reserved-word hunt (step 1) is the next thing to run there with zdbug:5.
+* post0b 59E80 (NCC): register-normalised diff shows ONE structural residue, `ori t1,zero,0xfffd` at word 37 (ours)
+  vs 74 (target). Not a code-motion issue: the 0xFFFD (and 3) constant LRs are materialised at the start of the long
+  post-call block and as1 places the `li` after the last read of the same register as a temp (anti-dependence). The
+  target's t1 is the 0xBA000602 packet pointer (word 70) before it holds 0xFFFD, ours puts that packet in v0, so the
+  li floats up to word 37. Fix the packet colour (zdbug:5 `{64|0}` col v0 in bb 3) and the constant follows. Flat
+  this run: `if (c->dl) {}` / `->count` / `->buf` / `if (c) {}` at each of the 6 packet gaps (one position, after
+  0xBA001001, moves the constant to word 62 in t0: 98.21), 64 next() spelling combos over the first four packets.
+* Scan recipe used this run (`/tmp/claude-1000/g286/stscan.py`): objdump both objects, normalise registers (t/v/a/s,
+  $f), `N(at)` / `N(R)` displacements and `lui` immediates, then unified-diff: on the twelve agent-g targets only
+  30AF4 (hoist), 31A74 (tail store order), 33094 (else-arm float), 35B1C (one store), 3BE1C (off spill), 415A4 (|6),
+  59E80 (0xFFFD li) have structural residue <= 12 lines; 469A8 and 493AC are pure colour residue (0 lines).
+* post 30AF4 hoist colour, priority is NOT the blocker: with the hoist variant (new def + `if (sv) {}` + separate
+  case-9 cast + run-259 `wv` fold dropped) the hoisted `uadd` LR `{120|0}` reads adjsave 0.667 with uses in 3 blocks,
+  0.714 with 4, 1.111 with 9 (`if (sv) {}` at the case-6 head, the D_m == 4 arm and each sub-switch arm; the case-6
+  D_30AF4_m LR drops to 0.571 because the tests split its blocks) -- and it STILL colours v1 with v0 forbidden while
+  the lower-priority D_m LR takes v0. So the two are not coloured in priority order: at least one of them is an
+  unconstrained LR (kit CCCXL: unconstrained LRs go in LR-id order, D_m `106` before the hoist `204`). The hoist
+  expression's id is late because the `uadd{ucvt}{0}` node is only created when the folded def is propagated into
+  case 6; folds on other variables (sub / prev / arg2 / D_30AF4_e / mode) keep an earlier `uadd{ucvt}{umpy}` node but
+  lose the hoist register or the spill slot (91.7-98.33). Next: make the D_m load appear LATER than the hoist node
+  (or make the hoist constrained), not raise its adjsave.
+
+## kit CCCLI (agent-c 2026-11-04, run 288): the kit CCCXLVIII phantom lever applied across the register-only list -- flat everywhere it was tried (the target's extra register occupancy is not a phantom-shaped LR in any of them); the IDO frame is sized by the HOME OF THE DEEPEST SPILLED VARIABLE (post0b 42938 frame 112 -> 88 = target); `E <= 0 ? 0 : E` for one gbi MAX (4BAF4 97.54 -> 97.88); a two-site operand-order gain on game_uso 3558 (93.68 -> 93.85); FP phantoms through `0 * (int)(pf + pf)` cost a cvt; `if (pf) {}` on a float phantom emits code <a name="kit-cccli-agent-c-run288"></a>
+
+_Commits (agent-c): 9fa4d88b9 (42938 frame, 98.11311 -> 98.118256), 8d6a4a7ce (4BAF4 MAX form, 97.536644 -> 97.87943),
+0f4c40fda (game_uso 3558 NM donor: `Vec3::operator+=` in x, y, z order + `k2 = (mag - s0->fB8) *
+s0->f118`, 93.67857 -> 93.85317, length 1008 unchanged; either change alone LOWERS the score -- 92.86 / 92.90 -- so a
+two-site grid is needed), 56e7deabc (post0b 5A2C4 NM body: the run-263 `if (1) {}` dropped, NM .text byte-identical;
+dropping it together with the run-260 `+ 0 * (int)(p)` fold is NOT identical -- 98.14 at 1800 bytes -- the two levers are
+redundant with each other, keep exactly one), 8f4e71fa8 (bootup E68 NM body: the run-210 `if (1 + 0 * (int)(import_8001FFA0_h[1])) {}` back
+to `if (1) {}`, NM .text byte-identical), 4fde6d25b (4BAF4 NM donor: the paired `if (iz != iz) {}` / `if (r) {}`
+dropped -- any two of its four empty-test levers are redundant -- NM .text byte-identical), dbf0cc21d + 97bbf6094
+(48AEC NM donor 97.48362 -> 97.51253 -> 97.53179: `gctx = GS->ctx + 0 * (int)B;` in the else arm -- B is assigned on
+every path before the branch -- then `gctx = GS->ctx + 0 * ((int)(mt) + (int)(mt));` in the then arm; both found by
+`zero-use-sweep.py --exprs` over the draw() body in two rounds. Lesson: rerun the --exprs sweep over WHOLE donor bodies
+in 40-line windows (the 200-variant cap truncates a whole-body run); it was flat on 42938 / 4BAF4 / 0F04 / 3B9C0 /
+4FD00 / 3558 / 36694 / 4F2DC / 34890 / 54E78 / 46790 / gui 329C / 3714 / 5A2C4 / E2D0 this run). Gains found by three forked sub-agents (fork B: 3558, fork C: 4BAF4 / E68,
+fork A: 5A2C4) and the parent (42938). Tools: `/tmp/claude-1000/c288/t1/phg.py` (phantom grid: DEFS x VALS x
+USES, `DECL=(old,new)` for the declaration, `INTREE=1` for in-tree units through ic.py, `COMBO_USES=k`), `rmb.py`
+(single code-free-lever removals with a byte-identical check)._
+
+**Phantom grids (kit CCCXLVIII step 1) that came out flat or lower:**
+- post0b 4B620 (count of appends 1-2 s3, target s0): `int pk = (int)a1 / this / 0 / d4 / S(0)` at four ctor positions x
+  folds on the first four append arguments (80): <= 99.61 (base 99.68). NCC folds a phantom set from a constant or
+  `this` away entirely. The s0 / s3 swap is a pool-temp assignment, not an occupancy: in the dump (`lrq.sh`) the
+  append-1/2 count is the same edg variable (M-32) as the count of appends 3+, and its LR is forbidden s0 by M-24
+  (addOK's kept `lo`, then the head / `this` temp of appends 3+, one BB-granular LR). The target's append-1/2 count
+  is therefore a different pool variable than the later counts. Also flat: append-1/2 inline choice grid (7 x 7),
+  the `if (0) { ... }` keep variants on addG / addOK (35), `if (1) {}` after every append / before d0 (96), loop
+  forms (`for` init, `AIter it(&arr)`, `while (it.next() != 0)`, 8), cur() / ref() choice for the seven loop-body
+  accessors (128), next() / cur() / ref() spelled `a->data[..]` (12: frame 168, <= 96.96).
+- post0b 34890 (ternary results v0 / a1, target a2 / v1): phantom `int pk = (int)o / o->h / o->list / o->flags`
+  before / after make() x folds on the for condition, bottom copy, body call, tail call (120): <= 99.40.
+  Link::data / next() typed X* / Mid* / Base* / O* / int (18), make() shapes (unnamed `new X(o)`, swapped
+  parameters, keep moved / dropped / doubled, named flags, X* return; 15), a named ternary result `d` (5), `me(o)`
+  style code-free inline calls before / after make() and in the body (21): flat. The dump shows the top ternary
+  result taking make()'s `o` copy (M-16, v0) and the bottom copy h's pooled slot (M-12, a1); the target's a2 / v1
+  are the colours of `a` (M-24) and the Base this (M-36).
+- bootup E2D0 (arg4 f14 / 1.0f f6, target f16 / f8): the coloring dump (`-Wo,-zdbug:6`, fn.txt) shows arg4 is a
+  COLOURED parameter LR (bit 82, P 16, colour 27 = f14, coloured last after d / dot / lim / -lim = f0 / f2 / f12),
+  so the target's f16 means one more FP LR interferes with it there. A float phantom `pf` (8 values x 4 positions)
+  with `if (pf) {}` uses adds a compare (+4..12 bytes, <= 90.3); with `arg1 + 0 * (int)(pf + pf)` it is removed
+  entirely (byte-identical) or costs a cvt. `f32 k = 1.0f + arg4` at six positions (copy-propagated: identical),
+  void / float / double / int prototypes on the two calls (16): flat.
+- gui 4568 (MAX temps v1, target t0; first divergence the t3 ring slot): phantom `pk` from c / c->dl / x / y / w / h /
+  n / buf / dsdx at the Scis-arm top x folds on tile / s / t / yh / dsdx / dtdy (108): flat; the first pkt through a
+  `nextP(int &k)` that hands its old count to a local (20): longer (<= 95.83).
+- game_uso 3558 transform block: direct vb member stores in all six orders with / without the `if (1) {}`, a named
+  `M4 *mm` block (14): <= 93.47 (the named pointer adds 8 frame bytes, the block structure is unchanged).
+- post0b 4FD00: sum() through a by-value SV return / reference accumulator / one caller-side SV (11): 54-83,
+  lengths 868-1112 -- the target's single SV home is not a shared caller variable.
+
+**The frame of an NCC body is sized by the home of its deepest SPILLED variable, not by the number of locals (post0b
+42938, 98.11311 -> 98.118256, frame 112 -> 88 = target).** All of 42938's edg locals / pool temps are `vreg` (M-4 ..
+M-100 in the dump), and only one value is spilled: the gSPViewport packet pointer `_g`, live across the
+`func_00000000(v)` argument call (`sw t4,40(sp)` in the delay slot, reload after). It is spilled to its OWN home, so the
+frame has to reach it: `_g` (the gDma1p macro's block-local) sat at M-72 -> frame 40 + 72 = 112; the target's 88 puts
+it at M-48. Diagnosis: deleting the call (no spill) gives frame 40; deleting setvp, the named rectangle locals or
+`Ctx *c` leaves 112. Fix: expand the macro through a FUNCTION-SCOPE `Gfx *g;` declared under an unreferenced pad
+object -- `template <int K> struct PadK { int a[K]; PadK() {} };` `PadK<11> pz; Gfx *g;` at the top of the body. A
+plain or volatile unreferenced `int pad[k]` is dropped by edg (frame 48 for every k); the class object with a
+user-declared constructor keeps its home, and k sweeps the frame 56..104 in 8-byte steps (k = 10 and 11 both give 88;
+11 scores higher). After this the register-normalised diff of 42938 is only reloc immediates, the vscale[1] /
+vtrans[3] halfword store order (positions of the vtrans[3] store and the setvp `if (1) {}`, 51 variants: lower) and
+register colours. Checked on the other donors: 3B9C0 / 4F2DC / gui 329C / 3714 / 4BAF4 / 0F04 frames already equal
+the target. gui 0F04's spill slot (target 124, ours 120, frame 264 both) is a ugen SPILL-AREA slot, not a home:
+a one-word PadK / volatile pad at any of 11 declaration positions moves it to 124 but the frame to 272 -- the target
+has an 8-byte spill area with only the upper word used.
+
+**`E <= 0 ? 0 : E` for a gbi `MAX(E, 0)` (post0b 4BAF4, 97.54 -> 97.88, fork C).** The second MAX of the 0xE4
+packet's w0 written as `(((s16)(...)) <= 0 ? 0 : ((s16)(...)))`: the zero is no longer materialised before the
+branch. `0 >= E ? 0 : E`, `E < 1 ? 0 : E`, `!(E > 0) ? 0 : E` and `(int)` / `(s16)` casts on the arms score the
+same; `0 < E ? E : 0` / `E > 0 ? E : 0` / `E >= 1 ? E : 0` are the original. Per-site MAX/MIN ternary-form sweep
+(`mx.py`: MAXZ / MAXG / MAXL / MAXR and the MIN analogues at every MAX / MIN site) on gui 329C / 3714 / 0F04 / 4568
+(also on fork B's structural-0 4568 variant) (32 each): flat; on the other 4BAF4 sites (singles, fork C): flat.
+
+**game_uso 3558 (93.68 -> 93.85, fork B).** `Vec3::operator+=` in x, y, z order (the tail `e += w`) together with
+`k2 = (mag - s0->fB8) * s0->f118` (target `mul.s f0,f10,f4`); either alone scores lower (92.86 / 92.90). LEFT: the
+transform block -- the target holds vb in f14 / f16 / f18 loaded at the block top (vb homed after init, reloaded:
+a split LR), ours keeps vb in memory because getPos(vb) takes its address; 12 + 10 + 81 reorder / interleave /
+register-vb shapes (fork B): <= 93.85 or length 960-1052.
+
+**gui 4568 lead (fork B, not a gain).** The pool variable M-8 holds next()'s `this` and is reused for every MAX /
+ternary result in the Scis arm; that LR is coloured a0 early and interferes with the `>>7` value, so a0 is forbidden
+for it (the target merges the two in a0). Writing the RDPHALF_2 append without a member call
+(`(Gfx *)(c->dl->n++ * 8 + (int)c->dl->buf)` in place of `c->nJ()`) removes the interference -- register-normalised
+diff 2 -> 0 lines -- but scores 96.28 (base 96.93): next()'s dl temp loses a use and dl / n swap v0 / v1 in every
+packet; 200+ retunes on top of it (next() spellings, folds, RDPHALF_2 forms, me()): <= 96.28.
+
+**Other forked negatives.** 54E78 (kept-parameter V3 ctor / operator*, 9; float phantoms through an int fold emit
+int-to-float code, 60; the `p.d != 2.0f` test / m[2][2] spellings, 40): flat. 46790 (idx-line spellings 90, ring-burn
+casts 18, BB-split 60, loop-body forms 36; parent: dst-line / load spellings 45): flat -- the t8 / t9 swap starts at
+`(c / 16) << 10` with every earlier instruction identical. 5A2C4 head-block phantom grid (64): <= 99.27. 3B9C0 int
+phantom local (frame grows, 98.99) / phantom in later-assigned locals (144): flat. gui 329C (second MAX pool temp
+M-52 colours a0; 96 folds, 27 n types, 100 append spellings, 162 MAX / RDPHALF forms, 72 phantoms, 30 named args),
+3714 (spr colours v0 at ord 2; 120 phantoms, 45 spr placements, 96 commutations, 162 MAX/MIN), 0F04 (the second MAX
+zero init hoisted; 192 + 81 + 81 + 81 + 30): flat. E68 (per-phase m variable 96.2 at 3052 bytes; phantom grid 98.52).
+48AEC (both mtx() calls unnamed / mtxN give the target frame 352 but 97.25). 36694 / 4FD00 / 4F2DC edg temp-shape
+levers (by-value / reference operands, named results, block scopes, declaration order; ~100): flat -- 4F2DC's
+residue is homes only (the copied operand of `start + d * -100000.0f` at the target's sp+412; start probably declared
+before d, but that changes length to 1052-1080).
