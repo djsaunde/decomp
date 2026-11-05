@@ -14745,6 +14745,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCCLXXIII (agent-g 2026-11-05, run 297): **a CONST REFERENCE to a by-value-assigned local (`d = dir; const V3 &dr = d; ... dr * k`) stops uopt forwarding the operator= parameter temp's words into the later reads: they load d's own home like the target (zero code); every extra reference is homed (+8 frame, byte-identical once a pad compensates); the 4FD00 set() copy temp is always the lowest temp (the target's 16 bytes below it are another aggregate temp)**](#kit-ccclxxiii-agent-g-run297) -- _post0b 4F2DC NM 95.842 -> 95.853 (ac6e6310a); 4FD00 / 4BAF4 / 3714 / 34890 / 46790 / 54E78 / 36694 / 4568 / 3558 / E2D0 / 329C / 4B620 grids + zero-use sweeps, ~7500 variants listed as negatives; 4F2DC by-value-end layout lead, 4FD00 pool-pointer (M-104) diagnosis._
 - [kit CCCLXXIV (agent-c 2026-11-05, run 300): **as1 breaks scheduling ties by SOURCE LINE (store on a higher line than the call = `mfc1 / spill; jal; swc1`); ugen's goto straightening (`goto z; c: CALL; return; z: if (1) {} STORE; goto c;`) keeps the moved store's own line, but only for the textually-first such block per function (later ones are not merged at all); random line-join / line-split sweeps find as1 ties cheaply**](#kit-ccclxxiv-agent-c-run300) -- _post 31A74 NM 97.73 -> 98.12 (tail spill / store pair; mode-1 lui/mfc1 pair left), post0b 3BE1C 99.27 -> 99.78 (one-line `nx = ..; fv = ..; do {`), 3B6A0 96.375 -> 96.65 (same loop head), 415A4 97.30 -> 97.35 (line split); 3BE1C residual = off spill slot (layout analysis + lead); 469A8 / 35B1C / 2DE0 / 493AC sweeps flat._
 - [kit CCCLXXVII (agent-c 2026-11-05, run 301): **a store the target issues AFTER a later test's instructions = the if(1)-split goto block placed in FRONT of the test (`q = ..; goto z; c: if (TEST) ..; .. goto e; z: if (1) {} STORE; p = q; goto c;`); in 35B1C the split merge needed c to start with the test (not with a recompute of the pre's `o + 4`) and real code in the goto's block; the moved block takes the line of the statement that jumps into it, so `do { if (0) { c: CALL; return; } } while (0); STORE; goto c;` raises a store without a split -- but any two raised merges per function still fail**](#kit-ccclxxvii-agent-c-run301) -- _post0b 35B1C NM 97.40 -> 98.77 (a581fd33f; left: one ugen temp short, uopt CSEs every p = o + 4 re-spelling); 31A74 100-combo harness negative; 3BE1C home map (MAXS `?:` temps at the bottom, spill = first slot below; target has one home fewer); NCC ctor reading of 35B1C = same 97.40; mix sweeps on 6 bodies flat._
+- [kit CCCLXXXI (agent-c 2026-11-05, run 303): **uopt folds only the FIRST identity OR on a known constant (lead with a value-preserving `| 2` to keep the target's ori chain); a coloured LR whose BB contains a call cannot take v0 (`if (1) {}` after the call frees it; zdbug:6 bit index = LR number); a folded address use makes an address CSE holding its own register; as1 line tie for the final store**](#kit-ccclxxxi-agent-c-run303) -- _post0b 415A4 97.70 -> 100 EXACT (69cb0aa5a, in-tree C, 13 D_415A4_* pins at 0); 3BE1C frame / colour, gui 2DE0 variable reuse, 493AC / 3B6A0 reuse negatives._
+- [kit CCCLXXXII (agent-g 2026-11-05, run 301): **RE-GRID after every gain: swap an old zero-code lever for a new one, then re-run BB-split / one-site-wrap / pad-position sweeps on the new base; an unreferenced class-object block (`{ V3 t; }`) is a BB split**](#kit-ccclxxxii-agent-g-run301) -- _post0b 54E78 NM 99.565 -> 99.638 (c9b02204a) -> 99.819 (e4a19c2a2); register-span scan for the variable-reuse lever (rs.py); reuse / split / wrap / swap / BB-split negatives on 17 bodies._
 - [kit CCCLXXX (agent-g 2026-11-05, run 300): **a zero-code inline whose by-value parameter receives an operand (`sq(p.n.y)`, `idv(d)`) turns that operand into a variable of its own (edg inline-parameter temp, homed) -- a colour lever on FP / int operands**](#kit-ccclxxx-agent-g-run300) -- _post0b 54E78 NM 99.529 -> 99.565 (f9094847c), 4BAF4 NM 98.009 -> 98.021 (314e7c489); one-site wrap / product-inline / paren / pointer-merge sweeps over 14 bodies otherwise flat; 4BAF4 one-register clip lead; 4FD00 / 34890 / 3B9C0 / 46790 / E2D0 / 4B620 negatives._
 - [kit CCCLXXVIII (agent-g 2026-11-05, run 300): **a value the target holds in a register LATER than every free one (and that colours first into a low register in your build) = its variable is REUSED for a later, non-overlapping value the target puts in the same register: write both through one variable (cast if the types differ) -- one live range over both, lower priority, the later register**](#kit-ccclxxviii-agent-g-run300) -- _gui 3714 99.922 -> 100 EXACT (3e5096d7f: spr reused as the rectangle packet pointer, spr t1 as the target); header-line lever has no other candidate; same-type local-merge sweep (46790 / 3B9C0 / 3558 / 329C), 329C packet-variable partitions x declaration order, 54E78 code-free tests flat._
 - [kit CCCLXXIX (agent-c 2026-11-05, run 302): **an if(1)-split goto block that will not merge or will not raise its store: grid the split's FORM, not only the c start -- `STORE if (1) {}`, `if (1) { STORE }` and a code-free test of a live value (`if (o) {} STORE`) merge and raise where `if (1) {} STORE` does not, need no pre-goto code and let c start with an assignment (35B1C: p's `o + 4` at c's start gives the target's ugen temp ring); a block-scoped loop counter costs an edg temp word (count in a dead, zeroed pad instead)**](#kit-ccclxxix-agent-c-run302) -- _post0b 35B1C EXACT (65f8c9465, 308 B, promoted in-tree C); 493AC NM 99.6467 -> 99.67975 (1a62ffd4f every sp offset = target, ab3a9295d code-free element test); 415A4 NM 97.35 -> 97.70 (85d2fe0bd, mode-word li hoisted); 3BE1C bottom-word / 31A74 double-merge / 469A8 reuse negatives._
@@ -58706,3 +58708,152 @@ for the product y (= target). The target has n.y f14 but product x f0 / z f14, i
 3-parameter inlines placing n.y / n.x / n.z in slot 2 or 3 (`sb(x, y, z)`, `s3(0.0f, 0.0f, v)`, 59 combos) stay at
 99.565 or below. Generalisation of kit CCCLXXVIII: an edg pool temp shared across two inline expansions is the C++
 way to get "one variable, two values" without writing the reuse by hand.
+
+**6. Zero-use re-sweeps on the run-300 bases (zero-use-sweep.py --exprs, --keep-float where FP, 200 max each):** 4FD00,
+42938, 4BAF4, 3B9C0, 4B620, 36694, 4F2DC, 48AEC, 3558, 54E78, 329C, 46790, 34890, bootup E2D0 / E68 (three line
+ranges), post0b 5A2C4 (two ranges): no gain anywhere. Line-join sweeps (ljg.py, 200) on 4BAF4 / 46790 / 3B9C0 / 4FD00
+/ 34890 and 54E78: flat.
+
+## kit CCCLXXXI (agent-c 2026-11-05, run 303): post0b 415A4 EXACT -- uopt folds only the FIRST identity OR on a known constant (a leading value-preserving `| 2` keeps the target's `ori 6` / `ori 0x400`); an LR whose BB contains a call cannot take v0 (a code-free `if (1) {}` after the call frees it); a folded address use (`0 * (int)(t->v30)`) makes an address CSE that holds a second register; the a2C store on a later statement's line fixes the as1 tie <a name="kit-ccclxxxi-agent-c-run303"></a>
+
+_post0b gl_func_000415A4 NM 97.70 -> 99.26 (4f330b065) -> 99.42 (9852e6c93) -> EXACT 452 B in-tree C (69cb0aa5a)._
+
+**1. Identity ORs on a known constant: uopt folds the first, keeps the rest.** The target builds the mode word as
+`li v0,1030 ... ori v0,v0,6 ... ori v0,v0,0x400` although 1030 = 0x406 already contains both bits. With
+`v = (float *)1030; ... v = (float *)((int)v | 6); v = (float *)((int)v | 0x400);` uopt drops the `| 6` and keeps the
+`| 0x400`; any extra identity OR written FIRST (`| 2`, `| 4`, `| 0x402` -- all already in 0x406) is the one that folds,
+so `v |= 2; v |= 6; v |= 0x400` emits exactly the target's two oris (`| 0`, `+ 0`, `& -1`, `^ 0` are removed earlier and
+do not absorb the fold). Use it wherever a target keeps arithmetic on a known constant that the first operation of a
+chain loses. (Folded zero-code expression on a well-defined value.)
+
+**2. A coloured LR whose live-unit BB contains a call cannot take v0.** In 415A4 the mode word v (uopt var M -20, the
+`-Wo,-zdbug:6` bit index of its `isvar` line is its LR number) was `assigned (constrained) 3` (a0) with v0 unused in its
+region: v's definition sat in the BB of the `D_415A4_g3 = f(0)` call (return value in v0). A code-free `if (1) {}` right
+after that call statement moves v (and t) into a call-free BB: v0 becomes allowed, and the colour order then decides
+which of t / v takes it -- a folded counted use of v (`+ 0 * (int)(v)` on its last store) ranked v above t (target v0 /
+v1). uopt colour numbers here: 1 = v0, 2 = v1, 3 = a0, 4 = a1, 5 = a2.
+Diagnosis recipe: extract the function plus its typedefs from the asm-processor pre-pass into a standalone .c, compile it
+with tools/ido-static-recomp-dump/.../cc `-Wo,-zdbug:6` (writes ./uoptlist in the cwd), map LR numbers to variables
+through the "index bit kind" table (bit = LR number, `isvar M 3 -20` = the local at frame offset -20), read the
+"assigned (constrained) N" lines.
+
+**3. A folded address use creates an address CSE with its own register.** agent-g run 210's `t->a4 = 2 + 0 * (int)(t->v30)`
+(once a gain) made `&D_415A4_t + 0x30` a CSE that lived from the a4 store to the Vec4 stores and was coloured a2 / a1 /
+a0 (never v0: it overlapped v); dropping it lets the Vec4 base take v0 like the target (kit CCCXXIX: re-test old folds
+after each structural change).
+
+**4. Source-line ties for the last two instructions.** With the registers right the target's `lui v0; li t2,1; addiu
+v0,48; sw t2,44(v1)` needed the `D_415A4_t.a2C = 1;` store on the line AFTER `if (1) { v = t->v30; }` and on the same
+line as the Vec4 stores (`D_415A4_t.a2C = 1; v[3] = v[2] = v[1] = v[0] = 0.0f;`); the a2C store through the plain
+D_415A4_t name (not `t->a2C`) keeps the record base v1 (t->a2C after the splits went absolute). The 200-variant random
+line-join / BB-split sweep (generator: statements list, a newline-or-space bit and an optional `if (1) {}` per gap)
+found the intermediate layouts.
+
+**5. Negatives (same run).** post0b 3BE1C: unused / pad / double / inline-double locals at 6 positions (48), cell held in
+i / off / a / b / k / ok / cnt / cx / cz (9, frame 232, off at 76), inline `zd(double)` helpers (70), `if (1) {}` after
+the material call and the 0x200 test x the five fold subsets (99): no frame or colour gain. gui 2DE0: kit-CCCLXXX-style
+variable reuse of spr / t / x0 / y0 for the rect packet pointers and macro arguments (16 + 20), x / y / fw / fh held in
+x0 / y0 / sx / sy (15), 200 random code-free test singles / pairs: flat or lower. post0b 493AC: the first loop's
+element held in the dead o (96 combinations): lower. post0b 3B6A0: n / d held in dead f / v / w / tp / verts / cc / dir
+(7): flat or lower.
+
+**6. Addendum (same run): the call-BB lever elsewhere, and the 3BE1C colour map.** `if (1) {}` after every call
+statement (singles + pairs) on post0b 469A8 (91, with drops of the existing code-free tests) and 493AC (100), random
+code-free test singles / pairs on 469A8 (150), fold-removal subsets on 3B6A0 (28) and 2DE0 me() / fold subsets (25): flat.
+3BE1C zdbug:6 map (NCC dump compiler on the donor; same colour numbering 1 = v0 .. 10 = t3): va = M-64 (LR 210, colour
+10 = t3), vb = M-68 (217, a3), vc = M-72 (223, t0), k = M-76 (229, t1), hi = M-78 (263, t2); the `va[k]` / `vb[k]` /
+`vc[k]` loads are expression LRs 240 / 238 / 249 coloured EARLIER (a1 / a2 / a0), so va / vb find a0 / a1 taken. The
+target colours va / vb (a0 / a1) before ia (a3): raise va / vb above the element-load CSEs -- folded `0 * (int)(va)` /
+`(vb)` terms in hi / lo / k emit code here (1572 B), and moving a / b into the else arm costs 100+ words.
+Automated web renames (each definition's web moved to another same-group variable that is dead over it; kit CCCLXXVIII
+reuse lever, generator /tmp/claude-1000/c303/v/k3.py): 469A8 (cfe, 51: byte-identical -- cfe / uopt split C webs by
+definition, the lever is an edg / NCC one), 3B6A0 (25), 3BE1C (66), 493AC (40): flat. 469A8: the first 0x240 read held
+in a separate variable (temp_a1 / temp_t6 / a block local, 7) adds 8 bytes and 14 frame words (420 B): away; the
+second read's web in temp_v0_3 / temp_v0_2: 98.35 (lower).
+Also flat: gui 2DE0 with the rectangle macro written out as three statement blocks (byte-identical, 96.848) plus 6-gap
+BB splits (22) and random code-free test singles / pairs at the gaps (150); 493AC first-loop `p34()` call spellings (14);
+3B6A0 random `if (1) {}` / code-free test singles / pairs over the loop statements (150); kit CCCLXXXII's unreferenced
+class-object block (`{ V3 q_; }` / `{ Gfx q_; }` / `{ Gwords q_; }`) after every statement of 3BE1C (71), 3B6A0 (56),
+493AC (79) and gui 2DE0 (18): flat. Random BB-split / code-free test singles / pairs over every statement of 3BE1C
+(150) and post 31A74 (150), and over 493AC's second loop with grid / o / tab68 field tests (150): flat. 3BE1C frame B (kit CCCLXXIX 6.): the edge
+loop's dx / dy (/ ex / ey) and the three q[] stores joined into one comma statement, with and without the cell route
+(16): B unchanged (frame 240 / 232, off at 80 / 76) -- the bottom words are not per-statement FP temps of those lines.
+gui 2DE0 x / fw / y / fh statement permutations and one-line joins (46), random me() depth 0-2 on the six CTX
+receivers (150): flat. 3BE1C MAXS / MINS operand permutations (35), 3B6A0 edge-product commutes / compare flips (9),
+adjacent-statement swaps on 469A8 (13) and 3B6A0 (10), mix.py line joins / splits on 3B6A0 (150, seed 30303) and
+469A8 (150, seed 30304) and 493AC's second loop (150, seed 30305) and gui 2DE0 (150, seed 30306) and post 31A74 (150, seed 30307) and 3BE1C (150, seed 30308), 3B6A0 random permutations of all 18 function-scope declarations (120), 469A8 temp declaration permutations (60), 493AC first-loop mix.py (150, seed 30309), gui 2DE0 declaration-group permutations (119), 3BE1C random permutations of the 28 function-scope declarations (120,
+twice: off's spill moves to sp+76 in some at the same 99.778, never to the target's 84), 493AC row-loop bound / index spellings (11): flat or lower.
+
+## kit CCCLXXXII (agent-g 2026-11-05, run 301): RE-GRID after every gain -- a lever that fixes one register often makes an older lever stale and opens a new BB-split / one-site-wrap position: post0b 54E78 NM 99.565 -> 99.819 in three steps (lever SWAP sq() -> idv() + frame pad, a BB split found as a `{ V3 t; }` position grid, then a fresh one-site wrap); an unreferenced class-object block is a BB split; a target-vs-ours register-span scan for the variable-reuse lever; reuse / split / wrap / swap negatives on 17 bodies <a name="kit-ccclxxxii-agent-g-run301"></a>
+
+**1. Register-span scan (`/tmp/claude-1000/g301/rs.py exp.o ours.o sym`, diagnosis).** Aligns the two instruction
+streams (difflib on mnemonics; equal-length replace runs kept), pairs every operand register, and prints per TARGET
+register the run-length list of OUR registers over instruction spans (`t0 v1[21-23] t1[93-147] t2[170-274]` = the
+target keeps three values in t0 that ours spreads over v1 / t1 / t2: a kit-CCCLXXVIII reuse candidate), and the
+converse per OUR register (`a2 a2[32-72] t1[192-204] a2[226-229] ...` = ours merges what the target splits: a split
+candidate). It finds the candidates in seconds, but on the 17-body list almost every candidate is an edg / cfront
+inline temp or a ugen ring temp, not a named variable, so the reuse can only be steered indirectly (sections 3-4).
+
+**2. post0b 54E78 `Obj::reflect` 99.565 -> 99.819 (same frame 152, length 552).**
+- (a) Lever SWAP: the run-300 `sq(p.n.y)` on m[1][1] (kit CCCLXXX) dropped, `idv(p.n.z) * p.n.z` on m[2][2] instead,
+  and a never-accessed `volatile int u2;` after `V3 a;` (the idv parameter home drops the frame to 144 without it): the
+  translation block's x * d product takes f0 -- the register 0.0f held until the m[1][3] store -- like the target
+  (99.565 -> 99.638). Neither change alone gains; the grid that found it was {m[0][0], m[1][1], m[2][2]} x {plain,
+  sq, idv-left, idv-right} x {no pad, volatile pad, block pad}.
+- (b) A position grid of the unreferenced `{ V3 t; }` block (12 frame bytes, kit run 203): moved to just before the
+  m[1][1] statement, p.d / z * d take the target's f18 / f14 (99.746). The block's effect is a BASIC-BLOCK SPLIT (the
+  empty inline constructor call): `{ V3 t; }` back at the top plus `if (1) {}` at that position is byte-identical
+  (objdump -d -r cmp), so the shipped form is the plain split. `{ int q; }` / `{}` / `{ f32 q; }` there do nothing
+  (no constructor, no split); `{ volatile int q; }` only adds a home.
+- (c) On that base a one-site operand wrap sweep (idv() on each p.n.* / p.d occurrence) finds `p.n.x * idv(p.n.x)` on
+  m[0][0]: n.y / n.z load into the target's f14 / f16 (99.819). The same sweep on the 99.638 base had no hit there.
+- LEFT: the y * d / z * d products f14 / f16 (target f12 / f14) and the two V3 temporaries 4 / 8 bytes low (ours
+  sp+76 / +92, target +80 / +100; the target has 8 bytes of homes BELOW the set() copy that ours keeps at the top --
+  late-statement idv() pairs, statement-level `{ volatile int q; }` / aggregate pads at every position, and BB-split x
+  wrap pairs are flat or lose the frame; on the 99.819 base the off-diagonal operand-order grid (64), the k / m[3][*]
+  / a.set() spellings (16), the top-four declaration permutations (24), adjacent / any-pair m[i][j] statement swaps,
+  BB-split pairs + triples with wraps, code-free tests of p.n.* / p.d at every statement end and operator* / set()
+  bodies (named result, k = s, reversed operands) are all <= 99.819).
+- Lesson: after every gain, re-run the cheap sweeps (bbs.py BB-split singles + pairs, opw.py / opg.py one-site wraps,
+  pad / unreferenced-block positions) on the NEW base, and try removing each earlier zero-code lever in the same pass.
+
+**3. Variable-reuse lever (kit CCCLXXVIII) applied across the list -- negatives (all scored standalone, <= 200 each):**
+- same-type and cast pointer merges (reuse.py / reuse2.py, every pair whose spans are textually disjoint) on 4568,
+  54E78, 4B620, 34890, 5A2C4, E2D0, E68, 4FD00, 42938, 4BAF4, 48AEC, 36694, 4F2DC (plus the run-300 four): no gain.
+- gui 329C: the three Scis packet pointers and the texture packet through every assignment of {gpa, gpb, a fresh gpc,
+  spr (via a `TY_##VV` cast macro)} (192 combos): best = base 99.633; dsdx / dtdy through a named t / w / x / y or a
+  pointer: t is copy-propagated (identical), the others reorder (73-94).
+- gui 4568: the Scis arm's pk2 / pk3 through dead parameters (x / w / h / y / xl, c for the last): 76-96.9, base best.
+- post0b 34890: the loop ternary's result in a caller `void *r` (also initialised from make()'s X *): r gets a home
+  (every sp offset -4, 99.40); make()'s `a` as void * pooled with an inline `nx()` local / idv(): identical.
+- post0b 4B620: one named `Elem *e` for the loop's cur() results (11 assignment patterns): 96.98-99.64; the first
+  statement's `me(me(&it))->cur()` as plain it.cur() fixes the cur() colour (s2) but flips the a-load / ref-address
+  s0 / s3 webs (99.676); the 144-cell accessor-depth grid over the five loop statements stays <= base.
+- post0b 4BAF4: the clip half-extent reads into ctx (target: one a3 colour for the half-extent and ctx) rotate the
+  whole head block one colour (a1 / v1 / v0 for a3 / v0 / v1, 97.56); into r (u32) = byte-identical to d; into g:
+  97.44; wrap4 re-grid on the ctx base: flat.
+- bootup E68: splitting `m` (the target's loop-nest copy is v0, the post-loop one s1; ours s0 for both) into a fresh
+  MgrE68 * / head / vp: frame +8 (472 -> 480), 88.4-88.6; padq size compensation does not shrink it.
+- bootup E2D0: the 0x9F8 scale and arg4 through the unused `s` (target: both f16): +8 bytes (86.8); arg4 reassigned
+  (`arg4 += 1.0f`) at four positions x three forms: 99.27-99.39.
+- post0b 5A2C4: each arg3 block's base / cnt / p trio member on the function-level variable (singles + 136 pairs):
+  <= 99.28; declaration-order permutations of the trio (function level and all blocks): identical.
+- post0b 4FD00: the late `li v0,0` (target issues it inside the second face sum) through a return variable (r, or the
+  dead f1 / f2, = 0 at every statement position, three test forms): frame / length change or <= base; range line
+  joins down to the return: flat. Diagnosis: the zero is late because ours holds the second face sum's vertex
+  address in t0 and the first normal's address in v0 (target: v0 / v1), so v0 is busy until the normal reads; a
+  `return p1 >= 0.0f && p2 >= 0.0f;` puts its zero exactly at the target's slot (in a1) but adds a materialised-bool
+  tail (+12 bytes, 96.06); eight return-statement forms and nine sum() local / wrap forms: <= base.
+
+**4. Other sweeps on the run-301 bases (flat unless noted):** line joins (ljg.py) on 36694 / 4F2DC / 3558 / 329C /
+4568 / 4B620 / 42938 / 48AEC / 5A2C4 / E2D0 / E68; generic one-site idv() operand wraps (opg.py: every rvalue
+identifier / member chain of the body) on 12 C++ bodies and the same over the inline helpers (opgF.py); lever swap
+(remove one me() / idv() / folded `+ 0 * (int)(E)` / empty test, add one wrap: swap.py / swap2.py, 200 random pairs)
+on 3B9C0 / 4FD00 / 329C / 4B620 / 4568 / 36694 / 4F2DC / 42938 / 48AEC / 3558 / 4BAF4; BB-split singles + pairs
+(bbs.py, `if (1) {}` after every statement end, 200) on 34890 / 329C / 4B620 / 4568 / 4FD00 / 3B9C0 / E2D0 /
+36694 / 4F2DC / 5A2C4 and in the inline helpers (bbsF.py) on 4B620 / 329C / 4568 / 4FD00 / 34890 / 36694 / 4F2DC /
+42938; BB-split x one-site-wrap pairs (bxg.py) on 329C / 4B620 / 34890 / 4FD00 / 46790 / 4568; 4F2DC's `PadK<4> pz`
+at every statement position; 3B9C0 float-literal idv() wraps; 3558's stage / vb accumulate forms (operator+=,
+interleavings, line joins); 46790's t8 / t9 ring swap (a ugen temp-ring phase from instruction 25 on) unchanged by
+every BB split. Scripts: /tmp/claude-1000/g301/ (rs.py, sbs.sh, opw.py, opg.py, opgF.py, swap.py, swap2.py, bbs.py,
+bbsF.py, bxg.py), driven by /tmp/claude-1000/g300/vr.py.
