@@ -14741,6 +14741,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCCLXIX (agent-g 2026-11-05, run 295): **a local copied from a parameter can be read as the parameter at its last use (same value) to end the copy's reload live range early (gui 3714 `(arg4 - 1)` for `(w - 1)`: 99.004 -> 99.141); read a zdbug:6 pool-slot -> colour map (slot = one uopt variable = one colour body-wide): gui 329C's texture count sits in slot M-56 (t0) while the rect counts share M-60 (v1); 34890's loop ternary reuses make()'s freed parameter slots (LIFO free list); -g3 homes show 48AEC's target has no top-of-frame homes for i / j / k / cmd (block-scoping moves them below mtx; n-free inlines give frame 352 but shift the lower region)**](#kit-ccclxix-agent-g-run295) -- _gui 3714 NM 99.004 -> 99.141 (4acd4f594); 329C / 3714 / 4568 / 4FD00 / 48AEC / 4B620 / 34890 / 36694 / 3558 / E2D0 / 54E78 / 3B9C0 / 46790 grids, ~3000 variants listed as negatives._
 - [kit CCCLXX (agent-c 2026-11-05, run 298): **a target that RE-READS a just-stored local struct (no store-to-load forwarding) but schedules its stores freely = READ the fields through a VOLATILE VIEW and WRITE the plain ones: `union VU { P3 v; VW w; }` with `struct VW { volatile f32 x, y, z; }` (layout-compatible common initial sequence, sp-relative direct accesses), `u.v.x = u.w.x + o.x` -- post0b 37540 EXACT (97.770 -> 100, 764 B); a fully `volatile` local keeps program order (y load stays below the x store), volatile through a pointer / `this` / cast takes a register base; a donor's float literals go through the renamed `<fn>_rodata` reloc pinned at the USO RoData offset; 3BE1C's off spill slot sits at frame - 4 x (named homes)**](#kit-ccclxx-agent-c-run298) -- _post0b 37540 EXACT (61cd99b7e); 3BE1C n-basin (99.03) / 31A74 / 469A8 / 415A4 / 3B6A0 / 2DE0 / 35B1C grids, ~1500 variants listed as negatives._
 - [kit CCCLXXI (agent-g 2026-11-05, run 296): **zero-code me() accessor DEPTH beyond the usual 0-3 grids pays: post0b 4FD00's two normal reads at depth 4 (the extra `or v0,zero,zero` in the second face sum goes, 98.088 -> 98.586) and 4BAF4's RDPHALF_2 / final ->add() receivers at depth 5 / 2 (97.879 -> 98.009); an inline loader with a LOCAL makes edg pool its parameters into the texture append's freed slots (LIFO: gui 3714's spr then shares the ctx holder's colour), a call-only inline is substituted; E2D0's copy-clamp +8 B are two first-pass load-delay nops**](#kit-ccclxxi-agent-g-run296) -- _post0b 4FD00 NM 98.088 -> 98.586 (20b264845) -> 98.645 (second read via gn() at depth 5, d525b0fd8), 4BAF4 NM 97.879 -> 98.009 (cb8cd3ea4); 3714 / 329C / 4568 / 4B620 / 34890 / 48AEC / 42938 / 54E78 / 4F2DC (kit-CCCLXX union d) / 3558 / E2D0 grids, ~4000 variants listed as negatives._
+- [kit CCCLXXII (agent-c 2026-11-05, run 299): **target-side signature scans (opcode histogram + register diff: store / re-read, re-materialisation, caller- vs callee-saved class, delay-slot pick); a dedicated same-body inline copy (`next1()`) for ONE call site takes its result out of a shared call-crossing edg pool temp, and the s-register swap that exposes is fixed by a PAIR of folded counted uses on the named locals sharing those colours (each alone loses)**](#kit-ccclxxii-agent-c-run299) -- _post0b 493AC NM 99.43 -> 99.52 -> 99.56 (random code-free tests) -> 99.62 (me(me()) on the first noop() receiver) -> 99.65 (block-scoped named copy paid by a dropped home-keeping local); negatives 469A8 (ring-value / coloured-&D shape reached at +4 B), gui 2DE0, 3B6A0 (cc copy), 3BE1C (296 = reloc-only), 31A74, 415A4._
+- [kit CCCLXXIII (agent-g 2026-11-05, run 297): **a CONST REFERENCE to a by-value-assigned local (`d = dir; const V3 &dr = d; ... dr * k`) stops uopt forwarding the operator= parameter temp's words into the later reads: they load d's own home like the target (zero code); every extra reference is homed (+8 frame, byte-identical once a pad compensates); the 4FD00 set() copy temp is always the lowest temp (the target's 16 bytes below it are another aggregate temp)**](#kit-ccclxxiii-agent-g-run297) -- _post0b 4F2DC NM 95.842 -> 95.853 (ac6e6310a); 4FD00 / 4BAF4 / 3714 / 34890 / 46790 / 54E78 / 36694 / 4568 / 3558 / E2D0 / 329C / 4B620 grids + zero-use sweeps, ~7500 variants listed as negatives; 4F2DC by-value-end layout lead, 4FD00 pool-pointer (M-104) diagnosis._
 - [kit CCCLVI (agent-c 2026-11-05, run 291): **the four-point decode / type audit (literal vs extern, type width, void per-site aliases of never-read results, scratch temp vs coloured value) is flat on all 19 register-only bodies; zdbug:5 itabs show the real residuals are edg POOL temps shared across statements and types (pooled by size: a `dl->n++` postfix value temp is reused as later MAX / MIN `?:` results, so n and the MAX temp are one LR) and whole-function pool LR priorities (4B620 s0 / s3)**](#kit-ccclvi-agent-c-run291) -- _no gains; gui 4568 / 0F04 pool map ({832} / {960}, {64} / {0}), 34890 ternaries = make()'s pooled o / h param temps, 4B620 {720} / {592}, E2D0 arg4 f14 (forbidden f0 / f2 / f12), 46790 one code-free ring slot missing before the `* 1024` shift ((u8)(c / 16) re-phases the rest); 2000+ variants listed as negatives._
 - [kit CCCXLV (agent-g 2026-11-04, run 283): **an `or tN,vM` copy that no holder spelling moves is uopt copy propagation (the register is the source's u8 -> int cvt LR; deleting the copy variable gives the same bytes): put the copy in the variable the target colours that way (2E354: the switch-6 selector, t0), kill the propagation with a value-preserving re-read of the source on the use path, then a BB split after the copy; zero-use-sweep.py on a mangled-name NCC donor needs `--lines` (otherwise it sweeps every body and most probes fail to compile)**](#kit-cccxlv-agent-g-run283) -- _NM post 2E354 99.9294 -> 99.9403 (5f0f54272); 2E354 pick / 0x15 holder (cfe switch temp + cvt phantoms take v0), 493AC / 3B6A0 / 3BE1C proper-window sweeps, 30AF4 (un-propagated sv), 415A4, 59E80, 31A74, 35B1C negatives; tools /tmp/claude-1000/g283 (g2.py insertion grid, mk*.py role movers)._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
@@ -58037,3 +58039,165 @@ every line (77: frame grows or identical).
 **5. Follow-up gain (d525b0fd8).** A random joint search on the 4FD00 depth-4 base (depths 3-5 x gn() / nrm x 0-2
 code-free tests, 199) found the second normal read through `gn()` at depth 5 (`me^5(this)->gn()[f2]`):
 98.586 -> 98.645; the depth 2-7 x 2-8 x getter grid around it (169) confirms (4, 5, gn, gn) as the peak.
+game_uso 3558 (coordinator / agent-c scan lead, kit CCCLXX): vb as `union { P3 v; VW w; }` with the `+=` written
+`vb.v.x = vb.w.x + x` (x, y, z), getPos through `*(Vec3 *)&vb` or direct `vb.v` field stores, and `e = vb - va`
+through the cast or a `mk(vb.w.x - va.x, ...)` (4): 88.2-89.0 at 1012-1024 B -- the volatile reads are not hoisted
+to the block top like the target's coloured f14 / f16 / f18 loads; Vec3 itself cannot be a union member (its
+by-value `operator=(Vec3)` is a user copy-assignment).
+
+## kit CCCLXXII (agent-c 2026-11-05, run 299): target-side signature scans; post0b 493AC 99.43 -> 99.65 -- give ONE call site its own copy of an inline so its result leaves a shared edg pool temp, then re-rank the two s-register webs that flip with folded counted uses on the NAMED locals that share their colours (a pair: each fold alone loses) <a name="kit-ccclxxii-agent-c-run299"></a>
+
+**Scans.** Two cheap target-vs-ours diffs over the run list (register names kept, branch targets stripped):
+an opcode histogram + aligned listing (`nd.py`: shows re-materialised `lui/addiu` pairs and moved stores) and a
+per-line register diff (`rd.py`: shows which webs swap). They sort each residual into (a) store / re-read,
+(b) re-materialisation, (c) caller- vs callee-saved class of one web, (d) jal / branch delay-slot pick, or
+pure colour rotation. Scripts: /tmp/claude-1000/c299/t/ (nd.py, rd.py, sig.py, vr.py + sc.py / ic.py scorers).
+
+**493AC (the gain, 2 commits).** Class (c): the first loop's `it.next()` result sat in s2 (the call-crossing edg
+pool temp that also holds `it.cur()->test()`'s `this`, the ctx pointer and the hit() vptr); the target has it in
+v0. A second inline `Elem **next1()` with the SAME body, used only by the first loop, takes the result out of the
+pool (v0 in both loops; the run-247 `+ 0` dropped). That alone scores LOWER (99.43 -> 99.11): the pool temp now
+outranks the iterator-return address temp (sp+204 base) and the grid loop's `e`, so s1 / s2 swap. A folded use of
+`e` in the inner while (`u8 *m = buf + j + 0 * e;`) puts e back above the pool temp but also above `m` (s0 / s1
+swap, 99.40); a second fold on m (`*m = 1 + 0 * (int)m;`) restores m: every s-register = target, 99.52. Lesson: when a
+structural fix exposes a two-web swap, boost the named web that SHARES the colour you need (here e shares s1 with
+the sp+204 temp) and re-balance the web it overtakes; single-fold sweeps never see the pair. A seeded random
+code-free test search (1-2 `if (E) {}` per variant, 200) then found `if (o) {}` after the `o->hi54 = 0` store +
+`if (k) {}` after the row block: 99.56. A random zero-code accessor depth search (kit CCCLXXI's `me()`) over the
+seven `o->ctx6C` receivers then found the FIRST noop() receiver at depth 2 (`me(me(o->ctx6C))->noop();`, alone;
+depths 1 / 3-8 there <= 99.56): 99.62 (977692fe7). Last: the first loop's `gl_func_00000000(it.cur())` through a
+BLOCK-SCOPED named copy (`{ Elem *e1 = it.cur(); gl_func_00000000(e1); }`) re-breaks the loop-1 colour tie and
+the first noop() head / count pair (both are variable-numbering ties: any new uopt variable earlier in the function
+flips them); its edg home is paid for by deleting the unused `Ctx *g = 0;` home-keeping local, frame 1720 kept:
+99.65 (079829a38; 29 differing words, one home offset 136 vs 132). Kept alone (frame 1728) or with a top pad
+deleted it loses (homes shift). Same lever on gui 2DE0 (block-scoped ctx / obj copies at the texture / loader / spr
+sites, 1-2 at a time, paid with a volatile q pad or not: 45) is flat; on 493AC further copies (grid / ctx / e2 /
+ghost `{ int gz = 0; if (gz) {} }` blocks, 60) all cost a home (frame 1728). A second depth round (ctx + `(&it)` / `it.cur()` receivers, 200),
+block-scoped named copies of it.cur() (+4 homes), and per-site same-body copies of count() / noop() / cur() (75)
+are flat, as are `me(this)` depths on the grid / tab68 / hit() reads (200) and a same-body next2() for the second
+loop (15). The same random depth search is flat on 3BE1C (10 receivers), 3B6A0 (11) and gui 2DE0 (texture / rect /
+loader receivers), 200 each. Left: caller-saved rotations only (loop-1 `it.a` v1 vs a2, the inline
+Ctx::next() head / count v1-a2 vs a2-v1, the grid pointer a0 vs v1). A named count inside a next2() for noop()
+(`int n = head->count++;`) gives the target's head / count AND loop-1 colours but adds an edg home (frame 1720 ->
+1728); deleting a pad word to pay for it shifts `it` instead (<= 99.26).
+
+**Negatives (per class).**
+- 469A8 (98.64, colour only): the target's `lw t6,576(s2); lui v1; addiu v1; sw t6,596(v1); sw s1,344(t6)` = the
+  loaded value is a ugen RING temp and &D is COLOURED. `FW(*(char **)((int)&D + 0x254) = FW(arg0, 0x240) + 0 *
+  (int)&D, 0x158) = temp_s1 + 0 * (int)&D;` reproduces exactly that shape (t8 for t6) but the later vcall loses its
+  jalr delay fill (+4 B, 93.68); a named `GP_000469A8 fp` for that vcall restores the length (412, 98.50 < 98.64:
+  the value's ring temp is t8, the target's t6 -- each folded use costs a ring slot); 48 other store / re-read /
+  named-address / folded-&D forms <= base.
+- gui 2DE0 (96.85, class b): the target re-materialises &D into t3 inside the yl < 0 MAX / MIN arms and keeps the
+  EARLIER t3 web in the else arm (one web from the first appends to the RDPHALF_2 load); ours starts a new web (a2).
+  Ctx ** / char * / int holders, the third ctx through pc / CTX / me(me()), folded uses in dtdy / dsdx (88 + 96)
+  and random code-free tests (200): <= base.
+- 3B6A0 (96.38): the target keeps `cc = c` as a real register copy (`or v0,s8,zero`, used for cc->faces only);
+  copy forms (if (1), second def after `c = col`, chained, tests) never keep it; without the `+ 0 * (int)(off)` on the
+  tp init the length drops to 796 because that fold's 4 bytes are a WRONG `or a2,a1` copy standing in for the
+  missing cc copy. Folded uses in the inner loop always grow the body.
+- 3BE1C (99.27): the `addiu v0,v0,296` diff is relocation-only (target = section-relative %lo with the 0x128 addend
+  in place; ours = D_3BE1C_128 pinned at 0x128, same ROM bytes) -- spelling it `D_f0[74]` folds the offset into the
+  lwc1s instead; the off spill slot (84 vs 80) is not moved by off's declaration position (28).
+- 31A74 (97.73, class d): store after the sel clamp gives every word but the jal pair (`swc1; jal; sb` vs the target's
+  `sb; jal; swc1`) -- goto block, argument assignment, BB splits (11) all keep the sb last. The sb is the
+  around-the-call split of sel into its PARAMETER home (sp+35), emitted right before the jal after every source
+  statement; a fresh clamp variable (`s8 s = sel; if (s < 0) s = 0;`, ternary, if / else, int s: 10) moves the
+  spill to a def or loses words. The other two diffs (`lui v0,0x2; addiu -13656`) are relocation-only, so this
+  one pair is all that stands between 31A74 and an exact.
+- 415A4 (97.30): `D_415A4_t.a2C = 1` (direct name) gives the target's `sw t2,44(v1)` but uopt then merges the two
+  a28 stores (448 B, 94.65); folded t / v30 uses (30): <= base.
+- Seeded random 1-2 code-free `if (E) {}` searches (200 each, all flat at the base): 469A8, 415A4, 35B1C, 3B6A0,
+  3BE1C, gui 2DE0.
+
+## kit CCCLXXIII (agent-g 2026-11-05, run 297): a CONST REFERENCE to a by-value-assigned local stops uopt forwarding the operator= parameter temp into later reads -- post0b 4F2DC's `d * k` now loads d's own home like the target (95.842 -> 95.853); edg homes every extra reference (+8 frame each, code-identical once a pad compensates); negatives on the run-296 lead list <a name="kit-ccclxxiii-agent-g-run297"></a>
+
+_agent-g run 297, base 4b9a1b5c2. Gain: post0b 4F2DC NM 95.8421 -> 95.853386 (1064 B, ac6e6310a). Gate: ROM
+byte-identical, verify-blocks 6/6, non_matching_objects 0 errors, 3251 exact, no exacts lost, 94.63% code. ~7500
+variants (6100 runner + 1400 zero-use), every sweep <= 200. Tools: /tmp/claude-1000/g297/ (vr.py runner, dd.sh normalised objdump diff, dump.sh
+zdbug:6 table + colouring, scan.py = same-register `lw/lwc1 X(sp)` offset-only diffs between expected/ and the
+build/non_matching/ objects for 85-100 % functions: lists store / re-read source candidates)._
+
+**0. The gain: a reference view for the re-read.** `d = dir;` through the by-value `V3::operator=(V3 v)` copies dir
+into the parameter temp (sp+180 in the target) and member-stores d (212..220); the target then reads d's home for
+the `d * k` products. Ours read the parameter temp (uopt equates `d.x` with the just-stored `v.x` and loads v's
+words). `const V3 &dr = d;` right after the assignment and the product spelled `dr * k` breaks that equivalence
+(the reads go through the reference's inline-propagated address) and the three loads become `lwc1 f,212/216/220(sp)`
+exactly; it is zero code, frame unchanged (424). Other spellings: `V3 &operator=` / `const V3 &operator=` returning
+`*this` (inert alone), `const V3 &dr = (d = dir)` (= the reference), `V3 *dp = &d; ... *dp * k` (= the reference),
+`*me(&d) * k` (frame +8, 95.70), `*me(&d) = dir` (inert), declaration of dr at 13 other anchors (all = the gain,
+compile errors before d's declaration). Kit CCCLXX's union view is the alternative when the target ALSO schedules
+the re-read stores freely; this reference view is the cheaper first probe when only the read side differs.
+Same lever, inert: references on `start` / `end` / `sw *= KV` (each unused reference home costs +8 frame; with the
+PadK pad shrunk to compensate the code is byte-identical to the base), and on 3558's vb / va (reads through
+`const Vec3 &vr = vb` at 4 anchors x the += / `e = vb - va` / va sites, 31: <= base).
+
+**1. 4F2DC residual after the gain.** The parameter / return temps sit 32-40 bytes low (ours v 140 / op* 128 /
+100 / 80, target 180 / 160 / 132 / 112) and `end` is a named home at sp+164 where the target has it at sp+84 BELOW
+every temp: the target's later locals are not between dir and the temps. Flat: nested-block scoping of the later
+statements (open at cam / pz / end / `start *=` / e.set / p x close after end / `start *=` / e.set / the if(p)
+block / before besti / at the end, x the reference: 72: <= base, most re-layout the named homes), `const V3 &end`
+bound to the sum temporary (end then at sp+140, named homes shift, 95.67), operator+ operand orders x named
+evaluation orders (56: <= base; the target sums x, z, y with this-first operands and keeps start.x in f18 from the
+sum to `start *= KV`), union / volatile views of d with the reads through a member / free operator* (36: <= base;
+any volatile read through `this` or a reference parameter takes a register base, +4 B).
+
+**2. Other negatives (all <= base).** post0b 4FD00: the set(V3) parameter copies (`set(V3(x))`, `set(*me(&x))`,
+`set((V3)x)`, `set(me(&x)[0])` at the three calls, 125: byte-identical), local declaration order (all 120
+permutations of a / b / mid / d1 / d2, s first or last, separate declarations: <= base, the copy temp stays at sp+4
+-- it is always the lowest temp, so the target's 16 bytes below it are another AGGREGATE temp, not scalar pool
+slots), receiver depth 0-6 on the two sum() calls and mid.set() (199) and on sum()'s three faces reads (199): the
+copy temp never leaves sp+4. post0b 4BAF4: the half-extent reads into a separate `char *e` (replacing pad0 or
+added) per read x the run-296 depths (96: identical at best -- e takes d's colour), single / random code-free tests
+over the head and the tail (200 + 200). gui 3714: an `if (1) {}` / `if (n) {}` / `if (dl) {}` inside a new append
+inline at 7 split placements x depths (169: <= base), random loader-with-local x append method x depth search and the
+loader with 0-5 volatile pads (199 + 108: frame 96 reachable, 97.68 best). post0b 34890: loop-condition spellings
+(`!= 0`, `!!`, casts, `(void *)0`, receiver depths, 199), identity / kept-parameter wrapper inlines around the
+ternary and its operands (37 + 37: byte-identical -- the ternary temp keeps make()'s o slot M-16 at the top and h's
+M-12 at the bottom; the target's a2 / v1 are the colours of the X / Base ctor slots M-24 / M-36), make() shapes
+(12). post0b 46790 (t8 / t9 phase from the c / 16 term on): idx term spellings (64), `q = &dst` placement x 5 forms
+(50), c / dst spellings with `int ch` + `(u8)` (64), zero-use sweep (103). post0b 54E78: operator* operand order x
+named copy x `me(&p)` receivers (64: the p.d / n.z colours f14 / f12 vs the target's f18 / f16 never move). post0b
+36694: lifetime-extended product (`const V3 &a = ...`, 8) and multi-declarator `const V3 a = ..., &t = p - a` (6).
+gui 4568: MAX code-free tests in the Scis arm (200: every MAX test emits code). bootup E2D0: without the arg4 keep
+the body is 520 B (arg4 then a ugen temp: `mtc1; lwc1; add.s` with no nop) -- 1.0f + arg4 spellings x placements
+(87), keep position x 1.0f spelling (37), zero-use sweeps (24 + 200 with --keep-float --exprs): <= base (dump: arg4
+LR colour 27 = f14, -lim 26 = f12; the target's f16 needs an f14 holder over arg4's range that has no code).
+
+**3. Lead (4F2DC layout).** Folding `end` into an inline that takes it BY VALUE --
+`inline void setE(V3 &e, V3 &s, V3 end) { s *= KV; if (1) {} e.set(KV.x * end.x, end.y * KV.y, end.z * KV.z); }`
+called as `setE(e, start, start + dr * -100000.0f)` (same evaluation order: the sum, then `start *= KV`, then
+e.set) -- reproduces the target's temp structure: the sum's copy lands at sp+84 (the target's "end" home BELOW every
+temp) and the operator* / operator+ temps keep the target's relative spacing (op* 16 above op+'s 112-type slot,
+the operand pointer between). But its parameter temps add 32-40 frame bytes (456-464 vs 424) and shift every named
+home up, so it scores 95.46 (40 variants: reference / pointer / reordered parameters, PadK 0-4 / `if (1) {}` in
+pz's place, with / without dr). A member form `e.setK(start, start + dr * k)` (`void V3::setK(V3 &s, V3 end)`,
+both parameter orders, 8) is the same 95.46 at frame 456-472: the extra frame is not the reference parameters.
+Open: which edg temp the by-value end parameter adds besides its own 12 bytes (zdbug:1 the two layouts).
+
+**4. 4FD00 diagnosis (zdbug:6, current base).** The colour-1 (v0) LR is ONE edg pool pointer, M-104: the inline
+reference parameters of the first sum's SV ops, then the two dots' `const V3 &o` (the normal row pointers, IR bits
+189-205). One variable = one LR, so v0 is held from the first sum to the second dot: the second sum's verts-row
+address falls to a ugen t0 and the hoisted `return 0` (`or v0,zero,zero`) can only issue after the dots. In the
+target that row address IS v0 and both normal pointers are v1 -- the dot's o parameter is a DIFFERENT pool slot from
+the second sum's `+=` parameter. Flat: dedicated same-body copies (kit CCCLXXII lever) of gn() / the dot / sum() /
+`-=` per call site (128: byte-identical -- edg pools by slot, not by function), commuted dots `n * d1` x depth 2-7
+(200: <= 98.39), `int r = 0` return variables at 13 anchors x 3 shapes (78: r takes a0, not v0), sum()'s o / s
+by pointer and in 3 parameter orders (6: byte-identical -- simple-lvalue arguments are substituted, no slot), named
+`const V3 &n1 = ...gn()[f1]` / pointer normals (24: identical or 84), a by-value `V3 sumv()` bound to a const
+reference or copied (4: 67-90, adds the copies). Open: which expression shape makes the dot's o take a fresh slot.
+
+**5. Late negatives (all <= base).** 4F2DC on the reference base: operator= store orders and named-copy bodies (11),
+operator+ / operator* as free functions, by-value operands, named returns (7), receiver depth 0-5 on cam / start / e
+(98), random code-free tests (200), operand-order joint search (200), the named `cam` local replaced by the inline
+expression / a getter / a pointer reference x PadK 1-4 (15: 1072-1076 B, <= 90.6 -- cam must stay a named local). 4FD00 verts-row spellings in sum()
+(`*me(&verts[i])`, `me(verts)[i]`, `*(verts + i)`, 124), dedicated set() copies per call (26). 4B620 dedicated cur()
+copies per site (63). 3714 spr as a reference (`Spr *&sr = arg0->spr`, 3 forms x 6-8 pads, 9). 36694 reference views
+of a / p / t (5). 3558 early named block reads of vb (`float bx = vb.x; ...` at the block top / after m, x-y-z /
+z-y-x, with `zero` folded to the literal to free a home, 8: 1044 B, 87-89 -- named reads are not the target's
+coloured block-top loads); the run-296 POD-twin union with only ONE or TWO fields volatile (6 subsets x getPos /
+e forms, 24: <= 93.47). E2D0: `1.0f + *(volatile f32 *)&arg4` (with / without the keep, 3 spellings, 6: 91.4 --
+the volatile read takes an `addiu t6,sp,128` base and sinks below the clamps), a volatile keep (2: 520 B); named
+`s` sums with code-free `if (s) {}` (float tests emit compares). Zero-use sweeps (`scripts/zero-use-sweep.py`, all flat): 46790, E2D0 (+ --keep-float --exprs),
+3714, 329C, 4BAF4, 4F2DC (--exprs), 5A2C4, E68, 42938 (--exprs), 3B9C0 (--keep-float), 3558; 34890 has no sites; the 4568 / 4B620 / 4FD00
+donors do not score under the tool (mangled or member entry points).
