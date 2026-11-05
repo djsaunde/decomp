@@ -14733,6 +14733,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCCLXII (agent-g 2026-11-05, run 292): **count instruction diffs PER REGION before tuning a basin: E68's m3 family (94.30) is 67 / 172 / 47 (phase 1 / 2 / 3) against the in-tree 0 / 139 / 42 -- every form that stops m spanning both phases (m3, block-scope m, a reused parameter) turns the residual pieces of self / buf from -ve adjsave (memory, the target) into coloured s0 / s1 pieces, so phase 1 breaks first; early-lever removal pass (kit CCCLXI) flat on 19 functions; a FULL per-site me() accessor grid where the accessor was never tried pays (0F04 texture + RDPHALF_2 appends at depth 2, 4B620 loop cur() / ref())**](#kit-ccclxii-agent-g-run292) -- _gui 0F04 NM 98.588 -> 98.843 (ed289456b), post0b 4B620 99.676 -> 99.693 (4e1e67feb); inert levers found (46790 (u8) cast, 54E78 i1(), E68 uls fold, 4B620 addOK + if (1) pair); 34890 ?: results = make()'s o / h pool temps (types / holds flat); 4FD00 target hoists &p-temp / &mid / 12 to the entry; 48AEC's 0x168 frame (target 0x160) = the run-266 named n's edg homes, every 0x160 form <= 97.29; ~2000 variants listed as negatives._
 - [kit CCCLXI (agent-c 2026-11-05, run 293): **re-test the EARLIEST structural lever too: 59E80's run-164 inline dlist() wrapper was stale -- the two DisplayList packets written in place give the target's t1 / 0xFFFD sharing (98.663 -> 99.231, 70a1aefd6), then one packet pointer shared by a PAIR of packets is a colour lever (-> 99.396, b9b1943fd; one pointer for ALL packets: 70.2) and a folded use of it -> 99.505 (16a623ca4); a pointer copy of a struct local (`V3 *pv = &v9C; *pv += v6C;`) is a same-length NCC colour lever, then re-test the named constants fitted on the old body; a register residual inside one block is a colouring ORDER: read adjsave (counted refs per block) off zdbug:5 and shape each LR's block count / refs, not its uses; edg ctor prologue (`this ? this : alloc`, member ctor null test) = the function is a C++ constructor**](#kit-ccclxi-agent-c-run293) -- _post0b 37540 NM 97.634 -> 97.749 (2b47f3596, 09d794026); 3BE1C fold-free MAX block gives the target's va / ia / ib / hi colours (99.23, open: vb priority); 35B1C / 469A8 C++ first passes (97.35 / 83.19, below their C bodies); a real escape of v9C does NOT make it re-read; lever-removal sweeps flat on 493AC / 59E80 / 415A4._
 - [kit CCCLXIII (agent-c 2026-11-05, run 294): **the stale-lever re-test pays on in-tree C bodies too: 469A8's comma-wrapped scaled index `(0, temp_a1_2 * 8)` was stale (98.204 -> 98.641, 2922a67a5); a target register that skips a free colour inside one block means another LR is live through that block -- 59E80's two-site inline dlist() wrapper supplies it (packet 2 / 3 dl a1 / n a3), a code-free `DLHead *d = c->dl;` read inside it keeps the in-place 0xFFFD / t1 sharing, then one more shared packet pair: 99.505 -> 99.560 (952c0f38f); 37540's v9C re-read comes from a umov (by-value operator= temp copy) AFTER the v9C copy killing its forwarded values**](#kit-ccclxiii-agent-c-run294) -- _post0b 469A8 NM 98.204 -> 98.641, 59E80 NM 99.505 -> 99.560; 59E80 / 37540 / 3BE1C / 493AC / 415A4 / 31A74 / 3B6A0 / gui 2DE0 lever-removal, random-test, zero-use and spelling sweeps flat (~3000 variants listed as negatives)._
+- [kit CCCLXIV (agent-g 2026-11-05, run 293): **grid accessor depth JOINTLY with the append-method choice where a body has several interchangeable DL inlines (random 200 of the depth x method product, then a single / pair local search): gui 0F04's TEXRECT packet at depth 3 through nextc(), 98.843 -> 99.681, then the ctx field read through a zero-code member getter `Font::gc()` (a different accessor from me(): it replaces the read, its this is another pool temp) -> 99.744, then agent-c's kit CCCLXV shared packet pointers (all 15 partitions of the four packets) -> 99.764 (329C 99.580 -> 99.601 too); the kit CCCLXIII dead head load (`DL *dd = dl;`) as one more method axis pays on gui 329C (99.371 -> 99.580 with the joint grid and a named-result nR1()) and post0b 48AEC (mtxQ() in push(), 97.532 -> 97.669); other accessor shapes (depth 3 alone, reference-returning, named temp) and dead loads in non-DL inlines are flat**](#kit-ccclxiv-agent-g-run293) -- _gui 0F04 / 329C, post0b 48AEC NM gains; byte-identical cleanup of E68 / 3714 / 3558 inert levers (46790 (u8) and 54E78 i1() are NOT byte-identical); 3714 spr v0-vs-t1 diagnosis (the BB split makes spr a coloured LR); ~3500 variants listed as negatives._
+- [kit CCCLXV (agent-c 2026-11-05, run 295): **NCC packet pointers are coloured block-granular LRs: share ONE pointer variable across every packet the target puts in the same register (a colour CLASS, found by a random subset search per class), then spelling / BB-split / zero-use grids on top; an int copy of &D with a folded use extends a split constant-address web across branch arms**](#kit-ccclxv-agent-c-run295) -- _post0b 59E80 NM 99.560 -> 99.835 (a4fe6fb98, 94d1e4347, 496f8d078), gui 2DE0 NM 96.766 -> 96.848 (1196 -> 1204, target 1212; 46b222df6); 37540 v9C re-read reproduced two ways (kept-param addv: v6C reloads, 780; copy before `v6C = vB4`: 768); 469A8 / 415A4 / 35B1C negatives._
 - [kit CCCLVI (agent-c 2026-11-05, run 291): **the four-point decode / type audit (literal vs extern, type width, void per-site aliases of never-read results, scratch temp vs coloured value) is flat on all 19 register-only bodies; zdbug:5 itabs show the real residuals are edg POOL temps shared across statements and types (pooled by size: a `dl->n++` postfix value temp is reused as later MAX / MIN `?:` results, so n and the MAX temp are one LR) and whole-function pool LR priorities (4B620 s0 / s3)**](#kit-ccclvi-agent-c-run291) -- _no gains; gui 4568 / 0F04 pool map ({832} / {960}, {64} / {0}), 34890 ternaries = make()'s pooled o / h param temps, 4B620 {720} / {592}, E2D0 arg4 f14 (forbidden f0 / f2 / f12), 46790 one code-free ring slot missing before the `* 1024` shift ((u8)(c / 16) re-phases the rest); 2000+ variants listed as negatives._
 - [kit CCCXLV (agent-g 2026-11-04, run 283): **an `or tN,vM` copy that no holder spelling moves is uopt copy propagation (the register is the source's u8 -> int cvt LR; deleting the copy variable gives the same bytes): put the copy in the variable the target colours that way (2E354: the switch-6 selector, t0), kill the propagation with a value-preserving re-read of the source on the use path, then a BB split after the copy; zero-use-sweep.py on a mangled-name NCC donor needs `--lines` (otherwise it sweeps every body and most probes fail to compile)**](#kit-cccxlv-agent-g-run283) -- _NM post 2E354 99.9294 -> 99.9403 (5f0f54272); 2E354 pick / 0x15 holder (cfe switch temp + cvt phantoms take v0), 493AC / 3B6A0 / 3BE1C proper-window sweeps, 30AF4 (un-propagated sv), 415A4, 59E80, 31A74, 35B1C negatives; tools /tmp/claude-1000/g283 (g2.py insertion grid, mk*.py role movers)._
 - [kit CCLXXIV (agent-c 2026-10-30, run 248): **a BB-split lever inside an inline used twice: move it to the one call site (3558 +0.87); 3558 frame residual = 2 home words short above tmp + 2 ugen temp words too many below side (a memory-resident Vec3 copy reproduces the low layout); 41D40's entry idx / bottom array share one edg temp -- a named-index bottom inline splits it (bottom exact, entry then mis-ordered)**](#kit-cclxxiv-agent-c-run248) -- _NM 3558 92.60 -> 93.49 (d3b2d6e5f, 17acfb357); 41D40 / 493AC / 4B2F4 / 46790 / 40304 negatives; 3C43C frame-correct spelling found (frame 248 vs 224, two old levers were the frame breakers)._
@@ -57282,3 +57284,147 @@ with the calls, with `if (sel) {}` / `if (1) {}` neighbours, the clamp as ?: / b
 `swc1; jal; [sb]` (97.163, under the run-234 form's 97.73) -- the sel spill always lands last. 3B6A0: a pt alias for
 the inner loop / the d dot product, `inside = 1 + 0 * (int)(pt / c)`, `cc = col` / cc before verts / verts through cc,
 block-scoped inside, singles and pairs (32): flat (several byte-identical).
+
+## kit CCCLXIV (agent-g 2026-11-05, run 293): the accessor-depth grid pays when it is JOINT with the append-method choice -- on bodies whose packets can go through several equivalent DL inlines (next / nextp / nextc / nD / nR1 ...), sample depth 0-3 x method per packet together (a random 200 of the product, then a single / pair local search): gui 0F04 98.843 -> 99.681 (one TEXRECT packet at depth 3); the kit CCCLXIII dead head load (`DL *dd = dl;` first in the inline) pays on gui 329C and post0b 48AEC; zero-code accessor SHAPES (reference-returning, named-temp, deeper nesting) are otherwise flat everywhere <a name="kit-ccclxiv-agent-g-run293"></a>
+
+_agent-g run 293, base 101759ff1. NM gains (report.json, regenerated; gate each time: ROM byte-identical,
+verify-blocks 6/6, non_matching_objects 0 errors, no exacts lost, 3248 exact): gui 0F04 98.84345 -> 99.68051
+(6446adae7) -> 99.74441 (176b9d044) -> 99.76358 (509f7a370), gui 329C 99.37063 -> 99.47553 (c7c5eb520) -> 99.52797
+(8c615ea40) -> 99.58042 (cdedcc74d) -> 99.6014 (c0829925c), post0b 4FD00 95.50597 -> 97.99204 (53bc15ed8), post0b 48AEC 97.66859 -> 97.69750 (3cb43a539: a code-free
+`if (this) {}` after the matrix-multiply call, random code-free-test search on the mtxQ body; the same search on the
+new 0F04 / 329C / 4FD00 bodies is flat), post0b 48AEC
+97.53179 -> 97.66859 (cb1f8bdef); cleanup 5cf28d078 (byte-identical). Scores standalone objdiff
+(`-c functionRelocDiffs=none`) against expected/._
+
+**1. Joint depth x method grid.** Run 292 fitted `me()` depth per packet with the append method fixed, and runs 190 / 257
+fitted the method with the depth fixed. Neither finds a point where both change at once: on 0F04 the joint product
+(4 packets x depth 0-3 x next / nextp / nextc = 1728) sampled at random (200) gave `me(me(me(f->ctx)))->nextc()` for
+the TEXRECT packet with the RDPHALF_2 packet back at depth 0 (`f->ctx->nextc()`): 98.843 -> **99.681** (6446adae7),
+then a single / pair local search (200, depth 0-4) is a plateau (RDPHALF_1's depth is free). 329C: the same random
+grid over its four appends (next / nC / nD) gave texture depth 0, TEXRECT / RDPHALF_1 nD() at depth 2, RDPHALF_2 next()
+at depth 1: 99.371 -> **99.476** (c7c5eb520). Tool: /tmp/claude-1000/g293/jg.py (`jgrid` random product, `jlocal`
+singles + random pairs around the current per-site (depth, method) tuple; method names can carry arguments).
+Lesson: when a body has several interchangeable inlines per site, grid the product, not each axis.
+
+**2. Dead head load inside the inline (kit CCCLXIII) as an extra method axis.** For each append inline add a copy with
+a code-free read first -- `Q`: `DL *dd = dl;`, `W`: `int kk = dl->n;`, `X`: `Gfx *bb = dl->buf;` -- and let the grid
+pick per site (tool: gridlib.py `deadmeth`). 329C: `nDQ()` on the texture and RDPHALF_1 appends: 99.476 -> **99.528**
+(8c615ea40); then extended inline SHAPES as further methods (`nR1` named result, `nc` direct `&buf[n++]`, `nB` / `nE`
+/ `nCd` through a `DL *d` copy, `nP` count-first, and their Q forms): RDPHALF_2 through `me(CTX)->nR1() + 0`:
+-> **99.580** (cdedcc74d). 48AEC: `mtxQ()` (`MtxHead *dd = mh;` before the count++) inside push() reached through
+`me(me(gctx))->pushQ()`, and the first element loop's dlcall() through `nextQ()`: 97.532 -> **97.669** (cb1f8bdef;
+frame still 0x168). On 3714 every Q / W / X copy on any packet LOWERS the score (98.44), on 0F04 / 4568 / 4BAF4 /
+42938 / 4B620 (DL and AIter cur / ref / next copies) it is flat, so it is a per-body lever, not a rule.
+
+**3. Flat this run (negatives).** Accessor shapes beyond plain `me()` -- depth 3, `mr(T &)` reference-returning,
+`mq(T *p) { T *q = p; return q; }` named temp, `me(&mr(x))`, `mr(*me(p))` -- as singles / pairs over every per-site
+receiver: 4B620 loop `it.` (199) and DL receivers cc / d0 (singles 160 + random pairs 199), 34890 it / o (45) and
+its bare call arguments (make's o, new X(o), a, o->list, Mid / X ctor args, 199), 54E78 p / a (199), 3B9C0 self / col
+/ n / f / a / b (200 of 240 singles), 0F04 f->ctx (120) and its other f-> reads (199) and bare args (199), 329C /
+3714 / 4568 CTX / c (80 each). Joint depth x method on 3714 (5 methods, random 200 of 160000, local 200, extended 14
+methods singles + 199 pairs, random triples 199) and 4568 (next / nJ + 11 shapes, 200 + 200): all = base; 4B620
+appends 5 methods x depth 0-3 (singles 199, random pairs 199) and loop cur / ref / Q / X / W copies x depth
+(singles 120 + pairs 79): = base. Dead loads in non-DL inlines (V3 / SV / Vec3 operators and setters, LIter, make(),
+Mid / X ctors): 34890 (26), 54E78 (154), 4F2DC (156), 4FD00 (176), 36694 (49), 3558 (126): flat or lower; 3B9C0
+random block-scope dead field loads (`{ ColB9 *dd = self->col; }` etc., 199): lower. `+ 0` packet folds on/off over
+every append (0F04 / 329C / 3714 / 4568, 16 each): base best. Texture append in a block with a BB split / parameter
+test before or after it (0F04 32, 329C 28): flat or far lower. 0F04's glyph load as a Ctx::load() member (12): 93.9.
+48AEC mtx() count forms (inc() member, take() on MtxHead, named h, free inline with / without keep, comma form, 18):
+the 0x168 frame stays for every form that keeps the score (inc(): 97.34 at 0x168), the others are 0x168 or 0x170 and
+lower. 46790's glyph index (c / 16 * 1024 + (c & 15) * 8, 7 x 8 x 2 spellings + 4 splits, 116) and put() shapes
+(14): = base (the t8 / t9 parity from word 25 on stays). E2D0: `1.0f + arg4` as a named s / arg4 += / operand order at
+four placements (33): = base. 3714 diagnosis: the target's spr is the single-BB local-CSE value in t1, ours is
+coloured v0 (zdbug:5: `{128|0}` LR 32 col 1, BB 3 only); the `if (1) {}` after the texture append is what makes it
+a coloured LR (without the split spr -> t0 like a ugen temp, but CTX's load moves above the a1 home store and
+becomes t2; 97.68) -- moving the split or replacing it by a parameter test (23 + 14) keeps v0.
+
+**4. Byte-identical cleanup (5cf28d078).** Verified on the function's `objdump -dr` text: E68's run-291
+`+ 0 * (int)(uls)` fold and the padq `volatile`, 3714's RDPHALF_1 `nR1()` (back to nD()), 3558's unused mk() store
+order. NOT identical (kept although score-equal): 46790's `(u8)(c & 15)` and 54E78's diagonal `i1()`.
+
+**5. A member GETTER is a different accessor from `me()`.** `Ctx *Font::gc() { return ctx; }` replaces the field read
+`f->ctx` itself (me() only wraps the pointer after the read), so its `this` parameter temp is one more edg pool entry
+at that site. 0F04 on the section-1 body: the TEXRECT packet as `me(me(me(f->gc())))->nextc()` and the RDPHALF_2
+packet as `me(f)->gc()->nextc()` (singles + pairs over the six f->ctx reads x {field, gc(), const gk(), reference
+gr(), static free `sgc(f)`, me(f)->gc(), me(f)->ctx}, 199): 99.681 -> **99.744** (176b9d044); the const, reference
+and free-function getters score the same as gc() at the TEXRECT site, only me(f)->gc() works at RDPHALF_2. Flat:
+the same getter family on the other Font fields (glyphs / tex / tw / th / h10 / h14, 199), a joint depth x method
+local search on the new body (199), getters on 48AEC `GS->ctx` (199) and inside its push / load / prim / dlcall /
+mtx inlines (49), 42938 `G.o->ctx` / `G.go()` (199), 4B620 `cc` / `d0` (`gcc()`, `rcc()`, `this->`, 199), 34890
+o->h / list / flags (73), 3558 s0->node / b0 / b1 (39), 54E78 `p.gn()` / `p.gd()` const getters (199), 329C /
+3714 `gctx()` / `rctx()` free getters for CTX and `arg0->gs()` (199 / 169), and `dl` read through a `gdl()` getter
+inside every append inline (0F04 / 329C / 3714 / 4568, 199 / 199 / 199 / 170).
+
+**6. Agent-c's kit CCCLXV shared packet pointers carry over to the gui texture-rect bodies.** Copies of the packet
+macros that write through a caller-named `Gfx *` (`gImmp1S(VV, pkt, ...)`, `gSPTextureS(VV, ...)`,
+`gSPScisTextureRectangleS(V1, V2, V3, ...)`: `VV = (Gfx *)(pkt);` instead of the block-local `_g`) plus function-scope
+`Gfx *gpa, *gpb;`, then every set partition of the four packets (15): 0F04 texture / TEXRECT / RDPHALF_2 on gpa,
+RDPHALF_1 on gpb -- the target's t0 / t0 / t1 / a0 classes are not the rule, the grid decides -- 99.744 -> **99.764**
+(509f7a370); 329C texture / RDPHALF_2 gpa, TEXRECT / RDPHALF_1 gpb: 99.580 -> **99.601** (c0829925c). Flat or lower:
+3714 (15, best = base; its texture append is an explicit block), 42938 (its five header-style packets + the explicit
+`g` site over {own, g, gpa, gpb}, 199), 4BAF4 (the two `_g` blocks and two `g = PKT4B` sites over {own, g, ga}, 80),
+4B620's DL::add appends through `addS(Gfx *&g, ...)` reference copies (199: 88-91, 1252-1268 B -- a reference
+parameter is not a shared register class), 4568's six packets over <= 3 classes (122: 84.19 at 780 B). A joint depth x
+method local search on the new 0F04 / 329C bodies (199 each) is a plateau; 3714 with its explicit texture block on a
+shared pointer too (15): <= base. 34890's ?: loop result written into a named function-scope `void *dv` (5 forms):
+99.40 (the result copies stay on make()'s pool temps).
+**7. `me(this)->` on IMPLICIT member reads.** post0b 4FD00 (a member function: `verts` / `faces` / `nrm` are
+this-> reads): `me(this)->faces` on sum()'s first vertex index and `gn()[f1]` (a `V3 *Col::gn() { return nrm; }`
+getter) scored 96.602 but at 1008 B (target / base 1004 B, base 95.506; no same-length variant in that 200 beat
+base); a second grid FROM that +4 B body (depth 0-3 x field / getter per site, 199) gives both normal reads at depth 2
+(`me(me(this))->gn()[f1]`, `me(me(this))->nrm[f2]`) back at 1004 B: **95.506 -> 97.992** (53bc15ed8). Lesson: a
+length-off lead is a valid stepping stone for a second grid -- only the final body has to keep the length.
+Flat: `me(this)->` depth 1-3 on implicit member reads in 48AEC (flags30 / n14 / arr / g34 / a8 / ac, 199), 4B620
+(cc / d0 / d4 / arr, 199) and 54E78 (mtx, 199); 4FD00's sum() calls through me(this) and mid / d1 / d2 through
+me(&x) (199), and a further depth x getter grid on the new body (199); depth 3 / reference / named-temp shapes on
+36694 p / n / r / a (199), 3558 s0 / o / m (199) and 4F2DC start / e / d / dir / cam / out (199 + 199).
+
+## kit CCCLXV (agent-c 2026-11-05, run 295): on an NCC packet body the packet POINTERS are uopt-coloured, block-granular live ranges -- give every set of packets that the target puts in the SAME register one shared pointer variable (a register class, not a pair): post0b 59E80 99.560 -> 99.835; an int copy of `&D` with a folded use carries gui 2DE0's &D web across the RDPHALF_1 MAX / MIN arms (96.766 -> 96.848, toward length); 37540's v9C re-read reproduced two ways (both lose elsewhere) <a name="kit-ccclxv-agent-c-run295"></a>
+
+**59E80 mechanism (zdbug:5, /tmp/claude-1000/c295/t1/dump.sh SRC TAG FN 5).** Map each `isvar M 4 -NNvreg` to its
+packet by appearance order, then read the `>>>active<<<{id} lr colour` records (colours 1 v0, 2 v1, 3..6 a0..a3, 7 t0,
+8 t1) and the per-block `active " " (3) [...]` sets. Each `{ g = c->next(); ... }` pointer is its own LR, coloured in
+priority order and interfering with every LR in the same BLOCK (two packets in one block never share a colour unless
+they are the same variable). The target's 20 packet pointers fall into colour classes (v0: 0xBA000602 / 0xBA001301 /
+0xF9 / 0xBC000C04 / the last 0xB7; a0: 0xBA000C02 / 0xB7 / 0xFA / 0xBC001404; a1: 0xB6 / 0xBA001402 / 0xBC000404 ...);
+a random search over SUBSETS of each class sharing one `Gfx *` (gv / gu / gs; 200 variants,
+/tmp/claude-1000/c295/t1/gf.py) found 99.615 at once, and the next grids: 0xBC001C04 back on gs (99.670), the 0x1402
+packet on nextB() (99.725), an `if (1) {}` after the 0xB7 packet (99.780), then the zero-use sweep's
+`gv = c->nextC() + 0 * (int)(c);` on the 0xBC000C04 packet (99.835). All same length (1092); exact pair search (kit
+CCCLXI) had stalled at 99.560 because a pair can't express a 4-member class.
+Residual (9 lines): the 0x1402 packet's n (target v1, ours a0: nextB's own n), the 0xBC001404 pointer (target v0, ours
+a3) and the 0xBC001C04 pointer (target a3, ours a1). Flat or worse: per-packet inline dead-`d` / named-d next variants
+(13 kinds incl. `DLHead *d = c->dl;` before next / nextB / nextC / nextD, a parameter DLHead, `d = 0` after; singles
+and 11 x 12 kind pairs), 0xBC000C04 on next() (dl / n right but the 3 / 0xFFFD hoist into t0 / t1 needs nextC: 98.82),
+named `k3` / `kf` constant locals (int / unsigned, top / in place, 192), a BB split after 0x1402 (moves the residual to
+the 0xB9 pointer), a third shared variable for the target's a3 pair 0xB9 / 0xBC001C04, code-free `if (gu/gs/gv) {}`
+tests next to packets 9..18 (141), `+ 0 * (int)(c / o / gu / gs / gv)` folds on other pointers (200), and two
+200-variant random 2-op grids (spelling x sharing x BB split) on the final body.
+
+**gui 2DE0 (kit CCCXXXVI int <-> pointer local).** `int pc = (int)&D_00000000;` right before the rectangle macro, the
+RDPHALF_2 append's ctx read as `me(me((*(Ctx **)pc)))` and a counted use `+ 0 * (int)(pc)` in the dtdy argument: the
+&D web now reaches the third append with rematerialised `lui / addiu` inside the RDPHALF_1 MAX / MIN arms like the
+target's t3 (ours a2): 96.766 -> 96.848, 1196 -> 1204 (target 1212). Two folds (args 6 + 8, or 0 + 2) give 1212 =
+target with &D in ONE web from the first instruction (like the target) but in t4, because the rect packet pointer
+takes t3 for its whole span: ~90.7 (every t-register shifted by one); 3-fold random grid (200) and appends 1 / 2 on pc
+(182) do not beat 96.848.
+
+**37540 v9C re-read (open).** The target re-reads v9C after its field stores while v6C's values stay in the
+operator= registers. Reproduced: (a) `+=` through an inline `addv(V3 *d, ...)` whose pointer parameter is kept
+(`if (0) { d = 0; }`) -- v9C re-read, but the opaque stores also kill v6C (reloaded, 780 bytes); by-value / const /
+copied o parameters keep the v6C reload; (b) the v9C field copy written BEFORE `v6C = vB4` -- the by-value
+operator='s umov kills v9C only, so the pattern is the target's (3 v9C re-reads, v6C forwarded) but the v9C loads come
+before the word copy (768 bytes, 85.9). Flat: copy spellings (fields / pv-> / set / pv->set / kept-param cp9 /
+reference cp9 / float-pointer / id(s)) x add (`*pv +=` / `v9C +=`) x operator= / += member orders (128); v6C never
+address-taken (explicit-field assignment and adds, 132). (c) A BB split or any code-free test (`if (1) {}`, `if (s)
+{}`, `if (pv) {}`, `if (v9C.x) {}`) between the v9C field copy and a DIRECT `v9C += v6C` also re-reads v9C, but v6C's
+operands then come back from the operator= parameter temp (sp+28..36) and s is reloaded: 780 bytes, 94.9 (the same
+separators before `*pv += v6C` are inert; 200 variants).
+
+**469A8 (in-tree cfe).** Remove-one / remove-two over 13 levers (89 variants): removing the first `if (temp_s1) {}`,
+the first `0xC0` test or one pair is neutral (98.641), nothing raises; 200 random code-free tests (15 expressions x
+30 gaps) flat; temp_t6 / temp_a3 replaced by their expressions or made int (43) flat. **415A4** record block
+(3 BB-split positions x a2C via t / D_t / D_tA x v base spelling x `if (1)` wrapper, 192) flat. **35B1C** residual
+is a scheduling order only (vtable `sw t6,12(s4)` after the `-4` compare constant): the store inside the member
+test's comma expression (3 forms), in both ?: arms, or through `(char *)p + 8` all give 94.32 (the store moves the
+wrong way; 97.40 base).
