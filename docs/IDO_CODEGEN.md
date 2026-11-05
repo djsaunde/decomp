@@ -14746,6 +14746,9 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCCLXXIV (agent-c 2026-11-05, run 300): **as1 breaks scheduling ties by SOURCE LINE (store on a higher line than the call = `mfc1 / spill; jal; swc1`); ugen's goto straightening (`goto z; c: CALL; return; z: if (1) {} STORE; goto c;`) keeps the moved store's own line, but only for the textually-first such block per function (later ones are not merged at all); random line-join / line-split sweeps find as1 ties cheaply**](#kit-ccclxxiv-agent-c-run300) -- _post 31A74 NM 97.73 -> 98.12 (tail spill / store pair; mode-1 lui/mfc1 pair left), post0b 3BE1C 99.27 -> 99.78 (one-line `nx = ..; fv = ..; do {`), 3B6A0 96.375 -> 96.65 (same loop head), 415A4 97.30 -> 97.35 (line split); 3BE1C residual = off spill slot (layout analysis + lead); 469A8 / 35B1C / 2DE0 / 493AC sweeps flat._
 - [kit CCCLXXVII (agent-c 2026-11-05, run 301): **a store the target issues AFTER a later test's instructions = the if(1)-split goto block placed in FRONT of the test (`q = ..; goto z; c: if (TEST) ..; .. goto e; z: if (1) {} STORE; p = q; goto c;`); in 35B1C the split merge needed c to start with the test (not with a recompute of the pre's `o + 4`) and real code in the goto's block; the moved block takes the line of the statement that jumps into it, so `do { if (0) { c: CALL; return; } } while (0); STORE; goto c;` raises a store without a split -- but any two raised merges per function still fail**](#kit-ccclxxvii-agent-c-run301) -- _post0b 35B1C NM 97.40 -> 98.77 (a581fd33f; left: one ugen temp short, uopt CSEs every p = o + 4 re-spelling); 31A74 100-combo harness negative; 3BE1C home map (MAXS `?:` temps at the bottom, spill = first slot below; target has one home fewer); NCC ctor reading of 35B1C = same 97.40; mix sweeps on 6 bodies flat._
 - [kit CCCLXXXI (agent-c 2026-11-05, run 303): **uopt folds only the FIRST identity OR on a known constant (lead with a value-preserving `| 2` to keep the target's ori chain); a coloured LR whose BB contains a call cannot take v0 (`if (1) {}` after the call frees it; zdbug:6 bit index = LR number); a folded address use makes an address CSE holding its own register; as1 line tie for the final store**](#kit-ccclxxxi-agent-c-run303) -- _post0b 415A4 97.70 -> 100 EXACT (69cb0aa5a, in-tree C, 13 D_415A4_* pins at 0); 3BE1C frame / colour, gui 2DE0 variable reuse, 493AC / 3B6A0 reuse negatives._
+- [kit CCCLXXXIV (agent-g 2026-11-05, run 302): **edg (NCC) inline-temp POOL: sized by the most slot-taking inline temps live in ONE full-expression (by-value `return v;` identities and constant-returning inlines take slots; const-ref identities, copy-propagated multi-statement inline params and named-local assignment expressions do not); a reused slot is one ucode variable whose block-granular live range is itself a colour lever, so frame offsets and colours can be the same object**](#kit-ccclxxxiv-agent-g-run302) -- _post0b 54E78 coupling diagnosed (best layout-correct form 99.565 < 99.819, not committed); 4FD00 / 36694 / 5A2C4 / E2D0 / 3B9C0 / 4B620 negatives._
+- [kit CCCLXXXV (agent-c 2026-11-05, run 304): **a copy the target keeps (`move v0,s8`) that every plain copy propagates away = an inline member called on an RVALUE receiver (`(c + off * 0)->face(i)`, int zero term); then re-grid: statement order / line joins, and code-free `if (X) {}` tests of the variable that must colour EARLIER (a test counts in its own block's loop depth; repeated tests on one level dedupe; folds were flat)**](#kit-ccclxxxv-agent-c-run304) -- _post0b 3B6A0 96.85 -> 100 EXACT in six steps (5e8866f66, NCC donor on both trees, D_3B6A0_tbl pinned 0); 3BE1C / 469A8 negatives._
+- [kit CCCLXXXIII (agent-c 2026-11-05, run 304): **the variable-reuse lever in cfe: reuse the variable for a later value the target passes in the same register, as an assignment INSIDE the call's argument list (`f(..., (v = X), ...)` keeps the argument order; a separate statement issues the load early); move a counted use from the variable the target colours later to the one it colours first; cfe zdbug:6 colours 1..12 = v0..t5, 13 = ra (t6..t9 never colours)**](#kit-ccclxxxiii-agent-c-run304) -- _post0b 469A8 NM 98.641 -> 98.786 (b21d409c0), 3B6A0 NM 96.65 -> 96.85 (0f8e9fea6); 3BE1C va / vb, 493AC p34 receiver / grid ring, 31A74 mode-1 raise, post1b 65EE4 cap re-check (still a cap) negatives._
 - [kit CCCLXXXII (agent-g 2026-11-05, run 301): **RE-GRID after every gain: swap an old zero-code lever for a new one, then re-run BB-split / one-site-wrap / pad-position sweeps on the new base; an unreferenced class-object block (`{ V3 t; }`) is a BB split**](#kit-ccclxxxii-agent-g-run301) -- _post0b 54E78 NM 99.565 -> 99.638 (c9b02204a) -> 99.819 (e4a19c2a2); register-span scan for the variable-reuse lever (rs.py); reuse / split / wrap / swap / BB-split negatives on 17 bodies._
 - [kit CCCLXXX (agent-g 2026-11-05, run 300): **a zero-code inline whose by-value parameter receives an operand (`sq(p.n.y)`, `idv(d)`) turns that operand into a variable of its own (edg inline-parameter temp, homed) -- a colour lever on FP / int operands**](#kit-ccclxxx-agent-g-run300) -- _post0b 54E78 NM 99.529 -> 99.565 (f9094847c), 4BAF4 NM 98.009 -> 98.021 (314e7c489); one-site wrap / product-inline / paren / pointer-merge sweeps over 14 bodies otherwise flat; 4BAF4 one-register clip lead; 4FD00 / 34890 / 3B9C0 / 46790 / E2D0 / 4B620 negatives._
 - [kit CCCLXXVIII (agent-g 2026-11-05, run 300): **a value the target holds in a register LATER than every free one (and that colours first into a low register in your build) = its variable is REUSED for a later, non-overlapping value the target puts in the same register: write both through one variable (cast if the types differ) -- one live range over both, lower priority, the later register**](#kit-ccclxxviii-agent-g-run300) -- _gui 3714 99.922 -> 100 EXACT (3e5096d7f: spr reused as the rectangle packet pointer, spr t1 as the target); header-line lever has no other candidate; same-type local-merge sweep (46790 / 3B9C0 / 3558 / 329C), 329C packet-variable partitions x declaration order, 54E78 code-free tests flat._
@@ -58855,5 +58858,174 @@ on 3B9C0 / 4FD00 / 329C / 4B620 / 4568 / 36694 / 4F2DC / 42938 / 48AEC / 3558 / 
 42938; BB-split x one-site-wrap pairs (bxg.py) on 329C / 4B620 / 34890 / 4FD00 / 46790 / 4568; 4F2DC's `PadK<4> pz`
 at every statement position; 3B9C0 float-literal idv() wraps; 3558's stage / vb accumulate forms (operator+=,
 interleavings, line joins); 46790's t8 / t9 ring swap (a ugen temp-ring phase from instruction 25 on) unchanged by
-every BB split. Scripts: /tmp/claude-1000/g301/ (rs.py, sbs.sh, opw.py, opg.py, opgF.py, swap.py, swap2.py, bbs.py,
+every BB split. spelling-grid.py passes (<= 200 each): 46790 idx / dst / c spellings, inner-loop increments and
+put() bodies; 329C x / y / fw / fh and w / h / t statement orders and the Scis operand spellings; 4B620 Base-ctor /
+d0-d4 store orders; 4BAF4 pos / x / y orders; 3B9C0 d / dn / p orders; 36694 flip / r / l forms; 3558 matrix-term
+orders; 4F2DC e.set() / dir spellings; 4FD00 d1 / d2 order, declaration order, test spellings; 42938 G.m* stores;
+34890 make() argument / Mid ctor order; 4568 Scis operand spellings: all flat. Scripts: /tmp/claude-1000/g301/ (rs.py, sbs.sh, opw.py, opg.py, opgF.py, swap.py, swap2.py, bbs.py,
 bbsF.py, bxg.py), driven by /tmp/claude-1000/g300/vr.py.
+
+## kit CCCLXXXIII (agent-c 2026-11-05, run 304): the kit-CCCLXXVIII variable-reuse lever works in cfe too when the reuse is an ASSIGNMENT INSIDE A CALL ARGUMENT of the later value (post0b 469A8 98.641 -> 98.786); a folded counted use moved from one variable to the one the target colours FIRST (3B6A0 96.65 -> 96.85); 3BE1C / 493AC / 31A74 / 65EE4 negatives <a name="kit-ccclxxxiii-agent-c-run304"></a>
+
+_post0b gl_func_000469A8 NM 98.641 -> 98.786 (b21d409c0), post0b gl_func_0003B6A0 NM 96.65 -> 96.85 (0f8e9fea6); both same length._
+
+**1. 469A8: reuse the variable for the later a3 argument, written as an assignment expression in the argument list.**
+The target holds `temp_a3 = FW(temp_s1, 0xC)` in a3 (v1 free) -- kit CCCLXXVIII's signature of a reused variable. The
+last call's fourth argument `FW(temp_s1, 0x60)` is also loaded into a3, so `..., (temp_a3 = FW(temp_s1, 0x60)), ...`
+in the call makes temp_a3 one variable over both values and its first web colours a3 like the target. As a separate
+statement before the call (`temp_a3 = FW(temp_s1, 0x60); f(..., temp_a3, ...)`) the colour is fixed too but the load is
+issued before the a0 load (`lw a3,96(s1)` / `lw a0,536(s2)` swapped, 98.573); inside the argument list it keeps its
+argument-order slot (98.786). kit CCCLXXXI 6.'s automated web renames were byte-identical in cfe because they renamed
+whole definitions; this is a value the target evidently passes in the same register (here: the next call's argument).
+The first `temp_v1 = FW(arg0, 0x240)` web (target v1, ours a1) is fixed by dropping agent-g run 281's
+`if (FW(arg0, 0x240)) {}` test (the test's load starts a CSE that colours first), but that swaps the `move a0,s1` /
+`move a1,s0` argument moves (98.738, 20 diffs); 11 replacement tests, a test after the reload and 150 random line
+joins between the vcall and the argument block do not restore them. Dropping the `if (FW(temp_v1, 0x148)) {}` test too
+makes the 0x148 pointer a ugen temp like the target (t8 + `sw t8,72(sp)`) but swaps s0 / s1 (104 words).
+Diagnosis (cfe dump compiler on the asm-processor pre-pass, `-Wo,-zdbug:6`): colour numbers 1..12 = v0, v1, a0..a3,
+t0..t5, 13 = ra, 14.. = s0..; t6..t9 are never colours, so the target's pDC in t7 (`addiu t7,v1,220` above the `&&`
+branch, stored to the stack argument after it) is NOT a coloured variable. Writing the whole argument block as one call
+expression puts the `&&` argument first (ugen evaluates the branchy argument before the others): 70 (32 variants).
+Negatives: temp_t6 / &D+0x254 chains and pointer locals (10 + 28), the 0x148 load held in a dead variable (37).
+
+**2. 3B6A0: move a counted use to the variable the target colours first.** The target has f = t4 and inside = s2 (f
+coloured before inside); ours had the reverse (inside t4, f s3). Dropping agent-g run 210's `+ 0 * (int)(inside)` from
+px and adding `+ 0 * (int)(f)` to the `inside = 0 + ...` store swaps them (each alone: 96.425 / lower). Left: c / pt
+swapped (s3 / s8), the target keeps `move v0,s8` (a separate cc copy; 24 cc / remap spellings all copy-propagate), and
+the tbl address is an LR (a1) in ours. Zero-use sweep over the loop (L68-L110, 3 x 200) on the new base: flat.
+
+**3. Negatives.** 3BE1C: va / vb (t3 / a3, target a0 / a1) stay below the `va[k]` / `vb[k]` element-load CSEs with
+pointer-form / index-swap / `k + 0` element spellings (28), `if (1) {}` splits in the 0x200 block (NCC drops them, 8),
+`ia` / `ib` held in the dead a / b / off / cnt / cx / cz (42), fold removal / addition singles in hi / lo / ok / k (33),
+code-free `if (va) {}` / `if (vb) {}` tests (37 + 161: one va test lifts va t3 -> t1, never to a0; repeated tests
+dedupe); off's spill slot (sp+80, target 84): block-scoping a local moves it to 76, unused locals are not homed, a used
+pad grows the frame to 248 (19 + 190 + 89 + 118). 493AC: grid-row spellings (16), second noop() receiver depths /
+noop2() bodies (27 + 23), the p34() receiver (target a2, ours v1) through e1 / o reuse (13 + 21: a3 and +4 on every
+frame offset), ref() / me() / &m34 forms (16), extra p34 / test tests (11). post 31A74: goto / line forms of the mode-1
+store (9 + 8): the mode-1 raise (`if (1) {} ACCS1 = acc;`) fixes mode 1 only when the tail's is dropped -- still one
+raised merge per function. post1b 65EE4 (fresh re-check of the cap claim): plain -O2 = 408 B, -O1 = 596, -O2
+-Olimit 1..10 = 584 = target (89.726); every remaining diff is two things -- the `data` constant built `lui t7; ori
+a2,t7` (target `lui a2; ori a2,a2`) and the second / third calls' `lw a1,40(a1)` in the jal delay slot (ours `addiu a0`);
+literal / `|` / local / chained / volatile / prototype / pointer-typed spellings (12 + 10 + 9) and 151 statement / argument
+line splits: flat or lower (line splits only lower). The cap claim stands.
+
+## kit CCCLXXXIV (agent-g 2026-11-05, run 302): edg (NCC) inline-temp POOL rules -- the low frame pool is sized by the largest number of inline temps simultaneously live in ONE full-expression; slots are reused across statements, and a reused slot is ONE ucode variable whose block-granular live range is a colouring lever; why post0b 54E78's last 5 offset diffs and its FP colours are coupled; negatives on 54E78 / 4FD00 / 36694 / 5A2C4 / E2D0 / 3B9C0 / 4B620 / 34890 <a name="kit-ccclxxxiv-agent-g-run302"></a>
+
+**1. Which inline constructs take a pool slot (NCC 7.1, measured on 54E78 by the ret / copy V3 temporaries' sp offsets).**
+- TAKE a slot: a by-value identity inline whose body is `return v;` (`idv()`), an int-returning constant inline
+  (`i1()`, any return type: int / short / char / f32 / unsigned all the same), `idv(1.0f)`, `idv(i1())`, a by-value
+  `ip(const T *)` deref, a class-object temporary (`V3();` -- those go to the UPPER named-local area instead and grow
+  the frame by 8-24).
+- Do NOT take a slot: a const-reference identity (`const f32 &cr(const f32 &v)`, fully transparent: byte-identical),
+  a multi-statement inline whose by-value parameters are copy-propagated (`dg(f32 a, f32 b) { return i1() - 2.0f * (a * b); }`
+  gives the plain body's layout), an assignment expression to a NAMED local (`(q = p.n.z) * p.n.z`: q is an upper-area
+  local).
+- The pool grows by one 4-byte slot only when TWO slot-taking temps are live in the same full-expression
+  (`i1() - 2.0f * (p.n.x * idv(p.n.x))`): any single statement with i1() + idv() moved 54E78's operator* result /
+  set() copy temporaries from the target's sp+80 / +100 to +76 / +92, and removing the pair from EVERY statement
+  (or making each statement single-temp: `f32 o2 = i1();` on its own line, `int one` / `f32 one` locals) restores
+  +80 / +100 -- but also loses the colours the pair produced.
+- A slot-taking construct whose result is itself built from slot-taking operands nests (`idv(i1()) - idv(2.0f) * (idv(x) * idv(x))`
+  moved the ret temp 8 bytes lower, `idv(...)` around the whole RHS of that one 4 bytes higher: ret / copy can move
+  independently).
+
+**2. Why the slot matters for colouring (zdbug:6 dump, diagnosis only).** In the 99.82 54E78 body the idv() temp of
+m[0][0] is variable M-44, and the SAME pool variable is reused for m[2][2]'s idv(p.n.z) and for operator*'s `s`
+parameter (p.d) in the translation block. uopt's live ranges are block-granular, so that one variable occupies its
+register over every block that defines / uses it -- that is the mechanism behind the run-301 idv() levers (n.y / n.z
+f14 / f16, x * d in f0). With the pair removed, `s` is a separate variable M-60 (after operator*'s `this` M-56) and
+the colours fall back (n.y / n.z / d / products = f12 / f14 / f16 / f12-f14-f18, 99.42). So in 54E78 the colour
+lever and the frame lever are the same object: every form tried either keeps the target's +80 / +100 or the target's
+colours, never both.
+
+**3. 54E78 forms tried this run (all <= 99.819, none committed).**
+- `f32 q;` in u2's place + `(q = p.n.z) * p.n.z` on m[2][2] (no idv): layout = target, d in f18 = target, 99.565
+  (best layout-correct form; left n.y / n.z one register low, products f12 / f14 / f16).
+- On that base `q = p.d; a.set(p.n * q);` (s merged into q): products f0 / f12 / f14 = target, but s's pool slot goes
+  and q loses its home (frame 144, ret / copy at the -4 / -8 offsets), 99.681; frame pads restore 152 but not the
+  offsets (99.746). With a 9-deep idv() chain on the final `= &mtx` store instead (section 5's bottom-slot lever):
+  frame 152, copy at the target's +100 and a at +136, but the set() parameter moves to +52 / ret to +84 (uniform
+  +8 shift), 99.725; one-site wraps / BB splits / random combos on it: flat.
+- `inline int i1r() { int r = 1; return r; }` on m[0][0] with u2 removed: byte-identical to the base (r takes u2's
+  upper word) -- an alternative to the volatile pad, not a gain; on all four diagonals the whole low area shifts +8.
+- operator* forms (named result, `f32 k = s` local, s * x order, const-ref s, friend), ctor member-init / const-ref
+  params, m[0][0] / m[2][2] split into `= i1(); -= ...` (code change), (q = X) / (r = X) assignment wraps over every
+  p.n.* / p.d site (singles + 200 pairs) on three bases, a second named local kept live by an empty test after m[1][1]
+  ... m[3][3], BB splits on the layout-correct bases: all <= base.
+
+**4. Other negatives (<= 200 each, all flat or lower).**
+- post0b 4FD00: the set(V3) parameter temp sits at sp+4 (target +20, all other offsets equal, frame 136): me() depth
+  grid on sum()'s three faces[] reads (84) grows the frame / moves the upper area, never the +4 temp; sum() returning
+  V3 by value (assign / init / set(by-value) / mixed): length 1060-1128.
+- post0b 36694: `const V3 &a = n * dot` / `V3 a(...)` x the difference bound by const-ref at function scope / by value /
+  through a const-ref cast (15): <= base (95.90).
+- post0b 5A2C4: the head block's `+ 0 * (int)(p)` fold moved to the second store / onto base / cnt / dropped, x an
+  `if (1) {}` after base / cnt / the preceding void call (64 + 5): the p / base v0 / v1 swap is unchanged.
+- bootup E2D0: `1.0f + arg4` through the unused s / d / a fresh local at four positions, operand order, the lim / 0x9F8
+  load order, `if (arg4) {}` / `if (arg4 != 0.0f) {}` at every statement end (+ pairs): <= 99.54.
+- post0b 3B9C0: code-free 0.0f empty tests (`if (d.x > 0.0f) {}` / `if (d.z != 0.0f) {}`) after every statement
+  end: flat (0.0f stays f20, target f14).
+- post0b 4B620: the append-5 `if (1) {}` removed / moved after append 6 / after the flush call / doubled: <= base
+  (removal loses 1.1 points); post0b 34890 ternary-result colours (a2 / v1) untouched (idv() on every part of the
+  for-condition ternary: byte-identical).
+- BB-split singles + 200 pairs (bbs.py) on the bodies the run-301 sweep had not covered: post0b 42938, 4BAF4 (also on
+  the ctx-reuse base, 97.56), 48AEC, game_uso 3558, bootup E68: all flat. Code-free tests (kit CCCLXXXV) of cc /
+  cc->head after cc's store in 4B620 (191 each) and of base / cnt / p in 5A2C4's head block (cfe: they cost 4-8
+  bytes there): flat or lower.
+- game_uso 3558: the target's `lw v0,72(s0)` (b0 -> getPos this; ours v1) is the getPos `this` pool variable M-96,
+  which edg also uses for the earlier c.getOut() this; its block reaches the mag call (kit CCCLXXXI (b) rule). Any
+  real BB split after getPos(vb) gives v0 but re-shapes the frame (248) and the stage block (83-90); named-ref /
+  pointer / free-function getPos forms keep v1.
+
+**5. Lead: a nested by-value identity chain adds pool slots at the BOTTOM (raises every pool temporary).** post0b
+4F2DC (95.85) has its operator temporaries 32-40 bytes below the target's (t2 / t5 / v0 = sp+140 / 128 / 100 vs
+180 / 160 / 132; named locals and frame 424 already = target). `if (idv(idv(...(p)...)) != 0)` (k nested idv() on the
+late `if (p != 0)` test, zero code) with the 16-byte `PadK<4> pz` replaced by `if (1) {}`: k <= 5 changes nothing,
+then every 2 more levels add 8 bytes BELOW the existing temps -- k = 8: frame 424 and every named home unchanged,
+temps +16 (byte-identical score to the base, i.e. a free 16-byte shift); k = 12: temps at the target's 160 / 132 (t2
+172 vs 180) but frame 440 (+16, every named home +16). The same chain on `count` / `besti` behaves identically. So
+the remaining 16 bytes must come from a pool object created BEFORE the temps that the target does not have
+(`d = dir`'s by-value operator= parameter is required: set / member / ctor / const-ref forms cost 3-12 points).
+Not committed (no fuzzy gain yet); the k = 8 form is a frame-neutral base for that search.
+In that k = 8 form the copy-chain diff is explicit: the target's operator= parameter slot (t2, sp+180) is REUSED for
+operator*'s result copy and operator+'s result copy goes to a slot at the pool BOTTOM (t7 = sp+84), while ours puts
+that copy in a pre-existing 12-byte slot ABOVE t2 (sp+180 with t2 at 156) -- one 12-byte pool object created early
+in ours (or not yet freed in the target) is the whole remaining offset difference.
+
+## kit CCCLXXXV (agent-c 2026-11-05, run 304, continued from kit CCCLXXXIII): post0b 3B6A0 EXACT -- a this-copy the target keeps (`move v0,s8`) = an inline member called on an RVALUE receiver (`(c + off * 0)->face(i)`); then as1 line ties and CODE-FREE TESTS of the variable that must colour earlier (`if (pt) {}`, `if (inside) {}` right after its store) set the s-register order; six steps 96.85 -> 100 <a name="kit-ccclxxxv-agent-c-run304"></a>
+
+_post0b gl_func_0003B6A0 (C++ `int Obj::below()`, NCC donor): 96.85 (0f8e9fea6) -> 97.45 (c8b1c6ce2) -> 97.55 (7a37eef28)
+-> 98.675 (3c798e55d) -> 99.675 (3894975bc) -> EXACT 800 B on both trees (5e8866f66; table D_3B6A0_tbl pinned 0)._
+
+**1. A kept copy is an inline `this` temp from an rvalue receiver.** The target copies the collision object into v0
+(`move v0,s8`) and reads faces through it while the remap test reads s8. A plain `cc = c` copy, `me(c)`, a reference,
+a free inline or a cast copy into a dead int always copy-propagate (24 + 22 + 16 spellings, byte-identical). An inline
+`Col::face(int i) { return remap ? &faces[remap[i]] : &faces[i]; }` called on `(c + off * 0)` -- int `off`, so the
+zero term folds -- gives edg a `this` temp that uopt keeps as the copy (the 3BE1C `(cc + i * 0)->face(i)` form; an
+UNSIGNED `i * 0` there makes edg home the zero in the frame instead, +3 words). The rvalue copy also let the next-vertex
+table address be rematerialised in the inner preheader once the tp fold moved from off to t.
+
+**2. Line ties, then code-free tests, each re-gridded on the previous step (kit CCCLXXXII).** (a) A random 150-variant
+grid over the order / joins of the nine loop-head statements: the face lookup first after t (97.45), then verts before
+it (target loads verts ahead of the remap branch, 97.55); `int off = 0; i = 0; do {` on one line fixes the preheader
+order (97.50 step). (b) A random 200-variant grid of single code-free tests (`if (X) {}` after each statement, X over
+13 variables): `if (pt) {}` right after `t = triAt(off)` puts the copy / `inside = 1` / verts load in the target's order
+(97.80); a second `if (pt) {}` in the edge loop lifts pt above the 6-stride constant (s3 / s4 as the target, 98.675) --
+the same test at depth 1 (inside / found blocks) does nothing (tests on one variable dedupe within a loop level).
+(c) `tp = ...;` joined onto the inner `u16 *fp = (u16 *)f; do {` line: the hoisted &pt[b] / &pt[a] issue before tp's
+lui (99.675). (d) `if (f) {} if (verts) {}` next to the edge-loop pt test (f / verts back above the a*2 / b*2 index
+CSEs, 99.75), and `if (inside) {}` right after `inside = 1` (inside above pt, s2 / s3: 100). Folds (`+ 0 * (int)(X)`)
+on the same variables were flat at every step -- a code-free test is a use in its OWN block (loop depth counts), a
+fold is a use in the statement's block.
+Generators: /tmp/claude-1000/c304/v/r11.py (order / join grid), r17.py (random single tests), r20.py (preheader
+joins), r23.py / r24.py (test pairs); runner /tmp/claude-1000/c304/t/rundf.py.
+
+**3. Applying the chain elsewhere (same run, flat).** 3BE1C: `if (va) {}` / `if (vb) {}` tests in the 0x200 block (one
+lifts va t3 -> t1, never a0), counted-use moves over 8 fold sites x 14 variables (109). 469A8: removing / replacing
+agent-g's code-free tests (49 + 28 + 15 + 151 line joins): the first temp_v1 web fixes only with a move-order swap.
+Later in the run (all flat): 200 random single code-free tests each on 3BE1C (18 variables), 493AC (13), 469A8 (13),
+gui 2DE0 (13) and post 31A74 (9); 3BE1C va / vb tests across the VC / hi / lo / q-test blocks (200 combinations), the
+loop-head order / join grid of the 0x100 block (150), face() receiver forms (`cc + off * 0`, `cc + 0 * i`, ... 17),
+zero-code inline wrappers on the element loads (`at(va, k)`, `iv()`, `sv()`, `me()`, 36) and on the va / vb / vc
+definitions (`pv()`, `pl()`, 15: byte-identical); 493AC row-loop `grid->w` / rowStart tests (21).
+Random code-free test PAIRS (200 each): 3BE1C, 493AC, post 31A74, 469A8 (on the test-18-dropped base, 98.738): flat.
