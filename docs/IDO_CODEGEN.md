@@ -14745,6 +14745,9 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCCLXXIII (agent-g 2026-11-05, run 297): **a CONST REFERENCE to a by-value-assigned local (`d = dir; const V3 &dr = d; ... dr * k`) stops uopt forwarding the operator= parameter temp's words into the later reads: they load d's own home like the target (zero code); every extra reference is homed (+8 frame, byte-identical once a pad compensates); the 4FD00 set() copy temp is always the lowest temp (the target's 16 bytes below it are another aggregate temp)**](#kit-ccclxxiii-agent-g-run297) -- _post0b 4F2DC NM 95.842 -> 95.853 (ac6e6310a); 4FD00 / 4BAF4 / 3714 / 34890 / 46790 / 54E78 / 36694 / 4568 / 3558 / E2D0 / 329C / 4B620 grids + zero-use sweeps, ~7500 variants listed as negatives; 4F2DC by-value-end layout lead, 4FD00 pool-pointer (M-104) diagnosis._
 - [kit CCCLXXIV (agent-c 2026-11-05, run 300): **as1 breaks scheduling ties by SOURCE LINE (store on a higher line than the call = `mfc1 / spill; jal; swc1`); ugen's goto straightening (`goto z; c: CALL; return; z: if (1) {} STORE; goto c;`) keeps the moved store's own line, but only for the textually-first such block per function (later ones are not merged at all); random line-join / line-split sweeps find as1 ties cheaply**](#kit-ccclxxiv-agent-c-run300) -- _post 31A74 NM 97.73 -> 98.12 (tail spill / store pair; mode-1 lui/mfc1 pair left), post0b 3BE1C 99.27 -> 99.78 (one-line `nx = ..; fv = ..; do {`), 3B6A0 96.375 -> 96.65 (same loop head), 415A4 97.30 -> 97.35 (line split); 3BE1C residual = off spill slot (layout analysis + lead); 469A8 / 35B1C / 2DE0 / 493AC sweeps flat._
 - [kit CCCLXXVII (agent-c 2026-11-05, run 301): **a store the target issues AFTER a later test's instructions = the if(1)-split goto block placed in FRONT of the test (`q = ..; goto z; c: if (TEST) ..; .. goto e; z: if (1) {} STORE; p = q; goto c;`); in 35B1C the split merge needed c to start with the test (not with a recompute of the pre's `o + 4`) and real code in the goto's block; the moved block takes the line of the statement that jumps into it, so `do { if (0) { c: CALL; return; } } while (0); STORE; goto c;` raises a store without a split -- but any two raised merges per function still fail**](#kit-ccclxxvii-agent-c-run301) -- _post0b 35B1C NM 97.40 -> 98.77 (a581fd33f; left: one ugen temp short, uopt CSEs every p = o + 4 re-spelling); 31A74 100-combo harness negative; 3BE1C home map (MAXS `?:` temps at the bottom, spill = first slot below; target has one home fewer); NCC ctor reading of 35B1C = same 97.40; mix sweeps on 6 bodies flat._
+- [kit CCCLXXX (agent-g 2026-11-05, run 300): **a zero-code inline whose by-value parameter receives an operand (`sq(p.n.y)`, `idv(d)`) turns that operand into a variable of its own (edg inline-parameter temp, homed) -- a colour lever on FP / int operands**](#kit-ccclxxx-agent-g-run300) -- _post0b 54E78 NM 99.529 -> 99.565 (f9094847c), 4BAF4 NM 98.009 -> 98.021 (314e7c489); one-site wrap / product-inline / paren / pointer-merge sweeps over 14 bodies otherwise flat; 4BAF4 one-register clip lead; 4FD00 / 34890 / 3B9C0 / 46790 / E2D0 / 4B620 negatives._
+- [kit CCCLXXVIII (agent-g 2026-11-05, run 300): **a value the target holds in a register LATER than every free one (and that colours first into a low register in your build) = its variable is REUSED for a later, non-overlapping value the target puts in the same register: write both through one variable (cast if the types differ) -- one live range over both, lower priority, the later register**](#kit-ccclxxviii-agent-g-run300) -- _gui 3714 99.922 -> 100 EXACT (3e5096d7f: spr reused as the rectangle packet pointer, spr t1 as the target); header-line lever has no other candidate; same-type local-merge sweep (46790 / 3B9C0 / 3558 / 329C), 329C packet-variable partitions x declaration order, 54E78 code-free tests flat._
+- [kit CCCLXXIX (agent-c 2026-11-05, run 302): **an if(1)-split goto block that will not merge or will not raise its store: grid the split's FORM, not only the c start -- `STORE if (1) {}`, `if (1) { STORE }` and a code-free test of a live value (`if (o) {} STORE`) merge and raise where `if (1) {} STORE` does not, need no pre-goto code and let c start with an assignment (35B1C: p's `o + 4` at c's start gives the target's ugen temp ring); a block-scoped loop counter costs an edg temp word (count in a dead, zeroed pad instead)**](#kit-ccclxxix-agent-c-run302) -- _post0b 35B1C EXACT (65f8c9465, 308 B, promoted in-tree C); 493AC NM 99.6467 -> 99.67975 (1a62ffd4f every sp offset = target, ab3a9295d code-free element test); 415A4 NM 97.35 -> 97.70 (85d2fe0bd, mode-word li hoisted); 3BE1C bottom-word / 31A74 double-merge / 469A8 reuse negatives._
 - [kit CCCLXXVI (agent-g 2026-11-05, run 299): **spilled parameters' entry-block home stores carry the function HEADER line: join the header, the declarations and the first statement onto one line so as1 ties them and keeps ugen's order (the body-only joins of kit CCCLXXIV never reach it); a register-normalised diff (nd2.py) shows which bodies have any order residual at all**](#kit-ccclxxvi-agent-g-run299) -- _gui 3714 NM 99.141 -> 99.922 (748a4ea1a; left: spr v0 vs t1); 4BAF4 / 4FD00 / 42938 / 48AEC / 3558 order regions are register-forced or cost more than they fix; 34890 / 48AEC frame leads re-probed (-g3 word identification), ~1900 variants listed as negatives._
 - [kit CCCLXXV (agent-g 2026-11-05, run 298): **the second-inline-copy (CCCLXXII) and const-reference-view (CCCLXXIII) levers run systematically over 15 C++ near-misses: same-body inline copies are byte-identical everywhere (NCC pools temps by slot / type, not by callee -- the lever needs a value held in a call-crossing pool temp); views of scalars / pointers / global lvalues are homed (+4..+8 frame) and lose; -g3 mdebug homes locate 48AEC's 16-byte frame excess (unnamed words between cmd and the first AIter) and 4F2DC's by-value-end 40 bytes (below the edg temp block)**](#kit-ccclxxv-agent-g-run298) -- _post0b 54E78 NM 99.478 -> 99.529 via a kit-CCCLXXIV line join (db5a02464); otherwise ~6000 variants (copies, views, global views, code-free tests x2 seeds, pair folds, commutations, mixed composer) listed as negatives; 48AEC / 4F2DC layout leads, 34890 pool-sharing reading of the target colours._
 - [kit CCCLVI (agent-c 2026-11-05, run 291): **the four-point decode / type audit (literal vs extern, type width, void per-site aliases of never-read results, scratch temp vs coloured value) is flat on all 19 register-only bodies; zdbug:5 itabs show the real residuals are edg POOL temps shared across statements and types (pooled by size: a `dl->n++` postfix value temp is reused as later MAX / MIN `?:` results, so n and the MAX temp are one LR) and whole-function pool LR priorities (4B620 s0 / s3)**](#kit-ccclvi-agent-c-run291) -- _no gains; gui 4568 / 0F04 pool map ({832} / {960}, {64} / {0}), 34890 ternaries = make()'s pooled o / h param temps, 4B620 {720} / {592}, E2D0 arg4 f14 (forbidden f0 / f2 / f12), 46790 one code-free ring slot missing before the `* 1024` shift ((u8)(c / 16) re-phases the rest); 2000+ variants listed as negatives._
@@ -58434,7 +58437,9 @@ line, 9 bodies), `register` on every 3714 local (26, inert under NCC), the 3714 
 (void / void * / long long / float, diagnosis), and the run-298 mixed composer (code-free tests + folded uses +
 commutations, 2-3 per variant, seed 2995, 200 each) re-run on the new 3714 base and on 54E78, 34890, 4B620, 329C,
 46790, 3B9C0, 4568, 4FD00, 42938, 4BAF4, 36694, 4F2DC, 3558; deep in-statement splits (vsp.py: a newline after
-each `,` / `(` / `=` / operator) on the C bodies E2D0 / 5A2C4 / E68 (64 / 200 / 200): flat. bootup E2D0 `1.0f + arg4`
+each `,` / `(` / `=` / operator) on the C bodies E2D0 / 5A2C4 / E68 (64 / 200 / 200), second-seed range joins (seed 2999) on 3714 / 54E78 and
+second-seed code-free tests (seed 2999, 200 each) on 54E78, 34890, 4B620, 329C, 46790, 3B9C0, 42938, 4BAF4, 48AEC,
+4568, 4FD00, 36694: flat. bootup E2D0 `1.0f + arg4`
 spellings / hoists into s / lim / arg4 at three anchors (35): <= base. Random contiguous range joins (vrange.py,
 200 per body) on all 18: no gain anywhere.
 
@@ -58514,3 +58519,190 @@ constant, whose `li a3,-1` sits before `move v0,s6` in the target and after it i
 
 **4. Sweeps flat.** mix.py (200 random 2-3 joins / splits) on 469A8, 415A4, 3B6A0, 493AC, gui 2DE0, 3BE1C; zero-use
 sweeps (3BE1C lines 100-160 / 120-142 / 132-142 with --exprs).
+
+## kit CCCLXXVIII (agent-g 2026-11-05, run 300): a value the target holds in a LATER register than every free one (gui 3714 spr: t1 with v0 / v1 / t0 free) = the variable is REUSED for a later value -- one variable, one uopt live range over both values, so its priority drops and it colours after the short ranges it now interferes with (gui 3714 99.922 -> 100 EXACT); the header-line lever has no other candidate in the 18-body list; same-type local-merge sweep flat <a name="kit-ccclxxviii-agent-g-run300"></a>
+
+**1. Diagnosis (3714).** The last residual was 4 words: `lw t1,16(t8)` / three `lh|lw aN,..(t1)` -- spr in t1 in the
+target, v0 in ours. The `-Wo,-zdbug:6` dump (coloring-solve.py) showed spr's live range coloured at ord 0-2 (top
+priority: one def and three uses in one block) into v0 under EVERY variant: spr's def moved into the alloc block /
+after the BB split / onto the header line (6), expression form with no named spr / accessors / single-statement call
+forms (19 + 10), `if (X) {}` BB splits around spr (46), folded zero uses of the texture append's dl / n / _g extended
+into spr's block (15 + 15; they moved to other registers, spr stayed v0). A range that colours FIRST takes the lowest
+free register whatever it interferes with -- so t1 means spr is NOT a high-priority range in the target: v0, v1, t0
+being "free" around its uses is the tell.
+
+**2. The fix.** t1 is also the target's register for the RECTANGLE packet pointer after the loader call (spr is dead
+there). Holding that pointer in spr itself:
+
+    spr = (Spr *)me(me(CTX))->nD();
+    gSPScisTextureRectangle((Gfx *)spr, me(me(CTX))->nD(), me(CTX)->nD(), ...);
+
+makes spr's live range span both values (uopt's ranges are per VARIABLE here, not per web): priority falls below the
+texture append's dl / n (v0 / v1) and _g (t0), and spr takes t1 in both places -- byte-identical, 1024 bytes. The
+Gfx * round-trips through the cast (Spr's alignment is weaker), every read sees a value written: valid C++.
+
+**Rule.** When one value sits in a register that is later than every register free over its range (and the dump shows
+it colouring early into a low register in your build), look for a LATER value the target puts in the SAME register
+whose range does not overlap it; write both through one variable (cast if the types differ). Try this before BB-split
+or zero-use grids, which cannot lower a one-block range's priority enough.
+
+**3. Header-line lever scan.** The run-299 nd2.py order-only listings of the 18 bodies: 3714 was the only one whose
+parameter home stores sit in a different order (36694 / 46790 home stores order-equal; 48AEC / 4F2DC differ only by
+frame offset / colour). No further candidate.
+
+**4. Same-type local-merge sweep (reuse.py: merge B into A when A's last use precedes B's first assignment).** 46790
+(3), 3B9C0 (5), game_uso 3558 (9), gui 329C (2): none above base. gui 329C: spr / gpa / gpb over the four packet slots
+(66, cast macros) and 4 packet variables x declaration order (75 partitions x orders): flat at 99.633; the texture
+append's n stays t0 (target v1) -- an `if (1) {}` split before the stores changes the length (the switch's `li at,1032`
+schedules across it). post0b 54E78: code-free tests on p.n.z / p.d at four sites (200): flat at 99.529.
+
+## kit CCCLXXIX (agent-c 2026-11-05, run 302): post0b 35B1C EXACT -- the if(1)-split goto block's code-free split may come AFTER the store (`STORE if (1) {}`), wrap it (`if (1) { STORE }`) or be a code-free test of a live value (`if (o) {} STORE`); those forms merge where `if (1) {} STORE` does not (an `||`-joined outer test), need no pre-goto code, and let the c block start with an assignment, which fixes the ugen temp ring; 493AC every sp offset (an edg temp word of a block-scoped loop counter); 415A4 mode word hoisted; 3BE1C / 31A74 / 469A8 negatives <a name="kit-ccclxxix-agent-c-run302"></a>
+
+_agent-c run 302, base 69d5db4cb. Gains: 65f8c9465 post0b gl_func_00035B1C EXACT (98.766235 -> 100, 308 B, in-tree
+IDO C promoted out of NON_MATCHING); 85d2fe0bd gl_func_000415A4 NM 97.34513 -> 97.69911 (452 B); 1a62ffd4f
++ ab3a9295d gl_func_000493AC NM 99.6467 -> 99.64876 -> 99.67975 (1936 B). Tools: /tmp/claude-1000/c302/t/ (run.py = in-tree variant runner,
+rund.py = NCC donor runner, rundf.py = donor runner that also prints the frame and the `sw a2,N(sp)` spill offsets;
+all print fuzzy, size and the dd.py register-exact diff count)._
+
+**1. 35B1C exact (list-append constructor, the kit-CCCLXXVII body).** Run 301 left one ugen temp short: the target's
+ring is la = t6, p's `o + 4` = t7 (no code: uopt CSEs it into v1), the a3 load = t8. That needs p's `o + 4` written
+AFTER the vtable la in ugen order, i.e. at the start of c (c follows the merged z block), but run 301 found c starting
+with an assignment never merged. It does once the split is spelled differently. Final shape:
+```
+if (o != 0 || (o = alloc(0x10)) != 0) {
+    goto z35;
+c35:
+    p = (W35B1C *)(o + 4); q = p;
+    if ((W35B1C *)(o + 4) != 0 || (q = alloc(4)) != 0) q->v = 0;
+    ... body ...; *p = a2; goto e35;
+z35:
+    if (1) { *(int **)(o + 0xC) = &D_00000000; } goto c35;
+}
+e35: return o;
+```
+No pre-goto code and no `int pad` (p's spill lands at sp+52 by itself). In a 96-variant grid (4 outer-test heads x 12
+z-block forms x pre / no pre) with c starting with `p = o + 4; q = p;`, these z forms merged AND kept the store raised
+(100.0, the only remaining word the baked 0x1E6B0 lui / addiu = the gl_ref_0001E6B0 pin): `STORE if (1) {}`,
+`if (1) { STORE }`, `if (o) {} STORE`, `if (p) {} STORE` (the last two are code-free tests of defined values). These
+merged but did not raise the store (97.40, store before `addiu v1` / `li at`): plain `STORE`, `{ STORE }`,
+`if (0) {} STORE`, `while (0) {} STORE`. These did not merge with the `||` head (324-328 B): `if (1) {} STORE`,
+`if (1) {} if (1) {} STORE`, `do {} while (0); STORE`, `if (1) {} STORE if (1) {}`. So the run-301 "c must start with
+the test" / "code needed before the goto" conditions were artefacts of the `if (1) {} STORE` spelling. Before
+writing off an if(1)-split goto merge, grid the split's position (before / after / around the store, a code-free test of
+a live variable) as well as the c start. The split-outer-test lead (`if (o == 0) o = alloc; if (o != 0) {`) also
+gives the right ring here (97.27, c = `p = o + 4; q = p;`) but tests s4 after the join (`move s4,v0; beqz s4`;
+target `beqz v0; move s4,v0`); every other head (`&& goto e`, nested, `!(..||..)`, `|| goto y; goto e; y:`,
+ternary) merges only without the split.
+Rejected first (all 98.766, dd 19): a value-preserving cast or fold on every expression between the la and the a3 load
+(66 spellings: `(int)(unsigned)*a3p`, `*a3p | 0`, `a3p[0]`, q / test / store / `p = q` re-spellings) -- uopt folds
+them all before ugen numbers anything; boolean narrowing casts of the member test (`(u8)(.. != 0)`): longer.
+
+**2. 493AC: an edg temp word for a block-scoped loop counter.** The second `arr.iter()` return temp sat at sp+132
+(target sp+136) while every temp below it matched: one 4-byte edg word between the two iter() temps too many and one
+below too few. The word above was the buf-clear loop's block-scoped `u32 i2` (`for (u32 i2 = 0; ...)`): counting in
+the zeroed, otherwise dead `pad2` word instead (`for (pad2 = 0; pad2 < n44; pad2++)`, int vs u32 still compares
+unsigned) and putting the run-233 `Ctx *g = 0;` home-keeping local back at the top of the second loop gives every sp
+offset of the target (99.6467 -> 99.64876, dd 29 -> 28). Reusing `i` instead also fixes the offsets but i is a
+call-crossing variable (s0) and the counter colours differently (99.53). Keep comments on the edited line: a
+four-line comment above the `for` changed as1's line ties and cost 0.06. Flat on top: single / paired removal of the
+older levers (78: next1 -> next is now byte-neutral), cur / ref choice for the five first-loop accessors (32),
+`me()` wraps, `o` reused as the first loop's element (kit CCCLXXVIII: all lower), row-loop bound spellings (12),
+zero-use --exprs over the first loop (78). Then (late, ab3a9295d) a random code-free test sweep over the first loop
+(41): `if (it.cur()) {}` before `if (it.cur()->test(0x2000))` gives the m50 block's it.a reload v1 like the target
+(99.64876 -> 99.67975, dd 28 -> 25; `if (it.cur()->m34) {}` / `->m38` equal); a second round over both loops (37 + 71):
+flat. Left: the p34 `this` (v1, target a2) and the row loop's grid / w / end rotation (v1 / v0 / a0, target a0 / v1 /
+v0).
+
+**3. 415A4: the mode word's li hoisted with the record constants.** The target's `li v0,1030` sits among the record's
+`li t8,2 / li t9,320 / li t0,240` before the stores: `v = (float *)1030;` written before `t = &D_415A4_t;` (the
+first a28 store through `(int)v`, one `if (1) {}` after it) gives that (97.35 -> 97.70). Left: uopt still folds the
+`| 6` (target keeps `ori v0,v0,6` after the store's own `li t1,1030`) and holds v in a0 (target v0); the `| 0x400`
+stays unfolded. 24 cast / fold spellings of the `| 6` (`(short)`, `(u16)`, `& 0xFFFF`, `| 2 | 4`, `(u32)`), 16
+spellings of the 1030 definition (cfe folds them all), v defined before any of the calls (64: no s-reg, same
+fold), the a28 store and chain read back through tA / t (72), 16 BB-split placements: flat.
+
+**4. Negatives.** 3BE1C: run 301's `cell` lead re-gridded with PadK<1..4> pads at 8 declaration positions (32), r as a
+function-scope local at 10 positions, r held in cx / cz, 108 code-free inserts at 9 sites: the frame never reaches 240
+with off's spill at sp+84 -- any new home moves the spill down with it; the target has one bottom (spill-area) word
+more than ours and one home fewer, and nothing tried adds a bottom word without code. va / vb / vc re-held in the
+else-arm's v0 / v1 / nx (kit CCCLXXVIII, 120 permutations): flat or lower. 31A74: the 35B1C z forms for both blocks
+(56 combinations) -- still only one raised merge per function; the store as an assignment-expression call argument
+on a later source line (35): statement line only, no change. 469A8: first-vcall spellings (12), p78 / a6..a10 reuse
+(6): flat.
+
+**5. Addendum (same run).** 3BE1C frame arithmetic from the -zdbug:6 dump (homes M-4..M-156 in ours, M-4..M-152 with
+`cell`): frame = homes + off's spill word + the untouched "bottom" words + the 56-byte save area; ours 156 + 4 + 24 +
+56 = 240, `cell` 152 + 4 + 20 + 56 = 232, target 152 + 4 + 28 + 56 = 240. The bottom words are not per conversion:
+replacing dx / dy by int expressions without the float subtraction drops two (232 / sp+72), the same with plain int
+reads keeps them (`dx = a - v0[a]`), explicit / implicit / `(s16)` / `(int)(int)` spellings of the truncs keep them,
+and folded `0 * (int)(floatexpr)` terms add none -- they follow the FP live ranges, so the target's extra one is a
+float value (or split piece) live in the loop that ours does not have; find that before retrying the frame. Also flat:
+hi / lo held in the else-arm's dead s16 dx / dy / ex / ey (kit CCCLXXVIII, 21; the target's a1 holds vb, then hi,
+then the edge loop's v1), hi / lo in cell / a / b / va / vb / vc (36, the s16 truncation costs code), 31A74 mode-1
+do-if0 / if0-else forms x 6 tail forms (18), 3B6A0 cc / tp / inside spellings (15) and the first five declarations
+permuted (120), mix.py on 493AC (300), 415A4 (150), 469A8 (150): flat.
+
+**6. Correction to 5 (3BE1C frame model, fits all 60 probed frames).** frame = round8(homes + 4 (off's spill) + B +
+56), with the alignment pad at the BOTTOM (so off's spill = frame - homes - 4) and B = 20 bytes in every lever-only
+variant: base 156 + 4 + 20 + 56 = 236 -> 240 (spill sp+80); `cell` 152 -> 232 (sp+76); `cell` plus one more home
+(a block-scoped `f32 dv = d / K;`) 156 -> 240 (sp+80), base plus that home 160 -> 240 (sp+76). The target's sp+84 in a
+240 frame means homes 152 (one fewer than ours, the `cell` route) AND B >= 24 -- one or two words more than any build
+has produced. B shrinks to 16 when either edge-loop `(int)(q[a] - v[a])` float expression is replaced (plain int
+reads keep 20), so it tracks the largest FP / conversion temp need of one statement, not the conversion count. Next
+step for 3BE1C: find a statement shape (same instructions) that needs one more such temp word -- e.g. a wider
+mixed float / int expression on one line -- on top of the `cell` route; adding homes cannot reach the target.
+
+**7. 3BE1C: a double operation sets the target frame (lead, not a gain).** On the `cell` route, ANY double-precision
+arithmetic anywhere in the body -- even a folded `+ 0 * (int)(2.0 * p.x)` / `0.5 * i` / `1.0 / i` / `2.0 * (f32)i`
+counted use (no code of its own) at any of seven sites -- gives frame 240 with off's spill at sp+84, exactly the
+target's frame (B 20 -> 28, the double reserves 8 bytes), at the same 1568-byte length; but it also renumbers every
+FP register from the prologue's `p *= K` block on (221 words off, 88.17): the double changes ugen's FP temp pool.
+Casts alone (`(double)i`, `(double)(f32)i`, `(f32)i * 2.0f`, a double inside `if (0) {}`) change nothing, and
+without `cell` the double gives frame 248. So the target's extra bottom words are an FP temp reservation, and the
+target body has no double op (its FP numbering is ours) -- look for a single-precision construct that reserves an
+FP temp the same way (a float expression whose temps outnumber the free FP registers in one statement, a float
+argument / return through memory) rather than for a missing home. Single-precision folded probes (`p.x / p.y`, a
+four-product sum, a four-difference product, `-p.x`, compares) and real `q[2] + 0.0f * E` stores: no frame change.
+A folded double COMPARE (`0 * (int)(p.x < 2.0)`) does the same as a double multiply (frame 240 / sp+84, 88.17); a
+bare double literal or `(long long)` casts do nothing, and 64-bit multiplies / shifts emit code.
+
+**8. Kit CCCLXXX one-site `idv()` by-value inline wraps (late in the run):** 3B6A0 face-pick / edge-loop operands (27),
+493AC row-loop / first-loop operands (13), gui 2DE0 rectangle operands and the &D int copy (13): all flat. mix.py on
+31A74 (300), 3BE1C (300), 3B6A0 (300), 493AC first loop (150), 469A8 (150 more): flat. zero-use --exprs windows over 469A8 (2), 31A74, 3BE1C (2), 493AC second
+loop (2), 3B6A0 (2), gui 2DE0: flat. Declaration permutations of never-memory-accessed locals (3BE1C va / vb / vc / k
+/ hi / lo, 120; 415A4 p / t / v around a / b, 18) and 493AC `g` position x type (31): flat. Code-free `if (X) {}`
+test sweeps of live values (the 493AC lever): 3B6A0 loop (86), 3BE1C loop (80 + 44), 415A4 (48), 469A8 (45): flat.
+
+## kit CCCLXXX (agent-g 2026-11-05, run 300): a zero-code INLINE whose by-value parameter receives an operand makes that operand a variable of its own (edg inline-parameter temp = a uopt variable with a home): post0b 54E78 `sq(p.n.y)` for the m[1][1] square 99.529 -> 99.565, 4BAF4 `(int)idv(d)` on one clip read 98.009 -> 98.021; generic one-site wrap sweeps over 14 C++ near-misses otherwise flat <a name="kit-ccclxxx-agent-g-run300"></a>
+
+**1. 54E78.** `inline f32 sq(f32 v) { return v * v; }` used for the n.y square only (diagonal mask x 4 inline forms,
+28): the translation-row product y moves to f12 like the target (x / z / p.d still f14 / f18 / f16 vs f0 / f14 / f18).
+The parameter temp takes a frame home: the two V3 temporaries sit 4 / 8 bytes lower (sp+76 / 92 vs 80 / 100) and no
+pad mix (volatile u / `{ V3 t; }` variants x extra homes, 60) restores them without growing the frame -- fuzzy still
+rises. sq on x or z, a second distinct inline for z, mul(a, b) on the off-diagonals (199 random masks), and mulf()
+inside operator*: all below.
+
+**2. Generic one-site sweeps** (scratch scripts in /tmp/claude-1000/g300: wrap.py member reads, wrap2.py local /
+parameter reads, wrap3.py simple products -> mulv / sqv, wrap4.py grouping parens -> idv(E), reuse2.py pointer-local
+merges with casts) over 36694, 4F2DC, game_uso 3558, 46790, 3B9C0, 4FD00, gui 329C, gui 4568, 34890, 4B620, 42938,
+4BAF4, 48AEC, 54E78: the only gain is 4BAF4's second clip comparison `(int)idv(d)`. A by-value identity inline is a
+cheap probe; it only pays where the operand's live range (not its load) is what the target colours differently.
+
+**3. 4BAF4 lead (not landed).** The target keeps the four clip half-extents AND the 0x158 ctx in ONE register (a3;
+ctx's spill home sp+140), and the 0xCC pointer in v0 with the call result: half-extents through ctx (cast) and the
+call result into d with a folded `+ 0 * (int)d` in a later clip test gives the target's GS v1 / x a0 / 0xC4 t0, but
+y / 0xC0 / ctx stay one register early (a2 / a3 / a1 vs a1 / a2 / a3) and the score drops to 97.74.
+
+**4. Negatives.** 4FD00: the target's `move v0,zero` (return-0 init) sits after the second face sum -- `int r` with
+`r = 0` at every line (34), `return p1 >= 0 && p2 >= 0` forms (7; the && form fixes the sums' v0 but adds 12 bytes),
+a caller pointer for the vertex reference temps (10): below. 34890 `void *p` shared by the X* and the loop value
+(17): below. 3B9C0 n->z through a reused float (t / dn / qa / qb / sg / num, 22): below. 46790 idx spellings (40),
+E2D0 `arg4 += 1.0f` forms (15), 4B620 first-two-packet append forms (199): below.
+
+**5. Why sq() moved the product (zdbug:6 on the 54E78 donor).** The inline's parameter `v` and the V3 ctor's first
+parameter (the product x) come out as ONE edg temp (M-44: NCC pools inline-parameter temps by slot / type, kit
+CCCLXXV): one uopt live range from the m[1][1] square to the product block, coloured f14 for both. That freed f12
+for the product y (= target). The target has n.y f14 but product x f0 / z f14, i.e. its pooled pair is not (v, a);
+3-parameter inlines placing n.y / n.x / n.z in slot 2 or 3 (`sb(x, y, z)`, `s3(0.0f, 0.0f, v)`, 59 combos) stay at
+99.565 or below. Generalisation of kit CCCLXXVIII: an edg pool temp shared across two inline expansions is the C++
+way to get "one variable, two values" without writing the reuse by hand.
