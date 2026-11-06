@@ -14748,6 +14748,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCCLXXXI (agent-c 2026-11-05, run 303): **uopt folds only the FIRST identity OR on a known constant (lead with a value-preserving `| 2` to keep the target's ori chain); a coloured LR whose BB contains a call cannot take v0 (`if (1) {}` after the call frees it; zdbug:6 bit index = LR number); a folded address use makes an address CSE holding its own register; as1 line tie for the final store**](#kit-ccclxxxi-agent-c-run303) -- _post0b 415A4 97.70 -> 100 EXACT (69cb0aa5a, in-tree C, 13 D_415A4_* pins at 0); 3BE1C frame / colour, gui 2DE0 variable reuse, 493AC / 3B6A0 reuse negatives._
 - [kit CCCLXXXIV (agent-g 2026-11-05, run 302): **edg (NCC) inline-temp POOL: sized by the most slot-taking inline temps live in ONE full-expression (by-value `return v;` identities and constant-returning inlines take slots; const-ref identities, copy-propagated multi-statement inline params and named-local assignment expressions do not); a reused slot is one ucode variable whose block-granular live range is itself a colour lever, so frame offsets and colours can be the same object**](#kit-ccclxxxiv-agent-g-run302) -- _post0b 54E78 coupling diagnosed (best layout-correct form 99.565 < 99.819, not committed); 4FD00 / 36694 / 5A2C4 / E2D0 / 3B9C0 / 4B620 negatives._
 - [kit CCCLXXXV (agent-c 2026-11-05, run 304): **a copy the target keeps (`move v0,s8`) that every plain copy propagates away = an inline member called on an RVALUE receiver (`(c + off * 0)->face(i)`, int zero term); then re-grid: statement order / line joins, and code-free `if (X) {}` tests of the variable that must colour EARLIER (a test counts in its own block's loop depth; repeated tests on one level dedupe; folds were flat)**](#kit-ccclxxxv-agent-c-run304) -- _post0b 3B6A0 96.85 -> 100 EXACT in six steps (5e8866f66, NCC donor on both trees, D_3B6A0_tbl pinned 0); 3BE1C / 469A8 negatives._
+- [kit CCCLXXXVII (agent-g 2026-11-05, run 303): **an identity on an inline operator's OWN parameter (`V3 operator*(const f32 &s) const { return V3(x * idv(s), ...); }`) puts its pool slot inside the caller's full-expression -- it moves the result / copy temporaries where caller-side slot-takers only shift them together; then drop the older lever whose shared pool variable now spans the new block and re-grid code-free tests**](#kit-ccclxxxvii-agent-g-run303) -- _post0b 54E78 NM 99.819 -> 99.891 (8d9829915, 68cfe20cf); post0b 4F2DC NM 95.853 -> 97.489 (end = e's by-value operator= parameter, camera pos = M4::getPos at cam + 0x70 on an rvalue receiver: the target's dead this-temp addiu); target-copy scan of 17 bodies empty; bootup 6204 / E9FC prologue probes negative._
+- [kit CCCLXXXVI (agent-c 2026-11-05, run 305): **run a register-normalised diff before the copy lever: of five near-misses only gui 2DE0 had a target copy ours lacked; wrap the clamp's RESULT zero (`P > 0 ? P : I(0 + x * 0)`), not the compare's; partial leads for 493AC (named receiver copy + dead-stored pad), 3BE1C (hi folds / one home fewer = the inner MAXS's second edg temp), 469A8 (store / re-read forwarding; NCC port at the cfe score with four NCC-side fixes), 31A74 (in-call store frees the goto merge); jumptable default-steal cap of 396FC / 51AD8 re-confirmed (NCC emits no jumptables)**](#kit-ccclxxxvi-agent-c-run305) -- _gui 2DE0 NM 96.848 -> 96.914 (a77525f51); 469A8 cast cleanup (fd95e598b)._
 - [kit CCCLXXXIII (agent-c 2026-11-05, run 304): **the variable-reuse lever in cfe: reuse the variable for a later value the target passes in the same register, as an assignment INSIDE the call's argument list (`f(..., (v = X), ...)` keeps the argument order; a separate statement issues the load early); move a counted use from the variable the target colours later to the one it colours first; cfe zdbug:6 colours 1..12 = v0..t5, 13 = ra (t6..t9 never colours)**](#kit-ccclxxxiii-agent-c-run304) -- _post0b 469A8 NM 98.641 -> 98.786 (b21d409c0), 3B6A0 NM 96.65 -> 96.85 (0f8e9fea6); 3BE1C va / vb, 493AC p34 receiver / grid ring, 31A74 mode-1 raise, post1b 65EE4 cap re-check (still a cap) negatives._
 - [kit CCCLXXXII (agent-g 2026-11-05, run 301): **RE-GRID after every gain: swap an old zero-code lever for a new one, then re-run BB-split / one-site-wrap / pad-position sweeps on the new base; an unreferenced class-object block (`{ V3 t; }`) is a BB split**](#kit-ccclxxxii-agent-g-run301) -- _post0b 54E78 NM 99.565 -> 99.638 (c9b02204a) -> 99.819 (e4a19c2a2); register-span scan for the variable-reuse lever (rs.py); reuse / split / wrap / swap / BB-split negatives on 17 bodies._
 - [kit CCCLXXX (agent-g 2026-11-05, run 300): **a zero-code inline whose by-value parameter receives an operand (`sq(p.n.y)`, `idv(d)`) turns that operand into a variable of its own (edg inline-parameter temp, homed) -- a colour lever on FP / int operands**](#kit-ccclxxx-agent-g-run300) -- _post0b 54E78 NM 99.529 -> 99.565 (f9094847c), 4BAF4 NM 98.009 -> 98.021 (314e7c489); one-site wrap / product-inline / paren / pointer-merge sweeps over 14 bodies otherwise flat; 4BAF4 one-register clip lead; 4FD00 / 34890 / 3B9C0 / 46790 / E2D0 / 4B620 negatives._
@@ -58976,6 +58978,9 @@ colours, never both.
   which edg also uses for the earlier c.getOut() this; its block reaches the mag call (kit CCCLXXXI (b) rule). Any
   real BB split after getPos(vb) gives v0 but re-shapes the frame (248) and the stage block (83-90); named-ref /
   pointer / free-function getPos forms keep v1.
+- Random 1-3-lever combinations (rnd.py / rnd2.py / rnd3.py in /tmp/claude-1000/g302: idv wraps x BB splits x
+  operand swaps x `(q = X)` named-local wraps, 200 each) on 54E78 (three bases), 4F2DC, 36694, 46790, 48AEC, 42938,
+  4B620, 3B9C0, gui 329C / 4568; one-site idv wraps on 3558 and the 4F2DC float reads: all flat.
 
 **5. Lead: a nested by-value identity chain adds pool slots at the BOTTOM (raises every pool temporary).** post0b
 4F2DC (95.85) has its operator temporaries 32-40 bytes below the target's (t2 / t5 / v0 = sp+140 / 128 / 100 vs
@@ -59029,3 +59034,195 @@ loop-head order / join grid of the 0x100 block (150), face() receiver forms (`cc
 zero-code inline wrappers on the element loads (`at(va, k)`, `iv()`, `sv()`, `me()`, 36) and on the va / vb / vc
 definitions (`pv()`, `pl()`, 15: byte-identical); 493AC row-loop `grid->w` / rowStart tests (21).
 Random code-free test PAIRS (200 each): 3BE1C, 493AC, post 31A74, 469A8 (on the test-18-dropped base, 98.738): flat.
+
+## kit CCCLXXXVI (agent-c 2026-11-05, run 305): the kit-CCCLXXXV "inline on a folded copy" lever applied to a target COPY scan of five bodies -- only gui 2DE0 has a target copy ours lacks (the clamp-result zero through `I(0 + dtdy * 0)`: 96.848 -> 96.914); 493AC / 3BE1C / 469A8 / 31A74 residuals are colour / frame / line, each with a partial structural lead; post0b 396FC / 51AD8 re-check: the jumptable default-steal cap still holds (NCC emits no jumptables) <a name="kit-ccclxxxvi-agent-c-run305"></a>
+
+_agent-c run 305, base 03f785f38. Gains: fd95e598b (cleanup: 469A8 NM explicit int <-> pointer casts, bytes identical,
+98.78641), a77525f51 (gui 2DE0 NM 96.84818 -> 96.91419, 1204 B). Tools: /tmp/claude-1000/c305/t/ (run-304 tools
+re-pointed; steal.py = conditional-branch target-steal counter, sw.py = jumptable range-check delay / default-head
+lister), /tmp/claude-1000/c305/v/ (variant files)._
+
+**1. Scan first: which bodies HAVE a target copy ours lacks.** A register-normalised diff (g299/nd2.py) of the five
+bodies shows a missing/extra `or rX,rY,zero` only in gui 2DE0 (the RDPHALF_1 t-term's MAX arm: target `move v1,zero;
+move a1,v1` ABOVE the blez, ours `move a1,v1` in the false arm; plus the &D t3 rematerialised in the MAX arm instead of
+the yl >= 0 block). 3BE1C, 493AC and 469A8 have no copy residual at all (pure colour rotation / frame), 31A74 is line
+order. So run nd2.py before reaching for the copy lever.
+
+**2. 2DE0: wrap the clamp's RESULT zero, not the compare.** `MAX(P, 0)` written out as `((P > 0) ? P : I(0 + (dtdy) *
+0))` (and the same for the MIN arm), `inline int I(int v) { return v; }`: 96.848 -> 96.914, same length. Wrapping the
+whole second operand (`MAX(P, I(0 + dtdy * 0))`, so the COMPARE also sees the temp) gives the target length 1212 with
+`move a0,zero; move v1,a0` + `slt / beqz` (not blez) and scores lower (96.60 / 96.67). Flat on top of it (all 1204):
+the same wrappers on the s-term (108), I() / `+ 0 * X` on 16 other expression sites (80), the w0 / w1 MAX forms (200),
+compare-side spellings `>= 1` / `0 <` / I(P) (72), folded uses of arg0 / x0 / y0 / spr (66), arm casts `(s16)` /
+`(int)` / `(u32)` (70), pre-assigning inline clamps `mxA(p) { int r = 0; if (p > 0) r = p; return r; }` and five
+siblings (64), decl / statement order (200), the pads / me() depth / pc-fold re-grid (200), random code-free tests on
+the 1204 and on the 1212 body (200 + 200), spelling-grid.py over the x / y / fw / fh / dsdx / dtdy operand orders
+(144 exhaustive: base best). Every 1212-byte form keeps the &D web re-formed in the yl >= 0 block
+(nd2.py): the length comes from the extra copy, not from the target's MAX-arm t3 rematerialisation.
+
+**3. Partial leads (each lower than the committed base, recorded so they are not re-derived):**
+- 493AC p34 receiver: a block-scoped named copy `{ Elem *e2 = it.cur(); int zz[2]; zz[0] = 0; gl_func_00000000(it.cur(),
+  e2->p34()); }` puts the receiver in the target's a2; the named copy alone shrinks the frame by 8 (1712 vs 1720: e2 takes
+  over an edg temp slot) and the dead-stored `zz[2]` restores it, so only the t4 / t5 order of the two element
+  addresses is left (99.659 < 99.680; e2 is computed first, the target computes the a0 address first). Receiver
+  wrappers (`me()`, `+ 0 * X`, `ref()`; 103), `(e1 = it.cur())` in the call (base-identical), references (24) and
+  me() depth on the second noop / count() sites (108, byte-identical code), free inlines `p34of(Elem *)` /
+  `p34r(Elem *const &)` / a copying `cp(e) { Elem *r = e; return r; }` on either argument (16; cp() takes an upper home
+  and the receiver stays v1), folded uses of grid in the row loop's call arguments (29), spelling-grid.py over the
+  lo50 / hi54 store orders, the rec field-store order, `total +=` spelling and the rowStart / bound operand orders
+  (64 exhaustive), a separate `noop2()` for the row loop's append (store order, inline next(), split count, indexed
+  stores, held head; 12): flat. Volatile views (layout-compatible) of 2DE0's spr / w / h / fmt loads (16) and of
+  469A8's arg0->0x240 / 0x290 and 0x148 loads (16), of 3BE1C's col / tris member reads (16): byte-identical scores;
+  of 493AC's grid reads in the row loop (16): worse (re-loads, 1944 B). Fresh-seed random code-free test sweeps on
+  the committed bases (3BE1C fold pairs 200, 493AC second loop 200, 31A74 200): flat.
+- 3BE1C: dropping hi's three folded uses (`+ 0 * vb / vc / ia`) gives the target's ia a3 and hi a1 (hi now shares vb's
+  register as in the target) but rotates va / vb / k2 (t2 / v0 / a1 vs a0 / a1 / v0): 99.714, 19 diffs either way;
+  tests (200) and folds (200) on that base flat. Frame: reusing `cell` for `r` (or dropping n_al) removes one home;
+  every offset then matches the target RELATIVE TO THE FRAME TOP (the spill slot too), but the frame is 8 short
+  (232 vs 240) -- the target has 8 more bytes between the saved registers and the spill slot. Unreferenced pads take
+  no home (frame unchanged); a dead-stored array does but moves the spill with it. Int identity inlines (`I(i)`,
+  `I(0) + I(0)`, 12 sites) are byte-identical (edg folds them); an f32 identity slot (`F(d) / K(0x12C)`,
+  `F(p.x) - F(n_al->x) * d`) restores the 240 frame on the one-home-fewer body but puts the spill back at 80 (the new
+  slot sits between the homes and the spill, not below it): 99.09. Coloring dump (diagnosis only, NCC from
+  tools/ido-static-recomp-dump, `-Wo,-zdbug:6`): the lowest home, M -156 (= sp+84, the target's spill slot), is the
+  SECOND edg temp of the inner `MAXS(ia, ib)` (MAXS(a, b) evaluates `a` twice, so `MAXS(MAXS(ia, ib), ic)` keeps two
+  temps for it, M -152 and M -156; M -148 is the outer result). Splitting hi into two statements removes it but costs
+  20-28 bytes (1540-1548); MAXS / MINS cast / operand-order spellings (40) and s16 / int identity inlines around
+  either evaluation (45) are byte-identical; spelling-grid.py over the q[] product orders, the dist / out store
+  order, the k fold order and the a / b load order (64 exhaustive), and over the edge loop's dx / dy / ex / ey order x
+  v0 / v1 order (48): base best.
+- 469A8: the target's temp_t6 is a ugen temp (t6) and &D the coloured v1: the store / re-read-through-the-global form
+  (`*(char **)((int)&D + 0x254) = (char *)FW(arg0, 0x240); FW(*(char **)((int)&D + 0x254), 0x158) = ..;`, kit CCXLIV
+  forwarding) reproduces exactly that, but uopt leaves a dead `addiu v1,v1,596` and loses the vcall delay fill (+8 B,
+  94.51); 35 spellings of the store / re-read address all keep it. Random code-free tests (200) flat; dropping the
+  run-281 `if (FW(temp_v1, 0xC0)) {}` before the block is score-neutral (98.78641) and re-testing on that base is flat
+  (200); the six earlier code-free tests in all 63 drop subsets: none higher. Re-using another local for the first
+  temp_v1 web (temp_t6 / temp_v0_2 / temp_v0_3 / temp_a3 / temp_s0): 420 B, <= 92.1. Reading for a future C++
+  pass: the two vcalls are cfront/edg virtual calls (vptr at +0x28; slot 0x60 = the 12th virtual of the 493AC `BB`
+  layout, slot 0x18 = the 3rd) and the 0xE9000000 append is 493AC's inline `Ctx::next()` (head at +0xC, buf / count);
+  an untuned class rewrite (`m240->v12()`, `m290->v3()`, `s1->next()`) is 71.22 / 392 B, so it starts far below
+  the tuned cfe body. The tuned cfe body lifted to NCC as-is (extern "C", K&R callee as `(...)`) is 96.83 / 408 B; four
+  NCC-side fixes bring it to the cfe score, 98.78641 / 412 B with the same 21-word colour residual: the 0x254 store
+  through a block-scoped `int pc = (int)&D_00000000` (cfe's `(int)&D + 0x254` cast folds to `lui at` under edg),
+  `I(FW(arg0, 0x218))` on the last call's a0 (a0 load issued before the a3 one), the 0x180 index written base-first
+  (`FW(arg0, 0x240) + FW(arg0, 0x204) * 4`, the cfe body needs index-first) and both vcall arguments as int sums
+  (`(char *)(*(s16 *)(vt + 0x60) + (int)obj)`: edg puts a pointer operand first). me() / I() / `+ 0 * arg1` wrappers
+  on the ten colour-region loads (200) are flat there too, and so are the kit-CCCLXXXV member form
+  (`((Mem *)(p + 0 * arg1))->at(o)` / `->pt(o)` inline members on the same loads and the 0x158 store, 200). The
+  first vcall as a real virtual call on the named pointer (`temp_s0 = ((VB *)temp_v1)->v12();`, 12 virtuals after a
+  0x28-byte head) is byte-identical to the hand-written dispatch (confirms the layout); the second as `->v3()` costs
+  4 words of colour (98.54). zero-use-sweep.py on that NCC body (200), on the 2DE0 donor body (56) and on the
+  3BE1C no-hi-fold body's 0x200 block (99), on 493AC's first loop (19) and grid loop (149): no variant above its
+  base; on post 31A74 (74) the only "GAIN" rows (98.156, a `+ 0 * (int)(mode)` / `(sel)` use in the mode-1 test) are
+  568 bytes, away from the 564 target. spelling-grid.py on the NCC 469A8 body (operand order of the m4 / var_t0
+  masks, the count increment, the scaled append index and the var_t0 test spelling; 144 exhaustive): all 98.7864;
+  on the cfe body, all 120 orders of the a6..a10 argument-local assignments: base best. gui 2DE0 switch-case order x
+  w / h order x texture-append / spr order (24), and the four appends' next / nC / nD / nextp spellings (256):
+  base best. Equal score, so not committed; the NCC body is in
+  /tmp/claude-1000/c305/v/n469_v6.cpp for a C++-lever pass.
+- 31A74: the final block's 0x1CAC0 store written INSIDE the call (`gl_func_00000000_f(0x1000A00, ACCS2_31A74 = r)`)
+  frees the one if(1)-split goto merge for mode 1 (mode 1 then exact), but the final block issues the store before
+  sel's spill `sb` (store in the jal delay slot in the target, sb there in ours): 97.16. A redundant `sel |= 0;` /
+  `sel ^= 0;` / `sel &= -1;` before that call reorders it (98.58) but costs 8 bytes away from the target. Multi-line
+  layouts inside one statement, `if (X) {}` / volatile-view stores before the call: no effect (cfe keeps one line per
+  statement). The redundant op works because it re-defines sel in the call block (the home `sb` then follows that
+  def, before the store), but on an s8 it costs the `sll / sra` re-extension; a ternary / else-arm / `else if`
+  spelling of the sel clamps (7) does not move the def into the call block. Operand / clause order of the four
+  early tests (st 4 / 11, the 1968 compare, g3 / mode 3, mode != cur; 36): byte-identical.
+
+**4. 396FC / 51AD8 re-check (the default-steal cap).** sw.py over the post0b / post targets: every jumptable switch
+whose range-check `beqz at` keeps the index `sll` in its delay slot while the default block starts with a stealable
+instruction has a default that shares table entries (38A28: holes 0x68..0x6B; 52CD4 / 40304 per their notes) --
+except 396FC and 51AD8, whose only default predecessor is the beqz (no other branch reaches the default head). The
+target-steal counter finds 60 conditional-branch target steals in post0b, so as1 steals normally in that file. The
+NCC (C++) rewrite vein that cracked other old caps does not apply: edg lowers every switch to a compare chain (396FC
+under NCC: beq chain, 87.02). None of the newer levers (goto-block line raise, first no-op OR, inline on a folded
+copy, volatile view, call-block v0 ban, void-result aliases) adds a branch predecessor, so the cap stands.
+
+## kit CCCLXXXVII (agent-g 2026-11-05, run 303): a by-value identity on an inline OPERATOR's own parameter (`V3 operator*(const f32 &s) const { return V3(x * idv(s), y * s, z * s); }`) creates its pool slot INSIDE the caller's full-expression -- the operator result / copy temporaries move up to the target's offsets where every caller-side wrap moved them uniformly; then drop the old lever whose shared pool variable now spans the new block and re-grid code-free tests: post0b 54E78 NM 99.819 -> 99.855 -> 99.891 (2 words left); target-copy scan of the 17-body list empty; 4F2DC `end` is a pool temporary in the target (and a dead `addiu v1,v1,112` the target keeps); bootup 6204 / E9FC prologue probes; negatives <a name="kit-ccclxxxvii-agent-g-run303"></a>
+
+_agent-g run 303, base 03f785f38. Gains 8d9829915 (99.819 -> 99.855) and 68cfe20cf (-> 99.891), both NM-only (post0b
+54E78 NCC comparison donor); post0b 4F2DC 95.853 -> 97.489 in three steps (section 4b). Scripts in /tmp/claude-1000/g303/: mv.py (target-only register-copy scan), cft.py
+(generic random code-free test grid, params / initialised locals only), rk.py / rmix.py / rbig.py (random multi-lever
+search: idv wraps x code-free tests x BB splits x dropping an existing test), ldrop.py (generic lever-drop singles +
+pairs: empty tests, idv / me / mr / mq / cr wrappers, `+ 0 * (int)(X)` folds), hl.py (Gfx append parameter forms)._
+
+**1. Target-copy scan first (kit CCCLXXXV / CCCLXXXVI lever).** mv.py aligns the mnemonic streams and lists
+`or x,y,zero` / `addu x,y,zero` copies present on one side only. On all 17 bodies (329C, 4568, 4B620, 34890, 54E78,
+46790, 3B9C0, 4FD00, 42938, 4BAF4, 48AEC, 36694, 4F2DC, 3558, E2D0, E68, 5A2C4) the copy COUNTS are equal and no
+target-only copy exists (4568 / 4FD00 only have a copy in a shifted position: ternary-result colour, not a missing
+copy), so the rvalue-receiver copy lever has no site on this list.
+
+**2. post0b 54E78: pool slot inside the operator (layout).** The residual was the operator* result / set() copy
+temporaries 4 / 8 bytes low (sp+76 / +92 vs +80 / +100). Every caller-side slot-taker (idv() on p.d, nested chains,
+pads) shifts both temporaries together. Moving the identity INTO the inline operator, on its own parameter, puts the
+slot between them: `V3 operator*(f32 s)` with `x * idv(s)` -> +84 / +100 (frame 160; drop the run-301 `volatile int
+u2` pad -> 152, 99.826); with s by CONST REFERENCE (`const f32 &s`, + idv(s)) -> +80 / +100 = the target, every frame
+offset now identical (99.638 there: the FP colours fell one register low). idv() on y or z instead of x, or on x, are
+equivalent for the layout; idv(idv(s)) is identical; a dummy `(i1(), ...)` / `idv(this)->x` slot-taker is eliminated
+before slots are assigned (byte-identical); by-value V3 operands (free `operator*(V3 v, ...)`, local `V3 c = *this`)
+add a 12-byte copy (93.6); a 4-parameter builder helper (`v3x(u, a, b, c)`) or permuted-parameter builder adds a return
+copy (95.6).
+
+**3. Re-grid on the layout-correct base (kit CCCLXXXII).** One-site idv() sweep: `idv(p.n.y) * p.n.y` on m[1][1]
+restores n.y / n.z / d = f14 / f16 / f18 (99.855, committed). Left: y * d / z * d in f14 / f16 (target f12 / f14).
+Coloring dump (zdbug:6, diagnosis only): the idv slot variable M-40 is one ucode variable shared by m[0][0]'s n.x,
+m[1][1]'s n.y, m[2][2]'s n.z AND operator*'s idv(s) -- it is coloured first (uopt FP colour 26 = f12) and, because the
+translation block uses it, the y product (variable M-84) cannot take 26. Dropping the m[0][0] idv() (the run-301
+lever, now stale) frees it: products f12 / f14 = target but n.y / n.z one register low (99.783). A random code-free
+test search on THAT base (rmix.py) found `if (p.n.z != 2.0f) {}` right after the m[0][0] store: n.z's load expression
+becomes a candidate from m[0][0] on and takes 26 across m[1][1], so n.y takes f14 (99.891, committed). Left: the m[2][2]
+n.z load f12 (target f16 = the colour the shared idv variable has in ours).
+Flat on the 99.891 base: tests x / y / z / d at every statement end, singles + 200 pairs, with and without the m[0][0]
+test (tst2.py / tst3.py); 60 comparison forms of the m[0][0] test (`== / < / != 0.0f / != p.d / idv(p.n.z) ...`);
+216 diagonal wrap forms (plain / left / right / both / nested / whole-product idv on m[0][0] x m[1][1] x m[2][2]);
+one-site + pair idv wraps; lever drop / swap grid (t54e2.py); 400 random 1-4 lever mixes (rbig.py); `(q = X)` named-local
+wraps (frame +8); volatile-view reads of every p.* site and of this->x / y / z inside operator*; V3 ctor parameters by
+const reference (8 combos x 7 operator bodies); rvalue receivers `(&p.n + 0 * i1())->operator*(p.d)` (frame +24).
+
+**4b. post0b 4F2DC 95.853 -> 97.489 (5b1c84d74, d15c6a7c9, a50efc8ac; length 1064 / frame 424 = target).** The two
+observations below were the decode: (1) `end` is e's BY-VALUE operator= PARAMETER -- `e = start + d * -1e5f; start *=
+KV; e *= KV;` (same values as `V3 end = ...; e.set(KV.x * end.x, ...)`; operator*= reordered x, y, z) puts end at the
+target's pool slot and keeps start.x in f18 across the add and the scale (97.20 alone, but length 1060 / frame 440);
+(2) the camera position is an M4 translation row at cam + 0x70 read through an inline `getPos(V3 &)` (game_uso 3558
+has the same Body::mtx.getPos shape, there with the this-temp USED): with an `if (1) {}` between the x and y stores
+inside getPos, length 1064 and frame 424 return (the old PadK<4> pad becomes an `if (1) {}`), 97.365. Re-grid: the
+run-297 `const V3 &dr = d` view and the named `cam` are now stale; calling getPos on the RVALUE receiver
+`(*(Cam **)(arg0 + 0x70))->m.getPos(start)` reproduces the dead `addiu v1,v1,112` after the three cam-relative loads
+(ours in v0), besti moved into the count block, operator+ sums this-first: 97.474; `d * idv(-100000.0f)`: 97.489.
+Left: cam in v0 (target v1), the -1e5 literal colour (f0 vs f14, so the operator* products are one register high),
+end / op+ / copy temporaries 16 / 8 / 8 bytes low and the op* result 4 high (op= parameter at the target's 180).
+Flat on the new base: getPos split position x operator* / operator= idv forms x the if (1) pad (64), idv chains on the
+p test (k 4-12), idv wrap singles + pairs, 400 random wrap / test / split mixes (gmix.py), translation expression
+forms (11).
+
+**4. post0b 4F2DC observations (the original no-gain notes, decoded in 4b).** (a) The target keeps a DEAD `addiu v1,v1,112` (cam + 0x70, v1 overwritten
+at the dists loop) right before the end-copy block, where ours has an extra `lwc1` (the target keeps start.x in f18
+across operator+ and `start *= KV`). Dead cam + 0x70 expressions (local, `(void)`, inline nop member on the rvalue,
+a Cam sub-object at 0x70 with pos at +0x30 and accessor / reference / pointer forms, 31 variants) are all deleted
+before codegen. (b) The target's `end` is NOT a named local: it sits at sp+84 below the operator temporaries (ours:
+named, sp+164). Passing it as a by-value inline parameter (`fin(start, e, start + dr * -1e5f)` with `s *= KV; e.set(...)`
+inside, or `e.kset(V3 end)` + `start *= KV` after) puts end at sp+84 = target but the pool grows 32 bytes (frame 456 /
+464, 94.9-95.5); a direct-assignment body drops the set() parameter copies (length -8). Lead: the target's pool is
+end + the operator temporaries without the extra 32 bytes (set()'s by-value parameters and the reference parameters
+of the wrapper are the candidates). (c) Operator parameter forms (const-ref / idv on operator* / + / *= / set, 200):
+flat.
+
+**5. bootup 6204 / E9FC (`lui a0` before `sw ra`).** Header-line joins (call on the header line, multi-line header,
+split call) under cc and NCC; -O1 / -O2 -g3 / -O3 / -mips1 / -mips3 / -Wab,-r3000 / -r4000; 33 call spellings (local
+pointer, K&R, varargs, int / struct / array / static / fn-address argument, struct-return, returned value used,
+if (1) / do-while (0) / label / goto wrappers): every one gives `sw ra; lui a0`. The only ordering change is a call
+through a function-pointer VARIABLE (`lui t9` goes first: the jalr target chain is longer), which changes the call.
+Searching all expected objects for `addiu sp; lui aN; sw ra` prologues finds no matched C sibling (the bootup EA2C /
+game_libs 272C4 / 33A8C hits load a NON-argument register first).
+
+**6. Other negatives (<= 200 each).** Generic code-free tests of parameters / initialised locals (cft.py) on 4F2DC,
+gui 329C, 3B9C0, 46790, 3558, 4BAF4, 48AEC, 4568, 34890 (plus 34890's loop iterator tests at 4 positions x 7 forms);
+lever drop singles + pairs (ldrop.py) on 4B620, 329C, 3B9C0, 4FD00 (42938 has no zero-code lever); Gfx append parameter
+forms (const-ref hi / lo, idv on the stores) on 4B620 / 48AEC; 4FD00 set(V3) temporary (sp+4, target +20): nested
+idv chains raise every temporary uniformly (+16 at depth 4), wrapping mid / d1 / d2 in reference-parameter inlines:
+flat or frame +16; 36694 operator- / * / / parameter forms (144): flat; game_uso 3558 getPos receiver forms (rvalue
+`(b + 0)`, me() on the Body / M4, 27): flat; line-join singles + pairs (lj.py) on 54E78 and 4F2DC: flat; 4F2DC scale
+statement order x operator*= forms (48) and `d = dir` copy forms: flat; code-free parameter test PAIRS (cft.py
+CFT_PAIRS=1) on gui 329C / 3B9C0 / 4568 / 46790 / 4F2DC and line-join singles + pairs on 34890 / 4B620 / 329C / 3B9C0 /
+46790: flat.
