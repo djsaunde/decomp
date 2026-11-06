@@ -14749,6 +14749,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCCLXXXIV (agent-g 2026-11-05, run 302): **edg (NCC) inline-temp POOL: sized by the most slot-taking inline temps live in ONE full-expression (by-value `return v;` identities and constant-returning inlines take slots; const-ref identities, copy-propagated multi-statement inline params and named-local assignment expressions do not); a reused slot is one ucode variable whose block-granular live range is itself a colour lever, so frame offsets and colours can be the same object**](#kit-ccclxxxiv-agent-g-run302) -- _post0b 54E78 coupling diagnosed (best layout-correct form 99.565 < 99.819, not committed); 4FD00 / 36694 / 5A2C4 / E2D0 / 3B9C0 / 4B620 negatives._
 - [kit CCCLXXXV (agent-c 2026-11-05, run 304): **a copy the target keeps (`move v0,s8`) that every plain copy propagates away = an inline member called on an RVALUE receiver (`(c + off * 0)->face(i)`, int zero term); then re-grid: statement order / line joins, and code-free `if (X) {}` tests of the variable that must colour EARLIER (a test counts in its own block's loop depth; repeated tests on one level dedupe; folds were flat)**](#kit-ccclxxxv-agent-c-run304) -- _post0b 3B6A0 96.85 -> 100 EXACT in six steps (5e8866f66, NCC donor on both trees, D_3B6A0_tbl pinned 0); 3BE1C / 469A8 negatives._
 - [kit CCCLXXXVII (agent-g 2026-11-05, run 303): **an identity on an inline operator's OWN parameter (`V3 operator*(const f32 &s) const { return V3(x * idv(s), ...); }`) puts its pool slot inside the caller's full-expression -- it moves the result / copy temporaries where caller-side slot-takers only shift them together; then drop the older lever whose shared pool variable now spans the new block and re-grid code-free tests**](#kit-ccclxxxvii-agent-g-run303) -- _post0b 54E78 NM 99.819 -> 99.891 (8d9829915, 68cfe20cf); post0b 4F2DC NM 95.853 -> 97.489 (end = e's by-value operator= parameter, camera pos = M4::getPos at cam + 0x70 on an rvalue receiver: the target's dead this-temp addiu); target-copy scan of 17 bodies empty; bootup 6204 / E9FC prologue probes negative._
+- [kit CCCLXXXVIII (agent-c 2026-11-05, run 306): **a "store issued late" residual where the target REUSES a t6..t9 register between two stored values is a ugen ring-phase residual: MOVE an existing value-preserving `& 0xFFFF` between sibling halfword stores (double it on one, drop it on the next), then re-grid the store order on the new base**](#kit-ccclxxxviii-agent-c-run306) -- _post0b 42938 NM 98.118 -> 98.589 (2138b210b) -> 98.650 (0a5d4ad9e, setvp stores in field order); post0b 4BAF4 98.021 -> 98.617 (6279ad2c8: +1 mask on iz, +3 on the `& 8` test = period-4 compensation); gui 4568 96.935 -> 97.010 (fd7b8e510: RDPHALF_2 operand masks); ring / mask / spelling negatives on 4BAF4, gui 4568 / 2DE0, 493AC, 4FD00 (set(V3) copy-temp hole map), 31A74 (tail needs the one raised merge), 3558._
+- [kit CCCLXXXIX (agent-g 2026-11-05, run 304): **read an FP colouring residual off `-Wo,-zdbug:5` / `:6` (diagnosis compiler): equal-priority global LRs colour in LR-index order (first appearance), FP 24..29 = f0 / f2 / f12 / f14 / f16 / f18, a field-load LR exists only in blocks with two refs of the CSE'd load, and every code-free test is a BB split**](#kit-ccclxxxix-agent-g-run304) -- _post0b 54E78 99.891 -> EXACT (a072c0b4f: idv on the right n.x of m[0][0] + operator* `f32 a = x * s - 0 * idv(0); return V3(a, idv(y * s), z * s);`; ident jal -> gl_func_00000000). Analysis: without the run-303 n.z test n.y / n.z sit one register low (f12 / f14); the target needs a third f12 LR live in BB6 but not in the product block (not found: tests, pool-priority idv sites, distinct identities, locals, accessors, literal 1.0f; adjsave = 0.75 x refs, and a folded index use `m[2][0 + 0 * (int)(p.n.x)]` + volatile tail reads gives the target's squares / constants but makes the BB6 n.x a coloured LR: so the third LR is the invisible idv pool variable). Flat lists on 4B620 / 34890 / gui 329C / bootup E2D0 / 3B9C0 / 46790 / 5A2C4 / bootup E68 (~2000 variants)._
 - [kit CCCLXXXVI (agent-c 2026-11-05, run 305): **run a register-normalised diff before the copy lever: of five near-misses only gui 2DE0 had a target copy ours lacked; wrap the clamp's RESULT zero (`P > 0 ? P : I(0 + x * 0)`), not the compare's; partial leads for 493AC (named receiver copy + dead-stored pad), 3BE1C (hi folds / one home fewer = the inner MAXS's second edg temp), 469A8 (store / re-read forwarding; NCC port at the cfe score with four NCC-side fixes), 31A74 (in-call store frees the goto merge); jumptable default-steal cap of 396FC / 51AD8 re-confirmed (NCC emits no jumptables)**](#kit-ccclxxxvi-agent-c-run305) -- _gui 2DE0 NM 96.848 -> 96.914 (a77525f51); 469A8 cast cleanup (fd95e598b)._
 - [kit CCCLXXXIII (agent-c 2026-11-05, run 304): **the variable-reuse lever in cfe: reuse the variable for a later value the target passes in the same register, as an assignment INSIDE the call's argument list (`f(..., (v = X), ...)` keeps the argument order; a separate statement issues the load early); move a counted use from the variable the target colours later to the one it colours first; cfe zdbug:6 colours 1..12 = v0..t5, 13 = ra (t6..t9 never colours)**](#kit-ccclxxxiii-agent-c-run304) -- _post0b 469A8 NM 98.641 -> 98.786 (b21d409c0), 3B6A0 NM 96.65 -> 96.85 (0f8e9fea6); 3BE1C va / vb, 493AC p34 receiver / grid ring, 31A74 mode-1 raise, post1b 65EE4 cap re-check (still a cap) negatives._
 - [kit CCCLXXXII (agent-g 2026-11-05, run 301): **RE-GRID after every gain: swap an old zero-code lever for a new one, then re-run BB-split / one-site-wrap / pad-position sweeps on the new base; an unreferenced class-object block (`{ V3 t; }`) is a BB split**](#kit-ccclxxxii-agent-g-run301) -- _post0b 54E78 NM 99.565 -> 99.638 (c9b02204a) -> 99.819 (e4a19c2a2); register-span scan for the variable-reuse lever (rs.py); reuse / split / wrap / swap / BB-split negatives on 17 bodies._
@@ -59226,3 +59228,161 @@ flat or frame +16; 36694 operator- / * / / parameter forms (144): flat; game_uso
 statement order x operator*= forms (48) and `d = dir` copy forms: flat; code-free parameter test PAIRS (cft.py
 CFT_PAIRS=1) on gui 329C / 3B9C0 / 4568 / 46790 / 4F2DC and line-join singles + pairs on 34890 / 4B620 / 329C / 3B9C0 /
 46790: flat.
+
+## kit CCCLXXXVIII (agent-c 2026-11-05, run 306): MOVE an existing folded mask between sibling stores -- a value-preserving `& 0xFFFF` on a halfword store costs one ugen ring slot, so doubling it on one store and dropping it on the next re-phases the t-register ring for the whole inline (post0b 42938 setvp 98.118 -> 98.589), then re-grid the store order on the new base (field order: -> 98.650); the same lever with a period-4 compensating site on post0b 4BAF4 (98.021 -> 98.617) and on gui 4568's RDPHALF_2 operands (96.935 -> 97.010); list-swap negatives on 4FD00 / 4BAF4 / 4568 / 3558 / 36694 / 493AC / 31A74 <a name="kit-ccclxxxviii-agent-c-run306"></a>
+
+_agent-c run 306, base 692241c91. Gains: 2138b210b (post0b 42938 NM 98.118256 -> 98.58869, 1556 B), 0a5d4ad9e (42938
+98.58869 -> 98.65038, same length). Tools: /tmp/claude-1000/c306/t/ (sc.py / rund.py = run-304 NCC scorer re-pointed,
+rund.py also takes whole-file variants `('@FILE@', path)`; shgen.py = per-occurrence macro-token swap generator,
+singles + pairs, e.g. `_SHIFTL(` -> a doubled-mask `_SHIFTL2(`), /tmp/claude-1000/c306/v/ (variant files)._
+
+**1. The ring lever.** 42938's inline `setvp(Vp *, f32 x, f32 y, f32 w, f32 h)` stores eight halfwords; the run-157
+body carried one folded `& 0xFFFF` on each vtrans[0] / vtrans[1] (one ugen ring slot each). The target's store block
+is `sh t8,0; sh t6,2; mfc1 t8; mfc1 t6; ...` -- vtrans[0] / [1] REUSE t8 / t6, which forces the vscale[1] `sh t6,2`
+ahead of the second mfc1 (a WAR dependence). Ours had them in t9 / t8, so the `sh 2` floated to the end of the block
+(the visible "store order" residual is a ring-phase residual). A grid of 0 / 1 / 2 masks on the four computed stores
+(81 + 150 with `(x | 0) & 0xFFFF` and a triple mask): `((s32)(...) & 0xFFFF) & 0xFFFF` on vtrans[0] and NO mask on
+vtrans[1] is the only form above base (98.589; the reverse `2000` on vscale[0] gives 98.527). Then the eight stores
+re-gridded on the new base (random orders 200, single moves 58, mask x order 162): plain field order
+`vscale[0..3], vtrans[0..3]` is a 98.650 optimum (the run-157 `vtrans[3] = 0` hoist is no longer needed). Rule: when
+a residual is "store A issued late", check whether the target REUSES a ugen register (t6..t9) between A's value and a
+later value; if so the fix is a ring-phase shift, and an existing value-preserving mask / cast is the cheapest knob --
+move it, double it, drop it, one site at a time. Line joins inside an inline are inert (every expanded statement
+carries the call line).
+
+**1b. Two more gains with the same lever (and the PERIOD-4 compensation).** post0b 4BAF4 98.021 -> 98.617 (6279ad2c8):
+the 0xEE add's `andi t8,t5,0x7fff` issued before the packet `addu` (target: `addu t1; andi t6; sll t9; sw w0; sw w1`,
+again a WAR order from t6 / t9 reuse). One extra iz mask alone (`((iz & 0x7FFF) & 0x7FFF) << 16`) fixes that block but
+shifts the ring for everything after it (97.68); the next value-preserving mask site downstream then needs THREE extra
+masks (`F4B(self, 0x30, int) & 8 & 8 & 8 & 8`) -- the ring has four slots (t6..t9), so +1 here and +3 there put the
+rest of the body back in phase (grid of iz 0-3 x flags `& 2` 0-2 x `& 8` 0-7: periodic in the `& 8` count with
+period 4; `& 0xFFFF & 8` counts as one slot like a second `& 8`). gui 4568 96.935 -> 97.010 (fd7b8e510): masks on the
+first arm's RDPHALF_2 operands, `(dsdx) & 0xFFFF & 0xFFFF, (dtdy) & 0xFFFF` (the macro's _SHIFTL keeps 16 bits, so
+value-preserving); a singles + pairs search over 11 call-argument sites (200), then a 4 x 4 local grid. Method: list
+every place a value-preserving mask can go (halfword stores, operands a macro masks anyway, flag tests `x & C & C`),
+run singles + random pairs with 1-3 extra masks, and when one site fixes a block but breaks later ones, look for the
+compensating 4 - k at the next site.
+
+**2. Where the ring lever was flat (all <= base).** 4BAF4: a doubled-mask SHL4C / a post-shift-mask SHL4E at each of
+the 12 SHL4B sites (24) and 17 x 6 spellings of the 0xEE add's hi / lo (108: `idv`, `| 0`, `* 65536`, `(u16)`,
+`SHL4B(iz, 16, 15)`); the second scissor MAX as `> 0 ? E : I(...)` / `<= 0 ? I(...) : E` / inline mx() helpers (14
+bodies) / I() on the compare or arm (24): the target's arms are the `E > 0 ? E : 0` layout WITHOUT the pre-branch zero
+(E v1, result v0) -- no spelling gives both. gui 4568: _SHIFTL2 over all 21 _SHIFTL sites (singles + pairs, 200),
+the x-arm MAX / MIN as I() / Ir() / `<=` / `>= 1` / result-zero forms (57: I() on a constant folds; the target's
+x MAX product sits in the OUTER result a0 with the zero in v1, unlike its own y arm), the four texture-rect shift
+spellings `<< 2` / `<< 1 << 1` / `* 4` in both arms (81 + 81). gui 2DE0: _SHIFTL2 singles + pairs (172). 493AC: 0-2
+masks on the three s16 count stores (27); `if (1) {}` after every statement of the second loop (61). 4FD00: 0-2 masks
+in SV::operator+= / set() (34). 42938 itself after the gain: per-packet nC / next / nD x `+ 0` (200), code-free tests
+of ctx / dl / count / idx before each packet and guard (73), rec[idx] spellings in the three guards (176), the
+gDPSetScissor w1 term masks (17). Ring-lever site sweeps (1-3 extra value-preserving masks, singles + pairs /
+triples) that stayed flat because the residual there is a uopt colour, not the ring: 4BAF4 after the gain (5 text
+sites + 12 SHL4B sites, 52 + 200 + 200; `(s16)(E & 0xFFFF)` at all 16 s16 casts, 137; the `& 8` count x the 0x1E
+argument, 24), 48AEC (8 flag / gbi mask sites, 200 + 16), 493AC (9 sites, 200), 3BE1C (`r & 0x100 / 0x200`, 16),
+gui 2DE0 (the Scis call's xl / xh / yh / dsdx / dtdy, 200), gui 4568 (s16 casts in the Scis macro, 137; I() / idv() on
+the x-arm outer / inner ternary, 13), 4FD00 (u16 face-index masks, 27).
+
+**3. 4FD00 set(V3) copy temp (sp+4, target sp+20).** zdbug:6 homes: named locals M-4..-68, nine 4-byte pool pointer
+slots M-72..-104 (sp+32..64), a 16-byte hole M-108..-120 (sp+16..31), the copy at M-124..-132. The target has the
+same 136 frame with the copy directly under the pointer slots and the 16 bytes BELOW it, so one 16-byte object is
+allocated after the copy in the target and before it in ours. Removing every set(V3) shrinks the frame by exactly 16
+(the copy slot is 16); removing me() levers, the += / -= / /= inlines or the SV set leaves the copy at sp+4. By-value
+copies of d1 / d2 in the dots (idv / cpr / cpn, 13) emit their copies (frame +16..+56). Per-site sum() copies with
+independent me() depths on the three face reads (sumA / sumB, 200): best = base. zdbug:1 (before copy propagation)
+shows the hole is THREE-FOUR more 4-byte vreg pool slots (M-108 / -112 / -116, all later eliminated) contiguous with
+the nine live pointer slots: ours allocates every 4-byte pool slot before the V3 copy slot, the target has four of
+them after it. Dropping sum()'s me(this) (so the first Col * slot appears only in the dots) leaves the copy at sp+4,
+so the order is not "first use of the slot's type". Unreferenced `PadK<1..4>` objects in nested blocks overlay the
+hole (frame unchanged); at function scope they move the named homes (frame +8..+16). Return variable at 8 anchors x 2
+shapes + ternary / nested / bool returns (20): <= base.
+
+**4. 31A74 again.** With mode 1 raised (if(1)-split goto) every non-raised tail (the store inside the first call,
+before the call, through an `s8` / int copy of sel, `sel | 0`, code-free tests before the call, the clamp joined onto
+the call line; 25 + 25) gives the same 4-word residual: `swc1` before `sb a2,35(sp)` (the spill uopt puts right
+before the jal, so as1 moves the sb into the delay slot). The tail store must be the LAST instruction before the jal
+in compiler order, which only a raised line achieves -- and only one raised merge per function works (kit CCCLXXVII).
+
+**5. Other negatives.** game_uso 3558 matrix-block store / add orders (14: the target loads vb into f14 / f16 / f18 at
+the block top and adds each row as it completes; interleaving the `vb.x += x` statements costs 16-56 bytes). 36694:
+the residual is a one-word phase shift from the first copy (`mtc1 zero` position), not tried further.
+
+## kit CCCLXXXIX (agent-g 2026-11-05, run 304): reading a uopt FP colouring residual off `-Wo,-zdbug:5` -- same-priority global LRs colour in index order, an "expression LR" exists only in blocks with two or more refs of one CSE'd load, and every code-free test is its own BB split; post0b 54E78 NM stays 99.891 (2 words), all nine list targets flat (~2000 variants) <a name="kit-ccclxxxix-agent-g-run304"></a>
+
+**1. How to read the dump (diagnosis compiler only).** `tools/ido-static-recomp-dump/.../NCC -Wo,-zdbug:5` writes
+`./uoptlist` with one `>>>active<<<{hash|k} LR reg` block per coloured live range: `adjsave` (priority), `forbidden`,
+`interfere with`, `live bb - <bb> <nref> ...`. `-zdbug:6` instead prints the ASSIGNMENT ORDER. On 54E78 the order is
+priority-sorted and, for equal priority, by LR index (= first appearance of the candidate in uopt's tree list). The FP
+register numbers map 24 -> f0, 25 -> f2, 26 -> f12, 27 -> f14, 28 -> f16, 29 -> f18. The `{1546|k}` candidates are the
+`uilod p+off` loads of the Plane fields (one hash bucket, k = field, NOT an instance); an LR exists only in BBs where the
+load is referenced twice (the squares `n.x * n.x`, `idv(n.y) * n.y`; the products are CSE'd away and recomputed).
+
+**2. 54E78 residual decoded.** Ours: n.x LR (m[0][0], BB3 + the m[3][x] tail) f12; n.z LR f12 and n.y LR f14 in BB6
+(m[1][1]..m[2][3]); the idv pool variable (shared by every `idv()` expansion) f16, but it emits no instruction; d f18;
+products x*d / y*d / z*d f0 / f12 / f14 in BB8. The run-303 code-free n.z test after m[0][0] is what makes n.z's LR
+index (14) lower than n.y's (17); without it (f1) n.y is f12 and n.z f14 -- both ONE register below the target's
+f14 / f16 (99.783, nd 4). So the target needs a third LR coloured f12 before them that is live in BB6 but NOT in BB8
+(the products must still get f12 / f14). Not found: (a) code-free n.x / n.y / d tests anywhere in BB6 (each test splits
+BB6, n.y / n.z stop interfering: both f12); (b) more `idv()` sites in BB6 to raise the pool variable's priority (no
+variant of 132 gives an f16 square); (c) distinct identities (idw / idr / sq / non-template idf / struct wrapper / pointer
+identity `*idv(&s)` / `idv<const f32>`): fold to the same pool slot or move the frame; (d) block-local `f32 zz = p.n.z`
+or `const f32 &zz` (a frame word); (e) accessor reads (`me(&p)->n.z`, `cr(p.n.z)`) CSE into the same candidate;
+(f) literal 1.0f on m[1][1] / m[2][2] makes 1.0f a coloured LR (556 bytes); (g) inline-operator-parameter idv on dot's o,
+cp's p, set's p, the V3 ctor's a / b / c, idv(x * s): flat or worse.
+
+**3. Other negatives (all flat).** 4B620: idv on every inline helper parameter (addE / addO / addOK / add / addG / IBase /
+AIter / op[] / next / cur / ref / inc / g1 / new) and on every caller-side argument; count-increment spellings for
+appends 1-2 (named `n` = +8 frame). 34890: idv / idp / accessor forms on the next() ternary, its result and make()'s
+parameters (187). gui 329C: idv on load()'s nine arguments, the rect / texture macro arguments, the fw / fh / x / y
+sources. bootup E2D0: `if (arg4) {}` position x form, `dot *= k` spelling, k / lim statement swap (181 + 199).
+3B9C0: idv wrap of every rvalue local read (51) and every pointer base (42), zf's parameter (idv / const-ref).
+46790: ring-slot burns before the `(c / 16) * 1024` shift (front-end-folded `& -1` / `| 0` / `+ 0` / `<< 0` /
+`(s32)(u32)` on the quotient, `(u8)(u16)` / `(u16)` on the column: all identical code -- only a ugen-level narrowing of a
+provably small value burns a slot, and the column's `(u8)` already does); folded `& 0xFFFF` on the put() store (+12
+bytes, the store is not folded through the reference parameter). 5A2C4: code-free test insertion after every statement of
+the head / arg3 blocks (199). bootup E68: the phase-2 manager pointer through another local (`head` / `vp`, +20 bytes)
+or with the m tests moved / dropped.
+
+**4. Priority arithmetic and the folded-index probe (54E78, later in the run).** For these field-load candidates
+`adjsave` = 0.75 x (refs in the LR's blocks): n.x with the m[0][0] square (2) and the tail dot + m[3][0] (2) is 3.0; the
+constants are 0.0f 4.0 and 2.0f 3.33, so n.x colours after them (f12). A folded counted use in an INDEX context
+(`mtx.m[2][0 + 0 * (int)(p.n.x)] = ...`, no code) adds n.x refs to BB6: with the run-303 n.z test dropped and the idv
+squares plain, the n.y / n.z squares then take the target's f14 / f16 and d f18 -- but n.x rises to 4.5 and outranks both
+constants (0.0f / 2.0f move to f2 / f12, 96.2). A volatile view on the tail reads (`k * *(volatile const f32 *)&p.n.x`, or
+in dot()) drops n.x back below 3.33 -- consts f0 / f2 and squares f14 / f16 all like the target -- but the BB6 n.x is then
+a coloured LR (m[2][0] reads f12 where the target loads a local f4) and the m[2][1] / m[2][0] blocks reorder (94.4).
+So the target's third BB6 LR at f12 is NOT n.x; the remaining candidate is the idv pool variable (it emits no code),
+which would have to outrank n.y / n.z (LR index or adjsave) while staying out of the product block. Extra `idv()` sites do
+not raise its refs (the copies are propagated away: adjsave stays 3.0); early idv stores (m[0][1] / m[0][2]) do not lower
+its LR index (the index follows the first block where it is register-worthy).
+
+**5. The squares half found (54E78, equal score, not committed).** Dropping the run-303 n.z test and moving the idv
+to the RIGHT operand of the m[0][0] square (`(p.n.x * idv(p.n.x))`) makes the pool variable's LR index 7 (its first
+block is now BB3): it colours f12 before n.y / n.z, which take the target's f14 / f16, d f18, constants f0 / f2 -- but the
+pool variable is also live in the translation block (operator*'s `idv(s)` shares its -40 slot), so y*d / z*d go one
+register high (f14 / f16): 99.855, nd 4 (`/tmp/claude-1000/g304/b54_v55_squares.cpp`). Every 4-byte temp in the
+translation expression shares that slot (pointer `*idv(&s)`, int `+ 0 * idv(0)`: frame / offsets kept, the pool still in
+the product block, x*d / y*d swapped); a discarded `idv(s);` is folded by the front end (no slot: frame 144); comma-joining
+the BB6 statements makes the idv temps real stack temps (560 bytes). LEFT for the exact: the run-303 translation-temp
+placement WITHOUT a 4-byte pool temp in the translation full-expression (or a second 4-byte slot for it).
+A named-local blocker works too: `volatile int u;` -> `f32 u;` (same frame word, frame 152 and the 80 / 100 temps kept)
+with `(p.n.y * (u = p.n.y))` in m[1][1] gives a real uopt variable LR in BB6 (u, LR index 7, f12) and the target's
+n.y / n.z / d / x*d registers; what is left there is the pool variable (still created by `idv(p.n.x)` / operator*'s
+idv(s)) at f12 in BB3 / BB8: n.x f14, y*d / z*d f14 / f16 (99.638). Probe these two bases first next run.
+Closest form (99.855, nd 4, `/tmp/claude-1000/g304/b54_F8.cpp`): the squares base above with operator*'s float idv(s)
+replaced by a folded int identity (`V3(x * s + 0 * idv(0), y * s, z * s)`): the 4-byte pool slot is still created in the
+translation expression (frame 152, temps 80 / 100 = target), squares / constants / d all target -- only x*d / y*d are
+f12 / f0 (target f0 / f12): with no float pool read in the product, x*d drops out of the global candidates (local f12)
+and y*d takes f0. Without any translation temp and with the pool in BB6 only (`V3 a; volatile int u2, u3;` pads) the
+squares and frame are right but the temps sit 8 low (72 / 92). Test / split placement around the translation on the
+F8 base (96 variants): flat.
+On the F8 base `V3(x * s + 0 * idv(0), idv(y * s), z * s)` (or `x * s, idv(y * s) + 0 * idv(0), z * s`) gives every
+product its target register (x*d f0, y*d f12, z*d f14; frame / temps kept) but ugen now issues the y product first
+(n.y loaded before n.x, nd 6, 99.826): the identity's temp evaluation is hoisted ahead of the x component. Next lever to
+try there: source-line / evaluation-order spellings that keep x first (kit CCCLXXIV line layout, ctor argument order).
+
+**6. EXACT (a072c0b4f).** Naming the x product first fixes the issue order: `inline V3 V3::operator*(const f32 &s) const
+{ f32 a = x * s - 0 * idv(0); return V3(a, idv(y * s), z * s); }` on the squares base (`(p.n.x * idv(p.n.x))` in m[0][0],
+no n.z test) -> 54E78 100.0 (552 bytes). `- 0` rather than `+ 0`: x - 0.0f is the identity for every float (including
+-0.0), so the folded term is value-preserving. Landing: the donor's ident() jal must be renamed to gl_func_00000000
+(the target's USO jal word is blank; renaming it to gl_func_00034458 links a real address and breaks the ROM compare).
+Lesson: when one lever fixes one half of a colouring and costs the other, look for a second, independent slot-maker
+(here an int pool temp) that keeps the frame side effect without the live-range side effect.
