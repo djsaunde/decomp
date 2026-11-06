@@ -14759,6 +14759,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCCXCV (agent-c 2026-11-06, run 309): **the kit CCCXCII unused-parameter lever only pays when the inline has 2+ statements AND its extra pool entry is live inside the statement that owns the shared slot (separate `Gfx *_g = next()` statements free the pool first: 42938 / 493AC / 4BAF4 flat); re-pool that statement instead by wrapping a ternary RESULT in zero-code temp-taking inlines (`I2(v) { if (0) { v = 0; } return v; }`, `I4(v) { int r = v; return r; }`); a dead `if (0) { obj.set(x); }` as the FIRST statement moves an edg by-value temporary's home (newer pool entries are homed below older ones) with no code change; 4FD00's tail is a result-in-a-pool-temp shape**](#kit-cccxcv-agent-c-run309) -- _NM gui 2DE0 96.914 -> 97.096 (b9234b9a0, I4 / I2 on the w0 MAX results) -> 97.360 (fc76d879c, code-free `(s16)(xh)` test after w1). Flat: 42938 / 493AC / 4BAF4 / 3BE1C / 3558 / 4FD00 / 469A8 (cfront vcall NCC rewrite 71 vs cfe 98.79) grids, ~2500 variants._
 - [kit CCCXCVI (agent-g 2026-11-06, run 308): **a u8 value and a later packet pointer in one target register are ONE s32 variable; an s32 replacing a u8 local adds a frame word that shifts every uopt spill slot down 4 (drop another word); `g << 3` (an s32 `g * 8` becomes its own umpy LR); single folded uses set the priority window (ties go to the lower LR id); moving a bbsplit puts a count into a hoisted constant's block so the constant takes the next colour; no-reloc target = promote the C straight over INCLUDE_ASM**](#kit-cccxcvi-agent-g-run308) -- _post0b 5A2C4 99.933 -> EXACT 1804 bytes (e280788e2 / 2d55ca9d0); gui 329C 99.633 -> 99.965 (spr = the yh / yl clamps, I4 pool entry on the texture append, RDPHALF_1 in its own pointer; 6c741683f / 376f7ed3b / c9031a29c). Flat: 34890 / 4B620 / 3B9C0 / E2D0 / E68 probes._
 - [kit CCCXCVII (agent-c 2026-11-06, run 310): **gbi clamp results (edg `?:` pool temps) that share a target register with a named local ARE that local: assign the clamp into it in BOTH arms (`(E > 0 ? (v = (T)(int)E) : (v = (T)0)), (int)v`); whole-MAX copy forms are copy-propagated (byte-identical); then tune the merged LR's priority with a later-block `if (v) {}`**](#kit-cccxcvii-agent-c-run310) -- _NM gui 2DE0 97.360 -> 97.442 (30c42ec27, spr = yh / yl / s-term MIN) -> 97.492 (7aa791bf7, `_g` fold), post0b 4BAF4 98.617 -> 98.960 (ea3e01fe9, d = yh / yl MAX); 31A74 inert goto block removed (980b7f6d8). Flat: 469A8 / 3BE1C / 493AC / 4FD00 / 42938 / 3558 grids._
+- [kit CCCXCVIII (agent-g 2026-11-06, run 309): **read edg POOL SLOTS off the zdbug:5 bit table before writing C: a target register shared by a named local and a `?:` result = one pool slot = one LR; freed statement temps and inline parameters reuse slots, block-scope locals never do (fresh slot); a `?:` temp removed by a spelling change shifts every later temp's slot -- put a code-free `(I2(0), ...)` pool entry back in its place; a slot shared with an a0-preferred call `this` is freed by re-spelling that call's accessors; loop-condition copies take the freed slots of a preceding inline's parameters; backwards FIFO reading of the target's FP ring**](#kit-cccxcviii-agent-g-run309) -- _gui 329C 99.965 -> EXACT 1144 bytes (20a1dcf34: x middle `?:` into spr + I2(0) pre-temp 99.685, loader-call accessors 99.808, texture append re-grid 100); inline / block-scope spr 64-99.12 negatives; post0b 34890 99.643 (kept LIter ctor parameter puts the top copy in a2 like the target but re-merges Mid / Base this), bootup E2D0 99.542 / E68 98.650 (zero-use sweeps, 137 spellings), 4B620 / 3B9C0 replays._
+- [kit CCCXCIX (agent-c 2026-11-06, run 311): **NCC spill-slot arithmetic: memory objects sit at sp + frame + M, the first uopt spill slot at sp + frame + minM - 4 (minM = lowest bit-table M offset, vreg or not), frame = round8(|minM| + 4 * nspill + const) -- a spill-offset residual with an equal frame needs one vreg word fewer AND a second spill slot (frame composition, not priority); one-variable merges keep code only when the int is written INTO the pointer variable (`p = (T *)(int)i`), not `i = (int)p` (ugen drops the hoisted multiply constant); 2DE0's 8-byte / t3 residual is the colour of ONE pool slot (outer RDPHALF_1 `?:`, v1 vs a1); a clamp whose target materialises the zero BEFORE a literal-0 test and copies it = `((P > 0 * (z = I(0))) ? P : z)`**](#kit-cccxcix-agent-c-run311) -- _gui 2DE0 97.492 -> 97.772 (c9bbcdf64, 1204 -> 1208 B toward 1212); flat: post0b 3BE1C 99.778 (a = vb 99.676, b = vc 99.702), gui 2DE0 97.492, 4BAF4 98.960 (half-extents into ctx = shared a3 role but 97.25), 42938 / 4FD00 / 469A8 / 31A74 / 493AC / 3558 mechanisms and negatives._
 - [kit CCCLXXXVI (agent-c 2026-11-05, run 305): **run a register-normalised diff before the copy lever: of five near-misses only gui 2DE0 had a target copy ours lacked; wrap the clamp's RESULT zero (`P > 0 ? P : I(0 + x * 0)`), not the compare's; partial leads for 493AC (named receiver copy + dead-stored pad), 3BE1C (hi folds / one home fewer = the inner MAXS's second edg temp), 469A8 (store / re-read forwarding; NCC port at the cfe score with four NCC-side fixes), 31A74 (in-call store frees the goto merge); jumptable default-steal cap of 396FC / 51AD8 re-confirmed (NCC emits no jumptables)**](#kit-ccclxxxvi-agent-c-run305) -- _gui 2DE0 NM 96.848 -> 96.914 (a77525f51); 469A8 cast cleanup (fd95e598b)._
 - [kit CCCLXXXIII (agent-c 2026-11-05, run 304): **the variable-reuse lever in cfe: reuse the variable for a later value the target passes in the same register, as an assignment INSIDE the call's argument list (`f(..., (v = X), ...)` keeps the argument order; a separate statement issues the load early); move a counted use from the variable the target colours later to the one it colours first; cfe zdbug:6 colours 1..12 = v0..t5, 13 = ra (t6..t9 never colours)**](#kit-ccclxxxiii-agent-c-run304) -- _post0b 469A8 NM 98.641 -> 98.786 (b21d409c0), 3B6A0 NM 96.65 -> 96.85 (0f8e9fea6); 3BE1C va / vb, 493AC p34 receiver / grid ring, 31A74 mode-1 raise, post1b 65EE4 cap re-check (still a cap) negatives._
 - [kit CCCLXXXII (agent-g 2026-11-05, run 301): **RE-GRID after every gain: swap an old zero-code lever for a new one, then re-run BB-split / one-site-wrap / pad-position sweeps on the new base; an unreferenced class-object block (`{ V3 t; }`) is a BB split**](#kit-ccclxxxii-agent-g-run301) -- _post0b 54E78 NM 99.565 -> 99.638 (c9b02204a) -> 99.819 (e4a19c2a2); register-span scan for the variable-reuse lever (rs.py); reuse / split / wrap / swap / BB-split negatives on 17 bodies._
@@ -59956,3 +59958,143 @@ re-tuned by three random-test / fold rounds 97.25 -> 98.91 (below 98.96), the 0x
 97.94; d0 then re-tuned to 98.76), s- / t-term arm forms (25 + 81 + 10), ring-mask counts (24); 493AC grid-loop
 end-bound folds / names (27); 36694 dead by-value blocks (48 + 41: low homes reach the target's 60 / 72 / 48 only
 at frame 280).
+
+## kit CCCXCVIII (agent-g 2026-11-06, run 309): reading edg POOL SLOTS off the zdbug:5 bit table -- a target register shared by a named local and a `?:` result means both live in ONE pool slot; NCC reuses freed statement / inline-parameter slots for later temporaries (block-scope locals always get a FRESH slot), so a user local can only share a ternary's slot if it is itself a pool entry; a removed `?:` temp can be replaced by a code-free `(I2(0), ...)` pool entry to restore the later temps' slots; a slot shared with an a0-preferred call `this` is freed by re-spelling THAT call's accessors; gui 329C 99.965 -> EXACT; post0b 34890 / bootup E2D0 negatives with the mechanisms <a name="kit-cccxcviii-agent-g-run309"></a>
+
+All results from `/tmp/claude-1000/g306/replay.py` (dumps via `dump.sh` at zdbug:5 / 6, 0 mispredictions on every compile
+below) plus the bit table at the top of the level-5 dump (`{id|k} bit isvar M 4 -NNvreg`: every edg pool temporary,
+inline parameter, inline local and named local is one `isvar` with its home offset; the `isop ustr{home}{...}` lines
+right after it say what is stored there first).
+
+**1. Map pool slots before writing C.** In gui 329C (base 99.965, one register left: the RDPHALF_1 x-arm MIN copy is
+a0, target t2) the slots read as: -48 = the pool variable (texture `this`, switch value, CTX reloads, xh / xl MAX,
+outer x `?:` -- s0), -52 = the second pool entry (the I4 texture copy, then the yh MAX, the yl MAX and the x middle
+`?:` result: with run 308's MAXSPR only the x middle copy is left in it), -72 = the TEXRECT `dl->n++` lvalue temp AND
+the x MIN temp (v0). Dropping MAXSPR on yl alone (`MAX((s16)(yl),0)`) puts yl back into -52 and both become a0
+(99.913): -52 is ONE uopt LR across three statements. Its replay wish for t2 needs earlier-coloured neighbours on
+a0 / a1 / a2 / a3 / t0 / t1 (it has no a0 neighbour at all), so in the target that slot IS spr: the same LR, not a
+colouring accident.
+
+**2. What can and cannot share a slot.** (a) A block-scope local (`{ Spr *spr; ... }` round the switch, also as int /
+s32 / u32 with casts) gets a FRESH slot after the statement temps that precede it (-60 here), never a freed one --
+99.16 -> 99.12 / 98.99. (b) Inline parameters DO take freed slots (an `ld(int fmt, Spr *spr, w, h)` switch helper put
+fmt into -48) but moving the switch into any inline loses the s0 pool variable and the arg0 register (arg0 becomes
+memory-homed): 64-88 % over 74 signatures / orders / keeps / references. (c) Spelling the x middle `?:` into spr
+(`((C ? (spr = MAX, (int)spr) : (spr = MIN, (int)spr)), (int)spr)`) removes the -52 temp, keeps spr's def and gives
+the target's v0 -> t2 -> s0 copy chain, but the MIN temp then leaves -72 (it is coloured a0 at adjsave 2.0 instead
+of v0 at 4.5) and the x-arm ushr / MIN / (s16)dsdx colours rotate v0 / a0 / v1. Re-gridding the four append
+spellings on that worse base (kit CCCLXVI, 200 random + 117-neighbour local search, twice, plus I2 / I4 pre-temps in
+the middle arm) climbs 96.31 -> 98.60 -> 99.56 -> 99.668. A code-free pool entry put back where the middle temp was,
+`(s16)xl < 0 ? (I2(0), <merged middle>) : 0` (I2 = `if (0) { v = 0; } return v;`), returns the MIN temp to its -72
+slot (target v0 -> t2 -> s0 exactly) and, re-gridded again, reaches 99.685; left: the x MAX arm's ushr / zero temp
+(v1 / a0, target a0 / v1: the x MAX temp's pool slot -60 is ALSO the loader call's `this`, a split piece with an a0
+call-argument preference that colours first). The cure is a slot move, not a priority change: the three
+`CTX->load(spr->tex, w, h)` calls through zero-code accessors (200 random of 16^3 receiver x argument forms:
+`me(CTX)->load(spr->tex..)`, `I4(CTX)->load(me(spr)->tex..)`, `me(CTX)->load(me(spr)->tex..)`) give the load `this`
+another slot: 99.808 (left: v0 / v1 swapped between the MIN temp, the x MAX zero temp and the RDPHALF_2 dl / count),
+and a one-site re-grid of the texture append (`me(me(CTX))->nD()`; nDQ / nR1 / I4 forms also exact) gives
+**EXACT** (gui 329C 99.965 -> 100.0, 1144 bytes, 20a1dcf34). Lesson: when a replay wish blocks on "taken by an
+earlier neighbour with a call-argument preference", read the bit table for what ELSE shares that neighbour's pool
+slot and move the other user (accessor / pool-entry spelling at that statement) -- grids over the statement that
+owns the slot, not over the blocked LR's own statement. (d) A plain `(spr = (Spr *)(int)MIN(..), (int)spr)` is copy-propagated
+(byte-identical, as kit CCCXCVII says) -- the surviving intermediate is the -52 temp, not spr -- and neither a later
+code-free `if (spr) {}` (agent-c's 2DE0 lever; it only re-colours other LRs, 99.30) nor a folded `+ 0 * (int)spr` in
+the RDPHALF_2 words (byte-identical) changes that. uopt does NOT split a variable's disjoint webs (the -52 slot is one
+LR over yh, yl and the x middle), so "one variable" really is one register.
+
+**3. Loop-condition temps (post0b 34890, 99.643).** The two copies of the for condition (`?:` next() result, top and
+rotated bottom) take freed slots of make()'s inline parameters: top = make's o (-16, v0), bottom = h (-12, a1);
+the target's a2 / v1 are the slots of the new-result / X this (-24, call-argument preference a2) and the Base this
+(-36). A kept LIter ctor parameter (`if (0) { l = 0; }`) moves the top copy into -24 (a2 like the target) but
+re-merges the Mid / Base this slots (v1 / a0, 97.70); 90 make / Mid / ctor keep and wrapper combinations and 186
+for-statement wrapper pairs stay at or below base. Why the two are coupled: in the base the unkept ctor parameter
+sits in the Mid this slot (-28) at the loop entry, so Mid this's LR reaches into the loop, interferes with it.cur
+(v1) and is pushed to a3 like the target; the keep moves the parameter to -32, Mid this loses its loop piece and
+takes v1. The kept ctor parameter plus the X ctor passing `Mid(me(oo))` restores Mid / Base this to a3 / v1 AND keeps
+the top copy in a2 (98.70: the only residuals are the kept parameter's own LR -- `lw a0,16(t4)`, the target loads
+o->list into a ugen t5 -- a3's spill slot 24 vs 28 and the bottom copy still in h's a1); the next lead is a way to
+move the top copy into -24 WITHOUT giving the ctor parameter a live range.
+
+**4. FP ring, bootup E2D0 (99.542).** With `if (arg4) {}` the stack f32 arg4 is a uopt LR (f14, adjsave 0.333,
+coloured last; the wish needs an f14 neighbour that does not exist); without it arg4 is a ugen load and the FIFO model
+(kit CCCXCI) predicts ours exactly. Working backwards from the target's final scale block (l.s f4 / f10 / f16, mul.s
+f6 / f8 / f18 = a free queue of f4 f6 f10 f8 f16 f18) the `1.0f + arg4` must see the queue [f8 f16 f18 f4 f6 f10],
+which no ordering of the 0x9F8 load / mul / li.s / arg4 load reaches from our state [f6 f18 f8 f4 f10 f16] -- the
+difference is upstream of the post-call block. 108 + 29 spellings (operand / statement order, arg4 / lim / s / d
+reuse, keep placements), 72 pre-call reflect-statement orders and a 151-variant zero-use sweep: flat. E68: two
+200-variant zero-use sweeps flat. Also flat: 34890 as `while` / member-`O::make` / extra kept LIter parameters
+(43 + 10 + 12); 4B620 append method x receiver grid (200) and loop `it.` accessor grid (200) -- its count of appends
+1-2 sits in pool slot -32 (s3) while the target's s0 is the slot -24 LR that also holds the loop's new index (dropping
+the constant `lo` parameter from appends 1-2, `addH(DL *d, unsigned hi) { ... g->w1 = 0; }`, does put both counts in
+s0, but the head then lands in the &it-reload slot and goes s3 instead of v1: 99.595 / 99.638 after a 200 + 49
+re-grid, below base); 3B9C0
+numerator-minus-d as the named LR (8 forms, -8 bytes worse) and a 200-variant zero-use sweep.
+
+## kit CCCXCIX (agent-c 2026-11-06, run 311): NCC spill-slot ARITHMETIC (where uopt puts a spilled variable, and why 3BE1C's `off` sits 4 low), the one-variable merges that do and do not hold on 3BE1C / 4BAF4, and the 2DE0 RDPHALF_1 pool-slot map, and an EARLY-ZERO clamp spelling (`(P > 0 * (z = I(0))) ? P : z`) that gives the target's zero-before-test + copy: gui 2DE0 97.492 -> 97.772 <a name="kit-cccxcix-agent-c-run311"></a>
+
+Tools: `/tmp/claude-1000/c311/t/` (sc.py / rund.py / df.sh / rp.sh = c310's set, replay.py = g306's), variant files under
+`/tmp/claude-1000/c311/v*/V.py`. Every number is the standalone objdiff score (`-c functionRelocDiffs=none`).
+
+**1. Where a spilled variable lands (NCC, 3 data points on post0b 3BE1C, 0 exceptions).** The level-5 bit table lists every
+uopt variable as `{id|k} bit isvar M 4 -NNvreg` (memory-resident objects -- arrays, address-taken locals -- without the
+`vreg` suffix). Memory objects live at `sp + frame + M` (3BE1C: q[3] at M-52 = sp+188, cx / cz at M-108 / -112 = sp+132 /
++128). The `vreg` offsets are NOT frame homes (off is M-24 but never touches sp+216); they only size the area. The FIRST uopt
+spill slot is `sp + frame + minM - 4` where minM is the lowest M offset of the function (vreg or not), and the frame is
+`round8(|minM| + 4 * nspill + 76)` for this function (76 = 16 outgoing + 4 + 36 s0..s7/ra save + 20). Base: minM -156,
+frame 240, `off` spill at 80. Dropping the named `cell` (a 4-byte vreg, M -12): minM -152, frame 232, spill 76. Adding a
+used `int` after cz: minM -160, frame 240, spill 76. The target has `off` at sp+84 with frame 240: minM -152 needs
+`152 + 4n + 76 > 232`, i.e. TWO spill slots (or 4 bytes of frame outside this formula) -- one vreg word fewer than ours AND
+a second slot; no single declaration change reaches it (24 s16 / u8 / int type-swaps of ok / k / a / b / cnt / i / cell
+placed next to the lo pad, lo / cell / r de-naming, d / r hoisting, a pz pad at 3 positions: all give 80 @ 240 or 76 @ 232).
+So the 3BE1C `sw / lw a2,84(sp)` pair is a frame-composition residual, not a priority one; do not grid it.
+
+**2. 3BE1C one-variable merges (base 99.778, vb + hi merged = run 310's equal-score base).** Target roles: a1 = {t->a, vb, hi},
+t0 = {t->b, vc}, a0 = {r, va, ic}, a2 = {off, ib}, a3 = {ia}, t1 = k. (a) a = vb: writing the int INTO the pointer
+(`vb = (s16 *)(int)t->a`, `q[(int)vb]`) keeps the code (99.676, the a / b colours then swap); the reverse
+(`a = (int)col->verts[..]`) loses the hoisted-6 multiply -- ugen expands `vi[1] * 6` as sll / subu / sll once the
+address is int-cast (97.13). Each freed variable must keep a home (a dead `a = 0;` at the top) or the frame drops 8.
+(b) b = vc the same way + dead `b = 0`: 99.702 (25 insn diffs). (c) r = va in either direction rewrites the k / ia / ib
+order (94-96). Replay on (b): vb's LR (save 11.43) needs > 20 to beat the CSE'd `va[k]` load LR (ia, 20.0) for a1;
+distinct folded `+ 0 * (int)(vb)` uses on pointer arithmetic change the code (98.4 and below), code-free tests of ia /
+vb / off in the 0x200 arm are NOT code-free (re-loads, 1576-1580 B), `if (1) {}` BB splits at 7 sites are inert, and
+naming ia (`hi = va[k]`) is copy-propagated. Flat.
+
+**3. gui 2DE0 RDPHALF_1 t-term pool slots (97.492, length 1204 vs 1212).** From the bit table's `ustr` lines: -108 = the
+dtdy<0 MAX temp, -112 = the dtdy>=0 MIN temp, -104 = the middle `?:`, -100 = the outer `?:` (`: 0` stored there too). The
+two missing target instructions (`move a1,v1` in the MAX arm, `move a1,zero` instead of a folded zero) and the &D
+re-materialisations in t3 (ours a1 = the `pc` int cvt LR) all follow from ONE colour: the outer slot -100 (LR213) is v1 in
+ours and a1 in the target. Its replay wish needs earlier-coloured NEIGHBOURS on v1 and a0 (it has none; the MIN chain
+v1 -> v0 -> result are copies, not interferences). Assigning the t-term into a named local in any arm / level (13 forms,
+kit CCCXCVII style) either collapses the copy chain (1196 B) or is copy-propagated byte-identically (kit CCCXCVIII: a block
+or function local never takes a freed pool slot). `char *` / `Ctx **` / no `pc` (96.9-97.3), 68 code-free tests in the
+macro slots, zero-use sweep (57): flat.
+
+**3b. The early-zero clamp spelling (gui 2DE0 97.492 -> 97.772, 1204 -> 1208 B toward 1212; commit c9bbcdf64).** The
+target's dtdy<0 MAX arm is `move v1,zero; move a1,v1; ...; blez v0` -- the arm's zero is materialised BEFORE the test
+and copied into the result, but the test is still against the literal 0 (blez). A 36-form grid of comparison spellings
+found the shape: putting the zero into the comparison (`(P > I(0 + dtdy*0)) ? P : I(..)`) gives the zero-first + copy
+and the target length (1212, 40 insn diffs) but compares two registers (`slt at,zero,v0`, 97.24); evaluating it into a
+local INSIDE a folded comparand keeps the literal compare: `((P > 0 * (xq = I(0 + (dtdy) * 0))) ? P : xq)` (xq a
+function-scope s32 in a dropped volatile pad's frame word; read only in the arm that assigned it) = blez + early zero +
+copy, 97.772. Variants that are byte-identical or worse: `0 * I(..)` without the assignment (= the register compare),
+`(xq = I(..), P > 0) ? ..` comma form (95.4, 1208), the same trick on the MIN arm (1212 but 95.99), I / I2 / I4 wraps
+at every level (106), pad / declaration positions (23, all equal). A later `if (xq) {}` reaches 97.855 at 1212 B but
+reads xq on paths that never set it (not kept; every well-defined initialisation of xq loses it: 89-97.5). Residual:
+xq is a0 / the result v1 (target v1 / a1) and the &D int cvt still holds a1 (target re-materialises &D in t3).
+
+**4. Other probes (flat).** post0b 4BAF4 98.960: the target's a3 holds the four clip half-extents AND the spilled ctx (one
+variable: `ctx = (Ctx4B *)F4B(GS4B, 0xB8, volatile int)`) -- that merge gives the shared register (a1) but frees v0 for the
+GS4B load, so GS4B / x / y / the 0xC4 load all slide one colour down (97.25); the target's v0 occupant across the clip test
+is unidentified (`d = self->0xCC` hoisted above it is inert). Inner MAX / MIN wraps with idv / I / I2 / I4 (200), inner /
+outer test inversions and `|` commutes (32), zero-use on the RDPHALF lines (188): flat. post0b 42938 98.856: target appends
+are uniformly ctx a2 / dl v0 / n v1 (ours rotate per append); shared function-scope c / d / n through a comma macro make
+them v0 / a0 / a1 and break the following appends (74-76). post0b 4FD00 98.645: the target's early `move v0,zero` (return
+0 hoisted) comes from the first normal pointer being v1 (ours v0); one named V3 *n for both normals drops 24 B, any
+named result `int r` adds 16 B, `return p1 >= 0 && p2 >= 0` = 44 diffs but 1016 B. post0b 469A8 98.786: the
+target's v1 = {arg0->0x240 both reads, &D}, t6 = temp_t6 (a ugen temp); 21 merges / folds / 190 random tests / 200
+zero-use: flat or worse (folded `0 *` uses are inert in this cfe body). post 31A74 98.121: the residual is only the
+join block's `mfc1 a1` vs `lui at` order (target duplicates the mfc1 into the then-arm's delay slot); 16 store / call /
+arm spellings flat. post0b 493AC 99.680: the grid loop's grid / w / tbl18 / end LRs want end > w > grid priority (target
+a0 grid, v1 w, v0 end); 190 tests flat. game_uso 3558 93.853: the target adds each transform row into vb before the next
+row (vb in registers, stores at the end); every in-register / early-add spelling (13) costs 12-36 B because vb is
+address-taken (getPos) and the matrix loads must be re-done after a vb store.
