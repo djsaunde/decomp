@@ -14775,6 +14775,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CDXI (agent-g 2026-11-06, run 319): **edg's pool is per SIZE (char / short entries never take an int slot; only assigned or tested inline parameters are pool-resident), five `(I2(0), ...)` entries walk 34890's bottom copy onto Base's M-36 slot (v1), and a loop condition evaluated in the body call's own expression (`do {} while (postR(f(...), C))`) has v0 forbidden -- bottom v1 with every target home; but any bottom off h's M-12 leaves h one weighted use, so h goes plain (320 B) or loses a1 to Mid; the target needs a loop copy INTO h's variable that as1 removes -- `while (I3(it.nxq()))` (named-local iterator method + `if (1) {}` identity) gives exactly that copy (pre-as1 `move $5,$6; bne $5`, h a1 with spills), leaving only the bottom ternary's slot (X's a2 / Mid's v1, target Base's v1); with the step written as if / else statements into a named `res` the single residual is `res` in v0 vs v1**](#kit-cdxi-agent-g-run319) -- _no score change; 4B620 count index-entry grid negative; about 5800 variants._
 - [kit CDXII (agent-g 2026-11-06, run 321): **a residual "X in v0, target the next register" is fixed by keeping the value the target holds in v0 live across X -- 34890's body call result in a block-scope `void *rv` tested once after the do-while (`if (rv) {}`) pushes the bottom step result to v1 (function-scope rv shifts every home by 4); random code-free tests / folds never move it; 4FD00's early `or v0,zero,zero` is the same signature (ret = 0 forms <= 97.75); 4BAF4's final dlist pointer becomes the target's coloured v0 (was a ugen t temp) through `d = ...; if (1) {}` before the call; random test searches flat on 3BE1C / 4B620 / 42938 / 4BAF4**](#kit-cdxii-agent-g-run321) -- _34890 EXACT (99.821 -> 100), 4BAF4 NM 98.960 -> 99.007; about 3500 variants._
 - [kit CDXIII (agent-c 2026-11-06, run 320): **a code-free test of a load placed right after the call that precedes the variable's assignment makes the load a CSE'd expression LR (coloured on its own, here a1 instead of temp_v1's v1) -- move the test, then re-balance the s0 / s1 pair with tests; uopt adjsave ~ (uses + defs) / referencing BBs, so each `if` lowers long LRs (spills when negative) while several DISTINCT uses inside ONE test raise a single LR's priority (identical subexpressions CSE to one use); `if (X + (X | 1)) {}` style phantoms occupy v0 for one BB; kit CDXII's live rv is a physical-v0 R variable that forbids v0..a3 for every overlapping LR; 469A8's last 6 words need v0 / a1 occupants that cost a spill or temp_v1's v1; 31A74 / 48AEC / 3558 random tests flat**](#kit-cdxiii-agent-c-run320) -- _469A8 NM 99.515 -> 99.660 (878863813); about 3700 variants._
+- [kit CDXIV (agent-c 2026-11-06, run 322): **post0b 469A8 EXACT: a folded `0 * <load>` on a call ARGUMENT extends an existing CSE'd load LR into the call block (argument registers forbidden, priority drops), kit CDXII's block-scoped rv then holds v0 without costing temp_v1 its v1, and extra DISTINCT uses go into a test that already exists (every new `if` spilled temp_s0); score colour work by matched lines + frame penalty, not fuzzy; a product used twice in a test keeps its mult, and IDO 7.1 has no code-free float phantom; 3B9C0 / E2D0 searches flat**](#kit-cdxiv-agent-c-run322) -- _469A8 99.660 -> 100 (0e8a9a696), in place, no length change._
+- [kit CDXV (agent-g 2026-11-06, run 323): **equal-adjsave ties colour in LR (first-occurrence) order, so a rival that can never occur first wins by being made LOCAL to a later block: in 3BE1C's clamp a dead `if (0) {}` right after `k = ...` makes `k * 2` local (colours v0 first, as the target), one folded use each of va / vb in k's own line lifts them 10 -> 15 (+5 per counted use at N' = 2), and `if (1) {}` x3 before `lo` drops the long CSE'd loads ia / ib below them -- the target's whole v0 / a0 / a1 / a2 / a3 block; dead-block bodies are irrelevant (only the block counts); a fold inside a ternary compare is NOT free (new `b + 0` LR); 3BE1C's last residual is the off call-save slot (kit CDIX frame); 4FD00's SECOND inline expansion of sum() always gets parameter temps and a fresh vertex-pointer temp, so the first expansion's temp (reused by the f1 normal row) holds v0 across both sums**](#kit-cdxv-agent-g-run323) -- _3BE1C NM 99.778 -> 99.995 (e66ba242f), same length; about 700 variants._
 - [kit CCCLXXXVI (agent-c 2026-11-05, run 305): **run a register-normalised diff before the copy lever: of five near-misses only gui 2DE0 had a target copy ours lacked; wrap the clamp's RESULT zero (`P > 0 ? P : I(0 + x * 0)`), not the compare's; partial leads for 493AC (named receiver copy + dead-stored pad), 3BE1C (hi folds / one home fewer = the inner MAXS's second edg temp), 469A8 (store / re-read forwarding; NCC port at the cfe score with four NCC-side fixes), 31A74 (in-call store frees the goto merge); jumptable default-steal cap of 396FC / 51AD8 re-confirmed (NCC emits no jumptables)**](#kit-ccclxxxvi-agent-c-run305) -- _gui 2DE0 NM 96.848 -> 96.914 (a77525f51); 469A8 cast cleanup (fd95e598b)._
 - [kit CCCLXXXIII (agent-c 2026-11-05, run 304): **the variable-reuse lever in cfe: reuse the variable for a later value the target passes in the same register, as an assignment INSIDE the call's argument list (`f(..., (v = X), ...)` keeps the argument order; a separate statement issues the load early); move a counted use from the variable the target colours later to the one it colours first; cfe zdbug:6 colours 1..12 = v0..t5, 13 = ra (t6..t9 never colours)**](#kit-ccclxxxiii-agent-c-run304) -- _post0b 469A8 NM 98.641 -> 98.786 (b21d409c0), 3B6A0 NM 96.65 -> 96.85 (0f8e9fea6); 3BE1C va / vb, 493AC p34 receiver / grid ring, 31A74 mode-1 raise, post1b 65EE4 cap re-check (still a cap) negatives._
 - [kit CCCLXXXII (agent-g 2026-11-05, run 301): **RE-GRID after every gain: swap an old zero-code lever for a new one, then re-run BB-split / one-site-wrap / pad-position sweeps on the new base; an unreferenced class-object block (`{ V3 t; }`) is a BB split**](#kit-ccclxxxii-agent-g-run301) -- _post0b 54E78 NM 99.565 -> 99.638 (c9b02204a) -> 99.819 (e4a19c2a2); register-span scan for the variable-reuse lever (rs.py); reuse / split / wrap / swap / BB-split negatives on 17 bodies._
@@ -61180,3 +61182,100 @@ rounds); a10 written in the call (inline argument) 88.86; 0x148 base through a n
 change; four more random single-expression test rounds (760) flat. 31A74's cur word: a distinct base-0 array /
 struct / cast alias + 0x1CAA8 always splits to the 32K base (`addiu v0,-32768` + `lw 19112(v0)`); only the pinned
 D_31A74_curv form (reloc immediates 0 / 0 vs the target's 2 / -13656, same linked bytes) scores 98.121.
+
+## kit CDXIV (agent-c 2026-11-06, run 322): post0b 469A8 EXACT -- a block-scoped live call result (kit CDXII) plus a folded load use on a CALL ARGUMENT (the CSE'd load LR now reaches the call block, so the argument registers are forbidden and its priority drops) plus extra DISTINCT uses packed into tests that already exist (no new block); 3B9C0 / bootup E2D0 flat <a name="kit-cdxiv-agent-c-run322"></a>
+
+_agent-c run 322, base 3e5b19a5c, commit 0e8a9a696 (469A8 NM 99.660 -> 100, promoted in place: `#ifdef NON_MATCHING` /
+INCLUDE_ASM dropped, the five blank `jal 0` imports called as the existing `gl_func_00000000` = 0 pin; ROM
+byte-identical, verify-blocks 6/6, no length change, no clip change). Scripts in `/tmp/claude-1000/c322/`: `t/hc2.py`
+(hc.py with an instruction line-match score and a frame penalty instead of objdiff fuzzy), `g*/cfg.py` grids._
+
+**The three levers, in the order they were found (zdbug:5 + g306/replay.py after each).**
+1. `a10 + 0 * FW(temp_v1, 0x148)` on the call's 11th argument. The 0x148 reload is a CSE'd expression LR (kit CDX);
+   with the folded use it is live into the call block, so a0..a3 become intrinsic forbids (the argument registers are
+   written there) and its adjsave falls 3.0 -> 1.333 (one more block). Unlike kit CDXIII (d), this fold DOES count:
+   the load expression already had an LR, the fold only extends it. Alone: 96.65 (a6..a9 then lose t1..t4 to it).
+2. Kit CDXII's block-scoped rv on the FIRST vcall (`{ char *rv; temp_s0 = rv = vcall(...); ... if (rv) {} ... }`,
+   test right after the a10 declaration, scope closed after the argument block, no new home). Run 320 recorded that
+   rv "forbids v0..a3 for temp_v1"; the dump shows the real cause: temp_v1 lost v1 to the 0x148 LR (save 3.0 > 2.8).
+   With lever 1 the 0x148 LR drops to 1.333 and temp_v1 keeps v1 while rv still holds v0 for p78 / a6..a9.
+3. Priorities through multi-use tests (kit CDXIII (b)): `(a6 | a7 | a8 | a9) + (a6 ^ ...) + (a6 & ...)` before the call
+   (a6..a9 above the reload), `(var_t0 | 1) + (var_t0 ^ 2) + (var_t0 & 3) + (var_t0 - 4)` after the var_t0 if, and --
+   the step that closed it -- the EXISTING `if (FW(arg0, 0x240)) {}` test re-spelled with distinct uses of
+   arg0->0x240 x4, m4 x4, p100 x2, temp_v1 x5 and a CSE'd `(m4 + 9)` x3. That fills v1 / a0..a3 / t0 before p78 (t1),
+   the reload takes t5 after a6..a9 (t1..t4) and a10 ra. Every NEW `if` placed in the p78 block (phantoms, temp_s0 /
+   temp_v1 boosters, 196 variants) spilled temp_s0 (frame 88 -> 104): when saves are at the edge, put the extra uses
+   into a test that is already there.
+
+**Search notes.** objdiff fuzzy ranked spilled variants (97.91, frame 104) above the structurally closer ones (96.75):
+for colour work score by matched instruction lines with a frame penalty (hc2.py). A product used twice in a test
+(`(m4 * 7) + ((m4 * 7) | 1)`) is NOT code-free (the mult stays: 420 B, frame 168); one `(m4 * 5)` is. Float tests: a
+single-expression `if (f) {}` is deleted before colouring (no LR, no effect), a multi-term float test emits code
+(+8 B), and a compare with a new constant (`if (lim != 1.0f) {}`) moves the constant's hoist (-4 B): there is no
+code-free float phantom in IDO 7.1 -O2.
+
+**Negatives.** post0b 3B9C0 (NCC donor, 99.122): 190 random code-free tests over 34 anchors, 190 random
+`(int)(x) + ((int)(x) | 1) ...` multi-use tests, 90 `x op 0.0f` inner-loop tests, 190 random `+ 0 * (int)(x)` folds on
+10 int sites, 16 block-scoped `rv = sqrtf(...)` forms (rv crosses the vnorm call: frame 240 / 248), a second random-test
+seed (190), 190 single / paired `if (1) {}` splits, 154 kit CDXV dead `if (0) {}` placements, 51 multi-use packings of
+the existing qb `if (1) {}`, two more multi-use test seeds (2 x 190), 105 `self->col` / remap / faces folds aimed at the
+tied 15.0 / 20.0 int LRs (the remap load wants a0, needs a v1 occupant), the num / n->z fold toggles (59) and a line-match hill-climb over the
+fold sites (190): none above 99.122.
+Its float residual: the 0.0f constant LR (adjsave 14.3) is f20 because the named num (LR88, 30.0) holds f14; the
+target's num is a ugen temp (sub.s f2 / neg.s f6). bootup E2D0 (99.542): arg4 (P var, adjsave 0.333) is coloured f14,
+the target's f16 needs an f14 float neighbour coloured first; float phantoms (above), 71 scale-spelling x arg4-test
+positions, 50 + 190 `if (1) {}` splits, 20 early arg4 tests, four random-test seeds (4 x 190), 144 kit CDXV dead `if (0) {}` placements, 119 declaration
+orders of d / lim / s / X / dot, volatile / address views of arg4 (16: the load moves, 91.4 - 98.2), a separate
+`s = 1.0f + arg4` (flat), float-to-int folds on the final call's arguments (18, removed before colouring), 120 int
+folds on the arg0 / arg2 / call-argument address sites and a block-scoped sqrt result `rv` (4): flat. The
+level-6 log lists no uncoloured float LR near the clamp (the -ve save LRs are the v[] elements), so the target's f14 is
+held by something this body does not have.
+
+## kit CDXV (agent-g 2026-11-06, run 323): an equal-adjsave TIE lost by LR order is won by making the rival LOCAL to a later block -- post0b 3BE1C's clamp block: the target colours `k * 2` (v0) before va / vb (a0 / a1) and ia / ib after them (a3 / a2); a dead `if (0) {}` right after `k = ...` makes k * 2 local to the next block (it then colours first), one folded use of va / vb each in k's own line lifts them 10 -> 15, and three `if (1) {}` splitters before `lo` drop ia 18 -> 15 (LR order puts va / vb first) and ib to 13.3: 99.778 -> 99.995, same length; 4FD00 pool-temp anatomy (no gain) <a name="kit-cdxv-agent-g-run323"></a>
+
+_agent-g run 323, base 55e6b5c85. Commit e66ba242f (3BE1C NM, donor only; no length change, no clip change). Scripts in
+`/tmp/claude-1000/g323/t/`: `sc.py` / `run.sh DIR MANG FN` (NCC scorer + sorted sweep), `dd.py` (objdiff diff rows),
+`dump.sh` + `/tmp/claude-1000/g306/lrinfo.py` + `lrn.py` (zdbug:5 per-LR priority table with the 3BE1C names), `g3b*.py` /
+`g4fd*.py` generators._
+
+**1. Reading the 3BE1C clamp block (zdbug:5).** Names: va / vb / vc = LR 210 / 217 / 223 (vars M-64 / -68 / -72), k = 229,
+`k * 2` = 234 (the umpy feeding the three `uixa`), ia / ib / ic = 240 / 238 / 249 (CSE'd loads), the MAXS / MINS pool temps
+275 / 211 / 339 (M-152 / -156 / -148), r = 155, t = 198. The run-210..267 folded uses (`0 * (int)(r)` on k, `+ vb + vc + ia`
+on hi, `+ va` on ok) keep va 4.29 / vb 7.5 (22 / 10 blocks), so ia 20 / ib 18 / ic 12.5 take a1 / a2 / a0 and va / vb fall to
+t3 / a3; r's fold also makes r (a0) live into the block. Without ANY fold va / vb are local to the block (adjsave 20, the
+same as k * 2 and the MAX temp) and win the tie by LR order (210 < 234): va v0, vb a0, k * 2 a1.
+**2. The lever.** Equal-adjsave ties colour in LR (first occurrence) order, and k * 2 can never occur before va (it needs
+k, assigned after vc; reordering the source moves emission, <= 96). A dead `if (0) { lo = 0; }` directly after k (body
+irrelevant: 12 bodies, while (0) / if (0), all identical) starts a new block, so k * 2 becomes local to the block after it
+(20, refs 2 + 1) while va / vb now span two blocks (10): k * 2 colours first (v0). Then one folded use each in k's line
+(`k = 2 - t->ax | 0 * ((int)va + (int)vb);`, each counted use +5 at N' = 2) puts va / vb at 15, and `if (1) {}` x3 before
+`lo` lowers ia 18 -> 15 (ties va / vb but loses on LR order) and ib 16 -> 13.3. Result: k * 2 v0, va a0, vb a1, ib a2, ia
+a3, hi a1, MAX temp v1 -- the target's block. Folds INSIDE the first MAXS compare (`(b) + 0 * (x)`) are not free (a new
+`ib + 0` expression LR with an `or` copy, 1572 B); folds in vc's line change the vertex-index multiply (1564 B).
+**3. What is left.** Only the `off` call-save slot: target sp+84 (M-156, the slot right under the homes, frame 240), ours
+sp+80 (M-160). Dropping the n_al alias puts the slot at M-156 but the frame falls to 232 (kit CDIX's 8 missing ugen bytes);
+26 address-fold variants on the no-alias body (`(int)(&vb[k])`, `(int)(va + k)`, verts expressions at hi / lo / ok, and the
+`(2 - t->ax)` spelling in k's line) stay at frame 232 (<= 99.857).
+**4. 4FD00 (no gain, 98.645).** The sum() vertex pointers are edg pool temps: the FIRST expansion substitutes the
+arguments and uses one pointer temp (M-104) for all three vertices; the SECOND expansion (whichever call is second --
+call order swap, sum2 clone, this-> / me(this) / (*this) / me(&o) call forms: 49 variants, all byte-identical) gets
+parameter temps (M-80..-100 for this / &o / f / &s, M-108 / -112 for o / s) and its vi[1] / vi[2] pointer takes a NEW temp
+M-116. M-104 is then reused by the normal pointer of the first dot (`gn()[f1]`), so that one variable's LR spans bb0..bb2,
+is coloured v0 first, and forces the second expansion's pointer to t0 and the f1 normal row to v0 (the target: v0 for all
+six vertex pointers, v1 for both normal rows, and the `&&` result's `move v0,zero` hoisted into the second sum). Negatives:
+an out-parameter / returned vertex pointer kept live with a test (24 + 24, homes the pointer, <= 97.51), named pointer
+locals in sum (45, NCC homes inline locals, <= 85), me() depth grid on the three vertex reads x four normal-read depth pairs
+(108, <= 98.645), comma / block / `if (1) {}` / SV& return shapes of sum (22, <= 98.645), written-out dots and a named
+normal base (24, 980 B), named / block-scoped / reference normal pointers (11, <= 98.645).
+**5. 4BAF4 lead (no gain, <= 98.98 vs committed 99.007).** Kit CDVII's ctx-merge body (the four volatile half-extent
+reads assigned to ctx, compared through `(int)ctx` / `(int)idv(ctx)`) is 96.96; one `if (1) {}` after the 0xCC call line
+-> 98.54; the first call's result held in `r` (`r = gl_func_00000000(GS4B, &pos, 1, out); if (r == 0) return;`) with
+`if (r) {}` after `h = spr->h;` puts the GS base back in v1 and x in a0 (98.27), two splitters (after the 0xCC call line
+and at the end) -> 98.91, and the `if (r) {}` moved after the clip test -> 98.98: x / y / GS / 0xC4 now all on target and
+the clip block differs only by ctx a2 / centre a3 (target a2 = centre, a3 = ctx). zdbug:5: ctx's merged LR (M-100) has
+adjsave 3.4 over 14 blocks; the target's a2 in the later packets is the PKT count pool variable (M-144, adjsave 3.0, ours
+a3), so the count variable must colour before ctx (ctx below 3.0 needs three more ctx-only blocks between the clip test and
+the 0x158 load; consecutive empty `if (1) {}`, tests of x / y / w / h / iz / spr there and dead `if (0) { ctx = 0; }` at
+every position are all inert: 23 + 24 + 38 + 34). Scripts / bodies: `/tmp/claude-1000/g323/e5/r1.cpp` (98.98).
+4B620 (`if (1) {}` / dead `if (0)` at every ctor statement, 107), 42938 / 36694 (`if (1) {}` after every statement,
+32 / 13): flat.
