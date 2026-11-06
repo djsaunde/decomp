@@ -14778,6 +14778,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CDXIV (agent-c 2026-11-06, run 322): **post0b 469A8 EXACT: a folded `0 * <load>` on a call ARGUMENT extends an existing CSE'd load LR into the call block (argument registers forbidden, priority drops), kit CDXII's block-scoped rv then holds v0 without costing temp_v1 its v1, and extra DISTINCT uses go into a test that already exists (every new `if` spilled temp_s0); score colour work by matched lines + frame penalty, not fuzzy; a product used twice in a test keeps its mult, and IDO 7.1 has no code-free float phantom; 3B9C0 / E2D0 searches flat**](#kit-cdxiv-agent-c-run322) -- _469A8 99.660 -> 100 (0e8a9a696), in place, no length change._
 - [kit CDXV (agent-g 2026-11-06, run 323): **equal-adjsave ties colour in LR (first-occurrence) order, so a rival that can never occur first wins by being made LOCAL to a later block: in 3BE1C's clamp a dead `if (0) {}` right after `k = ...` makes `k * 2` local (colours v0 first, as the target), one folded use each of va / vb in k's own line lifts them 10 -> 15 (+5 per counted use at N' = 2), and `if (1) {}` x3 before `lo` drops the long CSE'd loads ia / ib below them -- the target's whole v0 / a0 / a1 / a2 / a3 block; dead-block bodies are irrelevant (only the block counts); a fold inside a ternary compare is NOT free (new `b + 0` LR); 3BE1C's last residual is the off call-save slot (kit CDIX frame); 4FD00's SECOND inline expansion of sum() always gets parameter temps and a fresh vertex-pointer temp, so the first expansion's temp (reused by the f1 normal row) holds v0 across both sums**](#kit-cdxv-agent-g-run323) -- _3BE1C NM 99.778 -> 99.995 (e66ba242f), same length; about 700 variants._
 - [kit CDXVI (agent-c 2026-11-06, run 324): **as1 schedules a block in SOURCE-LINE order (the `cc -S` instruction list is identical, only `.loc` differs): to make a statement that executes first schedule after a later one, put it in the body of a one-pass `for` whose STEP holds the later statement (`for (mode = 1; mode; call(..., acc), mode = 0) { store; }` with mode == 1 known there; uopt deletes the loop) -- the call's `mfc1 a1` then heads the join block and as1 copies it into the `b` delay slot; only one if(1)-split goto block merges per function, so this is the second-site form; the line lever does not reach the 396FC / 51AD8 jump-table default steal (exact jumptable fns all reach default from 2+ places); E2D0 arg4 LR 82 has no f14 neighbour (dump), 3B9C0 num forms / 3558 accumulation orders flat**](#kit-cdxvi-agent-c-run324) -- _EXACT post 31A74 (98.121 -> 100, 564 B, 11b424123), in place, no length change._
+- [kit CDXVII (agent-g 2026-11-06, run 325): **kit CDIX's frame wall falls: an alias copy stored in an EXISTING pointer variable (dead store; re-assigned before every later read) frees its home without changing colours (call-save slot back to M-156), and a code-free BB split inside a block of int / float conversions (between 3BE1C's dx and ey) grows ugen's unaccessed area above the saves 20 -> 28 bytes (frame 240); loop LR priority fits 100 * (refs + 1) / blocks, folded `0 *` uses of an expression do not count, separate tests add blocks, but ONE test with three uses of a CSE'd load at a block end lifts it to the tie it then wins by LR order**](#kit-cdxvii-agent-g-run325) -- _EXACT post0b 3BE1C (99.995 -> 100, 1568 B, d5e8334a0), NCC donor on both build paths._
+- [kit CDXVIII (agent-c 2026-11-06, run 326): **`-Wab,-R` prints as1's list scheduler (nodes, lineno, latencies, picks); every block is scheduled twice and pass 2 pulls ONE fall-through head into the block: into a load-latency idle cycle (mgrproc 1824's `li at,1`: unreachable while the compare block is exclusive; 2E354 escapes only because its selector load is a separate join block) or into an empty branch slot (396FC's default head: decided before lines matter; a source guard keeps `sll` but costs +12 B); root ties go to the earlier ugen node and newly-ready nodes are visited first, so 65EE4's jal slot needs a1 evaluated FIRST by ugen (only a comma argument does it, via an s0 temp, +8 B); 6204's prologue carries the `{` line, so the call can only tie; the 4-entry table family is a cfe / uopt residual, not as1**](#kit-cdxviii-agent-c-run326) -- _Negative, no code change; ~430 variants._
 - [kit CCCLXXXVI (agent-c 2026-11-05, run 305): **run a register-normalised diff before the copy lever: of five near-misses only gui 2DE0 had a target copy ours lacked; wrap the clamp's RESULT zero (`P > 0 ? P : I(0 + x * 0)`), not the compare's; partial leads for 493AC (named receiver copy + dead-stored pad), 3BE1C (hi folds / one home fewer = the inner MAXS's second edg temp), 469A8 (store / re-read forwarding; NCC port at the cfe score with four NCC-side fixes), 31A74 (in-call store frees the goto merge); jumptable default-steal cap of 396FC / 51AD8 re-confirmed (NCC emits no jumptables)**](#kit-ccclxxxvi-agent-c-run305) -- _gui 2DE0 NM 96.848 -> 96.914 (a77525f51); 469A8 cast cleanup (fd95e598b)._
 - [kit CCCLXXXIII (agent-c 2026-11-05, run 304): **the variable-reuse lever in cfe: reuse the variable for a later value the target passes in the same register, as an assignment INSIDE the call's argument list (`f(..., (v = X), ...)` keeps the argument order; a separate statement issues the load early); move a counted use from the variable the target colours later to the one it colours first; cfe zdbug:6 colours 1..12 = v0..t5, 13 = ra (t6..t9 never colours)**](#kit-ccclxxxiii-agent-c-run304) -- _post0b 469A8 NM 98.641 -> 98.786 (b21d409c0), 3B6A0 NM 96.65 -> 96.85 (0f8e9fea6); 3BE1C va / vb, 493AC p34 receiver / grid ring, 31A74 mode-1 raise, post1b 65EE4 cap re-check (still a cap) negatives._
 - [kit CCCLXXXII (agent-g 2026-11-05, run 301): **RE-GRID after every gain: swap an old zero-code lever for a new one, then re-run BB-split / one-site-wrap / pad-position sweeps on the new base; an unreferenced class-object block (`{ V3 t; }`) is a BB split**](#kit-ccclxxxii-agent-g-run301) -- _post0b 54E78 NM 99.565 -> 99.638 (c9b02204a) -> 99.819 (e4a19c2a2); register-span scan for the variable-reuse lever (rs.py); reuse / split / wrap / swap / BB-split negatives on 17 bodies._
@@ -61352,3 +61354,108 @@ tests + `+ 0 * pc` folds on the rectangle call arguments + a block-scoped `rv` i
 folds inside the RDPHALF_1 terms (one pair reaches 1212 B = target length but 96.90 < 97.81: not kept), plus 150
 random new code-free tests at eight body anchors (flat). 3B9C0: 150 joint removals / additions of its twelve existing
 zero-code levers (base is the local optimum; the n->z fold and the `+ 0 * (int)(i)` term are the load-bearing ones).
+
+## kit CDXVII (agent-g 2026-11-06, run 325): post0b 3BE1C EXACT -- the call-save slot / frame wall of kit CDIX broken in two moves: an alias copy moved into an existing pointer variable (dead store) drops its home without touching colours, and a BB split in a block full of conversions grows ugen's unaccessed area above the saves by 8 bytes; then a code-free test with three uses of a CSE'd load wins its colour tie <a name="kit-cdxvii-agent-g-run325"></a>
+
+_agent-g run 325, base e9ffd11be. Commit d5e8334a0 (3BE1C exact, NCC donor over a placeholder on both build paths; no clip
+change). Scripts in `/tmp/claude-1000/g325/t/` (`sc.py` / `run.sh` scorer, `slot.sh DIR` = score / size / frame / a2
+call-save slot table, `gpos.py` = splitter-per-statement generator, `g1..g22.py` the 3BE1C generators)._
+
+**1. The alias carrier.** 3BE1C's `V3 *n_al = n;` alias copy (run 195, a colour tie) costs a 4-byte home, which pushes the
+`off` call-save slot from the target's M-156 to M-160. Dropping it moves the slot but changes colours. Storing the alias in a
+pointer that is already a home and is re-assigned before every later read keeps the colours AND frees the home:
+`va = (s16 *)n;` then `((V3 *)va)->x` (va is only read in the 0x200 branch, after `va = col->verts[...]`). nx / v0 / fv / t
+work the same (99.934, frame 232, slot M-156: every sp offset is the target's minus 8).
+**2. The missing 8 frame bytes come from a BB split in the conversion block.** Kit CDIX's 20-byte unaccessed area above the
+saves (ugen's) becomes 28 bytes (frame 240, slot sp+84, every offset = target) when a code-free splitter (`if (1) {}`,
+`if (0) {}`, `if (x) {}`; NOT a bare label) splits the edge loop's `dx = (int)(qa - v0[a]); dy = ...; ex = ...; ey = ...;`
+run anywhere between dx and ey (after v0 / v1 / nx++ or after ey: still 232). The split changes uopt colours, though: after
+dx with `ok = 0` (no v1 / v0 folds) and a test after ey, only the two CSE'd loads v0[a] / v0[b] were swapped (v0 / v1).
+**3. Priority arithmetic, read from zdbug:5.** In the split loop (blocks 55 / 56) the LR priorities fit
+100 * (refs + 1) / blocks: v0[b] local to block 56 with two refs (dy, ey) = 300; v0[a] (dx in 55; ex + a test in 56) = 200.
+Folded `+ 0 * v0[a]` uses of an EXPRESSION do not count (only variables count, kit CCCXXIX); each extra `if (v0[a]) {}`
+statement is a new block (lowers it). One test with several uses at the end of the block (no new block: the loop's `if`
+starts one anyway) counts every use: `if (v0[a] + v0[a] + v0[a]) {}` (and `v0[a] + v0[a] + v0[a] + v0[a]`, `(v0[a] + v0[a]) *
+v0[a]`, `v0[a] ^ v0[a] + v0[a]`) lifts v0[a] to the 300 tie, which it wins by LR order: 99.923 -> 100. Two uses (`+`, `|`,
+`*`, `-`) stay at 99.923. Moving dy above dx (to make the pair symmetric) changes code (as1 source-line order, 1560 B).
+Negatives: MAX / MIN ternary cast types (81, pool temps per size: frame 224-240, never slot M-156 at 240), de-naming
+va / vb / vc (16), `off` declaration order (28), block-scoped off, volatile pads (slot moves the wrong way), edge-loop
+expression spellings (64), folded uses of dx..ey (45), split-after-ex with ok / cc fixes (96, 99.58).
+**4. The other near-misses (no gain).** 4B620 (99.725): `if (1) {}` / `if (0) {}` after every ctor statement (44) and after
+every `;` inside the DL / iterator inline bodies (116), three-use tests of cc / cc->head / count / it.idx / it.cur() / d0 at
+every ctor statement (96), count tests inside the add* inlines (48), and block-scoped live call results for the cc / d0
+allocs and loop calls (20; NCC homes the rv, frame 176 -> 184), 150 random joint draws (inline splitter + one- to
+three-use loop test) -- all <= 99.725. 4BAF4 (99.007): two- / three-use tests of
+the 0xC0 / 0xC4 centres, x / y / spr after the position lines (54, <= 98.59); the clip-test call result held in a block-scope
+rv with its test at every later statement (34: frame 248; with `pad0` dropped, frame 240 and at best 99.007, flat),
+`if (1) {}` / `if (0) {}` after every statement (78) and `+ 0 * v` folds of x / y / w / h / spr / iz / d / sx / sy packed
+into each of the four clip compares (36), flat.
+42938 (98.856): splitters at every statement (33) and one- to three-use tests of &rec / idx / &idx / rec[idx].a around the
+three flag blocks (84) -- flat (the hoisted &idx / 0x50 / &rec t-colours stay t4 / t5 / t3, target t2 / t3 / t0). 4FD00 /
+36694: splitters at every statement (32 + 32), flat.
+4FD00 also: `if (1) {}` / `if (0) {}` after every `;` inside the SV / V3 / Col::sum inline bodies (74) changes code
+(960-984 B, <= 82.6): the target's 16 extra bytes under `a` (sp+0x14 vs ours sp+4, same frame 136) are NOT reached by
+inline-level splits; any code-free test at side() level (two- / three-use tests of verts / faces / face indices / nrm /
+s.x / f1 / f2 after each sum or the d2 line, 64) costs code (984 B, <= 81.7).
+Lead for 42938 (zdbug:5, `/tmp/claude-1000/g325/dump/e42.lr`): the hoisted &rec / &idx / 0x50 LRs (970 / 986 / 80,
+refs in bbs 2 / 4 / 6, priority 0.33) are live THROUGH bbs 7..8 (the gDPSetScissor block), so they interfere with that
+block's four 3.0-priority LRs (cols 6-9, coloured first) and land on t3 / t4 / t5; the target's t0 / t2 / t3 says they end
+before bb 7. Twelve R / flag-read spellings (`rec + idx`, `&idx[rec]`, byte-offset form, `idx + 0`) are flat, and so are
+the flag-block reads as `(&rec[idx])->a` / `(rec + idx)->a` (block-scope pointer / index copies: 95.5). 36694: the
+declaration order of r / l / px / py / pz (120 permutations) and two- / three-use tests of n / p members and l at six
+anchors (84) are flat at 96.079.
+
+## kit CDXVIII (agent-c 2026-11-06, run 326): `-Wab,-R` (as1 scheduler trace) read on the open as1-order residuals -- as1 runs a SECOND list-schedule pass per block that pulls the fall-through block's head into the block (mgrproc 1824's `li at,1` fills a load-latency idle cycle; 396FC's default head fills the empty bound-check slot); the root tie-break is ugen order (first-visited node wins), newly-ready nodes are visited first, which pins 65EE4's jal-slot choice to ugen ARGUMENT order; no gain, caps re-confirmed with mechanisms <a name="kit-cdxviii-agent-c-run326"></a>
+
+_agent-c run 326, base c2dcd8285. No source change committed. Scratch in `/tmp/claude-1000/c326/` (1 = 396FC, 4 = mgrproc
+1824, 5 / 6 = 65EE4, 8 = mgrproc micro-corpus, 9 = 2E354 trace); grid = `c326/t/grid.py` (c324 grid with c326 paths)._
+
+**Tool.** `cc ... -Wab,-R x.c -o x.o > x.txt 2>&1` (IDO 7.1, any -O) prints, per scheduled block, every node
+(`inst` = final encoding, `lineno`, `aftercycles`, `afternodes: N/latency`) and each `Picking node` step with the
+ready list. A function's blocks appear TWICE: pass 1 (ugen's block alone) and pass 2 (the same block plus at most one
+instruction pulled from a neighbouring block). Find a block by grepping an instruction word (`grep -n "inst 8e0207d4"`).
+Load -> consumer latency is 3 in as1's model (two cycles between); lui -> use 1.
+
+**1. mgrproc 1824 (98.52; residual = `li at,1` of the outer switch's `case 1` compare scheduled above the `beqz`, plus the
+external jump-table displacement).** Pass 1 of the block `lw t6,0x7EC; lw v0,0x7D4; addiu t7; beqz v0; [sw t7]` leaves
+time 2 idle (lw t6 at 0, addiu cannot issue before 3). Pass 2 re-schedules the block with the fall-through block's head
+`li at,1` (`lineno` of the switch line, `before 0`) added, and it lands in the idle cycle. The target keeps the stall.
+Micro-corpus (`c326/8/b1..b9.txt`, 30 shapes): the pull happens whenever the block before the compare chain has an idle
+cycle -- selector loaded in the same block (lw / lbu / lh), reloaded after a call, joined block start, if-else chain,
+goto chain, default / return / case-order variants, switch inside `if (1) {}`. It does NOT happen when the selector
+is already in a register (47F68 shape: no idle cycle) or when the selector load sits in its OWN block (2E354: the
+`lbu t0,20(s0)` is a join-block head copied into a `b` delay slot, the `beqz` is a separate one-node block, so pass 2
+has nothing to fill). In 1824 the stall comes from the counter load `lw t6` (scheduled first: aftercycles 5 > 4), not
+from the selector, and the target has no other instruction to fill it, so the target's block is not reachable while
+the compare block is exclusive. Flat: 122 line layouts of the counter / switch lines (joins, splits, blank lines,
+one-pass `for` step / init forms) and 48 increment (`+= 1`, `++`, pre-increment) x selector (`unsigned`, `default`
+first, leading / in-case `if (1) {}`, selector read into a reused local before the increment) combinations -- all
+98.5211, byte-identical.
+
+**2. post0b 396FC (98.66) / 51AD8 (99.15) bound-check delay slot.** Pass 1 of 396FC's head block leaves the `beqz`
+slot empty (no idle cycle, nothing schedules after the branch); pass 2 adds the default block's `or a0,a3`
+(`lineno` = the `default:` call line) to the DAG, i.e. the steal is decided between the passes, before any line
+or latency question. A source guard gives the default a second predecessor and as1 then keeps `sll` in the slot
+(`if ((unsigned)(a1[0] - 109) < 6) switch ...` with the cases returning and the call after): but the switch keeps its
+own bound check, +12 B (`addiu; sltiu; beqz` twice, 97.91 / 624 B) -- 28 guard forms (four guard spellings x
+brace / default / goto-label tails, if-else) all +12 or worse. Confirms kit CCLIX's addendum: the target's default
+behaves as shared, but no zero-code second reference exists in C.
+
+**3. post1b 65EE4 (89.73, -Olimit 1 donor): the jal delay slot of calls 2 / 3 follows ugen argument order.** Trace of
+call 3 (`f(&G, G.base)`, ugen `la $4; lw $5`): roots lui a0 / lui a1 tie (aftercycles 2) and the first-visited (=
+earlier ugen node) wins, then the newly ready `lw a1` is visited before the older `addiu a0`, jal goes next, and the
+leftover `addiu a0` fills the slot. The target (`lui a1; lui a0; addiu a0; jal; lw a1`) is exactly that walk with the
+a1 load FIRST in ugen order. Only a side-effect argument reorders ugen: `(0, G.base)` evaluates a1 first (the slot gets
+`lw a1`) but through a callee-saved temp (`lui s0; lw a1,40(s0)`, +8 B, frame 40, 97.10 -- not kept). 9 a0 spellings
+x 6 a1 spellings and 22 more a1 forms (volatile view, `- 0`, `^ 0`, unary plus, casts, index forms, `?:`) x {call 2,
+call 3, both}: ugen order unchanged (or worse). Prototypes (none / typed / varargs / void * / int) do not reorder either.
+Statement lines do not help: cfe gives the whole call one `lineno` (args split over lines keep the first line).
+
+**4. bootup 6204 / E9FC (`lui a0` before `sw ra`).** The prologue's `lineno` is the line of the opening `{` (a
+multi-line header gives the `{` line), so a call can at best TIE with `sw ra`; on a tie the earlier ugen node
+(`sw ra`) wins. No C layout puts the call's tokens before the `{`; an inline C++ helper (NCC) carries the CALL SITE
+line, not the helper's. Dead without a different ugen order.
+
+**5. 4-entry jump-table family (B3C / 8CD8 / 116C / 76F0 / 1ADC).** Re-read against the as1 rules: B3C's only residual
+is the `sltiu 5` immediate (table length, cfe/ugen, kit CCLIX); titproc 116C's other words are v0 / v1 colour swaps
+(uopt). Neither is an as1 order or delay-slot difference, so the CCLIX conclusion does not depend on the as1 findings.
