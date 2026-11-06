@@ -14777,6 +14777,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CDXIII (agent-c 2026-11-06, run 320): **a code-free test of a load placed right after the call that precedes the variable's assignment makes the load a CSE'd expression LR (coloured on its own, here a1 instead of temp_v1's v1) -- move the test, then re-balance the s0 / s1 pair with tests; uopt adjsave ~ (uses + defs) / referencing BBs, so each `if` lowers long LRs (spills when negative) while several DISTINCT uses inside ONE test raise a single LR's priority (identical subexpressions CSE to one use); `if (X + (X | 1)) {}` style phantoms occupy v0 for one BB; kit CDXII's live rv is a physical-v0 R variable that forbids v0..a3 for every overlapping LR; 469A8's last 6 words need v0 / a1 occupants that cost a spill or temp_v1's v1; 31A74 / 48AEC / 3558 random tests flat**](#kit-cdxiii-agent-c-run320) -- _469A8 NM 99.515 -> 99.660 (878863813); about 3700 variants._
 - [kit CDXIV (agent-c 2026-11-06, run 322): **post0b 469A8 EXACT: a folded `0 * <load>` on a call ARGUMENT extends an existing CSE'd load LR into the call block (argument registers forbidden, priority drops), kit CDXII's block-scoped rv then holds v0 without costing temp_v1 its v1, and extra DISTINCT uses go into a test that already exists (every new `if` spilled temp_s0); score colour work by matched lines + frame penalty, not fuzzy; a product used twice in a test keeps its mult, and IDO 7.1 has no code-free float phantom; 3B9C0 / E2D0 searches flat**](#kit-cdxiv-agent-c-run322) -- _469A8 99.660 -> 100 (0e8a9a696), in place, no length change._
 - [kit CDXV (agent-g 2026-11-06, run 323): **equal-adjsave ties colour in LR (first-occurrence) order, so a rival that can never occur first wins by being made LOCAL to a later block: in 3BE1C's clamp a dead `if (0) {}` right after `k = ...` makes `k * 2` local (colours v0 first, as the target), one folded use each of va / vb in k's own line lifts them 10 -> 15 (+5 per counted use at N' = 2), and `if (1) {}` x3 before `lo` drops the long CSE'd loads ia / ib below them -- the target's whole v0 / a0 / a1 / a2 / a3 block; dead-block bodies are irrelevant (only the block counts); a fold inside a ternary compare is NOT free (new `b + 0` LR); 3BE1C's last residual is the off call-save slot (kit CDIX frame); 4FD00's SECOND inline expansion of sum() always gets parameter temps and a fresh vertex-pointer temp, so the first expansion's temp (reused by the f1 normal row) holds v0 across both sums**](#kit-cdxv-agent-g-run323) -- _3BE1C NM 99.778 -> 99.995 (e66ba242f), same length; about 700 variants._
+- [kit CDXVI (agent-c 2026-11-06, run 324): **as1 schedules a block in SOURCE-LINE order (the `cc -S` instruction list is identical, only `.loc` differs): to make a statement that executes first schedule after a later one, put it in the body of a one-pass `for` whose STEP holds the later statement (`for (mode = 1; mode; call(..., acc), mode = 0) { store; }` with mode == 1 known there; uopt deletes the loop) -- the call's `mfc1 a1` then heads the join block and as1 copies it into the `b` delay slot; only one if(1)-split goto block merges per function, so this is the second-site form; the line lever does not reach the 396FC / 51AD8 jump-table default steal (exact jumptable fns all reach default from 2+ places); E2D0 arg4 LR 82 has no f14 neighbour (dump), 3B9C0 num forms / 3558 accumulation orders flat**](#kit-cdxvi-agent-c-run324) -- _EXACT post 31A74 (98.121 -> 100, 564 B, 11b424123), in place, no length change._
 - [kit CCCLXXXVI (agent-c 2026-11-05, run 305): **run a register-normalised diff before the copy lever: of five near-misses only gui 2DE0 had a target copy ours lacked; wrap the clamp's RESULT zero (`P > 0 ? P : I(0 + x * 0)`), not the compare's; partial leads for 493AC (named receiver copy + dead-stored pad), 3BE1C (hi folds / one home fewer = the inner MAXS's second edg temp), 469A8 (store / re-read forwarding; NCC port at the cfe score with four NCC-side fixes), 31A74 (in-call store frees the goto merge); jumptable default-steal cap of 396FC / 51AD8 re-confirmed (NCC emits no jumptables)**](#kit-ccclxxxvi-agent-c-run305) -- _gui 2DE0 NM 96.848 -> 96.914 (a77525f51); 469A8 cast cleanup (fd95e598b)._
 - [kit CCCLXXXIII (agent-c 2026-11-05, run 304): **the variable-reuse lever in cfe: reuse the variable for a later value the target passes in the same register, as an assignment INSIDE the call's argument list (`f(..., (v = X), ...)` keeps the argument order; a separate statement issues the load early); move a counted use from the variable the target colours later to the one it colours first; cfe zdbug:6 colours 1..12 = v0..t5, 13 = ra (t6..t9 never colours)**](#kit-ccclxxxiii-agent-c-run304) -- _post0b 469A8 NM 98.641 -> 98.786 (b21d409c0), 3B6A0 NM 96.65 -> 96.85 (0f8e9fea6); 3BE1C va / vb, 493AC p34 receiver / grid ring, 31A74 mode-1 raise, post1b 65EE4 cap re-check (still a cap) negatives._
 - [kit CCCLXXXII (agent-g 2026-11-05, run 301): **RE-GRID after every gain: swap an old zero-code lever for a new one, then re-run BB-split / one-site-wrap / pad-position sweeps on the new base; an unreferenced class-object block (`{ V3 t; }`) is a BB split**](#kit-ccclxxxii-agent-g-run301) -- _post0b 54E78 NM 99.565 -> 99.638 (c9b02204a) -> 99.819 (e4a19c2a2); register-span scan for the variable-reuse lever (rs.py); reuse / split / wrap / swap / BB-split negatives on 17 bodies._
@@ -61279,3 +61280,75 @@ the 0x158 load; consecutive empty `if (1) {}`, tests of x / y / w / h / iz / spr
 every position are all inert: 23 + 24 + 38 + 34). Scripts / bodies: `/tmp/claude-1000/g323/e5/r1.cpp` (98.98).
 4B620 (`if (1) {}` / dead `if (0)` at every ctor statement, 107), 42938 / 36694 (`if (1) {}` after every statement,
 32 / 13): flat.
+
+## kit CDXVI (agent-c 2026-11-06, run 324): as1 orders a block's instructions by SOURCE LINE -- post 31A74 EXACT: a statement that must EXECUTE first but SCHEDULE after a later one goes into the body of a one-pass `for` whose STEP holds the later statement (`for (mode = 1; mode; call(..., acc), mode = 0) { store; }`): the call then carries the header's lower line, so its `mfc1 a1` is scheduled ahead of the store's `lui at`, and as1 copies the join block's new first instruction into the preceding `b` delay slot; second if(1)-split goto block in the same function does not merge <a name="kit-cdxvi-agent-c-run324"></a>
+
+_agent-c run 324, base ab99a141c, commit 11b424123 (31A74 NM 98.121 -> 100, promoted in place: `#ifdef NON_MATCHING` /
+INCLUDE_ASM dropped, no new symbols, ROM byte-identical, verify-blocks 6/6, no length change). Scripts in
+`/tmp/claude-1000/c324/t/`: `grid.py` (objdiff fuzzy + instruction line-match per variant), `dd.sh` (score + register-level
+diff), `dump.sh` (zdbug:5 dump, agent-g's g306 script pointed at agent-c)._
+
+**What the residual was.** Mode 1's join block (after the `acc *= k` / `acc = 0.0f` arms): target `mfc1 a1,f0` (call
+argument), `lui at`, `jal`, `swc1 f0,-13632(at)` (store in the jal slot), and the taken arm's `b` jumps one word past the
+join with `mfc1 a1` copied into its delay slot. Ours: `lui at`, `mfc1 a1`, `jal`, `swc1` with `b ...; nop`. The ugen output
+(`cc -S`) is the SAME instruction list in both orders (`s.s acc, ACCS1; li a0; mfc1 a1, f0; jal`); only the `.loc` lines
+differ. as1's list scheduler takes ready instructions in source-line order: with the store on the lower line its `lui at`
+goes first (and an at-using macro is never copied into a branch delay slot), with the call on the lower line `mfc1` goes
+first and becomes the copyable join head.
+
+**How the line order was reversed without moving the store after the call.**
+- agent-c run 300's form (the store in an `if (1) {}`-split goto block written after the call, merged back by uopt) already
+  served the tail of 31A74; a SECOND such block in the same function never merges (the second goto block stays out of
+  line: +16 B), whichever of the two it is and wherever the blocks are placed (16 placements, with / without `if (1) {}`).
+- Store-in-argument / comma / one-line / multi-line call spellings (17) all keep the store's line first: flat.
+- A one-pass `for` puts the step's code AFTER the body but on the header's (lower) line. `mode` is 1 on entry to that
+  block, so `mode = 1` is value-preserving, `mode` as the condition folds, and `mode = 0` is a dead store before the
+  `return`: uopt removes the loop entirely and leaves exactly the store-then-call block, with the call's line now one
+  ABOVE the store's. A fresh `int k` gives the same code; `for (; mode == 1; ...)` / `for (;; call) { if (..) return; }`
+  are worse (the compare survives / the loop stays).
+Use it wherever a residual is a pure as1 ORDER difference inside one block (same instructions, same registers) and the
+earlier-scheduled instruction belongs to the statement that executes LATER.
+
+**Negatives (this run).** The same line lever does not reach the jump-table range-check delay slot of post0b 396FC /
+51AD8 (as1 still steals the default block's first instruction: default call in a for step above the switch, cases as
+returns, 7 forms; default block / label / line-layout spellings, 14). A scan of every `sltiu at / beqz at` in asm/ finds
+the exact jump-table functions that keep `sll` in the slot all have the default reached from more than one place
+(after-switch code or table holes); 396FC / 51AD8 / mgrproc 1824 / titproc 116C have distinct table entries.
+A 180-switch random mini-corpus (`/tmp/claude-1000/c324/m0/gen2.py`, IDO 7.1 -O2, 3..7 distinct cases + one default)
+keeps `sll` in the range-check slot ONLY when the default head is unstealable (a store, an `at` macro such as a global
+store / `lui`, a load -- as1 never steals a `lw` -- or a `jal` with its arguments already in place; a second 190-switch
+corpus with 396FC-style spilled-parameter arms, `gen3.py`, agrees; a third, `gen4.py`, with the 396FC arms and
+default first / middle / last, do-while(0) / trailing `if (1) {}` / label wrappers, fn-pointer / void / cast-argument
+default calls, steals the move in 190 / 190); every stealable register-move head
+(`move a0,a3`, the 396FC shape) is stolen. `-g3` (diagnosis only) keeps `sll` but hoists the move into the head block
+instead (not the target either), so the target's default block is not reachable from these switch shapes.
+**ugen FP temp model (new tool `/tmp/claude-1000/c324/t/ringsim.py CC_S FUNC`).** IDO 7.1 ugen hands out FP temps
+from a FIFO free queue initialised `f4 f6 f8 f10 f16 f18`: each temp def pops the head, a temp is pushed back at its
+LAST use (before its next def), several frees at one instruction in operand order. On bootup E2D0's `cc -S` listing
+this predicts all 65 temp defs. Applied to the target: its after-clamp temps (1.0 f8, sum f18, then f4 / f6, f10 / f8,
+f16 / f18) fit the model only as `li.s f8; l.s f16 (arg4 as a TEMP); add.s f18` from the queue `f8 f16 f18 f4 f6 f10`,
+i.e. the target's arg4 is NOT a coloured LR at all (which is why nothing holds f14), and its queue at that point
+differs from ours (`f6 f18 f8 f4 f10 f16`, the same with or without the 0x9F8 load as a temp) although every earlier
+instruction is register-identical -- so the divergence is in ugen ORDER upstream (hidden by as1's rescheduling) or in
+which loads are temps. Without `if (arg4) {}` ours does make arg4 a temp (520 B: as1 then puts `mtc1` before the
+`lwc1` and drops the nop); the open lead is a body whose queue reaches `f8 f16 f18 ...` at the sum.
+bootup E2D0 (99.542): zdbug:5 shows arg4 = LR 82 (adjsave 0.333, live bb7..13, forbidden f0 / f2 / f12 from dot / lim /
+-lim, interfering also with the uncoloured 0.0f and 1.0 constant LRs) -- nothing coloured holds f14 there; 22 fold /
+test forms, 33 sum spellings (`(f32)(f64)`, `+ 0.0f`, comma, volatile ...), 37 named-sum placements, 33 `arg4 = 1.0f +
+arg4` placements (shape and schedule = target, 524 B, but the load and the sum share f14: 99.389): flat or lower.
+post0b 3B9C0 (99.122): 20 num forms (folded into t, d subtracted inside, negated, for-header def) with / without the
+inner-loop num fold: flat or lower. game_uso 3558 (93.853): 13 orders / spellings of the stage / vb accumulation block
+(the target keeps vb.x / .y / .z in f14 / f16 / f18 loaded at the block head): flat or lower. Under NCC the one-pass
+`for` is NOT free: even an empty `for (kk = 1; kk; kk = 0) { ... }` around 3558's stage block re-allocates the whole
+function from its first block on (93.85 -> 71.76, same length), and moving the vb adds into the step (the line lever)
+does not pull the vb loads to the block head; use the lever on cfe bodies only. Plain line JOINS are inert under NCC
+too: all 31 join masks of 3558's six stage-block lines compile byte-identically (93.853), as do 6 `vb.x = vb.x + x` /
+`x + vb.x` / pre-loaded-copy spellings (flat or lower). E2D0 (cfe) line layout of the post-call block (L / M order,
+joined lines, the sum split over lines, `s = arg4` copies; 108 combos with / without the arg4 test): flat.
+Kit CDXIV's recipe (distinct uses packed into tests that ALREADY exist, folds on call arguments, block-scoped live call
+results) was also flat here: E2D0 `if (arg3) {}` packings (160) and 80 joint test / L-M order / sum placement / named
+-lim combinations; 48AEC packings of both existing `if (this) {}` tests (160); gui 2DE0 packings of its three existing
+tests + `+ 0 * pc` folds on the rectangle call arguments + a block-scoped `rv` in Ctx::load (190), and 120 `0 * pc`
+folds inside the RDPHALF_1 terms (one pair reaches 1212 B = target length but 96.90 < 97.81: not kept), plus 150
+random new code-free tests at eight body anchors (flat). 3B9C0: 150 joint removals / additions of its twelve existing
+zero-code levers (base is the local optimum; the n->z fold and the `+ 0 * (int)(i)` term are the load-bearing ones).
