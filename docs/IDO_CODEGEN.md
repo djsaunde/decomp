@@ -14765,6 +14765,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CDI (agent-c 2026-11-06, run 312): **ugen goto straightening: four shapes put a store on a higher as1 line than the call it precedes (if(1)-split z; `goto k; c: CALL; return; k: COMP-with-branch; STORE; goto c;`; `if (0) { c: CALL; return; } COMP; STORE; goto c;`; the call block inserted just before the last clamps) -- each works alone on 31A74's mode-1 or tail region, but only ONE non-trivial splice survives per function (single-block forward splices drop the line and never block); 36694 / 4FD00 / 48AEC frame-slot readings (which pool entries sit above the by-value temp, 48AEC's cmd is a memory home where the target spills); statement-level `I2(0);` and line-join sweeps inert on all post0b NCC bodies; a discarded FLOAT pool entry `(F2(0.0f), p - a)` recolours 36694's FP sub results (register class of the entry matters)**](#kit-cdi-agent-c-run312) -- _post0b 36694 NM 95.899 -> 96.067 (063ddc250); ~2000 variants (31A74 ~150, 3BE1C ~160, 493AC ~350, 42938 ~250, 4BAF4 ~300, 4FD00 ~150, 36694 ~230, 48AEC ~400)._
 - [kit CDII (agent-g 2026-11-06, run 311): **a zero-code accessor's PARAMETER TEMP owns a frame word in declaration order (34890's `Mid(me(oo))` put me's p between X-this and Mid-this, Mid's spill home 4 low); plain `Mid(oo)` + a code-free `if (this) {}` in the Base ctor keeps the accessor's colour effect (Mid a3 / Base v1) without the word; the loop's bottom-test result shares make()'s h pool temp = one uopt LR (inherits a1), and every way found to move it (kept body-wrapper param, inline call in h's argument) also flips Mid or drops h's reload pattern**](#kit-cdii-agent-g-run311) -- _post0b 34890 NM 99.798 -> 99.821 (ab83f2c16); ~3400 variants of negatives (4B620 ~1100, 3B9C0 ~570, E2D0 ~225, E68 190, 2DE0 ~700, 34890 ~650)._
 - [kit CDIII (agent-c 2026-11-06, run 313): **kit-CD joint draws as a HILL-CLIMB with plateau drift (`hc.py`: best neighbour of 190 -> new base, else a byte-different tie) -- flat on 3BE1C / 493AC / 4BAF4 / 42938 / 469A8 / 4FD00 / 36694 / 48AEC / 3558; 3BE1C's hi-fold drop is a second plateau (ia / hi in the target's a3 / a1, va / vb / k*2 permuted) that climbs back to the committed bytes, and the `ok` fold on va carries the 1568-byte MAX pre-assign; 4FD00 `return p1 >= 0 && p2 >= 0` gives the early zero at the target's index (in a1) but a +12-byte tail; 48AEC register-only cmd = target spill shape at frame 376; 36694 dead temp blocks push the binding down only by growing the frame; multi-line call arguments never move an ugen line (31A74); 4FD00's late `move v0,zero` is a WAR on v0 (the gn() address LR holds v0, the target's second sum address does)**](#kit-cdiii-agent-c-run313) -- _no score change; ~6000 variants._
+- [kit CDIV (agent-g 2026-11-06, run 312): **a VIRTUAL call's declared return type is a colouring lever: uopt forbids v0 for LRs living through a value-returning call's block, not a void one -- 493AC's `virtual int hit(..)` (result unread) gives the grid loop the target's colours; extern "C" / cfe return types are inert (8 bodies); a named-copy inline (`cur2()`) on one call argument re-slots the sibling argument's inline `this` into the target's pool slot; 3558 inline bodies carry the call site's line**](#kit-cdiv-agent-g-run312) -- _post0b 493AC 99.680 -> **EXACT** (edc73caf7, 2ad0e7d6f, 593837f67, a24f2b8b4, e2a5b62bd); the closing-noop slot pair is picked by accessor depth (me(me())), the priority swap fixed by dropping a dead `if (0)` that parked a temp in six zero-ref blocks, and the last two frame words by moving the depth from the call site INTO the inline (`AIter(me0(me0(me0(this))))`)._
+- [kit CDV (agent-c 2026-11-06, run 314): **bootup E68's target m is ONE LR that uopt SPLIT (v0 piece in phase 2, s1 in phase 3, the E68_MGR load a PRE temp in t0; zdbug:6 `split out` / `impossible to color`): a split needs m's priority below the nine phase-2 s-reg IVs; a second variable gives the pieces but makes phase-2-only m2->dl / count CSE LRs that take v0 first (climb plateau 98.48 < 98.65); 34890's h is an LR only because its pool slot is shared with the loop's bottom-copy result (moved off it, h becomes a plain load; `if (h) {}` x2 restores it only with a slot-shifting K1 entry, 98.57); cfe FLOAT return types DO move FP colours (f0 forbidden through a float-returning call's block: E2D0 dot / lim swap), but nothing can forbid f14 for E2D0's arg4; 3B9C0 with d inside num matches every FP register of the target (frame +8, int side off, climb 96.48)**](#kit-cdv-agent-c-run314) -- _no score change; about 5000 variants._
 - [kit CCCLXXXVI (agent-c 2026-11-05, run 305): **run a register-normalised diff before the copy lever: of five near-misses only gui 2DE0 had a target copy ours lacked; wrap the clamp's RESULT zero (`P > 0 ? P : I(0 + x * 0)`), not the compare's; partial leads for 493AC (named receiver copy + dead-stored pad), 3BE1C (hi folds / one home fewer = the inner MAXS's second edg temp), 469A8 (store / re-read forwarding; NCC port at the cfe score with four NCC-side fixes), 31A74 (in-call store frees the goto merge); jumptable default-steal cap of 396FC / 51AD8 re-confirmed (NCC emits no jumptables)**](#kit-ccclxxxvi-agent-c-run305) -- _gui 2DE0 NM 96.848 -> 96.914 (a77525f51); 469A8 cast cleanup (fd95e598b)._
 - [kit CCCLXXXIII (agent-c 2026-11-05, run 304): **the variable-reuse lever in cfe: reuse the variable for a later value the target passes in the same register, as an assignment INSIDE the call's argument list (`f(..., (v = X), ...)` keeps the argument order; a separate statement issues the load early); move a counted use from the variable the target colours later to the one it colours first; cfe zdbug:6 colours 1..12 = v0..t5, 13 = ra (t6..t9 never colours)**](#kit-ccclxxxiii-agent-c-run304) -- _post0b 469A8 NM 98.641 -> 98.786 (b21d409c0), 3B6A0 NM 96.65 -> 96.85 (0f8e9fea6); 3BE1C va / vb, 493AC p34 receiver / grid ring, 31A74 mode-1 raise, post1b 65EE4 cap re-check (still a cap) negatives._
 - [kit CCCLXXXII (agent-g 2026-11-05, run 301): **RE-GRID after every gain: swap an old zero-code lever for a new one, then re-run BB-split / one-site-wrap / pad-position sweeps on the new base; an unreferenced class-object block (`{ V3 t; }`) is a BB split**](#kit-ccclxxxii-agent-g-run301) -- _post0b 54E78 NM 99.565 -> 99.638 (c9b02204a) -> 99.819 (e4a19c2a2); register-span scan for the variable-reuse lever (rs.py); reuse / split / wrap / swap / BB-split negatives on 17 bodies._
@@ -60394,3 +60396,176 @@ of G.o / idx / g; 5 calls, drifting over 1-8 byte-different ties each time), 469
 draws), 4FD00 (13), 36694 (12), 48AEC (24, `if (this)` / `if (gctx)`), 3558 (42): no draw above its base. 4FD00 extra:
 the 49 gn() depth pairs x 4 sum() accessor forms (196) peak at the committed (4, 5) pair (a = b - 1 is the only good
 diagonal); `(I2(0), ..)` entries inside sum() shrink the body to 984 B (80.5).
+
+## kit CDIV (agent-g 2026-11-06, run 312): a VIRTUAL call's declared return type is a colouring lever -- uopt makes v0 intrinsically FORBIDDEN for every LR that lives through a value-returning call's block, but not through a `void` one; 493AC's grid loop had exactly the target's colours once `hit()` returned int (result never read): 99.680 -> 99.917; then a named-copy inline (`cur2() { Arr *x = a; return (*x)[idx]; }`) on ONE argument re-slots the p34 `this` into the operator[] index pool slot: -> 99.938; accessor depth picks the closing noop's slot pair and dropping a dead `if (0)` restores the priority order: -> 99.948; three me0() levels INSIDE Arr::iter() (not at the call sites) place the last two temps after the return temps: post0b 493AC EXACT (1936 B) <a name="kit-cdiv-agent-g-run312"></a>
+
+_agent-g run 312 (list swap: agent-c's ten), base f9506b65b. Gains: post0b 493AC 99.67975 -> 100.0 EXACT (1936 B,
+commits edc73caf7 + 2ad0e7d6f + 593837f67 + a24f2b8b4 + exact e2a5b62bd; 3c / 3d below). Tools in `/tmp/claude-1000/g312/` (t/df.sh side-by-side, t/sc2.py = g291 sc.py that
+also renames a `gl_vfunc_00000000` / `vfunc_00000000` alias back, t/vr5.py = vr4 on sc2, s/*.py variant specs)._
+
+**1. The lever (measured on the replay, kit CCCXCIII tools).** 493AC's grid loop: target grid a0 / w and tbl18 v1 / end
+v0, ours grid v1 / tbl18 v0 / end a0. The replay said "end must out-prioritise tbl18 by 6600" (save 733 vs 7333), which
+no fold can buy. The cheaper reading is a FORBIDDEN colour: with `virtual void hit(int, Rec *, int, Elem *)` the
+tbl18 LR (bb 74..80, the j loop that holds the `this->hit()` jalr) has forbidden {a3, s0..s2}; with `virtual int hit(..)`
+(call statement unchanged, result discarded) its forbidden set gains v0 -> tbl18 v1, grid a0 (v0 / v1 taken), end v0
+(not a neighbour of the v0-forbid block), w v1. Every colour in the loop is then the target's (19-line diff -> 7).
+Same length, no code change outside colours; NCC only lowers the discarded result of a NON-void virtual call into
+something uopt sees as a v0 def. So: when a target register pattern needs v0 to be unavailable inside a loop that
+contains a virtual / indirect call, try a non-void return type on that virtual (allowed: the result is never read; say
+so in a comment).
+**Where it does NOT bite (all flat):** extern "C" calls -- void <-> int / void* / float on every statement call of 493AC
+(25 singles + all, scored with the alias renamed back), 42938 (38: void costs 0.08-0.23, real code change), 3BE1C /
+4BAF4 (one each), 48AEC (12 statement calls + its `draw(void *)` virtual and v1..v4 as int / void*), 36694's
+`gl_normalize_36694` (int / void* / float), game_uso 3558's 071028 / 072EE8 (15 type pairs); cfe C bodies -- 469A8's
+second vcall typedef as void / int / prototyped (5). The effect needs an LR that LIVES IN the call's block and wants v0.
+
+**2. Re-slotting one inline `this` with a named-copy inline on a SIBLING argument.** 493AC's first-loop call
+`gl_func_00000000(it.cur(), it.cur()->p34())`: target loads the element into a2 (`lw a2; jal; addiu a1,a2,52`), ours v1
+(the p34 `this` shared the operator[] `this` / iterator-`a` pool slot, LR44, forbidden a2 by the ++idx LR41). Probes:
+a real third argument `it.cur()` gives a2 exactly at the call but +16 frame (a new pool entry) and pushes LR41 off a2
+(a2 then forbidden in its block); int-parameter accessors / pointer casts (7) and receiver wraps I2 / P2 / P4 / me on
+either argument (124) flat. A second copy of cur() WITH a named local, used for the FIRST argument only (`Elem *cur2()
+{ Arr *x = a; return (*x)[idx]; }` -> `gl_func_00000000(it.cur2(), it.cur()->p34())`) fills the pool so the second
+argument's p34 `this` lands in the operator[] index slot (LR41's var, a2): 99.917 -> 99.938, frame unchanged (the
+pool's high-water is set elsewhere; the same named-copy trick in count() / noop() / next() at the k-loop append grows
+the frame by 8 and loses, with or without dropping one or two of the pad words: 36).
+
+**3. 493AC residual (5 lines): the k-loop's closing `o->ctx6C->noop()`** puts the head in a2 / count in v1 (target v1 /
+a2, the pattern every other append already has). In the bit table the head sits in LR41's var (int slot -1532) and the
+count in LR33's (-1504); the other appends use -1536 / -1532. Flat on the new base: 30 count / noop / next named-copy
+pairs, 67 code-free pool entries (I2 / I4 / P2 / P4 / me statements and comma entries in 189-191), 71 me() depth pairs
+on the rows7C / noop receivers, a 190-draw joint climb over 5 statement dims, diagnostics (dropping 189 / 190 / the hit
+block / n80, swapping 190-191): the bb93 pair never flips.
+**3b. Reading it off the bit table's `ustr` entries** (`ustr{VAR}{VALUE}` = a store of VALUE into the pool var; grep the
+level-5 uoptlist): bb67's append stores the head expression `{1559|3}` into -1536 and the count into -1532; bb93's
+stores the same head expression into -1532 and the count into -1504. The pair is picked by the receiver's accessor
+DEPTH, not by earlier statements (no ustr to these vars in between): depth 0 / 1 -> (-1532, -1504), depth 2 -> (-1536,
+-1532) = bb67's pair (its store bits are then literally shared with bb67's), depth 3 -> (-1540, -1536). So
+`me(me(o->ctx6C))->noop()` at 191 gives the target's SLOTS -- but the colours then flip (99.597): with bb93's refs moved
+off LR33 (save 180 -> 30) LR41 (-1532, save 138.667) is coloured before LR44 (-1536, 91.0) and takes v1, LR44 gets a0
+(target LR44 v1 / LR41 a2). The replay wish: raise LR44 by > 47.7 or lower LR41 below 91. Flat on that base: folded
+`0 * (int)this` / `0 * (int)a` uses inside operator[] / next() / next1() / cur() / Ctx::next (edg folds them:
+byte-identical, 15 + 87 pairs), code-free tests in those bodies, `if (I2(..)) {}` / `if (P2(..)) {}` tests in five later
+blocks (72, inert), me() depths on the this->hit() receivers / arguments (52, worse), a 190-draw joint search over
+next / next1 / cur spellings x append-receiver depths x o = it.cur() forms, hit() as long long / char / short (inert) or
+double / float (worse).
+**3c. The swap, found (99.938 -> 99.948, commit 593837f67).** lrinfo on that base: LR44 (-1536) lives in 13 blocks, six
+of them zero-ref blocks of the two iter() constructions (bb 11..15 / 51..55): the AIter ctor's old `if (0) { arr = 0; }`
+keeps `arr` as a pool entry, which pushes BOTH constructions' IBase `this` one slot deeper into -1536 and dilutes it.
+Dropping the dead block (`AIter(Arr *arr) : IBase(arr) {}`) moves both IBase `this` temps to -1532: LR44 177 / LR41
+85.2, so bb93 and every append / ++idx colour are the target's -- but now both constructions' `this` copies are a2
+(target v1). Giving ONE of them the deeper slot back through the call-site receiver (`AIter it = me(me(&arr))->iter();`,
+or `me(this)->arr.iter()`, depth 1 is folded) fixes that construction with LR44 119.7 > LR41 105.3 still in order.
+Doing it on BOTH (me / this forms, a second `AIter(Arr *, int)` ctor with the dead block for the second only, 16 + 24
+with cur / cur2 recombinations) re-dilutes LR44 below LR41 (99.597). Residual: the second `it = arr.iter()`
+construction's IBase-this copy (a2, target v1; 5 lines). General recipe: when a pool var's priority is short,
+list its zero-ref blocks (`lrinfo.py`) and remove the construct that parks a temp there.
+**3d. EXACT (commit e2a5b62bd).** A joint grid (AIter ctor with / without the dead block x IBase with / without x
+call-site depth 0 / 2 / 3 / 4 on each construction, 64) found depth 4 on BOTH call sites (`me(me(me(me(&arr))))->iter()`)
+= every colour right (99.996); only the two iter() return-temp homes sat 8 low (`addiu s0,sp,184` / `s1,sp,196`, target
+192 / 204) -- the call-site me() temps are pool words allocated BEFORE the by-value return temp. Moving the depth INSIDE
+the inline (`inline AIter Arr::iter() { return AIter(me0(me0(me0(this)))); }`, plain `arr.iter()` at both sites; me0 =
+the identity template declared before Arr) gives the same slot pick with the extra temps allocated after the return
+temp: 100.0 at depths 3-6 inside iter() or inside the AIter ctor (`IBase(me0(me0(me0(arr))))`), 1936 B. Depth on a
+plain `this` / parameter at the CALL site is folded (4FD00), but inside the inline the argument is an expression of
+the param and keeps its pool entries. Lesson: an accessor-depth slot pick has two placements -- at the call site
+(temps ahead of everything the statement allocates) or inside the inline (temps after its own return temp) -- try both.
+
+**4. Negatives on the rest of the list (this base).** 493AC folded uses of `rowStart + grid->w` / grid / w / c at 7
+sites (36) and 19 bottom-test spellings x folded init (39): flat or worse (the loop test folds are edg-folded,
+byte-identical). 3558: the vb adds as inline methods (`acc(a, b, c)` one-line / three-line / z-first, `ax/ay/az`;
+inline bodies carry the CALL SITE's line, so their own line layout is inert, 21), vb loaded into block locals first or
+accumulated in named locals with the stores last (10), `vb.x += x` right after each component (4): all 1020-1048 B
+(the early vb store kills uopt's forwarding through the `const Vec3 &v` view, the reload costs 12-40 B).
+The kit-CDIV named-copy lever elsewhere (one site at a time): 48AEC cur2() / cur3() / ref2() at its five it.cur() /
+it.ref() sites (13), 3BE1C face2() / list2() named-copy bodies (8), 4FD00 gn2() / gn3() / sum2-4 (16): flat or worse.
+4FD00: the target's second face sum reuses the first sum's += vertex var (-104, v0) where ours takes a fresh -116 (t0)
+and -104 then carries the normal address (v0, target v1) -- one pool-slot identity explains both residual regions;
+sum()'s parameter order (6 permutations) is byte-identical, `if (0) { .. }` dead copies of sum / += / set before the
+first sum are inert and between the sums they split the block (980-992 B). The ustr read (kit CDIV 3b) shows why:
+sum #1 stores only its three vertex addresses into -104 (bits 13 / 29 / 39) plus the SV / V3 fields, but sum #2 first
+stores six parameter temps (-80 / -96 <- `this`, -84, -88 <- f2, -92 / -100 <- a zero) and two more (-108 / -112), so
+its += vertex addresses are pushed down to -116; the target's sum #2 evidently keeps them in -104. Lead: find what
+makes edg materialise sum #2's parameter temps (sum #1's are copy-propagated away); me(this) / me(me(this)) on either
+sum call (`this` is folded at every depth) and *me(&b) / *me(&s) arguments (31) did not. 36694: the product as V3(a, b, c) / set() /
+mulr (const f32 &) / mulv (by value) / mulp (pointer) / dotf (13): flat or worse. post 31A74 (cfe): the two
+call prototypes' return types (void / float / double / long long / char on either or both calls, 15) are
+byte-identical -- cfe drops a discarded result before uopt, so the kit-CDIV lever is NCC-only. The 3d
+inside-the-inline depth on the siblings: 48AEC (the same 4B620 iterator) me() depth 1-5 inside Arr::iter() / the AIter
+ctor and depth 2-4 at each of its three `arr.iter()` sites (20): flat or worse; 4FD00 *me(&verts[..]) depth on the
+set / += arguments inside sum() (48): <= 96.30; 42938 me0() depth on dl / vph inside next() / nC() / vpnext() (21): flat;
+3BE1C me0() depth on faces / remap / col->grid inside face() / list() (19): flat or worse; 4BAF4 me0() depth on gfx /
+this / g inside Ctx4B::next() / add() (17): flat or worse. zero-use-sweep.py on the NCC donors (use `--lines` = the
+function body, else the sweep also edits the inline templates and every variant fails to compile): 4FD00 (10), 36694
+with `--keep-float` (23), 48AEC (121 scored): nothing above base. 3BE1C lead from the replay on today's base: the
+hi / lo block's -104 / -102 pool vars (LR348 t3 / LR342 t2, save 100, target a0 / a1) lose a0 / a1 to the -92 / -96
+pool vars (LR301 / LR307, save 200, coloured first); a 2x priority gap -- check their zero-ref blocks (3c recipe) or
+whether the target's MAX / MIN temps share fewer slots. lrinfo: LR342 / 348 = 1 ref in bb52 + a zero-ref bb51
+(100), LR301 / 307 = 3 refs over bb51..53 (200); dropping bb51 alone would only tie (lower id wins). Inner / outer
+MAXS / MINS macro spellings (>=, swapped operands, inverted test, cast outside; 48): flat. 36694 replay lead: the
+target's `mtc1 zero,$f0` (ours $f16) is the 0.0f const LR267 (save 1.667, 6 blocks incl. a zero-ref default bb15)
+losing f0 to the bb6 add expression LR96 (save 3.0); it needs > 3.0. The agent-c NCC port of 469A8 (c309/n469/b.cpp,
+71.2) has a `virtual void w3()` result-unread call: int / void* / char / S1* / long long / float returns are inert.
+42938 replay: the scissor append's ctx / count swap is the -52 / -60 pool vars (LR0 save 9.0, 12 refs / LR25 7.5,
+10 refs, same three blocks) -- a 2-ref shift between the vars would flip them; 190 joint call-site depth draws
+(me0 1-4 on `G.o->ctx` or 2-3 on `G.o`, five appends): flat. 36694 `if (1) {}` after each body statement (18): flat.
+
+## kit CDV (agent-c 2026-11-06, run 314): fresh-eyes LR readings on the swapped list, no gain -- bootup E68's target m is ONE variable whose LR uopt SPLIT (v0 piece in phase 2, s1 piece in phase 3, the E68_MGR load as a PRE temp in t0), so a second variable is the wrong reading; post0b 34890's h is an LR at all only because its pool slot is shared with the loop's bottom-copy result; cfe FLOAT return types do move FP colours (f0 is forbidden through a float-returning call's block) <a name="kit-cdv-agent-c-run314"></a>
+
+_agent-c run 314, base f9506b65b. No score change committed. Tools in `/tmp/claude-1000/c314/t/` (`hc.py` / `sc.py` /
+`rund.py` as c313 with c314 paths, `loop.sh CFG STATE SEED N` = N chained climb calls, `ad.py OURS TGT FN [full]` =
+difflib-aligned diff that shows inserts / deletes, `fifoq.py` = g305 fifo.py printing the free queue)._
+
+**1. bootup E68 (98.650): the target's two m registers are a Chow SPLIT of one LR.** Target: phase 2 starts
+`lui t0; lw t0,24(t0); ...; move v0,t0` with `lw v1,12(t0)` in the zero-trip `blezl` delay slot, the loop exit re-loads
+`lw t0,24(t0)` and phase 3 starts `move s1,t0`. Reading: t0 is uopt's PRE temporary for the `E68_MGR` load (phase 3's
+`m = E68_MGR` is redundant on the zero-trip path, so the load is inserted at the loop exit), and v0 / s1 are two pieces of
+m. zdbug:6 shows uopt does split uncolourable LRs (`live range N: N split out M` ... `impossible to color`). In ours m
+(LR prio 1603, forbidden only v0..a2) is coloured BEFORE every phase-2 saved-register LR (the vs / ve / uls IVs, prio
+220-620), takes s0, and the target's s0 user (ve, `addiu s0,t5,6`) drops to t2. A split needs m below all nine s-reg
+holders (about 7x lower); code-free tests and the fold levers move it by a few percent only. The m->dl / dl->count CSE
+LRs span both phases with one variable (prio 6615 / 6015, v1 / a1 = the target). Two variables instead (`m2` for phase 2,
+`padq[3]` -> `padq[2]` keeps frame 472) give the v0 / s1 pieces, but `m2->dl` and its count become phase-2-only CSE LRs
+(prio 11000 / 12000) coloured first: count v0, m2 a3, 88.44. Dropping the `if (m) {}` after `ult = 0` -> 96.77 (3052 B);
+a climb over 58 dims (code-free tests of always-defined variables after every phase-2 / 3 statement, NEXT / NEXTB /
+NEXTBI per append site, the old fold / test levers) reaches a 98.478 plateau at 3036 B (about 2600 variants): below
+the one-variable body. A void alias for the discarded `func_00000000(self, &D_000066B0)` call is byte-identical. On the
+one-variable body, a pool of seven code-free tests (m / self / buf / cfg / arg2 / timg / `1`) after each of the 28
+phase-2 / 3 statements (14 climb calls with drift, ~2500 draws) only drifts across byte-different ties at 98.650.
+
+**2. post0b 34890 (99.821): why h is an LR.** The target keeps h in a1 with `sw a1,44(sp)` / `lw a1,44(sp)` around the
+allocs. Every change that moves the bottom-copy result off h's pool slot (an in-expression pool entry
+`(K1(0), make(o->h, o))`, `make(O *o, int h)`, a named local `int hh = o->h` with or without code-free tests of it) turns
+h into an early plain load (`lw t7; sw t7,44`, 320 B): alone, h is not worth a register. Two code-free `if (h) {}` in
+make() bring the LR back only together with the K1 entry: 98.571 at 336 B, bottom result now v0 on K1's slot, but K1's
+word sits above h (every spill home 4 low) and Mid / Base flip (climb `ck.py`, 3 calls x 190: flat). The target has h at
+M-12 (44(sp)) AND a different variable for the bottom copy, so either M-12 is still busy when edg emits the bottom
+copy or that copy is not first-fit. A reference-bound temporary (`const int &r = 0;`, 13 forms x 4 places) does hold a
+slot to the end of its scope but is a real stack object (frame +8, a store). Inline loop wrappers with kept dummy
+parameters (200) re-home `it` (320 B). Distinct extern "C" void / int aliases on the three non-alloc calls (27):
+byte-identical (kit CDIV's lever is for virtual calls).
+
+**3. bootup E2D0 (99.542): a cfe float return type is a colour lever for the FP class.** Declaring the discarded
+normalise call as `f32 func(...)` (result unread) forbids f0 for every LR through its block: dot moves f0 -> f2 and lim
+f2 -> f0 (98.78). No return type can forbid f14, which is what arg4's LR would need to take the target's f16 (the f12 /
+f14 colours come only from float call ARGUMENTS, and this body has none), so the residual stays. Also flat: a 200-draw
+grid of 9F8 spelling (`*=` / `dot * k` / `k * dot` / named k) x lim-first order x keep position x `1.0f + arg4` spelling
+(incl. a pre-clamp sum). With the keep dropped, `fifoq.py` confirms the FIFO state after the 9F8 load is
+[f6 f18 f8 f4 f10 f16] and predicts ours exactly; the target's consecutive f16 reuse cannot come from that queue.
+
+**4. post0b 3B9C0 (99.122): the FP half is solved by putting d INSIDE num; the int half and the frame are not.**
+`num = a->x * n->x + a->y * n->y + a->z * n->z - self->tris[i].d; t = -num / dn;` (with the existing `0 * (int)(num)`
+fold in the inner loop keeping num live) gives EVERY FP register of the target: the sum is a ugen temp (f4), num is
+the LR (f2), dn f12, n->x / y / z f16 / f18 / f20 and the hoisted 0.0f f14 (the old 0.0f / n->z f20 swap was this
+LR choice, not a use count). Cost: 91.51 at 1124 B, frame 240 (homes identical by zdbug:1, the 8 extra bytes are
+uopt temp area between the saves and the homes), cnt in its home instead of s8 and the &tris[i] base CSE'd early.
+A climb over the d spelling (5) x the ib / sg / ok folds x `if (cnt) {}` / `if (off) {}` / `if (1) {}` slots (13 dims,
+`cb.py`, ~1500 draws) reaches a 96.484 plateau, the same value from a second seed (`/tmp/claude-1000/c314/c314hb_22/h61.cpp`: frame 232 again with
+`if (off) {}` at the body top, `if (cnt) {}` on the p.x line and the d read as `(&self->tris[i])->d`, but n->z is back
+in f2 and cnt / the a (s7) pointer take s7 / s0). Next step if anyone picks it up: start from this num form and fix the
+int-side colours (cnt s8, a s7, the i*12 base a1) without losing the f20 n->z.
+
+**5. gui 2DE0 / post0b 4B620** were only re-read (aligned diffs): 2DE0's residual is the CTX `lda` LR split
+(kit CD), the same split mechanism as E68 above; 4B620 is a spread colour permutation (kits CD-CDII), and an auto pool
+over the ctor body (`if (1) {}` / `if (this) {}` / `if (a1) {}` after each statement, line joins; 3 x 190) is inert:
+every tie is byte-identical to the base. E2D0 keep `if (arg4) {}` at seven positions (14): best = base.
