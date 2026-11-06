@@ -14751,6 +14751,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCCLXXXVII (agent-g 2026-11-05, run 303): **an identity on an inline operator's OWN parameter (`V3 operator*(const f32 &s) const { return V3(x * idv(s), ...); }`) puts its pool slot inside the caller's full-expression -- it moves the result / copy temporaries where caller-side slot-takers only shift them together; then drop the older lever whose shared pool variable now spans the new block and re-grid code-free tests**](#kit-ccclxxxvii-agent-g-run303) -- _post0b 54E78 NM 99.819 -> 99.891 (8d9829915, 68cfe20cf); post0b 4F2DC NM 95.853 -> 97.489 (end = e's by-value operator= parameter, camera pos = M4::getPos at cam + 0x70 on an rvalue receiver: the target's dead this-temp addiu); target-copy scan of 17 bodies empty; bootup 6204 / E9FC prologue probes negative._
 - [kit CCCLXXXVIII (agent-c 2026-11-05, run 306): **a "store issued late" residual where the target REUSES a t6..t9 register between two stored values is a ugen ring-phase residual: MOVE an existing value-preserving `& 0xFFFF` between sibling halfword stores (double it on one, drop it on the next), then re-grid the store order on the new base**](#kit-ccclxxxviii-agent-c-run306) -- _post0b 42938 NM 98.118 -> 98.589 (2138b210b) -> 98.650 (0a5d4ad9e, setvp stores in field order); post0b 4BAF4 98.021 -> 98.617 (6279ad2c8: +1 mask on iz, +3 on the `& 8` test = period-4 compensation); gui 4568 96.935 -> 97.010 (fd7b8e510: RDPHALF_2 operand masks); ring / mask / spelling negatives on 4BAF4, gui 4568 / 2DE0, 493AC, 4FD00 (set(V3) copy-temp hole map), 31A74 (tail needs the one raised merge), 3558._
 - [kit CCCLXXXIX (agent-g 2026-11-05, run 304): **read an FP colouring residual off `-Wo,-zdbug:5` / `:6` (diagnosis compiler): equal-priority global LRs colour in LR-index order (first appearance), FP 24..29 = f0 / f2 / f12 / f14 / f16 / f18, a field-load LR exists only in blocks with two refs of the CSE'd load, and every code-free test is a BB split**](#kit-ccclxxxix-agent-g-run304) -- _post0b 54E78 99.891 -> EXACT (a072c0b4f: idv on the right n.x of m[0][0] + operator* `f32 a = x * s - 0 * idv(0); return V3(a, idv(y * s), z * s);`; ident jal -> gl_func_00000000). Analysis: without the run-303 n.z test n.y / n.z sit one register low (f12 / f14); the target needs a third f12 LR live in BB6 but not in the product block (not found: tests, pool-priority idv sites, distinct identities, locals, accessors, literal 1.0f; adjsave = 0.75 x refs, and a folded index use `m[2][0 + 0 * (int)(p.n.x)]` + volatile tail reads gives the target's squares / constants but makes the BB6 n.x a coloured LR: so the third LR is the invisible idv pool variable). Flat lists on 4B620 / 34890 / gui 329C / bootup E2D0 / 3B9C0 / 46790 / 5A2C4 / bootup E68 (~2000 variants)._
+- [kit CCCXC (agent-c 2026-11-05, run 307): **NCC by-value operator temporaries: return a NAMED set()-filled result (register change, frame -24, restored by a block ctor pad), put an unreferenced ctor pad (`PadK<2>`) INSIDE the inline operator to move only that operator's temporaries, then re-run the drop-each-code-free-test sweep (an old split turned harmful); USO blank refs pinned 0 / rodata pinned to the RoData addend; ctor pads inside 4FD00 inlines break inlining, ctor-less pads are dropped, address-taken pads land at the frame bottom**](#kit-cccxc-agent-c-run307) -- _post0b 4F2DC 97.489 -> 97.752 -> 98.534 -> EXACT (feec340d9); 4BAF4 redundant `if (1) {}` dropped (byte-identical); 48AEC 97.719 -> 97.726 (declaration order, 9a5aed525); 42938 98.650 -> 98.856 via the FIFO model: unmasked vtrans[0] + `G.m228 = G.m224 = 8` split into two stores (one ugen constant temp -> two) re-phases the after-call ring (17d927700, ce73e3be7). Flat: 4FD00 (the target hoists `move v0,zero` into the second face sum), 36694, 42938 head colours (zdbug:5 LR 257-259 forbidden t0..t2), 3BE1C, 48AEC (frame +16), 3558, gui 2DE0._
+- [kit CCCXCI (agent-g 2026-11-05, run 305): **the ugen t-register "ring" is a FIFO free queue (alloc = head, last-use free = tail; t6 t7 t8 t9 t1..t5, FP f4..f10 / f16 / f18): read ugen's pre-as1 registers off `NCC -S` / `cc -S`, replay with a small simulator and SEARCH burn / hold insertions before writing C; a folded mask = one rotation (period = free-register count, 3 or 4 per site); as1 merges and+and keeping the second register, coalesces moves into the source, and MERGES consecutive shifts (`x << a << b` = one extra held temporary, zero code)**](#kit-cccxci-agent-g-run305) -- _post0b 46790 99.254 -> EXACT (71a7f6ba1): no burn placement fits; the simulator says one extra temp between the div and the `* 1024` shift with the (u8) burn removed, and `(c / 16) << 5 << 5` is that temp. allring scan: 46790 is the only pure t-register residual, E2D0 FP-only (arg4 LR f14, needs an interfering f14 LR). Flat: 5A2C4 mask period pairs, ctor pads in inlines on 34890 / 4B620 / 329C, 3B9C0 test prune / s16 masks, E2D0 FP identities._
 - [kit CCCLXXXVI (agent-c 2026-11-05, run 305): **run a register-normalised diff before the copy lever: of five near-misses only gui 2DE0 had a target copy ours lacked; wrap the clamp's RESULT zero (`P > 0 ? P : I(0 + x * 0)`), not the compare's; partial leads for 493AC (named receiver copy + dead-stored pad), 3BE1C (hi folds / one home fewer = the inner MAXS's second edg temp), 469A8 (store / re-read forwarding; NCC port at the cfe score with four NCC-side fixes), 31A74 (in-call store frees the goto merge); jumptable default-steal cap of 396FC / 51AD8 re-confirmed (NCC emits no jumptables)**](#kit-ccclxxxvi-agent-c-run305) -- _gui 2DE0 NM 96.848 -> 96.914 (a77525f51); 469A8 cast cleanup (fd95e598b)._
 - [kit CCCLXXXIII (agent-c 2026-11-05, run 304): **the variable-reuse lever in cfe: reuse the variable for a later value the target passes in the same register, as an assignment INSIDE the call's argument list (`f(..., (v = X), ...)` keeps the argument order; a separate statement issues the load early); move a counted use from the variable the target colours later to the one it colours first; cfe zdbug:6 colours 1..12 = v0..t5, 13 = ra (t6..t9 never colours)**](#kit-ccclxxxiii-agent-c-run304) -- _post0b 469A8 NM 98.641 -> 98.786 (b21d409c0), 3B6A0 NM 96.65 -> 96.85 (0f8e9fea6); 3BE1C va / vb, 493AC p34 receiver / grid ring, 31A74 mode-1 raise, post1b 65EE4 cap re-check (still a cap) negatives._
 - [kit CCCLXXXII (agent-g 2026-11-05, run 301): **RE-GRID after every gain: swap an old zero-code lever for a new one, then re-run BB-split / one-site-wrap / pad-position sweeps on the new base; an unreferenced class-object block (`{ V3 t; }`) is a BB split**](#kit-ccclxxxii-agent-g-run301) -- _post0b 54E78 NM 99.565 -> 99.638 (c9b02204a) -> 99.819 (e4a19c2a2); register-span scan for the variable-reuse lever (rs.py); reuse / split / wrap / swap / BB-split negatives on 17 bodies._
@@ -59386,3 +59388,171 @@ no n.z test) -> 54E78 100.0 (552 bytes). `- 0` rather than `+ 0`: x - 0.0f is th
 (the target's USO jal word is blank; renaming it to gl_func_00034458 links a real address and breaks the ROM compare).
 Lesson: when one lever fixes one half of a colouring and costs the other, look for a second, independent slot-maker
 (here an int pool temp) that keeps the frame side effect without the live-range side effect.
+
+## kit CCCXC (agent-c 2026-11-05, run 307): NCC by-value operator temporaries -- a NAMED set()-filled result and an unreferenced ctor-pad INSIDE an inline operator move the operator's temporaries; then re-test the stale code-free test; post0b 4F2DC 97.489 -> EXACT <a name="kit-cccxc-agent-c-run307"></a>
+
+_agent-c run 307, base 5d6894b3d. Exact: feec340d9 (post0b game_libs_func_0004F2DC, 1064 B, NCC donor), via e57c38840
+(97.489 -> 97.752) and ec4890d1a (-> 98.534). Cleanup: 245cdc9ee (4BAF4: one of the two `if (1) {}` after the iz line
+dropped, byte-identical). Tools: /tmp/claude-1000/c307/t/ (c306 sc.py / rund.py re-pointed; ring69.py = ringscan
+restricted to t6..t9; prune.py = singles that drop each `if (...) {}` code-free test)._
+
+**1. The three steps on 4F2DC.** (a) `V3 operator*(f32 s) const { V3 r; r.set(x * s, y * s, z * s); return r; }`
+instead of `return V3(...)`: the -1e5 literal loads into f14 like the target (a whole-expression register change),
+but the frame shrinks by 24 (the ctor temporary was bigger than the named result); an unreferenced block-scope
+`{ PadK<6> pq; }` (PadK has a ctor, so edg keeps its home) before the `p` load restores frame 424 (position grid of
+block pads x 9 anchors x 2..8 words: only the slot before `p` keeps every other home; 97.752). (b) The operator+
+inline gets its own pad: `V3 operator+(const V3 &o) const { PadK<2> pr; return V3(...); }` and the block pad shrinks
+to 4 words: the e operator= parameter temporary drops from sp+92 to the target's sp+84 (all other homes unchanged;
+the pad inside the inline is allocated where the inline's temporaries are, so it moves only those): 98.534 -- the
+pads at function scope / in operator* / operator= / the if body were all <= base. (c) With the temporaries placed,
+agent-g's run-303 `if (1) {}` before the `getPos(start)` call (which had been needed to keep the cam-relative loads
+off folded offsets) became harmful: dropping it puts the cam pointer in v1 and the dead this-temp `addiu v1,v1,112`
+after the three loads (target), and `addiu v0,sp,132` hoists to the entry block: 100.0. Rule: after any lever that
+moves frame temporaries or register classes, re-run the drop-each-code-free-test sweep; an old split can turn from
+lever into residual.
+
+**2. Landing notes (USO blank refs).** The target words carry in-place addends with no relocations
+(`lui at,0; lwc1 $f8,0x128(at)`, `lw a0,0(a0)`, `addiu t1,t1,0x128`, `lwc1 $f14,0x1BA8(at)`): the donor's two data
+externs were renamed D_4F2DC_b / D_4F2DC_e and pinned to 0 (the `+ 0x128` stays in the source), D_00000000F is the
+existing 0x128 pin, and the donor .rodata (-1e5, 1e5 at +0 / +4) is renamed game_libs_func_0004F2DC_rodata by the
+splice and pinned to 0x1BA8 (the USO RoData words already ship in ROM). Placeholder `int ... { return 0; }` in the
+`#else`, REPLACE_FUNC_BODY on both build paths. NM length unchanged (0x428) -- no clip change.
+
+**3. Where the ctor pad does NOT work.** In 4FD00 a ctor-PadK inside ANY inline (V3 set / += / -= / /= / dot, SV
+set / +=, sum, gn, me) or as a block in side() collapses the score to 60-80 % and changes the length (edg stops
+inlining / restructures); ctor-less `int pz[K]` / `volatile int pz[K]` pads are dropped entirely (91 variants, all
+byte-identical). An address-taken pad `int pz[K]; me(pz);` in a copy of set(V3) used at one call moves the copy temp
+UP with everything else (k=1: copy sp+12 / frame 144; in all three sets: copy sp+20 = target but frame 152): the pad
+lands at the frame BOTTOM, so the target's "16 bytes below the copy" is not a pad; me() depth in the normal reads
+does not change the frame (121). 4FD00's other residual: the target hoists the `return 0` constant (`move v0,zero`)
+up to the end of the second face sum, so all three of that sum's face addresses use v0; ours keeps v0 for the first
+normal pointer at the end (p1 / p2 addresses v0 / v1, target v1 / v1), which blocks the hoist (a named `int r = 0`
+at 9 anchors x 5 me-depth sets gets a3, 91; sum face-read me() depth 0-2 x 3 x normal depths, 109: flat). 36694:
+ctor pads in operator- / * / / and set (73) and named / ctor / plain result forms x pads (190): all <= base.
+
+**4. Other flat lists (this run).** 42938: the three head record reads in 7 spellings x subsets + flag-store order
+(41); zdbug:5 shows the &rec / &idx / 80 LRs (257-259) forbidden t0..t2 by three earlier-coloured LRs (63 / 71 / 75)
+that are live across the head blocks -- the target colours rec / idx / 80 t0 / t2 / t3, so one of those LRs does
+not span the head there (not found). 3BE1C: ctor pads in face / cellOf / list and 12 block positions (49); a
+zero-use sweep of the hi / lo / ok / k folded uses (singles + random pairs, 200). 48AEC: the frame is 16 over
+(368 vs 352): next / nextQ / mtx / mtxQ / load slot spellings, singles + pairs (21), `AIter it(&arr)` / `AIter(&arr)`
+at the three iter() sites (81: the iter() temporaries are not the extra 16; the other forms change the length).
+GAIN 9a5aed525: a declaration-order grid (150 random of 720, then the 240 orders starting with i/j/k or cmd) puts
+`int i, j, k; Mtx *cmd;` ahead of gctx (mtx still last): cmd's address-taken home moves to sp+348 under gctx (sp+352),
+97.719 -> 97.726, same length (the target has cmd at sp+256 BELOW mtx and gctx at the frame top). Not the extra 16
+either: c2 / gbi / gp at function scope (7 positions, 21), i / j / k for-scoped or block-local (14) -- frame stays 368.
+Declaration-order single-move / random grids elsewhere, all flat: 4FD00 (200), 36694 (121), 3558 (101 + 200), gui
+2DE0 (65), 4BAF4 (200), 3BE1C (200), 493AC (82), the NCC 469A8 port (145). Late flat lists: 4FD00 member store
+orders + dot spellings (spelling-grid, 40), one-site idv() wraps (24), return forms x me() depths (40); 36694 idv()
+wraps (39); 42938 vscale / vtrans mask counts 0-3 with at least one 3 (176), code-free load tests before the
+head / scissor (200; dead loads make no LR), PadK size / split around g (21); gui 4568 code-free tests in the Scis
+arm (200: tests on (s16)xl cost the length) and x-arm MAX / MIN as inline helpers (36: the `r = P; if (r <= 0) r = 0`
+helpers are 8 bytes short -- the target's `blez a0; nop; move a0,v1` keeps the delay slot empty); the 469A8 NCC
+port's first vcall web through block locals / other names (13). gui 2DE0: the folded `0 * (int)(pc)` moved to dsdx /
+both / doubled / `|` / first (7), and `pc` folded into the y-arm clamp zeros (`I(0 + (pc) * 0)`, 25): the &D web then
+reaches the arms and the body grows to 1208 (toward 1212) but every such form scores 94.7-94.97 (< 96.914).
+
+**5. 42938 setvp read with agent-g's FIFO model (kit CCCXCI).** `NCC -S` of the donor replays with 0 mispredictions
+over the pool $14 $15 $24 $25 only (t0..t5 are uopt's here), and every `trunc.w.s` burns one int temp (the macro's
+rounding-mode scratch, e.g. `trunc.w.s $f18,$f12,$15`). The target's setvp tail is `mfc1 t8 (vtrans[0]); mfc1 t6
+(vtrans[1])` and the gDma1p packet after it is ours rotated by TWO ring positions. FOUR masks on vtrans[0]
+(`(((((s32)(..) & 0xFFFF) & 0xFFFF) & 0xFFFF) & 0xFFFF)`, i.e. +2 over the run-306 base) give the target's vtrans[1]
+t6 and the whole downstream packet (t7 / t8 / t9 / t6 = target), and the ugen chain for vtrans[0] even ends in $24
+(`mfc1 $24; and $25; and $14; and $15; and $24`) -- but as1's deletion of the redundant and-chain renames the mfc1 to
+$25 (t9), not the chain's last register, so the `sh 0` loses its WAR anchor and floats (97.12). With 2 masks the
+rename takes the LAST register ($14), so as1's choice depends on the chain length (pairs merge first). Every other
+distribution of +2 / +6 masks over vscale[0] / vscale[1] / vtrans[0] / vtrans[1] (sum 4: all, sum 8: 150) is below
+base. Lead: find a +2 allocation between vscale[1] and the packet that is NOT an and-chain on vtrans[0] (a burn
+that as1 deletes without renaming the mfc1). Closer still: NO mask at all on vtrans[0] (c0d0) makes the whole setvp
+block AND the gDma1p packet register-exact (vtrans[0] = the mfc1's own $24 = t8; -2 = +2 mod 4 for the packet), but
+the ring after the func_00000000(v) call (`li 8 / li 50 / li 80`, the 0x2E0 stores) is then 2 off where the base
+matched (97.738). Needed: a +2 burn after the packet and before those constants (next / nA..nD / `+ 0` spellings
+of the g packet, 29: no). FOUND (GAIN 17d927700 + ce73e3be7): the after-call constant stores are themselves ugen
+allocations -- the chained `G.m228 = G.m224 = 8;` is ONE `li` reused for both stores, `G.m228 = 8; G.m224 = 8;` is
+two (uopt keeps them as separate constant loads in ugen's view), which is the missing +1/+2 rotation: unmasked
+vtrans[0] + the four stores as separate statements (24 orders) -> 98.838, then the 0x32 / 0x50 pair back in its
+`G.m220 = (G.m21c = 0x32, 0x50);` comma form with the two split 8 stores first (57 forms x orders) -> 98.856, same
+length; the setvp mask grid re-run on that base (144) stays at base. Remaining 42938 residual: uopt colours only
+(the head rec / idx / 80 and the t1..t5 constants after the call). Rule: a chained assignment `a = b = K` vs two
+`= K` statements is a value-preserving ring knob (one ugen constant temp vs two); look for it wherever a ring
+residual starts right after a constant-store block.
+game_uso 3558: 22 row / vb-add spellings of the matrix block (vb pre-loaded into locals, chained `vb.x += stage.x =`,
+x / y / z named per row). gui 2DE0: the RDPHALF_1 t-term's MAX / MIN arms in 5 x 5 compare spellings x the dtdy
+test sense x I() / plain zero (101: flat; the target's MAX arm is the fall-through with the &D lui duplicated into
+both arms). Stale-test prune (drop each code-free test, singles): 42938 / 4BAF4 / 48AEC / 36694 / 493AC / 2DE0 /
+4568 / 3558: no gain (493AC's `if (pad1 + ... + pad8) {}` is byte-identical when dropped, left in place).
+
+## kit CCCXCI (agent-g 2026-11-05, run 305): the ugen t-register "ring" is a FIFO FREE QUEUE -- read the ugen order off `NCC -S` / `cc -S` (pre-as1, registers as ugen chose them), replay it with a 20-line simulator, and SEARCH for the invisible op the target needs before writing C; as1 MERGES consecutive shifts, so `x << a << b` is a zero-code extra temporary; post0b 46790 99.254 -> EXACT, allring scan of every NM function <a name="kit-cccxci-agent-g-run305"></a>
+
+_agent-g run 305, base 11164eb8d. Exact: 71a7f6ba1 (post0b gl_func_00046790, 536 B, NCC donor). Tools: /tmp/claude-1000/g305/ (lru.py / lru2-5.py FIFO simulator +
+search, sfo.py = compile N one-line spellings with `NCC -S` and print the ugen sequence after an anchor, allring.py =
+register-class-normalised diff of every 95-99.99 % NM function in build/non_matching vs expected/)._
+
+**1. The model.** `NCC -S x.cpp` / `cc -S x.c` (run in the source's directory, no `-o`: NCC refuses `-o x.s` when
+x.s already exists) writes ugen's assembly BEFORE as1: macros (`div $14,$2,16`, `mul $24,$14,1024`), every
+`and` / `move` still present, registers as ugen allocated them. Replaying post0b 46790's .s shows ugen's integer
+temporaries come from a FIFO free list over $14 $15 $24 $25 $9 $10 $11 $12 $13 (t6 t7 t8 t9 t1..t5; t0 and the
+a / v registers belong to uopt): an allocation takes the HEAD, a register freed at its last use goes to the TAIL
+(operands freed in operand order). It reproduces all 40 ugen temporaries of the function, including the "skip" of
+$10 after `and $9,$25,255` (10 had been freed later than 11). So a folded mask (kit CCCLXXXVIII) is one
+alloc-at-head + free-to-tail: it rotates the queue, and the "period" is the number of free registers at that point
+(post0b 5A2C4's folded `& 0xFFF` / `& 0x3E` / u8 sites have period 3 or 4 depending on the site: adding 3 resp. 4
+redundant masks at one site is byte-identical to the base). as1 then deletes the redundant op: `and $25,$2,15;
+and $9,$25,255` becomes `andi t1,v0,15` (the merged op keeps the SECOND op's register), and a `move` is coalesced
+into its source (`mul $24,..; move $13,$24; ...` keeps t8). The FP temporaries follow the same FIFO over
+f4 / f6 / f8 / f10 / f16 / f18 (bootup E2D0's final scale block replays exactly).
+Checker: `/tmp/claude-1000/g305/fifo.py FILE.s FUNC int|fp [POOL]` replays a function's ugen .s and flags every
+allocation the FIFO does not predict. The pool is per function: in every function checked, registers uopt colours
+anywhere in the function are out of it for the WHOLE function (bootup E68: t6 t7 t8 t9 only, t1..t5 are uopt variables -- 0 mispredictions
+over ~600 allocations; post0b 3B9C0 and gui 329C: int t6..t9 only, 3B9C0 FP f4 / f6 / f8 / f10 only -- 0;
+46790 (t6..t9 + t1..t5) and E2D0 int + FP -- 0 each). Wrong pool = a cascade of mispredictions from the first wrong head.
+`/tmp/claude-1000/g305/fsearch.py FILE.s FUNC POOL A B [PMAX] [list]` searches 1-3 burns and short holds for a
+residual of the form "every allocation from P on has A and B swapped" (P <= PMAX); 46790 with P = the shift: none
+(as in section 2); 3B9C0's t8 / t9 tail swap: none either -- the target holds &p in a ugen t9 where ours colours it
+v1 (uopt), and a simulated hold there does not give a clean swap (the uopt differences come first).
+
+**2. Using it.** Write the target's visible registers as constraints, the source's ugen op sequence as
+alloc / free events, and let the simulator search insertions (burns = alloc+free, holds = alloc at i / free at j,
+operand free orders, evaluation orders) for the smallest change that yields the target. Post0b 46790 (residual:
+the `(c / 16) * 1024` shift is t8, target t9, and t8 / t9 are swapped through the whole unrolled loop): with up to
+three burns anywhere, either operand order of the first-block addu, the high / low half in either order and with or
+without the `(u8)` burn, NO burn placement fits; the only fits are ONE extra temporary allocated right after the
+div and freed by (or right after) the shift, with the `(u8)` burn removed -- i.e. ugen `div $14; X $24,$14;
+mul $25,$24,1024` where as1 deletes X and renames the shift onto $14 (a `move`, or an `and` as1 can prove
+redundant). Confirmation: `idx = ((c / 16) & 0xFF) * 1024 + (c & 15) * 8` (no `(u8)`) gives EVERY register of
+the target -- the shift t9 and the whole loop -- and differs only by the surviving `andi t8,t6,0xff` (540 vs 536
+bytes, 99.13). THE FIX: `idx = ((c / 16) << 5 << 5) + (c & 15) * 8` -- ugen emits `sll $24,$14,5; sll $25,$24,5`
+and as1 merges the pair into `sll t9,t6,10` (also `* 32 << 5`, `<< 2 << 8`, `<< 9 << 1`, `<< 1 << 9`; NOT
+`* 32 * 32`, which uopt folds): 100.0 (71a7f6ba1). Lever: a shift (or a power-of-two multiply that becomes one) split
+in two = one extra ugen temporary held across the op with no code -- the HOLD that burns (folded masks) cannot
+give. as1 does NOT merge every pair: gui 329C's four `<< 2` texrect operands split `<< 1 << 1` grow 4 bytes each
+(the shifted value is used twice / feeds a MAX test); E68 `* 2` / `* 4` / `<< 2` and 5A2C4 `<< N` / `* 4` / `* 8`
+splits: flat or lower -- check the length. What did NOT work first: `& 0xFF` / `& 0xF` / `& 7` / `(u8)` / `(s16)` on c / 16 (as1 knows no bits of a div
+result, nor of `sra` of a known 8-bit value: `((c >> 4) & 0xFF)` also keeps its andi; it only merges and+and), `(int)(long long)` / `(unsigned long long)` round trips (two moves + a dead `sra` / `li`),
+`(int)(float)`, named / const-reference / `if (0)`-kept identity inlines, comma / `?:` / `1 ?`, local `r = c / 16`
+(uopt colours it), `(c / 16 * 128 + (c & 15)) * 8` (uopt does not distribute the * 8), c typed u8 / s16 / u16 /
+unsigned, `ch` in place of c. Side notes: uopt does NOT fold `~~x` or `-(-x)` (two `not` / `negu` ops reach ugen;
+output not checked), and does fold `x | 0`, `x ^ 0`, `x - 0`, `+ 0 * c`, `& 0xFFFFFFFF` before ugen.
+
+**3. allring scan (every NM function at 95-99.99 %).** Only post0b 46790 is a pure t-register residual (20 words,
+0 other). Bootup E2D0 is FP-register-only (10 words + the rodata addend): its arg4 is a uopt LR (`if (arg4) {}`)
+coloured f14 (zdbug:5 LR 82, forbidden f0 / f2 / f12); the target's f16 needs one more interfering FP LR coloured f14
+over bb 7..13 (code-free tests of arg4 / lim / dot / arg1 / v[0].x at every statement end of the tail: flat).
+FIFO cross-check: with f12 / f14 in E2D0's FP pool the replay already mispredicts at the first dot product, and the
+target's first 96 words are identical to ours, so the target too has uopt users of f12 AND f14 somewhere; and a
+ugen-loaded arg4 (no `if (arg4) {}`: f18 here) can never reach f16 in the tail (f16 is freed by the 0x9F8 product
+and goes to the tail of the queue) -- but a COLOURED f16 arg4 would take f16 out of the pool for the whole function,
+and the target uses f16 as a ugen temporary from word 14 on. Neither reading fits the plain FIFO, so E2D0's target
+has something else in the tail block (an invisible FP alloc / free, or an exclusion that is per region, not
+per function -- not established here).
+gui 329C (15 t-only + 6) and 3B9C0 (23 t-only + 20) are uopt colourings with ugen consequences.
+
+**4. Flat this run.** Mask doubling (singles, x2..x4, and +1 / +(period-1) compensation pairs over the 14 folded
+sites) on post0b 5A2C4; ctor `PadK<1..4>` inside every inline body (agent-c kit CCCXC) on 34890 / 4B620 / gui 329C;
+drop-each-code-free-test on 3B9C0; s16 / u16 casts and masks on 3B9C0's inner loop (all folded before ugen,
+byte-identical); FP identities (`* 1.0f`, `-(-x)`, `+ 0.0f`) and the `1.0f + arg4` hoist grid on E2D0; 3B9C0 `num` /
+`t` spellings (num -= d, named difference in qa / qb / sg / t, `(d - num) / dn`: all 90-97.5, the target's f2 LR is
+the difference but naming it breaks the f14 0.0f / f20 n->z pair); 34890 named ternary result (`void *r` /
+reused `o`: frame +4 or byte-identical, the two results stay v0 / a1 -- zdbug:5 shows the first one has no
+interference at all, so the target's a2 means it shares a variable with a longer LR); E68 separate phase-2 / phase-3
+manager variables (88.4); code-free `if (X) {}` at every statement end on 46790 / 4B620 / gui 329C.
