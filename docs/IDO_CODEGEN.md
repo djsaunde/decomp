@@ -14755,6 +14755,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CCCXCI (agent-g 2026-11-05, run 305): **the ugen t-register "ring" is a FIFO free queue (alloc = head, last-use free = tail; t6 t7 t8 t9 t1..t5, FP f4..f10 / f16 / f18): read ugen's pre-as1 registers off `NCC -S` / `cc -S`, replay with a small simulator and SEARCH burn / hold insertions before writing C; a folded mask = one rotation (period = free-register count, 3 or 4 per site); as1 merges and+and keeping the second register, coalesces moves into the source, and MERGES consecutive shifts (`x << a << b` = one extra held temporary, zero code)**](#kit-cccxci-agent-g-run305) -- _post0b 46790 99.254 -> EXACT (71a7f6ba1): no burn placement fits; the simulator says one extra temp between the div and the `* 1024` shift with the (u8) burn removed, and `(c / 16) << 5 << 5` is that temp. allring scan: 46790 is the only pure t-register residual, E2D0 FP-only (arg4 LR f14, needs an interfering f14 LR). Flat: 5A2C4 mask period pairs, ctor pads in inlines on 34890 / 4B620 / 329C, 3B9C0 test prune / s16 masks, E2D0 FP identities._
 - [kit CCCXCII (agent-c 2026-11-05, run 308): **a whole-function t-ring shift can be the uopt COLOUR COUNT, not a missing burn: score the FIFO replay against the target's visible registers and vary the POOL too -- gui 4568's first arm is the plain gbi macro (no split shifts / tests / masks) once uopt colours t3 anywhere (the target's `(s16)yl`, pushed there by MAX ternaries in t0, which ours share with next()'s post-increment slot M-16 in v1); the run-185..306 first-arm levers only compensate; FIX: an unused inline parameter passed a variable is an edg pool entry -- `Ctx::next(DL *k)` called `c->next(c->dl)` un-merges the post-increment slot from the ternaries**](#kit-cccxcii-agent-c-run308) -- _gui 4568 97.01 -> EXACT (25bc5167f); shared ternary vars / inline mx() / next() rewrites / dead-arm holds lost s0 or were flat; post 31A74: the two if(1) goto store blocks cannot both merge; post0b 3BE1C: off's spill slot only moves down (80 -> 76), target 84._
 - [kit CCCXCIII (agent-g 2026-11-05, run 306): **replay uopt's global colouring from zdbug:5 + zdbug:6 (order = constrained by adjsave desc, ties by LR id; colour = call-argument preference or lowest free in class; the dump's `forbidden` is cumulative -- subtract earlier neighbours' colours): 0 mispredictions on 34890 / 4B620 / 5A2C4 / gui 329C / E2D0, and it separates PRIORITY residuals from IDENTITY residuals (34890's ternary result has zero neighbours: only a shared variable can give a2); hoist sibling-block locals in declaration order (byte-identical) and search which local each later statement reuses; raise one LR with two DIFFERENT folded uses (an identical repeated fold becomes its own CSE LR)**](#kit-cccxciii-agent-g-run306) -- _post0b 5A2C4 NM 99.290 -> 99.490 -> 99.523 -> 99.557 -> 99.623 -> 99.678 (14ca918cc, f99ecf8b8, bb7294590, 45dc9338e, 2ec9c055e; plateau random walk + minimal-subset); replay also exact on 3B9C0 (51 LRs) / E68 (91). Flat: 34890 make() / for / ternary spellings, 5A2C4 colour-pack folds (u8 fold = ucvt LR), arg4 A2-A4 joint reuse grid, E2D0 (FIFO cannot give arg4 and the 0x9F8 load both f16)._
+- [kit CCCXCIV (agent-g 2026-11-06, run 307): **drive uopt priorities from the replay: first fix IDENTITY (an LR whose own blocks forbid the wanted colour -> move the value to a variable whose LR lives only where that colour is free), then read each LR's adjsave in the level-5 dump and aim for the target ORDER window: a code-free `if (X) {}` in a later block LOWERS X's adjsave (more blocks), a second DISTINCT folded use RAISES it, a BB split lowers every LR spanning it; ties go to the lower LR id; THEN list the target register of every role and treat roles sharing a register as ONE C variable even across int / pointer (cast both ways) -- the type-split reuse searches can never find that**](#kit-cccxciv-agent-g-run307) -- _post0b 5A2C4 NM 99.678 -> 99.712 -> 99.723 -> 99.767 -> 99.800 -> 99.933 (c35083634, 88929881b, b22775a89, 8035f85df, b66fb8bd9; colour pack word-exact: packet pointer in a block-local-LR variable, r test in g's block = adjsave 1.5, second distinct rgba fold 1.333 -> 1.667; arg3 E7 count in the F6 packet's pointer variable, arg4 FF10 / F7 base + F7 packet in the count variable). Flat: 329C unused-DL* / plain-macro / pool-type grids, 34890 make() parameter forms, 4B620 at(DL *) routing, 3B9C0 0.0f code-free float tests (dropped before uopt), E2D0 phantom float copy (copy-propagated), E68 phase-2 manager variable split (structural)._
+- [kit CCCXCV (agent-c 2026-11-06, run 309): **the kit CCCXCII unused-parameter lever only pays when the inline has 2+ statements AND its extra pool entry is live inside the statement that owns the shared slot (separate `Gfx *_g = next()` statements free the pool first: 42938 / 493AC / 4BAF4 flat); re-pool that statement instead by wrapping a ternary RESULT in zero-code temp-taking inlines (`I2(v) { if (0) { v = 0; } return v; }`, `I4(v) { int r = v; return r; }`); a dead `if (0) { obj.set(x); }` as the FIRST statement moves an edg by-value temporary's home (newer pool entries are homed below older ones) with no code change; 4FD00's tail is a result-in-a-pool-temp shape**](#kit-cccxcv-agent-c-run309) -- _NM gui 2DE0 96.914 -> 97.096 (b9234b9a0, I4 / I2 on the w0 MAX results) -> 97.360 (fc76d879c, code-free `(s16)(xh)` test after w1). Flat: 42938 / 493AC / 4BAF4 / 3BE1C / 3558 / 4FD00 / 469A8 (cfront vcall NCC rewrite 71 vs cfe 98.79) grids, ~2500 variants._
 - [kit CCCLXXXVI (agent-c 2026-11-05, run 305): **run a register-normalised diff before the copy lever: of five near-misses only gui 2DE0 had a target copy ours lacked; wrap the clamp's RESULT zero (`P > 0 ? P : I(0 + x * 0)`), not the compare's; partial leads for 493AC (named receiver copy + dead-stored pad), 3BE1C (hi folds / one home fewer = the inner MAXS's second edg temp), 469A8 (store / re-read forwarding; NCC port at the cfe score with four NCC-side fixes), 31A74 (in-call store frees the goto merge); jumptable default-steal cap of 396FC / 51AD8 re-confirmed (NCC emits no jumptables)**](#kit-ccclxxxvi-agent-c-run305) -- _gui 2DE0 NM 96.848 -> 96.914 (a77525f51); 469A8 cast cleanup (fd95e598b)._
 - [kit CCCLXXXIII (agent-c 2026-11-05, run 304): **the variable-reuse lever in cfe: reuse the variable for a later value the target passes in the same register, as an assignment INSIDE the call's argument list (`f(..., (v = X), ...)` keeps the argument order; a separate statement issues the load early); move a counted use from the variable the target colours later to the one it colours first; cfe zdbug:6 colours 1..12 = v0..t5, 13 = ra (t6..t9 never colours)**](#kit-ccclxxxiii-agent-c-run304) -- _post0b 469A8 NM 98.641 -> 98.786 (b21d409c0), 3B6A0 NM 96.65 -> 96.85 (0f8e9fea6); 3BE1C va / vb, 493AC p34 receiver / grid ring, 31A74 mode-1 raise, post1b 65EE4 cap re-check (still a cap) negatives._
 - [kit CCCLXXXII (agent-g 2026-11-05, run 301): **RE-GRID after every gain: swap an old zero-code lever for a new one, then re-run BB-split / one-site-wrap / pad-position sweeps on the new base; an unreferenced class-object block (`{ V3 t; }`) is a BB split**](#kit-ccclxxxii-agent-g-run301) -- _post0b 54E78 NM 99.565 -> 99.638 (c9b02204a) -> 99.819 (e4a19c2a2); register-span scan for the variable-reuse lever (rs.py); reuse / split / wrap / swap / BB-split negatives on 17 bodies._
@@ -59611,6 +59613,10 @@ the worktree._
    (frame 232, spill 76 = the target's distance from the frame top), moving any s16 local into a block / to the
    top / end (76), s16 -> int (76 or frame 248). The colouring half (va / vb / ib / lo in t3 / a3 / a1 / t2, target
    a0 / a1 / a3 / a1) is independent of r's folded use in `k` (dropping it frees a0 but va stays t3).
+   agent-g's replay (kit CCCXCIII, `replay.py ... 210=3`): va (LR210, M-64, save 4.29) loses a0 to r (LR155, save
+   20) and, with r's fold dropped, to the `va[k]` load LR (uilod{1292}, save 20): va must out-rank it by > 15.7.
+   1-8 DIFFERENT folded uses of va (`| 0 * (int)(va + j)` in k, or summed into the vb load) all drop to 97.2-98.2
+   (they recolour the whole block); the target's ia is a3, so the load LR, not va, is what must lose priority.
 6. **The 4568 fix: an UNUSED inline parameter is an edg pool entry.** `Gfx *next(int k) { int n = dl->n++; return
    &dl->buf[n]; }` called as `c->next(x)` (a CONSTANT argument is dropped by edg and changes nothing; a variable is
    stored into the parameter's pool entry and the dead store vanishes in uopt) shifts the inline's pool entries, so
@@ -59712,3 +59718,114 @@ in sibling blocks are separate homes in cfe; hoisting them in declaration order 
 local does this statement use" into a free search dimension. (c) To raise one LR's priority with folded uses, make the
 folds DIFFERENT expressions (an identical repeated fold becomes its own CSE LR), and fold through a cast that is not
 otherwise CSE'd (on a u8 the int conversion itself becomes an LR).
+
+## kit CCCXCIV (agent-g 2026-11-06, run 307): driving uopt priorities FROM the colouring replay -- a code-free test of an LR in a later block LOWERS its adjsave (more blocks), a second DISTINCT folded use RAISES it; aim for an exact adjsave window (ties go to the lower LR id); then read the target's per-role registers as VARIABLES (an int count and a pointer in one register = one C variable, cast both ways); post0b 5A2C4 99.678 -> 99.933 <a name="kit-cccxciv-agent-g-run307"></a>
+
+_agent-g run 307, base ed8be0f28. Commits c35083634 (5A2C4 99.678 -> 99.712), 88929881b (-> 99.723), b22775a89 (-> 99.767),
+8035f85df (-> 99.800), b66fb8bd9 (-> 99.933).
+Tools: /tmp/claude-1000/g306/ (replay.py / rp.sh / lrinfo.py, kit CCCXCIII), /tmp/claude-1000/g307/rs5e.py (the
+kit CCCXCIII reuse-map walker with the new colour-pack spelling patched in), v5d.py (code-free `if (X) {}` insertion
+grid), sc5.py (score a directory of full-file variants), grid2.py (exhaustive two-position reuse grid)._
+
+**1. Reuse-map walk, one more step.** A random 4-position walk from the run-306 plateau found the arg4-path F7 packet
+pointer in `b1` + the F6 append's base in `p` (both needed; either alone 99.678 / 99.035): 99.712.
+
+**2. Identity first: give the LR a block set where the colour is not intrinsically forbidden.** The colour-pack packet
+pointer was `b4`, an LR merged across the arg3 E7 block and the arg4 path, whose blocks use a0 / a1 / a2 for a call:
+replay.py `LR=a0` printed "a0 is FORBIDDEN for this LR itself". Moving it to `p1` (a declared, otherwise frame-only
+local: the LR lives in that block only) gives a0 = target at once, but then r / b / rgba (target t0 / a1 / a2) came out
+a1 / a2 / t0 (99.690 alone).
+
+**3. Then priority, read off the dump.** The adjsave of each LR is printed with its blocks (lrinfo.py): b (1 block, 1
+ref) 2.0, rgba expression LR (4 blocks, 3 refs) 2.0, g (2 blocks, its run-274 `if (g) {}`) 1.5, r (1 block) 2.0. The
+order rule (adjsave desc, ties by LR id) puts r (LR 131) first, so it took the lowest free colour. Target order is
+b, rgba, r, g: r must land in [1.5, 2.0) (a 1.5 tie with g wins on r's lower id). Levers, measured in the dump:
+* `if (r) {}` after the `if (b1 + ...) {}` test (2 blocks later): r 2.0 -> 1.0 (coloured after g: r t1 / g t0, 99.723);
+* `if (r) {}` right after `if (g) {}` (g's block): r 1.5 exactly, but the extra test block also sits inside rgba's
+  range: rgba 2.0 -> 1.333 (coloured after r);
+* + a second DISTINCT folded rgba use on the existing test (`+ 0 * (int)(rgba) + 0 * ((int)(rgba) >> 1)`): rgba
+  1.333 -> 1.667: order b, rgba, r, g = target, the whole colour pack word-exact (99.767).
+So a code-free test is a priority DOWN lever (it adds blocks to the LR, adjsave ~ (refs+1) / blocks), a distinct
+fold is an UP lever, and a BB split moves every LR that spans it. Pick the target window from the replay, then check
+each candidate's adjsave in the level-5 dump before scoring.
+
+**3b. Read the TARGET's colours as VARIABLES (the big step: 99.767 -> 99.800 -> 99.933, commits 8035f85df, b66fb8bd9).**
+List the target register of every role (base / count / packet pointer of each append). Roles that share one register
+across several appends -- including an int count in one append and a pointer in another -- were one C variable in the
+original (each uopt LR is a variable, kit CCCXCIII). 5A2C4's target: a3 = arg3 F6 packet pointer + arg3 E7 count;
+v0 = arg4 BA / 2nd-E7 / 3rd-E7 count + FF10 base + F7 base + F7 packet pointer. So: the arg3 E7 count is written
+into `p3` (the F6 packet's variable, `p3 = (char *)*(s32 *)(b4 + 4); ... (s32)p3 + 1; ... + (s32)p3 * 8`) and the
+FF10 / F7 base and F7 packet go through `cnt` (`cnt = (s32)*(char **)(arg0 + 0xC); rgba = *(s32 *)((char *)cnt +
+4); ...`), explicit casts both ways (valid C, every read sees a written value). No priority lever reaches this: the
+reuse-map searches of runs 306-307 had ONE type per role (pointer names for pointers, int names for counts) and could
+never merge a count with a pointer. tools: /tmp/claude-1000/g307/a4gen.py (rewrites the whole arg4 path from a 7 x
+(base, count, packet) state with any int / pointer name and the casts) + a4list.py (score a candidate list). Left:
+the 2nd-E7 packet pointer (target t1: in the target t1 is also the colour pack's u8 g; an s32 g changes the frame,
+96.9) and the 0xE700 constant (t2, follows from it).
+
+**4. Flat this run (do not repeat blind).** 5A2C4: 4 walk rounds from the new plateaus (sizes 3-11), dead s32 locals
+and unused parameters (arg3 / arg6-9 / arg11 / arg5, valid: written before every read) as arg4-path counts / pointers
+(-0.1 .. -0.9), zero-use sweep over the arg3 and arg4 paths, `if (X) {}` grid on the arg4 path, BB-split / split-removal
+sweep (103), the A5-count x A6-packet exhaustive grid (156), two-site distinct folds raising `base` over `cnt`
+(base 5.0 -> 6.33, still v1: v0 is held by an earlier neighbour). Left: arg3 E7 count c4 a2 (target a3: a3 is held by
+p3, save 4.5), the 0xE700 constant t1 (needs a t1 neighbour in bb29), the arg4 A2 / A3 bases (target v0).
+gui 329C: kit CCCXCII's unused `DL *` parameter on every next() variant (3^4 + 120 random), plain-macro rewrite with
+next(DL *) (200, best 98.69), inline-local count type (36), `return &dl->buf[dl->n++]` forms (108): flat at 99.633 --
+the replay says the count is the long pooled LR (interferes with the v1 holder LR 8) and the pointer a bb0-only LR, the
+reverse of the target, and none of these moved the pool assignment. LEAD (329C): the texture append through `nD()`
+(no `DL *dd` local) MERGES its count into the later appends' count LR (M-56, 7 blocks, adjsave 5.0); the only order
+error left in the first append is then that merged count (5.0) outranking the post-increment `dl` temp LR (M-64,
+4.5): count v0 / dl v1, target dl v0 / count v1 (99.23 as is; folds of a named `dd` do not reach that edg temp; the
+rect / RDPHALF method grid on top: 99.53, pointer rotated). Raising the edg post-increment temp, or splitting the
+merged count, is the next step. post0b 34890: unused-parameter / ternary-type /
+reference-parameter make() variants (155): flat. 4B620: unused DL * / `at(DL *)` routing on the first two appends and
+P-variants of the rest (200): flat (best = base). 3B9C0: num as the full `sum - d` (frame +8, 91.5), fold moves (54),
+code-free `if (x != 0.0f) {}` 0.0f uses (90: float empty tests are dropped before uopt, no effect). E2D0: a phantom
+float copy (`s = lim / dot / arg4 / ...` folded in an int context) is copy-propagated away (36, byte-identical) -- it
+cannot occupy f14; the 3b reading (the 0x9F8 value and arg4 both f16 = one float variable: `s = *(f32 *)(arg0 +
+0x9F8); dot *= s; ... s = arg4; dot *= 1.0f + s;`, s or d, 12 spellings) is +8 bytes (86.8) or byte-identical. bootup E68: a separate variable for the phase-2 manager pointer (block-local, or reusing head / vp)
+frees its callee register for self and lets uopt hoist m->dl into s4 (88.4): the target's split is structural._
+
+## kit CCCXCV (agent-c 2026-11-06, run 309): the "dedicated inline parameter slot" lever does NOT transfer by itself -- an unused inline parameter only changes the edg pool when the inline has 2+ statements (or an assigned parameter) AND the pool entry it adds is live while the shared-slot value is created; wrapping a ternary RESULT in a zero-code temp-taking inline (`I2(v) { if (0) { v = 0; } return v; }`, `I4(v) { int r = v; return r; }`) re-pools the statement instead; edg by-value temporaries can be moved to any pool position with a dead `if (0) { obj.set(x); }` at the top of the body <a name="kit-cccxcv-agent-c-run309"></a>
+
+Run 309 applied kit CCCXCII (an unused `DL *` / `int` parameter on the append inline, passed a live variable) to
+gui 2DE0, post0b 42938 / 4BAF4 / 493AC and the 3BE1C / 4FD00 / 36694 / 48AEC / game_uso 3558 donors. Measured:
+
+1. **Single-statement inlines substitute their arguments** (kit CCCIV), so `next(DLHead *k) { return &h->buf[h->n++]; }`
+   called as `next(head)` is byte-identical to `next()` -- 42938 (6 append sites x {DL *, int} x 4 bodies, 200),
+   493AC (noop() / next() 144 + 105 two-statement bodies), 4BAF4 (33): all flat or lower. In 4568 the parameter paid
+   because the else arm's three appends sit inside ONE macro statement whose MAX ternaries share the pool; when the
+   appends are separate statements (2DE0's rect / RDPHALF_1 / RDPHALF_2 `Gfx *_g = ...` declarations, 42938) every
+   statement start frees the pool and the extra entry is reused, not interposed.
+2. **Re-pooling inside the statement that owns the shared slot works**: gui 2DE0's TEXRECT w0 statement holds
+   MAX(xh) in slot 0 (the ctx / switch / s0 variable) and MAX(yh) in slot 1, and slot 1 is the -76 variable that also
+   carries the yl MAX and the RDPHALF_1 arm temps (one uopt LR, adjsave 3.0, coloured before x / xl / xh and so
+   taking a0). `_SHIFTL(I4(MAX((s16)(xh),0)), 12, 12) | _SHIFTL(I2(MAX((s16)(yh),0)), 0, 12)` (a named-local inline on
+   xh, an if(0)-assigned-parameter inline on yh; singles are flat, the pair is not) drops that LR to 2.25 and moves
+   the RDPHALF_1 arm temps and the RDPHALF_2 dl / n to the target's v0 / v1: 96.914 -> 97.096 (b9234b9a0); then a
+   kit CCC random code-free test search over the body AND the Scis macro's statement slots found
+   `if ((s16)(xh)) {}` after the w1 store: -> 97.360 (fc76d879c), x / xl now a2 / a1 like the target. Left: the
+   -76 LR still outranks (s16)xh (0.8) and (s16)yl (0.833) -- replay.py wishes say it must fall below 0.8 for the
+   target's xh a0 / yl a3 / MAX t0; and the &D web (t3 rematerialised in the RDPHALF_1 arms, 1212 vs 1204 bytes).
+3. **edg by-value temporaries sit at a pool position chosen by creation order** (newer entries homed BELOW older
+   ones): 4FD00's `set(V3)` by-value temp is at sp+4 (target sp+20). A dead `if (0) { mid.set(a); }` as the FIRST
+   statement creates the V3 entry before sum()'s six pointer / int entries and moves it to sp+44 with the
+   instruction stream otherwise byte-identical (pre-creating some kinds in the same dead block gives sp+28 / +36);
+   placing the same dead block AFTER code splits the BB and wrecks the schedule (956-984 bytes). sp+20 needs exactly
+   four 4-byte entries created after the V3 one -- not reached in 145 variants.
+4. 4FD00 tail: the target's early `move v0,zero` + two bc1f + `b; li v0,1` is `r = 0; if (p1 >= 0 && p2 >= 0)
+   r = 1; return r;` in shape (reusing the dead parameter f1 for r gives the exact tail at the target length with
+   34 normalised diffs, but r then colours a1 -- f1's LR -- and objdiff scores it lower, 96.99); a named `int r`
+   is not homed (frame unchanged) but colours a0 because the slot-0 pool variable (the vertex pointer, v0, LR id 0)
+   shares the final basic block (unconstrained LRs colour in LR-id order). In the target that pool variable and the
+   result are both v0, i.e. the result IS a pool temporary; `return ok(p1, p2)` through a two-statement inline gives
+   the shape with an extra `move v0,v1` (1008 bytes).
+
+Negatives (all flat or lower, counts capped at 200 per run): 2DE0 append method x accessor depth x {DL *, int}
+parameter random grid (200), load() parameter / local forms (60), argument / MAX / MIN wrapper grids (150 + 180 +
+200), pc / receiver / fold grid (160); 4BAF4 MAX / MIN wrappers (200) and random code-free tests (200); 3BE1C
+random tests (200); 493AC grid-loop spellings (150) and random tests (200); 3558 matrix block forms (14); 4FD00
+return spellings (24 + 36 + 16), named / reused result (12 + 26), SV / operator forms (26 + 16), dead-arm dummy
+temps (25), unused volatile pads (24). 469A8's target is a cfront virtual call (`lw vptr,0x28(o); lh delta; lw fn;
+jalr`), but a first NCC rewrite with the vptr in a 0x28-byte base class scored 71 (the cfe body is 98.79) -- the
+sp+72 argument home there is a one-def / one-use edg temp that uopt never colours.
