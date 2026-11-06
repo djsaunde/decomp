@@ -14771,6 +14771,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CDVII (agent-g 2026-11-06, run 313): **3BE1C's folded counted uses keep va / vb live through the MAX / MIN tree (so the clamp loads ia / ib take a0 / a1 and va / vb fall to t-regs) -- they are what buys the inner MAX's pre-assignment, the target colours va / vb before the clamp loads; 4BAF4's half-extent register is ONE variable with the 0x158 ctx (merging shares the register, but ctx's LR then out-ranks y / GS); 36694's return temps alternate R1 / R2 when the product sits in the difference's full-expression (frame then 232); 4FD00's second sum() expansion materialises its inner-inline temps in edg (sum #1's parameter temps exist too, removed by uopt as overwritten dead stores); 36694 0.0f is f16 by priority (l's sum, 3.0 > 1.667), not forbidden**](#kit-cdvii-agent-g-run313) -- _post0b 36694 96.067 -> 96.079 (1220f1352, n.z == 1 arm stores z / x / y); about 1100 variants._
 - [kit CDVIII (agent-c 2026-11-06, run 317): **t6-t9 are never uopt colours, so a target base held in t9 is ugen-local: 3B9C0's `addiu t9,sp,184` &p plus its index-first `addu` come from `ia * 4 + (int)((char *)&p + 0 * (int)(ib))` (the uopt CSE LR is copy-propagated away by as1 and stays as a phantom colour; plain `(int)&p` is PRE-hoisted, per-load folds fold into the load offset); a FIFO back-solve puts the residual in a hidden temp in the remap arms; E68: 13 `if (m) {}` give 18 -> 29 blocks and 1603 -> 1146, so the split needs ~130 blocks (closed); 2DE0's `int pc` is a separate ucvt LR and a pointer pc merges into the const LR but drops its end piece (-ve save)**](#kit-cdviii-agent-c-run317) -- _no score change; about 1000 variants._
 - [kit CDIX (agent-g 2026-11-06, run 316): **3BE1C's missing 8 frame bytes are in the 20-byte unaccessed area above the saves (below the a2 call-save at M-156), which no dead home / store-removed assignment reaches (they all land above the call-save); only expression-level 0x200-block shapes (two de-named va / vb / vc with folds, two `col->verts[f->vi[j]]` folds, two address folds) give the target's every-offset layout, all with code changes; the `ok = 0 + 0 * (int)(va)` fold buys the 1564 -> 1568 delay slot, not the MAX pre-assignment; 31A74's goto-block straightening fixes the mode-1 site too but only one block per function straightens; 4FD00's by-value set() temp is always the frame-bottom object**](#kit-cdix-agent-g-run316) -- _no score change; about 1500 variants._
+- [kit CDX (agent-c 2026-11-06, run 318): **a t6-t9 value held across a branch can still be a ugen temp when it is a call-ARGUMENT expression (469A8's `addiu t7,v1,220` = `temp_v1 + 0xDC` written in the call, not a pDC local); that ring slot is what kit CCCLXXII's chained &D+0x254 / 0x158 store needed to keep the second vcall's delay fill (two individually-losing levers, a gain as a pair); a code-free 0x148 test moved after the a10 declaration gives the target's ugen first load; 31A74 straightening depends on block placement (inner / tail-first / neither), line layout inside the statement never matters; 48AEC inline PARAMETERS take frame slots and the frame is set by the deepest (third-arm iterator) chain; IDO 5.3 does not give 6204's lui-before-sw-ra**](#kit-cdx-agent-c-run318) -- _469A8 NM 98.79 -> 99.51 (three commits); about 2900 variants._
+- [kit CDXI (agent-g 2026-11-06, run 319): **edg's pool is per SIZE (char / short entries never take an int slot; only assigned or tested inline parameters are pool-resident), five `(I2(0), ...)` entries walk 34890's bottom copy onto Base's M-36 slot (v1), and a loop condition evaluated in the body call's own expression (`do {} while (postR(f(...), C))`) has v0 forbidden -- bottom v1 with every target home; but any bottom off h's M-12 leaves h one weighted use, so h goes plain (320 B) or loses a1 to Mid; the target needs a loop copy INTO h's variable that as1 removes -- `while (I3(it.nxq()))` (named-local iterator method + `if (1) {}` identity) gives exactly that copy (pre-as1 `move $5,$6; bne $5`, h a1 with spills), leaving only the bottom ternary's slot (X's a2 / Mid's v1, target Base's v1)**](#kit-cdxi-agent-g-run319) -- _no score change; 4B620 count index-entry grid negative; about 2300 variants._
 - [kit CCCLXXXVI (agent-c 2026-11-05, run 305): **run a register-normalised diff before the copy lever: of five near-misses only gui 2DE0 had a target copy ours lacked; wrap the clamp's RESULT zero (`P > 0 ? P : I(0 + x * 0)`), not the compare's; partial leads for 493AC (named receiver copy + dead-stored pad), 3BE1C (hi folds / one home fewer = the inner MAXS's second edg temp), 469A8 (store / re-read forwarding; NCC port at the cfe score with four NCC-side fixes), 31A74 (in-call store frees the goto merge); jumptable default-steal cap of 396FC / 51AD8 re-confirmed (NCC emits no jumptables)**](#kit-ccclxxxvi-agent-c-run305) -- _gui 2DE0 NM 96.848 -> 96.914 (a77525f51); 469A8 cast cleanup (fd95e598b)._
 - [kit CCCLXXXIII (agent-c 2026-11-05, run 304): **the variable-reuse lever in cfe: reuse the variable for a later value the target passes in the same register, as an assignment INSIDE the call's argument list (`f(..., (v = X), ...)` keeps the argument order; a separate statement issues the load early); move a counted use from the variable the target colours later to the one it colours first; cfe zdbug:6 colours 1..12 = v0..t5, 13 = ra (t6..t9 never colours)**](#kit-ccclxxxiii-agent-c-run304) -- _post0b 469A8 NM 98.641 -> 98.786 (b21d409c0), 3B6A0 NM 96.65 -> 96.85 (0f8e9fea6); 3BE1C va / vb, 493AC p34 receiver / grid ring, 31A74 mode-1 raise, post1b 65EE4 cap re-check (still a cap) negatives._
 - [kit CCCLXXXII (agent-g 2026-11-05, run 301): **RE-GRID after every gain: swap an old zero-code lever for a new one, then re-run BB-split / one-site-wrap / pad-position sweeps on the new base; an unreferenced class-object block (`{ V3 t; }`) is a BB split**](#kit-ccclxxxii-agent-g-run301) -- _post0b 54E78 NM 99.565 -> 99.638 (c9b02204a) -> 99.819 (e4a19c2a2); register-span scan for the variable-reuse lever (rs.py); reuse / split / wrap / swap / BB-split negatives on 17 bodies._
@@ -60900,3 +60902,144 @@ the 32 fold subsets x the after-vc `if (va) {}` (64): <= 99.58 at frame 232 (the
 base best.
 4FD00 return spellings (nested ifs, `res`, negated / swapped compares, else arm, 6):
 flat or worse.
+
+## kit CDX (agent-c 2026-11-06, run 318): a ugen temp CAN live across a uopt branch when it is an inline call argument -- post0b 469A8's held `addiu t7,v1,220` is `temp_v1 + 0xDC` written in the call, which also frees the ring slot that kit CCCLXXII's chained &D store needed (98.79 -> 99.17), and a code-free 0x148 test moved after the a10 declaration gives the target's ugen first load (-> 99.37) and a temp_s0 test after the store temp_v0_2's v0 (-> 99.51); 31A74 / 48AEC / 3558 / bootup 6204 negatives <a name="kit-cdx-agent-c-run318"></a>
+
+_agent-c run 318, base c97b38836. Commits 0f56a4840 (469A8 NM 98.786 -> 99.175), 623c0737b (-> 99.369) and 6a361dd33
+(-> 99.515, section 1 third step), NM-only
+(in-tree cfe body), same length (412 B), no clip change. Scripts in `/tmp/claude-1000/c318/t/` (grid.py / hc.py / sc.py /
+rp.sh / dump.sh copies on this worktree; replay.py / lrinfo.py are agent-g's g306 ones)._
+
+**1. 469A8: pDC is an argument expression, not a local.** The target's sixth argument (`addiu t7,v1,220` before the
+var_t0 `beqz`, `sw t7,20(sp)` after it) is held in t7 ACROSS the var_t0 branch. Kit CDVIII's rule (t6-t9 are never
+uopt colours) still holds: writing it in the call, `gl_func_00034458(..., var_t0, temp_v1 + 0xDC, a6, ...)`, gives
+exactly that ugen hold (t6 or t7 by ring position), while a `char *pDC` local is a coloured LR (ours: ra). So a ugen
+temp is NOT confined to one uopt basic block when it is a call-argument expression evaluated before an in-argument-block
+branch; check a t6-t9 value that crosses a branch for this before reaching for a coloured reading. On its own it is
++4 B (the second vcall loses its jalr delay fill: one more ring temp) -- **it is the missing piece of kit CCCLXXII's
+chained store**: `FW(*(char **)((int)&D + 0x254) = (char *)FW(arg0, 0x240) + 0 * (int)&D, 0x158) = (int)temp_s1 +
+0 * (int)&D;` (value = ugen t6, &D = coloured v1, as the target) no longer costs the fill with pDC in the call, and with
+a10's folded p100 uses dropped from two to one the body is back to 412 B: 98.786 -> 99.175 (the temp_t6 local and the
+`if (FW(temp_v1, 0x148)) {}` before the block stay; temp_t6 is now unused, kept). The two levers were each tried alone
+in earlier runs (and each lost); only the pair is a gain -- re-test a "length-costing" form after any lever that changes
+the ugen ring count.
+**Second step:** the pre-block `if (FW(temp_v1, 0x148)) {}` moved to right after the a10 declaration
+(`a10 = FW(FW(temp_v1, 0x148), 0xB8) + 0 * (int)(p100); if (FW(temp_v1, 0x148)) {}`): the first 0x148 load (sp48)
+becomes the target's ugen `lw t6,328(v1); lw t8,240(t6)` pair and the a10 reload a coloured expression: 99.175 ->
+99.369 (18-variant position x expression grid: before the call 95.39, after the call frame 128).
+**Third step:** a 190-draw random code-free test search (11 expressions x 31 statement gaps, 1-2 tests) found
+`if (temp_s0) {}` right after the chained store: temp_v0_2 (the arg0->0x290 load) takes v0 like the target, 99.369 ->
+99.515 (two more 190-draw seeds with 21 expressions incl. the block locals, a zero-use sweep over the block lines (179),
+and p78 role merges with a6..a10 (10, <= 99.13) are flat on it).
+**Left (9 words, all colours):** first 0x240 load a1 (target v1: LR10 still interferes with temp_v1 because its
+refs reach the later code-free arg0->0x240 tests); p78 v0 (target t1: replay says v0 / a0 / a3 / t0 must all be taken
+by neighbours coloured first, i.e. p78 must rank BELOW m4 (0.667) and var_t0 (1.333) and something must hold v0); the
+0x148 reload v0 / a10 t5 (target t5 / ra: the reload expression has save 3.0 and is coloured 5th; the target's ranks
+it after a6..a9 and var_t0). (Before step 3, temp_v0_2 lost v0 to the chain's cfe assignment temp, -92 vreg, same
+save 3.0, lower LR id: that temp and the `0 * cvt` umpy are code-free LRs that still occupy v0 / a1 -- a code-free
+test of an unrelated live value in the same BB re-orders them.)
+**Flat on the new bases (each <= 200):** hill-climbs over the eight code-free tests, 0x148 test positions, the a6 -> p78
+role merge, a named second-vcall fp, p78 / p100 spellings, a10 fold count, arg inlining of any subset of a6..a10 / m4
+(~1100 compiles over 7 runs, best 98.30 before the chained store); `&&` / ternary / bit-and var_t0 spellings (as a
+local: byte-identical; in the call: frame 144 / 82.9); p100 from temp_v1 in 8 int / pointer spellings (always folds to
+`lw t0,260(v1)`, 408 B); &D held in temp_v1 (copy-propagated away); a code-free test on the &D address itself (any
+spelling, five positions: frame 104); the six store-chain spellings x five temp_v0_2 shapes (42); a block-scope n148
+carrier for the a10 reload (24); temp_v1 replaced by the expression in either web or both (89.4 / 99.32); temp_v0_2
+re-used from temp_v0 / temp_v0_3 / temp_v1 / temp_t6, early 0x290 load, decl order (10).
+
+**2. 31A74.** (a) The mode-1 store + call duplicated into both clamp arms (with or without the return) is not
+cross-jumped: 584 B. (b) With mode 1 in its goto block and the tail plain, 18 tail layouts (store and calls on one /
+several lines, the assignment split across lines, the store inside the call argument, sel clamp on one line) are all
+97.163: as1's tie-break is not reached by line layout INSIDE the statement, only by the block order. (c) Two goto
+blocks: which one straightens depends on placement -- mode-1 block right after its own `return` (inner): mode 1
+straightens, the tail stays `b back; swc1` (94.29); both blocks at the end with the tail's first: the tail straightens
+(93.44); mode-1's first at the end: neither (85.99); mode 1 written with `goto e31a; ... e31a: return;`: the tail
+straightens and mode-1's store block lands right after c31a but keeps its `b` (572 B, 94.86); the four clamp spellings
+(ternary, gotos in both arms, `!(<)`, plain) x three placements (12): <= 94.29. A fresh-seed 190-draw code-free test
+search on the committed body (10 expressions x 35 gaps): all 98.121.
+
+**3. 48AEC frame anatomy.** The -O2 frame keeps the -g3 slot map, and inline-expansion PARAMETERS take slots too (the
+empty mdebug blocks between cmd and mtxQ's dd: two me() levels + pushQ's src / c = the 16-byte gap). Block-scoping
+i / j / k around the matmul (`{ int i, j, k; ...loops... }`) and cmd around the push (`{ Mtx *cmd; me(me(gctx))->
+pushQ(mt, cmd); }`) gives the target's TOP map relative to the frame (gctx M-4, A, B, mtx M-76, cmd M-96 = the target's
+spill slot M-96) but the frame stays 368 (97.715 < 97.726); dropping mtxQ's / nextQ's dead dd loads on that base gives
+360 (97.52). Writing the push inline in draw() (`func(mt, cmd = gctx->mtx()); gctx->load(cmd);`, 36 receiver / alloc
+spellings) is 2060 B. The frame is set by the deepest chain (the third arm's iterator: ours M-296, target M-280), so the
+missing 16 bytes are above THAT chain -- the arm-1 slots alone never move it. hc over the five inline-temp choices (191):
+flat.
+
+**4. 3558.** 180 of the 720 orders of the six matrix-block stores / adds (`stage.k = k; vb.k += k;`): best = base
+93.853 (the target's vb reload into f14 / f16 / f18 at the block top is not a statement-order effect); 190 random
+code-free tests (17 expressions incl. va / vb / e / w fields, mag, k, zero, c.out x 25 gaps): all 93.853. 48AEC: 190
+random code-free tests (this, gctx, A, B, n14, flags30, GS, GS->ctx, g34.w1, a8, arr.count x 25 gaps): all <= 97.726.
+469A8 on the 99.515 base: moving each of its 9 code-free tests to a random other gap (190) and remove-one / remove-two
+over its 13 tests / folds (91): none higher (the first-block `if (temp_s1) {}` and the store-side one are neutral);
+the two code-free arg0->0x240 tests re-spelled on other fields / temp_s1 / arg1 / temp_v1 (63, LR10 still a1); the p78
+and a10 fold variables (56); a 190-draw joint search over fold counts and tests of m4 / var_t0 / p78 / temp_s0 at four
+block points; a10 written in the call or through an n148 carrier (18, 416 B): all <= 99.515.
+
+**5. bootup 6204 / E9FC prologue.** IDO 5.3 cc (not in kit CCCLXXXVII's list) at -O0..-O3 x {none, -g, -g2, -g3}, and
+the same 16 combinations under 7.1: always `addiu sp; sw ra; lui a0` (plain -O2 also gives 6204's unfilled `jr ra;
+nop` epilogue).
+
+## kit CDXI (agent-g 2026-11-06, run 319): post0b 34890's bottom-copy v1 IS reachable -- edg's pool is per SIZE (char / short entries never take an int / pointer slot) and a loop condition evaluated in the SAME expression as the body call has v0 forbidden, so `do {} while (postR(f(it.cur->data), C))` puts the bottom result in v1 with every home of the target; but every form that moves the bottom off h's slot (M-12) leaves h with one weighted use, and h then either goes plain (320 B) or is coloured after Mid (Mid / Base flip) -- the target's h must get its weight from a loop value that as1 later copy-propagates away <a name="kit-cdxi-agent-g-run319"></a>
+
+_agent-g run 319, base c97b38836. No score change committed (34890 stays 99.821). Tools in `/tmp/claude-1000/g319/t/`
+(`grid.py` / `sc.py` = c315 / c314 with g319 paths); dumps via g306 `dump.sh` / `lrinfo.py`; about 2300 variants._
+
+**1. The bottom copy's register comes with its pool slot.** lrinfo on the committed body: h = M-12 (LR0, a1), make's
+`o` = M-16, the `X *a` local = M-20, X-this = M-24 (a2), Mid-this = M-28 (a3), the ctor temp M-32, Base-this = M-36
+(v1). The for-loop's top copy reuses M-24 (a2, right) and the bottom copy reuses M-12 (a1, target v1). Writing the
+loop by hand (`if (C) do {...} while (C2);`) lets each copy take its own slots. In-expression entries `(I2(0), ..., C2)`
+take the free slots in order: one entry puts C2 on M-16 (v0), FIVE entries put it on Base's M-36 and it comes out v1
+(the Base LR has v0 forbidden by the alloc call). Entries of a smaller type (`I2((char)0)`, `I2((short)0)`) take NO
+int slot, and `Z(int v) { return 0; }` / `{ return v; }` / `void Z(int) {}` entries take none either -- only an
+assigned (`if (0) { v = 0; }`) or tested (`if (v) {}`) parameter is pool-resident.
+
+**2. v0 is forbidden for a condition evaluated in the call's expression.** `do {} while (postR(gl_func_00034458(
+it.cur->data), C2))` with `postR(void *r, void *v) { if (r) {} return v; }` (or a plain comma) gives the bottom result
+v1 with NO entries (LR on M-16, forbidden v0). With the make() form every home is the target's (h 44, X 32, Mid 28,
+`it` 48 / 52; a named `void *r` local instead costs a home word above h and moves h to 40). Natural-call forms
+(`gl_func(D, KH2(o), new X(o), ...)` / `I2(o->h)`) put h on M-16 (home 40) or drop the frame to 48.
+
+**3. Why it still does not match.** Every body whose bottom copy leaves M-12 has h with ONE weighted use (the
+register call's a1, bb 17), priority 0.57-0.83 against Mid's 1.5 (or 6.5 once a loop / init temp lands on M-28):
+h is either split and spilled (320 B, `lw t7,12(a0); sw t7,44`) or Mid takes a1 / v1 before it. Code-free `if (h) {}`
+tests (up to 12, before / after the new, inside a loop-in-make body) add a block per use and never lift it; with the
+loop inside make() h's slot is busy (the bottom lands on M-32 = v1, the top on M-24 = a2, exactly the target) but h
+has no LR at all. Assigning the condition into h (`(h = (int)(C2), h)`) is copy-propagated by uopt. The only copy
+uopt keeps is an inline's return through an `if (0)` block split (`I2(C2)`: pre-as1 `move $3,$5; bne $3`), and there
+the ternary keeps the FIRST slot (h's) and the parameter the later one -- the direction is reversed (the source survives
+as1, so the branch stays a1). The target therefore needs a loop value in h's variable that ugen emits as a copy FROM a
+v1 temp and as1 removes. Best bodies of sections 1-2: 99.750 (KH2 + postR + two top entries, h home 40, bottom a1),
+98.798 (make + postR, bottom v1 and every home right, Mid / Base flipped and top a1).
+
+**3b. The reversed copy exists: `I3(it.nxq())`.** With an iterator method whose ternary goes through a NAMED local
+(`void *nxq() { void *res = (me(this)->cur = nxt) ? (...) : 0; return res; }`) and a BB-split identity
+`I3(v) { if (1) {} return v; }`, the bottom is allocated `this` (M-32), ternary (M-24), and only THEN I3's parameter,
+which lands on h's M-12: pre-as1 `move $5,$6; bne $5` with $5 = h's a1 -- exactly the phantom the target needs. h's
+LR gains the loop use (prio 3.67, a1 with the three spill / reload pairs), and as1 removes the copy, leaving the branch
+on the ternary's register. In the committed for-form this swaps the copies (top v1 / bottom a2, 99.643); written by hand
+(`if ((I2(0), I2(0), C)) do { f(it.cur->data); } while (I3(it.nxq()));`) the top is a2 and the ONLY residual is the
+bottom ternary in a2 (X's M-24) instead of v1: 99.821, the committed score with a different single residual. One kept
+dummy parameter (`nxd(int d0)`) or one statement-level `(I2(0), 0);` before `res` moves the ternary to Mid's M-28 (v1,
+but Mid / Base flip, 98.976; Base / Mid / X `if (this) {}` grid flat); two move it onto h's M-12 or X's and wreck the
+cascade (85). The free list at the bottom reads M-32, M-24, M-28, M-12, ... so the target's ternary on Base's M-36
+(v1) with I3's parameter still on M-12 needs a temp order no first-fit source gives yet; next lead: a statement-level
+entry pattern that frees M-24 / M-28 into a different order before the res statement. Flat around it: top entry
+counts 0-5 (the bottom stays M-24 whatever the top holds), for / goto / `for (;;) { ... if (!x) break; }` / `while (1)`
+wrappers (60), receiver forms (`(&it)->`, `me(&it)->`, const / static / free `nxf(LIter *)` / `nxr(LIter &)`, 36: free
+and static forms add the Mid / Base flip), `I4` / `I6` named-copy chains instead of the method (44), and a 190-draw
+random mix of dummies, statement entries, body me() depth, receivers, wrappers, top entries and Base / Mid tests (best
+99.821 / 98.976). A block-scope `{ void *res; ... while (I3((res = C, res))); }` is the same copy without the method
+(99.821, no `this` slot; the ternary still takes M-24). Any held OUTER entry (`I3((I2(0), ..., it.nxz(...)))` or
+`(I2(0), ..., I3(...))`, 56 with 0-3 kept dummies inside) moves I3's parameter off M-12 and h goes plain (320 B);
+tested dummies (`if (d) {}`) land on Mid's M-28 WITH refs (flip), `void *` / `LIter *` `&it` dummies merge Mid into
+an s-register LR (frame 72). Moving the assignment into the body (`do { f(...); res = (I2(0) x5, C); } while
+(I3(res));`) puts the ternary on Base's M-36 (v1, LR prio 11.3) -- the target's bottom -- but the copy then lives in
+`res`'s own M-40 home variable (v0) instead of h's M-12, so h has no LR (320 B); entries in the condition do not move
+it (42 variants).
+
+**4. post0b 4B620 (99.725).** The appends 1-2 old count is pool variable 592 (LR39, s3, shared with every later
+count); the target's s0 holder is variable 720 (LR32, the appends 3+ inc() `this` / head). Index-expression entries `&head->buf[(I2(0), ..., head->count++)]` with and
+without kept hi / lo (81) move the count to s2 / a0 but never s0. bootup E2D0 and gui 2DE0 were only re-read.
