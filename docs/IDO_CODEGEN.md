@@ -14786,6 +14786,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CDXXII (agent-g 2026-11-11, run 329): **structurally-right bases re-coloured: post0b 4BAF4's ctx-shared half-extent body (the target's ext / ctx register pairing) climbs 96.96 -> 99.007 = committed via random code-free tests, a kit-CDXII live call result held in an EXISTING variable (`if ((r = (u32)f(..)) == 0)` + `if (r) {}`: no new home, x / y leave v0 like the target) and clip-test operand order; left: the target colours the 0xC0 bound before ctx; edg hands out frame words in SOURCE order (function-scope named, then per-statement pool temps and each later block's named locals as met: a block-scoped dead int lands BELOW an earlier temp), which locates 4FD00's 16-byte gap (52 / 0 pool bytes before / after the V3 temp vs the target's 36 / 16) and 48AEC's if-arm words (an n-free open-coded push gives the target's two words between cmd and g, but changes code)**](#kit-cdxxii-agent-g-run329) -- _No report.json gain, no commit; 4BAF4 / 48AEC / 4FD00 / 42938 / 3B9C0 / 4B620 negatives, ~3300 variants; new scratch tools mdl.py (.mdebug homes), rt.py / climb.sh (random test hill-climb), spmap.py._
 - [kit CDXXIII (agent-c 2026-11-11, run 331): **aim with the as0 + as1 oracle: read the target's ugen shape from a hand-edited `.s`, then spell it -- gui 2DE0's t-term MAX as zero-then-copy through xq (`((xq = 0), (v > 0 ? (xq = v) : xq))`) gives 98.399 -> 98.960 at 1212 B; the oracle then shows the body equals the target up to three uopt colours (pc t3, t-term a1, (s16)xh a0); a forbidden register with no code in the object is a phantom LR of a copy-propagated named local (2DE0's TEXRECT `next()` n holds a0)**](#kit-cdxxiii-agent-c-run331) -- _fd8f407ba; 2DE0 / 3558 / 36694 negatives, ~2400 variants._
 - [kit CDXXIV (agent-g 2026-11-11, run 332): **a target value in a uopt colour (v0..t5) where ours has a ugen temp (t6..t9) is a missing NAMED carrier: post0b 4BAF4's else-arm spr->dl64 through d like the first packet's 0xCC pointer (+ ring lever re-tuned to one `& 8`) 99.007 -> 99.137, then me() receiver depths re-gridded on the new base -> 99.291; the C0 / ctx swap is a four-LR priority ORDER (count pool slot > ctx > g), not a tie (ctx 3.6 vs C0 1.5)**](#kit-cdxxiv-agent-g-run332) -- _7f5fb4c85, 645f1e396, 2872f8eae, 01b42dbd0; split / carrier / addA priority probes, ~800 variants; tscan.py scanner._
+- [kit CDXXXVII (agent-g 2026-11-11, run 345): **post0b 3B9C0's `addiu t9,sp,184` is a ugen-HELD lda: a `0 * (int)(X)` fold is a register zero only when the same text occurs twice (CSE before folding), which gives kit CDVIII's phantom with no new block (`(char *)&p + 0 * (int)(self->tris)`, paired with the ib line's self_al->tris fold); a carrier merges with its inner-loop web (adjsave 115 > fv 103.3, fv loses a3) until one counted fv use in the ok line; then every uopt colour of the qa / qb block is the target's (35 lines / 98.62 vs committed 34 / 99.32) but the t6..t9 FIFO model says the target keeps lda allocated in t9 through qb -- every source puts lda in a coloured const LR, folds it into `l.s 184(..)` or PRE-hoists the cvt; 48AEC's 16 extra frame bytes sit between sp+240 and +272, not in i / j / k**](#kit-cdxxxvii-agent-g-run345) -- _no gain; ~2100 variants; tools g345/t/v2.py, v3.py, dump.sh, slots.py._
+- [kit CDXXXVI (agent-c 2026-11-11, run 344): **edg inline-temp frame words, measured on a mini harness: an inline's parameters cost words only when its body expands a temp-needing inline (a parameter read more than once); a second top-level call of a wrapper with ONE such nested call is free, with two or more (set + add, set + o.set, add + add, any parameter types) the second call costs +2 words (+4 for `SV &operator+=`; set + add then saturates, the committed sum() keeps growing), regardless of wrapper nesting, braces, splits or commas between the calls; top-level statements always pool. post0b 4FD00's target frame = "second face sum free": a hand-written second sum gives param 20 / frame 136 and every sp offset of the target, but that basin's code tops out at 91.63 / 1004 B with the frame kept (dead mid.z store kept or &mid / 12 not hoisted, vertex pointers not v0); 36694 dump: zero LR adjsave 1.67 coloured after E (3.0) and px / py / pz (2.5), a named zero is constant-propagated and only adds a home; E68 distinct MGR loads, carriers and test grids flat**](#kit-cdxxxvi-agent-c-run344) -- _no gain; ~2600 variants; tools c344/sig.py, lay.py, 15 (mini harness), 53/cl.py._
 - [kit CDXXXV (agent-g 2026-11-11, run 343): **post0b 3B9C0's FP residual was the num STATEMENT, not a later order: `num = S - tris[i].d; t = -num / dn;` (num's own LR = the target's `sub.s f2`) + a code-free `if (1) {}` between p.z and the remap test (target block shape) + dx / dy carried in dead `self_al` / `pp` with explicit (s16) casts (no s16 homes: frame 232) = every FP register, the frame and every home of the target; a carrier that is also live elsewhere (the parameter b, read at the top) drags that region into the carrier's colour (b t0, target v0) -- pick a block-local carrier; left: remap / &p / ia colours (the target keeps v1 live into the remap block); 48AEC / 4B620 / 42938 / 4BAF4 have no FP residual for the later-code lever**](#kit-cdxxxv-agent-g-run343) -- _NM 3B9C0 99.211 -> 99.319 (4d4ab756d, fd1a7081e); ~1700 variants; tools g343/t/v.py, vr.py, gr.py, rc.py._
 - [kit CDXXXIV (agent-c 2026-11-11, run 342): **the "later code re-phases the FP FIFO" lever (kit CDXXXII) does not generalise: bootup E2D0's post-call block is FIFO-infeasible from all 720 entry queues and every ugen order (0x9F8 load and arg4 both f16 with only the 1.0 pop between needs a two-register free queue), so no float order up- or downstream can fix it; E68 / 4FD00 have no FP residual; 36694 term order flat on both the 712 B and the by-value-tail bodies, and its test-block residual is that our l is never coloured (adjsave 0, target l = f14, zero = f0); 4FD00: inline LOCALS land below the `mid.set(a)` by-value parameter (one fresh word per site) and a void `SV::add` in the second face sum frees 8 bytes -- param 20 reached but at frame 144**](#kit-cdxxxiv-agent-c-run342) -- _no gain; ~1700 variants; tools c342/run.py, c342/9/sim.py + bf*.py, c342/26/md.py._
 - [kit CDXXXIII (agent-g 2026-11-11, run 341): **per-region signature cross-basin factorial on post0b 4BAF4 (~8400 subsets of 17 committed <-> bd5 edits): only two basins -- "texr exact / clip 8+" (receivers via me(), ctx a2) and "clip exact / texr 12+" (receivers assigned to ctx) -- and no body takes both; the committed first-packet count is the top-priority LR (8.0 = 24 / 3 blocks, v1) ahead of the 0xEE head (5.0, a1) and ctx (4.5), and no count spelling (by-value param, named cn, int &n, cnt(), inline-internal split) changes its span; lead: the TEXRECT MAX clamps written into ctx (`E > 0 ? (ctx = (Ctx4B *)(int)E) : (ctx = 0)`) take the target's a3 in the clip basin (texr 17 -> 11, 99.303 -> 99.374); 42938's committed vs nD is one edit with a superset of mismatches (no second basin), fixing packages conflict on the same source lines**](#kit-cdxxxiii-agent-g-run341) -- _no gain; ~9900 variants; tools g341/t/reg.py, en.py, agg.py, cl.py, pk42.py._
@@ -62960,3 +62962,138 @@ permutations of sg / nx / vt / fv around the qa block (2 x 120) and a 750-varian
 in the edge loop, ++ forms, store order after the loop) are flat in both basins. 4BAF4 g6: the four TEXRECT clamps carried
 in ctx / d / iz / spr / r / MAX, paired and singly (76), flat at 99.444. 4B620: the first two appends with the slot or
 count as defaulted inline PARAMETERS (pool-word reuse, kit CDXXIX; 12 forms) are all below 99.725.
+
+## kit CDXXXVI (agent-c 2026-11-11, run 344): edg inline-temp words measured on a mini harness -- an inline's parameters cost frame words ONLY when its body itself expands a temp-needing inline (a parameter used more than once, e.g. `SV::set(const SV &)`), and a SECOND top-level expansion of a wrapper whose body expands two or more temp-needing inlines costs +2 words (+4 when they are `SV &operator+=`); post0b 4FD00's target frame (param 20 / frame 136) is exactly "second face sum free", reachable with a hand-written second sum (layout identical to the target) but that basin tops out at 91.63 (1004 B); 36694 / E68 negatives <a name="kit-cdxxxvi-agent-c-run344"></a>
+
+_agent-c run 344, base 4b28c9bd1. No gain (4FD00 98.645, 36694 96.079, E68 98.650 unchanged). Scratch
+`/tmp/claude-1000/c344/` (15-17, 19, 21, 22, 27-32 = mini frame harness: one `side()` with named a / b / mid / s, a probe
+`mid.set(a)` by-value V3 parameter, and a wrapper `w(V3 &o, int f, SV &s)` called once or twice -- read the
+parameter's top-relative offset (frame - lowest sp offset); 44-53 = 4FD00 manual-sum basin and climbs; 8 / 26 / 33 /
+34 / 41 / 43 = 36694; 9-11 / 24 / 36 / 37 = E68; `sig.py` = frame + low sp offsets, `lay.py FN EXP GLOB` = sp-offset
+set distance to the target, sorted)._
+
+**1. The mini-harness rules (NCC, -O2).** Baseline (no sums): probe parameter top-relative 60. A wrapper whose body
+has no nested inline call (`o.x = s.x;`, `s.x = verts[...].x;`) or one call that needs no temporary (`nop(f)`,
+`me(this)`, `g(s)` with an unread parameter) costs nothing, even with four parameters. One temp-needing call alone
+(`s.set(v)`, `s.add(v)`, `s += v`, `o.set(s)`: a parameter read more than once) costs 2 words (`c344/57`, 68 / 68).
+The wrapper's own parameters become words (+4) once its body has two nested calls of any kind (`me(this); me(this);`
+76) or one temp-needing call plus its own read of a parameter (`s.set(v); o.x = 1;` 84). One nested temp-needing
+call (`s.set(v)`) next to a non-temp call costs 6 words and a second top-level call of the same wrapper
+is FREE (`me(this)`, `s.set(v); o.x = s.x;`, `s.set(v); nop(f);` all 84 / 84). Two or more temp-needing nested calls
+in sequence (`set + add`, `set + o.set(s)`, `add + add`, `set + addp(const SV *)` with a different parameter type,
+`me + add`) cost the same 6 words once and +2 words on the second expansion (84 / 92), after which the pool is
+saturated (`set + add` called 1..4 times: 84 / 92 / 92 / 92, `c344/64`); `s += v; s += v` (reference returns) +4
+(84 / 100), and the committed `sum()` body keeps growing (84 / 100 / 108 / 116). Wrapping the wrapper (`w2 { w(o, f, s); }`), separate wrapper functions per call, braces,
+`if (1) {}` blocks or a comma between the two calls change nothing. A wrapper body written as ONE expression
+(`o.set((s.setr(v0) += v1) += v2)`, or the four calls comma-joined) makes the second call free, but the first costs
+116-124 instead of 84. A parameter that is never read (`void g(const SV &) {}`) costs nothing. Statements in the
+function body itself (not inside a wrapper) always pool: `s.set(v); s.set(v);` or `s += v; s += v;` at top level
+cost the same as one.
+
+**2. post0b 4FD00: the target's frame is "second sum free".** Real-file diagnosis: no sums = 1 word between s and
+the parameter; one sum (either one) = 9 words, param 20, frame 136 = the target; both sums = 13 words, param 4. The
+mini rules say the committed `sum()` (set + two `+=` + o.set) must leak on its second expansion, and no grouping
+of the four calls (8 separators x 2 add forms x set / setr, 128 bodies) gives first cost 84 with second cost 84. A
+HAND-WRITTEN second sum in `side()` (the statements of `sum()` written out, e.g. `s.set(verts[faces[f2].vi[0]]); (s
++= verts[me(me(this))->faces[f2].vi[1]]) += verts[faces[f2].vi[2]]; b.set(s);`) gives the target's frame exactly:
+param 20, frame 136, and every sp offset identical to the target (`lay.py` distance 0), the double `move`s in the
+third add kept. But the code shape is a different basin: both sums hand-written = 86.4 / 1012 B (the dead
+`mid.z = p.z` store is NOT removed like the target's, +2 insns); inline first + hand-written second = 89.9 / 1008 B, and
+a climb (second-sum form and me() depths, dot me() depths / gn, `if (1) {}` before `d1.set(mid)` / `d2.set(mid)`, the
+first sum's me() depths, the ternary `return (... && ...) ? 1 : 0;` (1000 -> 1004 B); 34 x 190 from five starts, `c344/53/cl2.py` + `auto*.sh`, every chain flat for its last 5-6 rounds) = 91.63 /
+1004 B with the parameter still at sp+20 (`c344/53/s7/v045.cpp`; the climb's overall best 91.84 / 1004 B,
+`s4/v008.cpp`, has drifted back to param 12), still with the `&mid` / 12 constants not hoisted and the vertex pointers in a3 / t0 / t1 (target v0). The
+committed inline basin (98.645) keeps the target's hoisting and registers but not the frame. A by-value V3
+parameter of a struct type that has user constructors changes the whole body (79.4); `mid.set((sum(b, f2, s), a))`,
+`(sum(b, f2, s), mid).set(a)`, `summ(b, f2, s, mid).set(a)`, a one-trip `for (i = 1; i; mid.set(a), i = 0) sum(b, f2,
+s);` (edg allocates in EXECUTION order here: param 4), a destructor guard `{ Setter g(mid, a); sum(b, f2, s); }`, and
+`sumset(b, f2, s, mid, a)` (both calls in one inline) all keep param 4 or lose the body (<= 97.85).
+
+**3. post0b 36694.** Colouring dump (`c344/41/uoptlist`): E (the l sum, LR 96) adjsave 3.0 f0 first; px / py / pz
+2.5 (f12 / f2 / f14); the zero constant LR 267 adjsave 1.67 is coloured after them with f0..f14 forbidden (f16); l
+itself (LR 90 / 279) uncoloured. A named `f32 z = 0.0f` (4 declaration spellings x 2 test forms x pz test x
+fallback stores, 176) is constant-propagated (same LRs) and takes a home: frame 248, 95.87. `F2()` / `F3()` /
+`F4()` (local) wrappers on the zero, on l and on the sqrt argument (96) are byte-identical to the base. `if (1) {}`
+right after `l = ...` or inside the positive arm changes the NCC FRAME (240 -> 232 / 224) and the body (<= 89.5).
+Layout search (`lay.py`, 380 bodies over the a / binding / return / operator spellings): a trailing `F2(0.0f);` inside
+the binding block moves the product's V3 temp to the target's 172 (distance 11), but at 708 B / 89.6.
+
+**4. bootup E68.** Making the two MGR loads distinct expressions (int view, u32 view, alias symbol, const view, one
+phase or both; 30) gives 3008 B / <= 90.1 when only one phase changes and byte-identical when both change (the
+loads stay CSE-free either way: ours is load + copy in both phases like the target, but phase-2 m is s0 and the vs /
+ve IV t2, target ve s0 and m v0). Phase-2 m carried in head / vp / tlut / col: <= 96.6; folded counted uses on both
+assignments (8 x 8): flat; `if (m) {}` / `if (ve) {}` placement grid (96): flat; a phase-2-only `mm` (block or
+function scope, MgrE68 * / char * / int, padq 3 / 2 / 1; 18): 88.44 (the kit CDXXXIV home cost again). **Dump
+(`c344/24/uoptlist`, `-Wo,-zdbug:5`; homes from a `-g3` build, `c342/26/md.py`: m = vfp-196 = `{1491|0}`, vs =
+vfp-220 `{1107|0}`, ve = vfp-224 `{1043|0}`):** m is ONE live range (LR 109, adjsave 1603, forbidden 1..5) across
+both phases -- the phase-3 reassignment does not start a second LR -- so it must take a callee-saved colour (phase
+3 calls). The target's v0 / s1 pair suggests (untested hypothesis) that its m LR was split (Chow splits an LR that
+cannot be coloured whole), so the lead may be MORE interference on the whole m LR rather than distinct loads; `if (m) {}` counts move its adjsave only
+(1537 / 1591 / 1670) and it stays one LR.
+
+## kit CDXXXVII (agent-g 2026-11-11, run 345): post0b 3B9C0's held `addiu t9,sp,184` is a ugen-HELD lda, not an as1-propagated phantom -- the ugen temp FIFO (t6..t9 only here) proves it: with the &p phantom forms every int colour of the target's qa / qb block is reachable (row v0 / ia v1 / ib a0 / &p t9 / fv a3), but the t-ring stays one phase off (35 lines, 98.62) and no source keeps lda live in t9 through qb; plus 48AEC's frame-top words are not i / j / k <a name="kit-cdxxxvii-agent-g-run345"></a>
+
+_agent-g run 345, base 349fd7e1a. No score change committed (3B9C0 99.319, 48AEC 97.726 unchanged). Scripts in
+`/tmp/claude-1000/g345/t/` (`v2.py SPEC OUT` = g343 v.py with difflib line count and an int signature `rm= p= ia= ib=
+sg=` read from the remap `lw ..,76(`, the `addiu ..,sp,184` and the three `lb`; `v3.py` = the same with `MANG`;
+`dump.sh SRC NAME` = zdbug:5 `uoptlist` + pre-as1 `-S` + `p5.py` LR table into `g345/dmp/NAME/`; `slots.py GLOB N` =
+sp-offset multiset distance to the 48AEC target). Bodies in `g345/1/o*/`, 48AEC in `g345/3/o*/`._
+
+**1. When does a `0 * (int)(X)` fold stay a REGISTER zero?** When the same `0 * X` text occurs twice (uopt CSEs the
+product before constant folding), it becomes a const-0 LR (`move $N,$0` in the pre-as1 `-S`, key 844|k in the LR
+table) and `x + 0 * X` keeps an `addu x,y,$N` that as1 later deletes. A single occurrence folds away. This is what
+makes kit CDVIII's phantom: `(char *)&p + Z` with a register zero Z is an `addu $sum,$Z,$lda` LR, as1 propagates the
+lda's ugen register (t9) into its uses. In the committed body the ib line's `0 * (int)(self_al->tris)` and the sg
+line's `0 * (int)(self->tris)` are such a pair (self_al = self), so `pp = (f32 *)((char *)&p + 0 * (int)(self->tris))`
+(or the same in any carrier) gives `addiu t9,sp,184` + index-first `addu` with no new block.
+
+**2. The carrier merges with its other web.** uopt colours a variable over every block where it is live: a phantom
+def in a carrier that is also the inner-loop dx / dy carrier (pp, self_al) is ONE LR [18, 20, 21] with adjsave 115 >
+fv's 103.3, so it takes a3 and fv drops to t0. One counted fv use in the inner loop's `ok = 0 + 0 * (int)(fv) + ...`
+line puts fv back above it: with `self_al = (ObjB9 *)((char *)&p + 0 * (int)(self->tris)); qa = *(f32 *)(ia * 4 +
+(int)self_al); qb = *(f32 *)(ib * 4 + (int)self_al);` and `sg = ... + 0 * (int)(ib);` (ib's adjsave back to 20 so it
+beats the off header piece for a0) every uopt colour in the block is the target's (row v0, ia v1, ib a0, &p t9, fv a3,
+off a1, nx a2) -- 35 lines / 98.620 vs the committed 34 / 99.319 (`g345/1/o15/self_al_0_3.cpp`). A fresh block-local
+`f32 *pz = ...` is copy-propagated even with `if (0) { pz = 0; }` / dead-store multi-defs (folded loads, 277 B).
+Carriers n / b / a / col / v0 / v1 are worse (each has another web).
+
+**3. The residual is the ugen FIFO and it needs a HELD lda.** The FIFO model (kit 295BC entry: pop on alloc, push on
+death; pool t6..t9 here since t2..t5 are uopt colours) reproduces ours exactly from the remap arms on (then: t7 t8
+t9 t6 t8, else: t9 t6, join: tris t7, ib-lb temp t8, lda t9, ia*4 t6 ...). Solving for the target's `sll t8 / addu t6`
+(qa) and `sll t7 / addu t8` (qb) with sg's `lb t6` after qb: every queue in which lda's t9 DIES at the phantom def
+fails (two transient slots give `addu t9`; a different join queue gives qb `addu t9`); the target is reproduced only
+if t9 stays allocated through qb's addu, i.e. ugen re-uses a cached lda for both loads. So the target's ucode has
+`lda p` (uncoloured) under both loads, neither folded into the load offset nor PRE-hoisted. Every source form here
+does one of the three: (a) two uses in one block -> lda / cvt is a coloured const LR (a1 / a2); (b) `if (1) {}` between
+qa and qb with distinct register zeros -> uopt reassociates `(Z + ia*4) + sp` and ugen folds `l.s 184(..)`; (c)
+`ia * 4 + (int)&p` (four spellings, split or not) -> PRE hoists cvt(lda) to the p.z block as a coloured LR (adj 10).
+Inline members / free inlines (`p[ia]` via `operator[]`, `at(&p, ia)`, a multi-use-parameter `pk(...)` with reference
+outputs) are (a) or worse. sg before qa with a register-zero add (the "second temp" of kit CDVIII's model) also needs
+the held t9 and swaps the sg / qb FP colours (f2 / f12).
+
+**4. 3B9C0 negatives (about 1900 variants).** qa / qb fold-carrier grid (7 x 4 x split x pp, 112); 8 x 8 distinct
+address forms x pp (128) and the same with a mid split (128); fold x split x pp x sg-placement x remap-fold (192);
+pp-phantom forms x q forms x sg x zero-CSE test sites (192 + 200); zero carriers x pp forms (115); ib-fold x sg x
+carrier x zero (200); carrier x z x q x sg (112, 90); new pz with dead defs (168); carrier priority sites (96, 52);
+sg placement (13, 84); ib / phantom / remap-arm folds (144); split shifts `(ia << 1) << 1` etc. (64: the shift
+pieces CSE with ia * 2, length or ia colour changes); `ia` macro with a zero add (36, length 278); distinct zeros with
+and without split (126 + 126); inline members (84, 70); `(int)&p` loads (168); remap v1-holder folds in the num /
+p / col / arm lines (160: `col = (ColB9 *)((int)self->col + 0 * (int)(self))` gives remap a0 but col v1, 99.14); a
+190-draw random multi-edit climb on the 35-line body (flat at 35); the committed <-> best subset factorial (24).
+
+**5. 48AEC: where the 16 frame bytes are.** sp offsets vs the target (`slots.py`): the committed body (frame 368)
+already has every low slot at the target's absolute offset (mtx 276, gctx 348, 128..136, 208..216) except cmd (ours
+352 = frame top - 16, target 256), 144 / 148, 220 / 236 vs 228 / 244, and the 108 / 112 + 140 / 144 `addiu s0,sp`
+bases. The three words above cmd are NOT i / j / k: `for (int i ...)`, a block-scoped `int i, j, k;`, i / j / k after
+gctx or last, and the 24 orders of {i, j, k, cmd} after `gctx, A, B, mtx` all keep frame 368 (gctx then sits at
+top - 4 like the target, cmd at 276-288, mtx at 292); 120 orders of {cmd, gctx, A, B, mtx} with for-scoped
+counters: frame 368, slot distance >= 38 (committed 34); the 5-edit inline-home factorial (nextQ / mtxQ dd, next /
+mtx named n, prim fold) x 3 declaration orders (96): frame 352 / 360 only by dropping homes from the LOW region
+(everything below shifts 12-16). So the target's missing 4 words sit between 240 and 272 (an edg temp group), not at
+the top. The stored homes read off the `sw` targets (`g345/t/hs.py`) make the picture exact: target = [mtx 276][4
+dead words][cmd 256][2][load() g 244][3][else-arm a2 228][3][212]; committed = [mtx 276][9 dead words][g 236][3][220][1]
+[212] with cmd at the frame top (352), and the gctx-first / i j k cmd-last order = [mtx 292][i j k][cmd 276][9][g 236]
+... -- i.e. the target has cmd INSIDE the edg temp group and 5 fewer dead words between it and the if-arm load()'s g.
+Flat (68 more): a block-local `Mtx *c1` in the if-arm (pushQ / push / expanded mtxQ or mtx + load, 8 forms x 3 orders),
+pushQ through `Mtx **`, mtxQ without dd / without n, `gctx->pushQ` without me(), load() through nextQ() (16 x 2 orders):
+every form either keeps the 9-word group or grows the frame (376 / 384).
