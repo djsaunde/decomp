@@ -61812,3 +61812,17 @@ spellings (free `dot()`, me() on either operand, 8): layout unchanged; a NAMED l
 (`const V3 &s = *this;`) is placed below the temp like the z words (frame 144, temp sp+12), so inline-expansion named
 locals follow the same source-order rule. 3B9C0: seven more num carriers (`t` / `num` reuse, `(d - num) / dn`, `t /=`):
 <= 97.62.
+48AEC (late): moving the else arm's `Mtx *c2` to function scope (declared after mtx) on the frame-352 block-scoped base
+puts c2 at vfp-80 and i / j / k / cmd one word lower, so cmd lands at the target's vfp-96 (sw a1,256): 97.665, spov 67/86
+(= the committed body's sp coverage at the target frame), but the if-arm still has mtxQ's dd / n and five unnamed
+words between cmd and the first g (target: two), and the climb from it (2 x 140) and the 20 if-arm forms stay flat.
+4FD00 (late): SV-void + a named local in the inline operator* + 0-2 z words (18): the bottom grows in 8-byte steps and
+the pool before the temp never drops below 44 bytes, so the target's 36 / 16 split is not reachable with these pieces.
+4B620 (late): a kit-CDXII live call result held in the reused ctor parameter `a1` (`cc = (DL *)(a1 = f(...))` / the m64 /
+d0 creations, `if (a1) {}` at the next 9 statement ends each, 23): <= 99.725; a second-seed 4BAF4 climb (2 x 140) flat.
+Same lever elsewhere (late): 42938 `g = (Gfx *)func_00000000(G.o->ctx, ..0xF0)` + `if (g) {}` at the next 6 statement ends
+(<= 98.856), 3B9C0 `if ((t = sqrtf(..)) > 0.00001)` + `if (t) {}` before the loop (4, <= 92.9: t becomes a real
+float LR), one 4FD00 random-test round (150): flat.
+4BAF4 (late): on the 99.007 structural variant the climbed `if (d) {}` is stale (dropping it keeps 99.007; dropping
+`if (ctx) {}`, `if (self) {}` or the run-262 `if (1) {}` costs 0.28-0.41); `if (r) {}` at each of 15 lines and every
+pair (105) and one more random round (100) on the d-free base: flat at 99.007.
