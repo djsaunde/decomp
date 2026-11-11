@@ -14786,6 +14786,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CDXXII (agent-g 2026-11-11, run 329): **structurally-right bases re-coloured: post0b 4BAF4's ctx-shared half-extent body (the target's ext / ctx register pairing) climbs 96.96 -> 99.007 = committed via random code-free tests, a kit-CDXII live call result held in an EXISTING variable (`if ((r = (u32)f(..)) == 0)` + `if (r) {}`: no new home, x / y leave v0 like the target) and clip-test operand order; left: the target colours the 0xC0 bound before ctx; edg hands out frame words in SOURCE order (function-scope named, then per-statement pool temps and each later block's named locals as met: a block-scoped dead int lands BELOW an earlier temp), which locates 4FD00's 16-byte gap (52 / 0 pool bytes before / after the V3 temp vs the target's 36 / 16) and 48AEC's if-arm words (an n-free open-coded push gives the target's two words between cmd and g, but changes code)**](#kit-cdxxii-agent-g-run329) -- _No report.json gain, no commit; 4BAF4 / 48AEC / 4FD00 / 42938 / 3B9C0 / 4B620 negatives, ~3300 variants; new scratch tools mdl.py (.mdebug homes), rt.py / climb.sh (random test hill-climb), spmap.py._
 - [kit CDXXIII (agent-c 2026-11-11, run 331): **aim with the as0 + as1 oracle: read the target's ugen shape from a hand-edited `.s`, then spell it -- gui 2DE0's t-term MAX as zero-then-copy through xq (`((xq = 0), (v > 0 ? (xq = v) : xq))`) gives 98.399 -> 98.960 at 1212 B; the oracle then shows the body equals the target up to three uopt colours (pc t3, t-term a1, (s16)xh a0); a forbidden register with no code in the object is a phantom LR of a copy-propagated named local (2DE0's TEXRECT `next()` n holds a0)**](#kit-cdxxiii-agent-c-run331) -- _fd8f407ba; 2DE0 / 3558 / 36694 negatives, ~2400 variants._
 - [kit CDXXIV (agent-g 2026-11-11, run 332): **a target value in a uopt colour (v0..t5) where ours has a ugen temp (t6..t9) is a missing NAMED carrier: post0b 4BAF4's else-arm spr->dl64 through d like the first packet's 0xCC pointer (+ ring lever re-tuned to one `& 8`) 99.007 -> 99.137, then me() receiver depths re-gridded on the new base -> 99.291; the C0 / ctx swap is a four-LR priority ORDER (count pool slot > ctx > g), not a tie (ctx 3.6 vs C0 1.5)**](#kit-cdxxiv-agent-g-run332) -- _7f5fb4c85, 645f1e396, 2872f8eae, 01b42dbd0; split / carrier / addA priority probes, ~800 variants; tscan.py scanner._
+- [kit CDXXIX (agent-g 2026-11-11, run 336): **an inline's LOCAL is a fresh edg pool word per expansion site, its PARAMETERS reuse pooled words: trade addF()'s `Gfx4B *g` local for a `put4B(g, hi, lo)` helper and spend the freed words on a named per-site count (frame unchanged), then re-grid the old append spellings per site; E68's target is load + copy in BOTH phases with two m LRs (volatile views kill the copy instead); 4B620 / 3B9C0 / 48AEC / 42938 residuals are not pool words**](#kit-cdxxix-agent-g-run336) -- _2c143ee6d (99.409 -> 99.444), 47e4187c7 (99.480: B3 depth 2 + final BB split dropped), 6a091a664 (99.515: first packet back on addO); ~2400 variants; tools g336/t/pool.py, part.py, vd2.py._
+- [kit CDXXVIII (agent-c 2026-11-11, run 337): **gui 2DE0 EXACT: score the &D lda split directly (the function's `lui reg,0x0` register string, `t3` x 7), reach it from the committed body by a full factorial over the split-blockers, join two zdbug:5 LR tables by VAR id to see which source values changed colour, and when the instrumented BFS says "one neighbour short" grid the append spellings (TEXRECT `me(CTX)->nD()` instead of `nextp()` freed it); t-term folds survive only on variables live there**](#kit-cdxxviii-agent-c-run337) -- _1f88022b2 (99.109 -> 100, 1212 B); ~2300 variants; tools c337/t/cmb.py, grid.py, cc3.py, rmap.py, c337/11/j.py, nbr.py._
 - [kit CDXXVII (agent-g 2026-11-11, run 335): **an edg pool word is ONE uopt LR across every expression that reuses it (the `isvar M 4 -144` line in the zdbug:5 listing names it): post0b 4BAF4's first-packet count, the ctx me() result and the 0xEE / TEXRECT / B4 / B3 receivers all share vfp-144, so the target's ctx-packet count a2 vs expression-receiver a3 is a SLOT difference; `if (w) {}` + else-arm `if (self) {}` reach the target's clip / ctx / count colours but drag the receivers to a2; pool words are shared by size, not type**](#kit-cdxxvii-agent-g-run335) -- _dd79b61bc (99.291 -> 99.303, second clip test `y > C4 + ext`) and e8413a5e5 (99.303 -> 99.409: the ctx packets through `addF()` whose `nextF()` reads the count side through four zero-code me2() -- held pool words move their count / gfx off the receiver word); ~3000 variants; bootup E68's phase-2 m s0 vs v0 is not an LR merge (second carriers 88.4-88.9); tools g335/t/vd.py, dd.sh, mut.py, rmap.py._
 - [kit CDXXVI (agent-c 2026-11-11, run 334): **an INSTRUMENTED uopt (printf in `addadjacents` / the `globalcolor` cost test; diagnosis only, `c334/u/`) shows 2DE0's &D lda is cost-split only when its integer save <= its call cost (pc-less: 7 vs 6 with the dtdy fold, 6 vs 6 without), and the split piece's BFS neighbour budget (`2 * coloursleft >= neighbours + new`) is spent by the yl test, so no source form tried leaves out only blocks 38 / 39; two-block `0 * (int)&alias` folds are code-free uopt LRs (adjsave 1.5, a0 first) that outrank the lda**](#kit-cdxxvi-agent-c-run334) -- _no gain; oracle: the 97.954 pc-less body needs the reloads AND the committed MAX shape (99.109 / 1212 with both); 36694 binding forms flat._
 - [kit CDXXV (agent-c 2026-11-11, run 333): **fix uopt colours in priority ORDER, read off the `-Wo,-zdbug:5` LR table (interference is pure basic-block granularity): gui 2DE0's (s16)xh needs a0, reachable only if xh is coloured before x (x's blocks are a subset of xh's) -- TEXRECT `nextp()` removes the a0 phantom n and dropping the run-309 xh test shrinks xh to 1.5 > x's 1.0; then two folded `0 * (int)_g` uses of the RDPHALF_1 packet pointer in the t-term arms lift it over the lda (packet t2, lda t3): 98.960 -> 99.109; pc t3 needs ONE &D LR split around the yl < 0 arm (a pc LR next to the lda LR can never share t3)**](#kit-cdxxv-agent-c-run333) -- _00bf7597e; ~1900 variants (receivers, next() spellings, carriers, phantoms, pc-less basin climb to 98.234 / 1196 with the t-term already a1), 3558 vb-add forms (16, flat); new tools c333/t/vs.py, dump.sh, lrs.sh, dd.sh, rs.py._
@@ -62269,3 +62271,153 @@ sp+20 for the first-add / second-add cut, 1020-1028 B, <= 75.6) and every split 
 one expression.
 Closing random code-free-test rounds (200 each, scratch `g335/5/v2`, `g335/7/v4`, `g335/7/v5`, `g335/4/c1..c3`):
 3B9C0 99.211, 42938 98.856, 48AEC 97.726, 4B620 99.725 -- all flat.
+
+## kit CDXXVIII (agent-c 2026-11-11, run 337): gui 2DE0 EXACT -- the &D lda's cost split is reached from the COMMITTED body by deleting the split-blockers one at a time (full factorial, constrained on `lui t3` x 7), and the last missing neighbour-budget unit came from an append SPELLING (TEXRECT `me(CTX)->nD()` instead of `nextp()`), read off the instrumented BFS trace <a name="kit-cdxxviii-agent-c-run337"></a>
+
+_agent-c run 337, base 06fa16ab6, commit 1f88022b2 (99.109 -> 100, 1212 B). Scratch `/tmp/claude-1000/c337/`;
+tools `c337/t/cmb.py` (all subsets of a toggle list, prints the `lui reg,0x0` register string per variant),
+`grid.py` (slot x alternatives product), `cc3.py` (random climb constrained to exactly 7 `lui t3,0x0`),
+`rmap.py` (aligns target / ours by mnemonic and counts target-reg -> our-reg substitutions), `c337/11/j.py`
+(joins two `-Wo,-zdbug:5` LR tables by uopt VAR id and prints the LRs whose colour differs), `c337/11/nbr.py`
+(an LR's interference neighbours with colour / adjsave)._
+
+**1. Score the SPLIT directly, not fuzzy.** The kit-CDXXVI target pattern is "&D lda materialised exactly seven
+times, all in t3, no `lui s0` re-form". A one-line objective -- the concatenated `lui (\w+),0x0` registers of the
+function (`t3t3t3t3t3t3t3` = split in t3; `t3t3t3t3a1a1a1` = committed pc LR in a1; `t3t3t3t3t8` = remainder in the
+yl >= 0 arm) -- classifies every variant without reading the allocator. Fuzzy on the split bodies sits 6 points
+below the committed body until the very last step, so a fuzzy climb never finds it.
+
+**2. Full factorial from the committed body (1024 variants, 6 commands).** Ten toggles = the differences between
+the committed 99.109 body and the run-334 split body (xh I4, s-term MAX carrier, s-term trailing `(int)spr` read,
+t-term xq-zero + `_g` fold form, yl >= 0 `0 * pc + 0 * _g` fold, `if (spr) {}` before RDPHALF_2, MS form, the
+RDPHALF_2 receiver through pc vs CTX, the dtdy `0 * &D` fold, pc decl). Exactly two subsets split: {s-term MAX
+carrier off, t-term simplified, yl >= 0 folds off, spr test off, dtdy fold off} (+/- xh I4). The trailing s-term
+read and the pc receiver do NOT block the split (kit CDXXVI's "trigger" was body-specific). Then a slot grid over
+the two MAX spellings (10 x 10) kept the split for 64 of 100 and showed the t-term spellings are all CANONICALISED
+to one code (any zero-first / copy form without a live-variable fold gives identical bytes).
+
+**3. Fold survival rule.** In the t-term `xq = I(0 + dtdy * 0 + 0 * V)`, the fold changes code only when V is a
+variable LIVE in that region (`_g` packet, pc, x, y); folds of w / h (memory homes), spr (dead there), x0, `v - v`,
+`v ^ v`, `v & 0`, `(int)(_g - _g)`, `(char *)_g - (char *)_g` are all removed before LR construction (identical
+bytes), and `(int)arg0` keeps arg0 alive (spill + reload, 1212 B but 92.0). `0 * (_g != 0)` / `0 * !_g` act like
+`0 * (int)_g` (the `ucvtl` of the pointer is not what costs the split).
+
+**4. Colour diffs by uopt VAR id.** zdbug:5 LR ids are renumbered between bodies, but the VAR ids (`{1491|0}` =
+the M-76 frame var) are stable, so `j.py com_u.txt new_u.txt` lists exactly which source values changed colour.
+On the split body: the M-76 var had adjsave 1.0 vs 0.8 (one block fewer: the climb had dropped the I2 `if (0)`
+block on yh -- restore it), and the s-term `>> 7` value (var 937) had 1.5 vs 3.0: in 329C's spelling
+`((spr = (Spr *)(int)MAX(V, 0)), (int)spr)` V is used twice in the compare block, which puts it in a0 before the
+(s16)yl LR and cascades (a0 / a1 / a2 / a3 / t1 all as the target). That s-term form alone: 97.013 / 1200, but
+the lda remainder re-forms in t6 in the yl >= 0 arm.
+
+**5. The last unit of the split budget.** Instrumented (`c334/t/adj.sh`) on that body: lda save 6 = cost 6 -> split
+piece BFS with colours-left 13 (limit 26) accepts 47 / 37 / 42 and REJECTS block 48 (the yl >= 0 arm, s6 1 at
+lr36 26): ONE neighbour too many. The append-spelling grid (texture x TEXRECT x RDPHALF_1 x RDPHALF_2 receiver,
+128) found it at once: TEXRECT `me(CTX)->nD()` (`int n = dl->n++`) instead of `nextp()` (`dl->n = n + 1`): every
+instruction word identical to the target (run 333 had moved TEXRECT to nextp() to free a0 for (s16)xh; with the
+329C s-term form that is no longer needed, and nextp()'s extra n LR is the neighbour). Landed as the 329C recipe:
+donor `gui_uso_ncc_2DE0.cpp` over an empty placeholder in both trees, NM donor block deleted, no rodata, jal relocs
+as 329C. Lesson: when the instrumented trace says "N neighbours short", grid the cheap structural spellings
+(append forms, receivers) on the split body before looking for new phantoms -- each spelling owns 0-2 LRs.
+
+## kit CDXXIX (agent-g 2026-11-11, run 336): an inline's LOCAL takes a fresh edg pool word per expansion site, its PARAMETERS reuse words -- trading addF()'s `Gfx4B *g` local for a `put4B(Gfx4B *g, hi, lo)` helper frees the words a named per-site count (`int n = gfx->n; gfx->n = n + 1;`) needs, so post0b 4BAF4's ctx packets get their own count LRs at the same 0xF0 frame (99.409 -> 99.444); then a random round (B3 receiver depth 5 -> 2 + the final packet's BB split dropped, 99.480) and a per-site append-form grid (first packet back on the pool-count addO, 99.515) <a name="kit-cdxxix-agent-g-run336"></a>
+
+_agent-g run 336, base 06fa16ab6. Three NM gains on post0b 4BAF4 (2c143ee6d, 47e4187c7, 6a091a664; 1692 B
+throughout). Scratch `/tmp/claude-1000/g336/` (1 = 4BAF4, 2 = 4B620, 3 = bootup E68, 5 / 6 = 48AEC / 42938); tools
+in `g336/t/`: run-335 `vd.py` (plus `vd2.py`: `MANG` / `LFN` for mangled ctor / method names and `.c` bases through
+the dump `cc`), `pool.py DUMPDIR FN [MAXOFF]` (each `isvar M` pool / home word of the `-Wo,-zdbug:5` listing with
+its LR colour, priority and blocks -- reads the word partition directly), `part.py` (per variant: which pool LRs
+the ctx-packet blocks share with expression-packet blocks)._
+
+**1. Where edg puts a temp.** Over the 4BAF4 sweeps (`pool.py` on ~900 dumps): (a) parameter temps of an inline
+(`this`, hi, lo, me() / idv() arguments) come from a pool that is reused statement by statement -- the same word
+serves the same "slot" in every packet, which is what makes one uopt LR span unrelated packets (kit CDXXVII);
+(b) an inline's named LOCAL (`Gfx4B *g` in add()) is a NEW word at every expansion site and is never shared;
+(c) a count read through k nested me2() moves the gfx / count words only once k passes the deepest receiver
+chain of any other statement, and then the frame grows by the new words (all "pure" ctx-word variants of a
+153-variant hold grid were 248-288 B frames). So separating a word costs frame bytes unless another site gives
+some back.
+
+**2. The trade that keeps the frame.** `void addF(u32 hi, u32 lo) { put4B(me2(this)->nextF(), hi, lo); }` with
+`inline void put4B(Gfx4B *g, u32 hi, u32 lo) { g->w0 = hi; g->w1 = lo; }` (g is now a parameter: pooled) and
+`Gfx4B *nextF() { int n = gfx->n; gfx->n = n + 1; return &gfx->buf[n]; }` (n is a local: one private word per
+site). Frame stays 0xF0, the instruction stream is unchanged, and the three ctx-packet counts leave the expression
+packets' count word: 99.409 -> 99.444. Spellings of the same thing (`int n; gfx->n = (n = gfx->n) + 1`, u32 n,
+`gfx->buf + n`) are byte-identical; `int n = gfx->n++` and a put4B() without the me2() receiver are worse
+(98.3 / 97.5); put4B() on the expression add() too: <= 98.56.
+
+**3. Then the old spellings came back per site.** On that base a random mutation round (`mut2.py`, 200) found
+B3 receiver depth 5 -> 2 together with dropping the final packet's `if (1) {}` BB split (each alone is flat or
+lower): 99.480; a per-site grid of four append forms over the three ctx packets (63) put the FIRST packet back on
+the run-335 form (local g + count through four me2(), `addO`) with else / final on put4B + named n: 99.515.
+Re-grids on that base (first-packet nextO depth 0-7 x buf-side 0-2 x three add forms, 7-site me() depth sampling,
+200 else / final named-count x put-receiver pairs, a mutation round): flat.
+
+**4. Still open.** Residual = ctx a2 (target a3: 16 clip / reload lines), the ctx counts (t0 / a1 / a1, target a2),
+the B4 MAX merge / inner temps (a1 / v1, target t0 / a2) and the B3 packet pointer (t0, target a2). The target's
+a2 users (C0 in the clip, the ctx counts, the B4 inner MAX temp, the B3 packet pointer) and its t0 users (C4, the
+first packet pointer, the B4 merge) look like two shared LRs. Clip operands wrapped in idv() DO join pool words
+(C0 through three idv(): its first test lands in the receiver word -136, its second in the B4 MAX word), so the
+"one pool word per register family" reading is testable, but no grid of C0 / C4 / ext wraps (96, plus 108 on the
+second basin) moved fuzzy up. Negative: the receiver-across-call second basin (`recv->add(0x06000000, call(...))`,
+ctx dropped, `ctx = 0;` dead store keeps the home) 98.24; a function-level count variable (frame 232; with
+dead-stored pads 240 but 98.05); expression packets through statement-level `ctx = ...; ctx->add()` <= 99.39; the
+`if (h) {}` / else-arm `if (self) {}` ctx-priority levers, `if (n) {}` in nextF (adds BBs, 97.7), BB splits between
+the first packet and 0xEE (96.9): all flat or worse.
+
+**4b. The ctx a2 / a3 swap IS reachable (scratch `g336/1/c2.cpp`, 99.385, not kept).** The first packet through a
+named count with a folded use in the store (`int n = gfx->n; gfx->n = n + 1 + 0 * n; return &gfx->buf[n];`, put4B
+receiver me2(this)) plus `if (h) {}` before the `& 2` test: the count LR rises 3.0 -> 4.0, is coloured before ctx
+(3.6) and takes a2 like the target; ctx falls to a3, and with the first clip test flipped (`x > C0 + ext`) the
+whole clip block, the 0x158 reload from sp+140 and the first packet's count / packet pointer are byte-exact. What
+breaks: the expression receivers' pool word (-136) interferes with ctx in blocks 17 / 18 / 66 (the me() temp of
+the ctx loads, the 0xEE / B3 receivers), so it drops from a3 to t0 (23 + 14 lines). Since the target has BOTH in
+a3, the receivers and ctx must not overlap there; ctx loads at me() depth 0 (27 x 4 grid), a mutation round and
+the receiver-across-call forms (120, <= 97.87) did not separate them. Note why ctx took a2 with v0 / a0 free: it
+is live across the dlist call (spilled to sp+140), so the call's v0 / a0 are excluded -- the colour order is not
+"lowest free".
+
+**5. bootup E68 (98.650): the target's shape is load + copy in BOTH phases.** Target phase 2: `lw t0,24(t0)` ...
+`or v0,t0,zero` (the m variable, v0); phase 3: `lw t0,24(t0)` ... `or s1,t0,zero` (m again, s1, it crosses the
+phase-3 calls); the first append of each phase uses the expression register t0 directly (phase 3's sits in the
+`blezl` delay slot that skips phase 2). Ours has the same load + copy shape in both phases but ONE m LR (s0) across
+them. Volatile views of the MGR word (`MgrE68 * volatile *`, a volatile s32 view, a volatile char base) in phase 2,
+phase 3 or both kill the copy instead (the load goes straight into s0) and free an s-register for self: 3012 B /
+89.9-91.9; a const view, `&E68_MGR[0]`, chained stores into head / vp, other folded operands (arg2 / arg4 / k / cfg /
+self / tlut) and dead stores between the phases (`m = 0;`, `m = m;`, ...) are byte-identical; a block-scoped m for
+either or both phases is 88.4 (frame +8, self in s1 -- the block variable still takes a home), and code-free
+`if (m) {}` tests in phase 3 on top (150) <= 91.6. The missing piece is an m whose phase-3 LR outranks self
+without the phase-2 LR joining it.
+
+**6. Item-2 near-misses checked for the pool-word lever.** 4B620 (99.725): append 1-2 forms (addG / addGN / addGI x
+addOK / addO / addIK / addE / add x me() depth 0-2, 134) flat; free-inline named-count / put4B forms for appends
+1-2 (144) <= 99.62 (free inlines lose to the members even in the identity form). 3B9C0 (99.211) is a ugen
+t8 / t9 ring + FP register residual, 48AEC (97.726) is the matrix concat's ugen t-temps, 42938 (98.856) is the
+&D lda colours (t2 / t0 vs t4 / t3): no edg pool word involved, so the lever does not apply.
+
+**6. Negatives after the exact (item 2, same run).** game_uso 3558 (93.853): the target's early vb loads + per-row
+`add.s` (vb.x after row 0, vb.y after row 1, ...) with the vb stores late are NOT reached by statement order: all 190
+topological orders of {rows, vb adds, stage stores} (`c337/14/p.py`) give 93.853 at best (the as1 order is the
+same), the fully interleaved order spills (87.06 / 1024 B), row inputs through `float vx = v.x ...` locals drop the
+40 / 44 pool shuffle (<= 85.4 / 972 B); vb preloads into named floats 87-88.7 (+28-36 B, as kit CDXXVI); code-free
+`if (vb.x) {}` / `Vec3 &b = vb` before the block: flat or lower. post0b 36694 (96.079): the target copies the sub
+result through a SECOND V3 pool word (v1 = sp+140) where ours reuses the product's (v0 = sp+188). Reached two ways,
+both wrong elsewhere: (a) the product assigned inside the binding's full expression, `V3 a; ... const V3 &t =
+(a = n * dot, p - a)` -- pool B appears, a stays at M-12, frame 240, but the n loads CSE across the comma (two
+`lwc1` reloads gone, 704 B, 90.10) and t binds at sp+184 instead of the target's sp+92; (b) the subtraction through
+an inline wrapper `V3 sub1(const V3 &, const V3 &) { return p - a; }` -- pool B = the wrapper's return temp, but
+then copied AGAIN through pool A (three copies, 732 B, 91.19), with every binding / F2 placement (11 forms). A
+different 12-byte return type for operator- (P3, a W3 struct / subclass, `const V3`) does not change the pool
+word (by size, as kit CDXXVII). So the target's operator- result is a fresh pool word in a SEPARATE full
+expression whose copy is the binding's only copy -- still open.
+
+**7. 3558's first-block v0 / v1 (lead).** The target holds `s0->b0` in v0 for BOTH the vb getPos and the matrix
+block; ours gives the getPos `this` v1 because that `this` is the 4-byte edg POOL word M-96 (uopt var 1171), one LR
+reused by several later expressions (kit CDXXVII), and it shares basic block 1 (`if (1) {}` .. matrix block, no
+branch) with the named matrix pointer `m` (var 787, adjsave 10 -> v0). Writing the matrix block as an inline M4
+member (`void xf(Vec3 &v, Vec3 &acc) const` with the three rows and the stage / acc stores, called
+`s0->b0->mtx.xf(stage, vb)`) merges `m` into the same pool `this` word: the getPos pointer takes v0 like the target
+(first 25 instructions identical), but the frame loses the two block homes (248 B; restored by
+`{ volatile int p1, p2; ... }` around the call) and the vb early loads are still missing (93.65 with
+`me(s0)->b0->mtx.getPos(vb)`, base 93.85); 2 x 190 climb on the xf body (add order, `acc.x = acc.x + x`, header
+splitters): flat. Scratch `c337/14/pe0.cpp`.
