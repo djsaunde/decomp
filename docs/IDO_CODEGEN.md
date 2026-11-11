@@ -14786,6 +14786,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CDXXII (agent-g 2026-11-11, run 329): **structurally-right bases re-coloured: post0b 4BAF4's ctx-shared half-extent body (the target's ext / ctx register pairing) climbs 96.96 -> 99.007 = committed via random code-free tests, a kit-CDXII live call result held in an EXISTING variable (`if ((r = (u32)f(..)) == 0)` + `if (r) {}`: no new home, x / y leave v0 like the target) and clip-test operand order; left: the target colours the 0xC0 bound before ctx; edg hands out frame words in SOURCE order (function-scope named, then per-statement pool temps and each later block's named locals as met: a block-scoped dead int lands BELOW an earlier temp), which locates 4FD00's 16-byte gap (52 / 0 pool bytes before / after the V3 temp vs the target's 36 / 16) and 48AEC's if-arm words (an n-free open-coded push gives the target's two words between cmd and g, but changes code)**](#kit-cdxxii-agent-g-run329) -- _No report.json gain, no commit; 4BAF4 / 48AEC / 4FD00 / 42938 / 3B9C0 / 4B620 negatives, ~3300 variants; new scratch tools mdl.py (.mdebug homes), rt.py / climb.sh (random test hill-climb), spmap.py._
 - [kit CDXXIII (agent-c 2026-11-11, run 331): **aim with the as0 + as1 oracle: read the target's ugen shape from a hand-edited `.s`, then spell it -- gui 2DE0's t-term MAX as zero-then-copy through xq (`((xq = 0), (v > 0 ? (xq = v) : xq))`) gives 98.399 -> 98.960 at 1212 B; the oracle then shows the body equals the target up to three uopt colours (pc t3, t-term a1, (s16)xh a0); a forbidden register with no code in the object is a phantom LR of a copy-propagated named local (2DE0's TEXRECT `next()` n holds a0)**](#kit-cdxxiii-agent-c-run331) -- _fd8f407ba; 2DE0 / 3558 / 36694 negatives, ~2400 variants._
 - [kit CDXXIV (agent-g 2026-11-11, run 332): **a target value in a uopt colour (v0..t5) where ours has a ugen temp (t6..t9) is a missing NAMED carrier: post0b 4BAF4's else-arm spr->dl64 through d like the first packet's 0xCC pointer (+ ring lever re-tuned to one `& 8`) 99.007 -> 99.137, then me() receiver depths re-gridded on the new base -> 99.291; the C0 / ctx swap is a four-LR priority ORDER (count pool slot > ctx > g), not a tie (ctx 3.6 vs C0 1.5)**](#kit-cdxxiv-agent-g-run332) -- _7f5fb4c85, 645f1e396, 2872f8eae, 01b42dbd0; split / carrier / addA priority probes, ~800 variants; tscan.py scanner._
+- [kit CDXXXII (agent-c 2026-11-11, run 340): **a code-free `if (1) {}` right before an inline operator's `return` ends a uopt promotion region inside the operator: game_uso 3558's promoted vb is written back before the r -> return-temp copy like the target; the FP temp FIFO start depends on the WHOLE function (truncation changes it, a preceding function does not), so after a structural change re-sweep operand orders everywhere (z row + w.len2() back to x / y / z); the last colour: two member calls on one object get one uopt colour when the pointer is ONE named variable reassigned before the second call (`(m = &s0->b0->mtx)->getPos(vb); ... m = &s0->b0->mtx;`), with an inner block after the intervening statements to keep the frame homes in order and a me() layer giving the ctx pool word its head live range; 36694 by-value tail inline with px / py / pz as its locals = frame 240 + every low slot but a double `0 < l` test**](#kit-cdxxxii-agent-c-run340) -- _game_uso 3558 NM 93.853 -> 95.786 -> 97.063 -> 99.881 -> EXACT (08e0a83a1, 67db206bc, 638df3279, 987ecb1b2); ~4500 variants._
 - [kit CDXXXI (agent-g 2026-11-11, run 339): **uopt interference is per BLOCK: 4BAF4's ctx and receiver word become block-disjoint with a split before 0xEE + depth-0 ctx loads, but the 0xEE dl head (a1) then leaves the first-packet block and the count / ctx fall to a1 / a2; extra inline parameters count only as me() depth; 42938's guard lda piece needs `2 x cla < lr36 + s6` at the scissor block (const phantoms move it, never to t0 / t2), function-local statics = the flag guards byte-for-byte; 48AEC reaches the 0x160 frame via inline params (97.12)**](#kit-cdxxxi-agent-g-run339) -- _no gain; ~2300 variants; tools g339/t/vr.py (SIGF signature runner), rsig.py._
 - [kit CDXXX (agent-c 2026-11-11, run 338): **a class-typed BY-VALUE inline parameter is allocated AFTER its argument's temps (below them), reference / pointer parameters BEFORE (above the pool): post0b 36694's sp+92 copy is such a parameter -- `get3((a = n * (F2(0.0f), dd), F2(0.0f), p - a), px, py, pz)` with `f32 dd = <dot>; V3 a;` lands every slot from 188 down on the target's, but the reference words + dd cost 16 B of frame and make px / py / pz memory; a named dot declared before `a` keeps the n reloads in comma forms; E2D0 / 4FD00 / 3558 subset grids flat**](#kit-cdxxx-agent-c-run338) -- _no gain; ~1300 variants; tool c338/t/cmb.py (subsets / VARS + SIGF structural signature)._
 - [kit CDXXIX (agent-g 2026-11-11, run 336): **an inline's LOCAL is a fresh edg pool word per expansion site, its PARAMETERS reuse pooled words: trade addF()'s `Gfx4B *g` local for a `put4B(g, hi, lo)` helper and spend the freed words on a named per-site count (frame unchanged), then re-grid the old append spellings per site; E68's target is load + copy in BOTH phases with two m LRs (volatile views kill the copy instead); 4B620 / 3B9C0 / 48AEC / 42938 residuals are not pool words**](#kit-cdxxix-agent-g-run336) -- _2c143ee6d (99.409 -> 99.444), 47e4187c7 (99.480: B3 depth 2 + final BB split dropped), 6a091a664 (99.515: first packet back on addO); ~2400 variants; tools g336/t/pool.py, part.py, vd2.py._
@@ -62614,3 +62615,95 @@ of those two packets (nC / nA / immI / omI) re-schedule the head (74-77), and nD
 keeps the schedule but not the colours (98.62-98.66).
 4BAF4's four B4 MAX / MIN clamps in four value-equal compare spellings each (`E <= 0 ? 0 : E`, `0 < E ? E : 0`, ...,
 200 on the ctx basin, 200 on the committed body): byte-identical (canonicalised before LR construction).
+
+## kit CDXXXII (agent-c 2026-11-11, run 340): a code-free BB split INSIDE an inline operator, right before its `return`, ends a uopt promotion region at the operator's body -- game_uso 3558's promoted vb.x / y / z are written back before the r -> return-temp copy like the target (93.85 -> 95.79); once the region changes, RE-SWEEP operand orders: the FP temp FIFO of the WHOLE function is re-phased by later statements (the z row and w.len2() back to natural x / y / z order: 95.79 -> 97.06 -> 99.88); the last colour (getPos this v1, target v0) falls to ONE reassigned `M4 *m` for getPos and the rows plus an inner block: EXACT (987ecb1b2) <a name="kit-cdxxxii-agent-c-run340"></a>
+
+_agent-c run 340, base 452e21e11. game_uso 3558 NM 93.853 -> 95.786 (08e0a83a1) -> 97.063 (67db206bc) -> 99.881
+(638df3279), same length 1008; post0b 36694 / 4FD00 flat. ~2600 variants. Scratch `/tmp/claude-1000/c340/`
+(1-2 = 36694 tail inlines, 3 / 5 / 8-32 = 3558, 29 = 4FD00); tools `c338/t/cmb.py` + `c338/t/climb.py` with configs
+`c340/t/cfg*.py` / `c340/t/m1-m6.py` (3558 OK() = E3 vb early loads + vb write-back stores at the target's indices 83 / 84 / 94)._
+
+**1. Where a promotion region ends is a block boundary, and the boundary can sit inside an inline.** 3558's target
+loads vb.x / y / z into f14 / f16 / f18 at the xf block head and stores them back BEFORE the `e = vb - va` result is
+copied r (sp+104) -> return temp (140) -> 76 -> e (216). Kit CDXXX 5 reached the early loads with `if (1) {}`
+around `e = vb - va`, but the write-back then sat after the copy chain (the region ended at the statement's end).
+`Vec3 operator-(const Vec3 &v) const { Vec3 r; ...; r.z = c; if (1) {} return r; }` plus `if (1) {}` before
+`e = vb - va` (and no split after it), stage stores grouped `stage.x = x; stage.y = y; stage.z = z; vb.x += x; ...`:
+the write-back lands at the target's indices (83 / 84 / 94), 95.786. Split positions inside operator- (start,
+before the r stores, after the last sub, before return) x the two outer splits (20 variants): only "before return"
+gives the target's store indices at 1008 B; "before the r stores" gives them at 1024 B.
+
+**2. The FP temp FIFO's starting state depends on code AFTER it.** With vb promoted (f16 / f18 coloured, pool
+f4..f10), the very first load (`lwc1 f6,160(t8)`, va.x) took f10 / f8 in ours. A preceding dummy function in the TU
+does not change it (per-function reset), but truncating the function body at any statement does (35 cut points:
+R4/6/8 .. R10/8/6), so the start is set by the whole function's ugen allocation, not by the head. Practical
+consequence: after any structural change that alters colouring, re-run the operand-order sweep over the WHOLE
+function -- 3558's z row back to `m02 * x + m12 * y + m22 * z` (it had been fitted to the old ring as m02, m22, m12)
+gave 97.063, and a commutation climb (`c340/t/m2.py`: operator*= / += / len2 / len2x / k / k2 operand orders) found
+`len2()` in plain `x * x + y * y + z * z` order: every FP register now matches (99.881).
+
+**3. The last residual is one colour.** Ours: `lw v1,72(s0)` + getPos(vb) loads through v1 (target v0). Dump
+(`-Wo,-zdbug:5`, `c334/t/lrs.sh`): getPos's `this` is edg pool word vfp-96 (LR 6), which is also the receiver word at
+the later ctx sites (blocks 5 / 14, v1 like the target) and interferes in block 1 with the xf block's named
+`M4 *m` (vfp-120, prio 10, v0); the op= by-value temp (vfp-116 = sp+140) gets a0 because v0 / v1 are taken. Target:
+getPos this AND m in v0 in the same block (so they must be the same variable), the ctx word still v1, the 140 temp
+still a0. Probes: xf as an inline M4 member sharing getPos's `this` word (both v0 but frame 248 and the ctx word /
+140 temp re-coloured, <= 93.16 with pads / me() depths, 30 + 16 + 103 variants); one reassigned `M4 *m` used for
+both (`(m = &s0->b0->mtx)->getPos(vb); ... m = &s0->b0->mtx;`, A3: v0 / v0, frame 256, but the 140 temp moves to
+124 and the ctx word to v0, 93.15; 42 + 48 receiver / stage / me() follow-ups flat); splits after getPos kill the
+vb promotion (E0, 992-996 B); a split between the stage copy and the xf block drops 8 B of frame. Climbs (3 x 190
+unconstrained, 4 x 190 constrained on v0 / v0): 99.881 / 93.17.
+
+**4. Negatives.** 36694: a by-value tail inline `tail(V3 t, V3 &r, f32 &l)` holding px / py / pz as its LOCALS
+reaches frame 240 with A 188 / B 140 / t 92 (`c340/1/src/t1_dd_f.cpp`) -- no reference words for px / py / pz --
+but the outer function must re-test `0.0f < l` (748 B, 87.37); returning l / a flag / `goto` forms (30) never thread
+the second test (736-748 B); dd block-scoped / folded (5): <= 87.21. `if (1) {}` before the return of operator- /
+operator* / operator/ / set() / ctor (32 subsets): byte-identical or worse. 4FD00: the same inline-end splits in
+sum() / SV += / V3 set / operator* / /= / -= (37): flat at 98.645.
+
+**5. Receiver-word map for the last 3558 colour (later in run 340).** Three partial basins, each with the other
+two registers right: (a) committed: ctx word v1 + 140 temp a0, getPos this v1 (it IS the ctx word, vfp-96, and
+meets the named xf `m` (v0) in block 1); (b) xf as an inline M4 member (`s0->b0->mtx.xf(stage, *me(&vb))`) with
+`getPos(*me(&vb))` and the two named words kept as zero-initialised pads (`{ M4 *m; const Vec3 *v; m = 0; v = 0;
+xf }`, frame 256): getPos this = xf this = vfp-100 in v0 (12 uses, block 1), but the ctx word now lives only in
+blocks 5 / 14 and takes v0, the 140 temp falls to v1 and the s0 copy is delayed (93.16, `c340/38/src/c_x0_g0_c0.cpp`);
+(c) the same with `xf(stage, *me(&vb))` only: ctx v1 / 140 a0 again but getPos this back in the ctx word (99.865).
+The target needs (b)'s shared this AND a v1 holder in block 1 or in the ctx blocks that emits no code (a phantom);
+the `me(&vb)` / `me(&stage)` pool words are copy-propagated dead, not phantoms. Climbs over receiver depths of
+getPos / xf / the two ctx calls / getPos(w) / stage / v3C (7 x 190 from (b) and (c)): no variant has all three.
+
+**6. EXACT (later in run 340, 987ecb1b2).** The two halves of section 5 combine once the matrix pointer is ONE named
+variable reused for both members and the ctx pool word gets a live range in the head blocks:
+```
+if (1) {} Ctx c = { s0->node }; if (1) {}
+...
+{ Node *o = me(c.getOut()); va.x = o->pos.x; ... }      // ctx pool word live in the head
+{
+    M4 *m;
+    (m = &s0->b0->mtx)->getPos(vb);                     // getPos this := m (copy) -> v0
+    zero = 0.0f;
+    stage = s0->v68;
+    {                                                    // inner block: v / x / y / z homes after tmp 140
+        m = &s0->b0->mtx;                                // the target's s0->b0 reload, same variable
+        const Vec3 &v = stage; float x = ...; ...
+    }
+}
+if (1) {}
+e = vb - *me(&va);                                       // one pool word: op- temps at 104..112
+```
+Found by a 3 x 190 climb constrained on "b0 loads in v0, ctx reload in v1, frame 256" from the reassigned-m body
+with the inner block (`c340/50/src/v1s1.cpp`, 93.24 -> 98.29 -> 99.98 -> 100; `c340/t/m11.py`). Lessons: (1) a
+named variable REASSIGNED before its second use is one uopt variable, so two member calls on the same object
+get one colour without sharing an edg pool word; (2) declaring that variable in an outer block moves every later
+block-local home -- open an inner block after the intervening statements to restore the frame order; (3) when a
+uopt colour needs a neighbour, a me() layer on an early read can give a pool word the live range that pushes it.
+NCC donor recipe as MATCHING_WORKFLOW #game-uso-ncc-cplusplus-donor-recipe: no rodata, six named jal relocs equal
+to expected, placeholder `s0[0] = 0;` (0x8 -> 0x3F0 splice), cfe reference body kept under `#if 0`.
+
+**7. The inner-block lever on post0b 4FD00 (no gain).** Block locals are allocated at block entry, so wrapping the
+tail (`f32 p1 = ...; f32 p2 = ...; if (...) return 1; return 0;`) in an inner block moves p1 / p2 BELOW the
+set(V3 p) by-value temporary: the temp goes sp+4 -> sp+12 at frame 136, byte-identical score (98.645); one or two
+more pad words in that block reach the target's sp+20 but round the frame to 144 (98.43), and moving d1 / d2 into
+the block overshoots (sp+36). The target has two fewer pool words above the temp; sum() spellings (no me(), me()
+on the second face / verts, const member) and me() depth pairs 0-6 x 0-6 (49) with the block do not free them
+(`c340/55`-`58`). A reassigned named normal pointer for the two gn() reads (`nn = gn(); ... nn = gn();`, 75): 980 B.
