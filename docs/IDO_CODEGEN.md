@@ -14784,6 +14784,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CDXX (agent-c 2026-11-11, run 328): **a switch's false exits written as `break`s reach the switch join directly, so uopt's PRE puts the post-switch reload only on the store / call edges (76F0's `beqzl v1; li at,2` exits); a code-free use of the selector field after a long arm (`if (self->unk4DC) {}`) keeps its load web live and brings back the target's `move v0,v1` selector copy; `if (X) {}` sweeps over always-defined X (new cft.py) lift 116C / 8CD8; the 4-entry tables are decoded (labels exactly 0..3 / 1..4) -- no source fix exists, the phantom label stays**](#kit-cdxx-agent-c-run328) -- _game_libs 76F0 NM 97.90 -> 99.00 (6978defe6), titproc 116C 99.44 -> 99.51 (c3b6c32b3), game_uso 8CD8 90.41 -> 90.43 (6fa75cfbc), same lengths; 396FC `--vars --keep-float` sweep, 1ADC, E2D0, E68 flat; ~2700 variants._
 - [kit CDXXI (agent-c 2026-11-11, run 330): **the jump-table default steal (51AD8 / 396FC) is ONE empty as1 block in front of the default: 51AD8's fold only moves a `.alias $8,$sp` directive behind case 211's closing `b`; the `.s` oracle (as0 + as1 run by hand with the C path's flags, byte-identical) shows 396FC = our code + that block; only a register-held LDA used as a memory base (or unreachable unlabelled code) emits it, so 396FC is a verified cap; ugen FP temp FIFO simulator (`ring.py`) proves E2D0's target queue unreachable from its forced dot-block order (smallest consistent LR set = 7 values); extra case labels before `default:` flip the 396FC slot only by growing the decoded 6-entry table; gui 2DE0 reaches the target length by JOINT pc folds in both inner-MAX exits and the yl >= 0 zero**](#kit-cdxxi-agent-c-run330) -- _gui 2DE0 NM 97.805 -> 98.399 (1208 -> 1212 B = target, c733a022a); no exact; ~6000 variants (most of them 2DE0 climbs) + oracle runs._
 - [kit CDXXII (agent-g 2026-11-11, run 329): **structurally-right bases re-coloured: post0b 4BAF4's ctx-shared half-extent body (the target's ext / ctx register pairing) climbs 96.96 -> 99.007 = committed via random code-free tests, a kit-CDXII live call result held in an EXISTING variable (`if ((r = (u32)f(..)) == 0)` + `if (r) {}`: no new home, x / y leave v0 like the target) and clip-test operand order; left: the target colours the 0xC0 bound before ctx; edg hands out frame words in SOURCE order (function-scope named, then per-statement pool temps and each later block's named locals as met: a block-scoped dead int lands BELOW an earlier temp), which locates 4FD00's 16-byte gap (52 / 0 pool bytes before / after the V3 temp vs the target's 36 / 16) and 48AEC's if-arm words (an n-free open-coded push gives the target's two words between cmd and g, but changes code)**](#kit-cdxxii-agent-g-run329) -- _No report.json gain, no commit; 4BAF4 / 48AEC / 4FD00 / 42938 / 3B9C0 / 4B620 negatives, ~3300 variants; new scratch tools mdl.py (.mdebug homes), rt.py / climb.sh (random test hill-climb), spmap.py._
+- [kit CDXXIII (agent-c 2026-11-11, run 331): **aim with the as0 + as1 oracle: read the target's ugen shape from a hand-edited `.s`, then spell it -- gui 2DE0's t-term MAX as zero-then-copy through xq (`((xq = 0), (v > 0 ? (xq = v) : xq))`) gives 98.399 -> 98.960 at 1212 B; the oracle then shows the body equals the target up to three uopt colours (pc t3, t-term a1, (s16)xh a0); a forbidden register with no code in the object is a phantom LR of a copy-propagated named local (2DE0's TEXRECT `next()` n holds a0)**](#kit-cdxxiii-agent-c-run331) -- _fd8f407ba; 2DE0 / 3558 / 36694 negatives, ~2400 variants._
 - [kit CCCLXXXVI (agent-c 2026-11-05, run 305): **run a register-normalised diff before the copy lever: of five near-misses only gui 2DE0 had a target copy ours lacked; wrap the clamp's RESULT zero (`P > 0 ? P : I(0 + x * 0)`), not the compare's; partial leads for 493AC (named receiver copy + dead-stored pad), 3BE1C (hi folds / one home fewer = the inner MAXS's second edg temp), 469A8 (store / re-read forwarding; NCC port at the cfe score with four NCC-side fixes), 31A74 (in-call store frees the goto merge); jumptable default-steal cap of 396FC / 51AD8 re-confirmed (NCC emits no jumptables)**](#kit-ccclxxxvi-agent-c-run305) -- _gui 2DE0 NM 96.848 -> 96.914 (a77525f51); 469A8 cast cleanup (fd95e598b)._
 - [kit CCCLXXXIII (agent-c 2026-11-05, run 304): **the variable-reuse lever in cfe: reuse the variable for a later value the target passes in the same register, as an assignment INSIDE the call's argument list (`f(..., (v = X), ...)` keeps the argument order; a separate statement issues the load early); move a counted use from the variable the target colours later to the one it colours first; cfe zdbug:6 colours 1..12 = v0..t5, 13 = ra (t6..t9 never colours)**](#kit-ccclxxxiii-agent-c-run304) -- _post0b 469A8 NM 98.641 -> 98.786 (b21d409c0), 3B6A0 NM 96.65 -> 96.85 (0f8e9fea6); 3BE1C va / vb, 493AC p34 receiver / grid ring, 31A74 mode-1 raise, post1b 65EE4 cap re-check (still a cap) negatives._
 - [kit CCCLXXXII (agent-g 2026-11-05, run 301): **RE-GRID after every gain: swap an old zero-code lever for a new one, then re-run BB-split / one-site-wrap / pad-position sweeps on the new base; an unreferenced class-object block (`{ V3 t; }`) is a BB split**](#kit-ccclxxxii-agent-g-run301) -- _post0b 54E78 NM 99.565 -> 99.638 (c9b02204a) -> 99.819 (e4a19c2a2); register-span scan for the variable-reuse lever (rs.py); reuse / split / wrap / swap / BB-split negatives on 17 bodies._
@@ -61826,3 +61827,65 @@ float LR), one 4FD00 random-test round (150): flat.
 4BAF4 (late): on the 99.007 structural variant the climbed `if (d) {}` is stale (dropping it keeps 99.007; dropping
 `if (ctx) {}`, `if (self) {}` or the run-262 `if (1) {}` costs 0.28-0.41); `if (r) {}` at each of 15 lines and every
 pair (105) and one more random round (100) on the d-free base: flat at 99.007.
+
+## kit CDXXIII (agent-c 2026-11-11, run 331): aim with the as0 + as1 oracle -- gui 2DE0 98.399 -> 98.960 (1212 B = target) from the oracle-read ugen shape of the RDPHALF_1 t-term MAX (`r = 0; if (v > 0) r = v`, spelled with xq as the result carrier); the oracle then proves the 98.960 body IS the target up to THREE uopt colours (pc LR a1 -> t3 coalesced with the lda LR, t-term v1 -> a1, (s16)xh t2 -> a0): byte-identical after renaming them in the `.s`; uopt's dead-store "phantom" LRs (a copy-propagated named local still owns a register in its block) explain the xh colour <a name="kit-cdxxiii-agent-c-run331"></a>
+
+_agent-c run 331, base dcfd84f89. One NM gain (gui 2DE0, fd8f407ba). Scratch `/tmp/claude-1000/c331/` (1 / 4 = 2DE0 grids,
+3 = `-Wo,-zdbug:5` colouring dumps, 6 = 2DE0 `.s` oracle runs, 5 = game_uso 3558, 7 = post0b 36694, 9 = post0b 48AEC;
+tools in `c331/t/`: `climb3.py` = climb2.py with `LEN 0` = any length)._
+
+**1. Use the oracle to READ the target's ugen, then spell it.** `NCC -S` of the NM donor gives ugen's `.s` (post-uopt,
+registers assigned); hand-edit it toward the target and assemble with `c330/t/sor.sh` (as0 + as1, C-path flags). On
+2DE0's pc-less body (CTX receiver, 1196 B) inserting `la $11, D_00000000` at the yl < 0 entry and in both inner-MAX
+exits plus rewriting the MAX as `mul; sra; move $3,$0; move $5,$3; ble $2,0,L; la; move $5,$2; b J; L: la; b J`
+reproduced the target's whole yl < 0 arm. The second half is a SOURCE shape: ugen evaluates
+`((xq = 0), (v > 0 ? (xq = v) : xq))` (zero first, the result variable assigned in the true arm) as zero-then-copy, where
+`(v > 0 * (xq = 0)) ? v : xq` gives the old `move a0,zero; move v1,a0` plus a `move a1,v1` in the false exit. On the
+committed pc body: 98.399 -> 98.960 at 1212 B (xq = v1 like the target, the false-exit copy gone; the MAX-exit
+`0 * pc` folds must go, the yl >= 0 `0 * pc` and the dtdy-argument `0 * (int)&D` fold must stay; a fresh `tt` carrier
+gives 98.885 (+8 frame unless it replaces the unused `t` local); `if (pc) {}` inert).
+
+**2. 2DE0 is now three colours.** On the new body's `.s`: `la $5` (pc) -> `la $11` with the yl >= 0 `move $5,$11`
+dropped and the final receiver `0($11)`, the t-term `$3` -> `$5` at the join, and the (s16)xh LR `$10` -> `$4` in the
+TEXRECT w0 MAX: as1 output = target, every word (relocs aside). So no instruction, order or block is missing; uopt has
+to (a) give pc's LR t3 -- possible only if a1 / a2 / a3 / t0 / t1 / t2 are all forbidden when pc is coloured (no
+coalescing preference: pc and the lda LR interfere at bb level in the yl >= 0 arm where the copy sits), but pc's
+interferers carry no a1 / a3 colour and pc's priority (adjsave 2.0) puts it before a2 / t0 / t1 / t2's LRs; (b) give
+(s16)xh a0: the `-Wo,-zdbug:5` dump shows a0 is taken in that block by LR 88 = the named `n` of the TEXRECT
+`me(CTX)->next()` (`int n; n = dl->n; dl->n++; ...`), a dead copy-propagated store with NO code that still owns a0
+(adjsave 2.0, coloured first); every n-free append form (nD / nextp / `&dl->buf[dl->n++]` / += / ++ / split forms,
+24 + 31) drops 2DE0 to ~91 (n is load-bearing elsewhere), BB splits around it ~91. Lesson: a `forbidden` register
+with no visible code in the final object is a phantom LR of a copy-propagated named local -- look for one before
+hunting "pressure".
+
+**3. 2DE0 negatives (all <= 98.960 at 1212 or other lengths).** pc-less bodies with the new MAX (CTX / me(CTX) / me(me())
+receivers x yl >= 0 forms x dtdy fold x `if (spr) {}`, 36: best 97.81 at 1192, m = 291 of 303 equal lines -- the
+missing words are exactly the three lda reloads); pc-less with `0 * (int)&D` / `0 * (int)CTX` / `x * 0 * &D`-style folds
+in the arms (72 + 91: `0 * &D` is constant-folded before LR building, `0 * (int)CTX` emits a load + `addu`); pc
+routed through any subset of the six CTX reads / defined at the RDPHALF_1 read (126 + 144: the entry lda moves to t4,
+~90); pc declaration / first-use position (56: inert) and early `if (pc) {}` / `0 * pc` uses (146: copies from the lda
+LR, <= 96.6); xq comparand / true / false value spellings (200, old form: flat); 14 x 2 B()/B2()/B3() BB-split inline
+wraps over the t-term (63: inert); I4 / I5 / I6 / I7 / I8 / I / I2 named-local inline wraps on xh / yh (64) and the
+t-term (90): inert; dead stores into a new or the unused `t` local inside the arms (126): 98.885 or lower; tests of
+17 defined values around the RDPHALF_1 / RDPHALF_2 packets (153 + 66); random climbs (3 x 190 from 98.960 over 92
+fold / test / receiver mutations; 3 + 4 x 190 from the pc-less 98.086 body): flat.
+
+**4. Also flat.** post0b 36694: 96 spellings of the bound difference (`p - V3(a)`, `operator-(p, a)`, copies, by-value
+`V3 t`, pool-entry prefixes): best = base 96.079. game_uso 3558: vb init as direct field stores / mk() / getPos x add
+orders x mk()-e (56): best = base 93.853 (direct stores move every home +8, frame 264).
+
+**5. Late negatives (same run).** 2DE0 on the 98.960 body: pc type / cast forms (`unsigned` / `long` / `(char *)` casts /
+`&CTX`: identical; `char *pc` / `Ctx **pc`: propagated, 1196 B), the yl >= 0 fold as `pc & 0` / `pc - pc` / `0 & pc`
+(folded before LR building = the pc-less 1192-B shape), `pc * 0` / `(char)` / `(s16)` casts (identical); the TEXRECT
+packet hoisted into a statement `Gfx *tp = me(CTX)->next();` at six positions (18: identical -- uopt sees one block);
+`if (pc) {}` / `if (1) {}` tails after the RDPHALF_2 append (33: inert); the t-term as a separate `tt` carrier with one
+volatile pad dropped to keep frame 104 (20: = 98.960, uopt coalesces tt with xq); xq initialiser forms x carriers (40);
+the RDPHALF_1 w1 split into statements (s-term into `sv`, t-term as if / else into xq or `tv`, w1 stored last; 6 forms
+on the pc and pc-less bodies: 89.2-95.3); `Ph` / `Pq` / `Pf` multi-statement named-local inlines on w / h / fw / fh /
+dsdx / dtdy (18: 24-85, they add blocks); 5 x 190 climb over 106 mutations (folds, tests, next() forms, receivers): flat.
+post0b 48AEC: random code-free test / accessor climbs from agent-g's frame-352 `c2` body (3 x 190 over 131 mutations,
+97.665) and from the committed body (3 x 190 over 75, 97.726): flat. post0b 36694: the product bound to `const V3 &a`
+(extends its temp, so `p - a` needs a fresh entry like the target's sp+140) moves every temp but not onto the
+target's map (95.99); 64 product / binding spelling pairs: flat. game_uso 3558: 36 block layouts (row / store / add
+order, reference forms, natural z-row order): flat (93.853); the target loads vb into f14 / f16 / f18 at the block head
+and stores it after (uopt region promotion of the address-taken vb), ours keeps every vb access in memory.
