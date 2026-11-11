@@ -14780,6 +14780,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CDXVI (agent-c 2026-11-06, run 324): **as1 schedules a block in SOURCE-LINE order (the `cc -S` instruction list is identical, only `.loc` differs): to make a statement that executes first schedule after a later one, put it in the body of a one-pass `for` whose STEP holds the later statement (`for (mode = 1; mode; call(..., acc), mode = 0) { store; }` with mode == 1 known there; uopt deletes the loop) -- the call's `mfc1 a1` then heads the join block and as1 copies it into the `b` delay slot; only one if(1)-split goto block merges per function, so this is the second-site form; the line lever does not reach the 396FC / 51AD8 jump-table default steal (exact jumptable fns all reach default from 2+ places); E2D0 arg4 LR 82 has no f14 neighbour (dump), 3B9C0 num forms / 3558 accumulation orders flat**](#kit-cdxvi-agent-c-run324) -- _EXACT post 31A74 (98.121 -> 100, 564 B, 11b424123), in place, no length change._
 - [kit CDXVII (agent-g 2026-11-06, run 325): **kit CDIX's frame wall falls: an alias copy stored in an EXISTING pointer variable (dead store; re-assigned before every later read) frees its home without changing colours (call-save slot back to M-156), and a code-free BB split inside a block of int / float conversions (between 3BE1C's dx and ey) grows ugen's unaccessed area above the saves 20 -> 28 bytes (frame 240); loop LR priority fits 100 * (refs + 1) / blocks, folded `0 *` uses of an expression do not count, separate tests add blocks, but ONE test with three uses of a CSE'd load at a block end lifts it to the tie it then wins by LR order**](#kit-cdxvii-agent-g-run325) -- _EXACT post0b 3BE1C (99.995 -> 100, 1568 B, d5e8334a0), NCC donor on both build paths._
 - [kit CDXVIII (agent-c 2026-11-06, run 326): **`-Wab,-R` prints as1's list scheduler (nodes, lineno, latencies, picks); every block is scheduled twice and pass 2 pulls ONE fall-through head into the block: into a load-latency idle cycle (mgrproc 1824's `li at,1`: unreachable while the compare block is exclusive; 2E354 escapes only because its selector load is a separate join block) or into an empty branch slot (396FC's default head: decided before lines matter; a source guard keeps `sll` but costs +12 B); root ties go to the earlier ugen node and newly-ready nodes are visited first, so 65EE4's jal slot needs a1 evaluated FIRST by ugen (only a comma argument does it, via an s0 temp, +8 B); 6204's prologue carries the `{` line, so the call can only tie; the 4-entry table family is a cfe / uopt residual, not as1; a SHARED default's bound-check slot (`beqzl` copy vs fall-through `sll`) follows pass 2's code-driven worklist: in game_libs 76F0, dead stores of loaded fields into the already-used local `var_v0` (plus moving a counted fold into the call argument) flipped it to the target's `sll`, fixed the frame and the case-0 `li` pull**](#kit-cdxviii-agent-c-run326) -- _EXACT post0b 51AD8 (99.15 -> 100, 960 B, 68c18cdea: one `+ 0 * (int)(pp)` in case 211 flips the bound-check slot; 52CD4 donor recipe); game_libs 76F0 NM 95.02 -> 97.90 (136cb1109, 8aa6a9798, 2b92a17fa, 3a1d2eacf, f2830e4c6, 5dd92a45d), kernel 1ADC NM 94.32 -> 95.66 (37d739af9, val read before the flags test), same lengths; rest negative; ~2000 variants._
+- [kit CDXIX (agent-g 2026-11-06, run 327): **re-test STALE folded uses after a colour shift: in 3B9C0 the run-284 n->z fold and the run-286 num fold now stole the target's colours (num priority 30 across the inner loop, n->z 20); dropping both and adding ONE code-free `if (qa != 0.0f) {}` after the inner-loop ok store lifts the hoisted 0.0f to f14 and leaves n->z on f20 like the target; left: the target's &p is a ugen temp (uopt never makes it an LR), ours stays LR 154 even de-named; 42938 needs the ctx carrier (M-52) to lose its tie to the count carrier (M-60); 4BAF4's half-extents share ctx's register in the target (ctx carrier reproduces the pairing but colours ctx before GS)**](#kit-cdxix-agent-g-run327) -- _post0b 3B9C0 NM 99.122 -> 99.211 (d1d644f9b), same length; rest negative; ~1500 variants._
 - [kit CCCLXXXVI (agent-c 2026-11-05, run 305): **run a register-normalised diff before the copy lever: of five near-misses only gui 2DE0 had a target copy ours lacked; wrap the clamp's RESULT zero (`P > 0 ? P : I(0 + x * 0)`), not the compare's; partial leads for 493AC (named receiver copy + dead-stored pad), 3BE1C (hi folds / one home fewer = the inner MAXS's second edg temp), 469A8 (store / re-read forwarding; NCC port at the cfe score with four NCC-side fixes), 31A74 (in-call store frees the goto merge); jumptable default-steal cap of 396FC / 51AD8 re-confirmed (NCC emits no jumptables)**](#kit-ccclxxxvi-agent-c-run305) -- _gui 2DE0 NM 96.848 -> 96.914 (a77525f51); 469A8 cast cleanup (fd95e598b)._
 - [kit CCCLXXXIII (agent-c 2026-11-05, run 304): **the variable-reuse lever in cfe: reuse the variable for a later value the target passes in the same register, as an assignment INSIDE the call's argument list (`f(..., (v = X), ...)` keeps the argument order; a separate statement issues the load early); move a counted use from the variable the target colours later to the one it colours first; cfe zdbug:6 colours 1..12 = v0..t5, 13 = ra (t6..t9 never colours)**](#kit-ccclxxxiii-agent-c-run304) -- _post0b 469A8 NM 98.641 -> 98.786 (b21d409c0), 3B6A0 NM 96.65 -> 96.85 (0f8e9fea6); 3BE1C va / vb, 493AC p34 receiver / grid ring, 31A74 mode-1 raise, post1b 65EE4 cap re-check (still a cap) negatives._
 - [kit CCCLXXXII (agent-g 2026-11-05, run 301): **RE-GRID after every gain: swap an old zero-code lever for a new one, then re-run BB-split / one-site-wrap / pad-position sweeps on the new base; an unreferenced class-object block (`{ V3 t; }`) is a BB split**](#kit-ccclxxxii-agent-g-run301) -- _post0b 54E78 NM 99.565 -> 99.638 (c9b02204a) -> 99.819 (e4a19c2a2); register-span scan for the variable-reuse lever (rs.py); reuse / split / wrap / swap / BB-split negatives on 17 bodies._
@@ -61509,3 +61510,51 @@ Tools: `/tmp/claude-1000/c326/16/swp.py` (adjacent swaps) and `perm3.py` (3-stat
 `SRC FN TGT START END NAME [cc flags]`, writing a grid cfg. Flat this run (adjacent swaps + 3-windows): mgrproc 1824,
 titproc 116C, bootup E2D0 / E68, post0b 396FC / 51AD8, game_uso 8CD8 (swaps), and 76F0 / 1ADC after their gains --
 CHECK each winner for semantics by hand (the tools only skip declarations and control statements).
+
+## kit CDXIX (agent-g 2026-11-06, run 327): post0b 3B9C0 99.122 -> 99.211 -- STALE folds re-tested after a colour shift: dropping two folded counted uses (n->z in the dn test, num in the inner-loop ok store) plus ONE code-free constant test in the inner loop puts the hoisted 0.0f on f14 and n->z on f20 like the target; negatives on 42938 / 4B620 / 4BAF4 / 4FD00 / 48AEC <a name="kit-cdxix-agent-g-run327"></a>
+
+_agent-g run 327, base 6a11bb073. Commit d1d644f9b (3B9C0 NM donor only, no clip change). Scripts in
+`/tmp/claude-1000/g327/t/` (`sc.py` / `run.sh` scorer, `nd.sh` number-stripped diff, `g1..g22.py` generators, `cmp.py`
+report diff + sentinel check)._
+
+**1. 3B9C0 float colours read from zdbug:5 / 6 (FPR 24 = f0, 25 = f2, 26 = f12, 27 = f14, 28 = f16, 29 = f18, 30 = f20).**
+The target has 0.0f in f14, n->z in f20 (a short LR on a callee-saved register = every caller-saved colour already taken
+when it is coloured), num - d in f2 and num itself only a ugen temp. Ours had num in f14 (priority 30: the folded
+`0 * (int)(num)` in the inner-loop `ok = 0` store kept it live across the whole inner loop), n->z in f2 (priority 20: the
+run-284 `+ 0 * (int)(n->z)` fold in the dn test gave it a third ref) and 0.0f last (14.3) in f20. Dropping BOTH folds puts
+n->x / n->y / n->z / dn at the 15 tie (LR order: dn, n->x, n->y, n->z) and removes num's long LR; one code-free
+`if (qa != 0.0f) {}` right after the ok store (also after ey: same) raises 0.0f over the 15 group: 0.0f f14, n->x f16,
+n->y f18, n->z f20 like the target, 99.122 -> 99.211 (grid of fold drop x num-fold drop x 0.0f-test anchor x num form,
+156). Lesson: after any colour-moving change, re-test the old folded uses -- a fold that lifted an LR before can now be
+the thing that steals the target's colour.
+**2. 3B9C0 left.** (a) num as `... - tris[i].d` in one variable gets the float colours fully right (num - d in f2) but
+costs 8 frame bytes and re-forms the remap block (`beqzl`, remap reloaded): 1124 B, <= 96.2 (10 forms x 2 x 2 + 50).
+(b) Int residual: the target never makes &p an uopt LR (addiu t9,sp,184 = ugen temp feeding both qa / qb loads), so ia
+takes v1 (col 2) and remap a0 (col 3); ours keeps &p as LR 154 (v1) even with pp de-named (`(&p.x)[ia]`, uopt CSEs the
+LDA): ia a1 / remap v1. pp / sg / remap fold variants (72), three-use tests of ia / ib / remap / pp / v0[ia] / v0[ib] /
+v1[..] at 12 anchors (144), removal sweep of the 15 remaining levers (25) and zero-use-sweep L79-135 (179): flat or lower.
+**3. Negatives.** 42938: the scissor / B6 / B9 packets in bb 7 -- the target's ctx a2 / dl v0 / count v1 in every packet
+means edg's shared ctx carrier (M-52, LR 0, 12 refs, 9.0) must lose its tie to the count carrier (M-60, LR 25, 10 refs,
+7.5); per-site next / nC / nD / nA / nB (+ 0) random draws (150), folded / tested n uses inside next / nC / nD (72) and a
+removal sweep of the `+ 0` / store-order levers (63): flat at 98.856. 4BAF4: the target's half-extent reads share ctx's
+register (a3 in the clip test AND for the 0x158 context) -- assigning them into ctx (all four sites) reproduces that
+pairing but colours ctx before GS (96.96); mixed d / ctx / r / g carriers (45) and d tests / folds (29): flat at 99.007.
+4B620: addG / addOK keep-form x count-form draws (180): flat at 99.725. 4FD00: the target sets the return 0 (`or
+v0,zero,zero`) right after the second face sum (ours: after the normal loads); return forms (7), `int r` placements (60)
+and normal-read accessor depth x getter x splitter (80): flat or lower (splitters cost 24 B). 48AEC: the extra 16 frame
+bytes are not the dd / n / c2 / gp homes (alias into A / B / cmd / gctx, 44 variants: frame stays 368) WHILE i / j / k /
+cmd are declared at function scope ahead of gctx. Block-scoping them (`int i, j, k; Mtx *cmd;` inside `if (B != 0)`) puts
+gctx at frame-4 / mtx at its target offset 276 relative to the top, and THEN the inline homes do size the frame: dropping
+nextQ's dead-load dd and next()'s named n gives frame 352 = target (also 360 / 344 combos), but the inner slots sit 16
+lower than the target's (192..204 vs 208..216) and the score falls (97.726 -> 97.595: n is a codegen lever); passing n by
+reference into a dead function-scope int (alias-carrier idea) costs a pointer home (frame 376). Grid 31 x 3 layouts + 36.
+4FD00 also: the 16-byte gap is ONE 12-byte temp (ours sp+4, target sp+20; every other slot equal), not reached by dead calls
+(`if (0) f();`, removed before frame layout), `if (0) return` blocks or joining the tail onto earlier source lines (16).
+3B9C0 also: &p stays an uopt LR under every spelling (re-assigned pp, comma / nested forms, direct `(&p.x)[ia]` in the
+loop with qa / qb dropped: 1108-1112 B); the target's ring temp t9 for &p is also what shifts its t8 / t9 ring by one slot.
+42938 also: the M-52 slot in the zdbug table is edg's POOLED pointer temp (the packet macros' `_g` and the inline `this`
+share it); distinct function-scope packet pointers (31 x pad sizes) and the existing `g` (31) leave the code byte-identical.
+game_uso 3558: the target loads vb.z / vb.y / vb.x at the top of the matrix block and adds each row into vb as soon as it
+is computed (stage stores after all three rows; stage is aliased by `v`, so its stores must stay last); interleaving the
+adds that way (pre-declared or per-row x / y / z, 17) costs code (1020-1028 B, <= 87.2). zero-use-sweep on 4B620
+(L84-109, 36) and 4BAF4 (L60-148, 199): flat.
