@@ -14786,6 +14786,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CDXXII (agent-g 2026-11-11, run 329): **structurally-right bases re-coloured: post0b 4BAF4's ctx-shared half-extent body (the target's ext / ctx register pairing) climbs 96.96 -> 99.007 = committed via random code-free tests, a kit-CDXII live call result held in an EXISTING variable (`if ((r = (u32)f(..)) == 0)` + `if (r) {}`: no new home, x / y leave v0 like the target) and clip-test operand order; left: the target colours the 0xC0 bound before ctx; edg hands out frame words in SOURCE order (function-scope named, then per-statement pool temps and each later block's named locals as met: a block-scoped dead int lands BELOW an earlier temp), which locates 4FD00's 16-byte gap (52 / 0 pool bytes before / after the V3 temp vs the target's 36 / 16) and 48AEC's if-arm words (an n-free open-coded push gives the target's two words between cmd and g, but changes code)**](#kit-cdxxii-agent-g-run329) -- _No report.json gain, no commit; 4BAF4 / 48AEC / 4FD00 / 42938 / 3B9C0 / 4B620 negatives, ~3300 variants; new scratch tools mdl.py (.mdebug homes), rt.py / climb.sh (random test hill-climb), spmap.py._
 - [kit CDXXIII (agent-c 2026-11-11, run 331): **aim with the as0 + as1 oracle: read the target's ugen shape from a hand-edited `.s`, then spell it -- gui 2DE0's t-term MAX as zero-then-copy through xq (`((xq = 0), (v > 0 ? (xq = v) : xq))`) gives 98.399 -> 98.960 at 1212 B; the oracle then shows the body equals the target up to three uopt colours (pc t3, t-term a1, (s16)xh a0); a forbidden register with no code in the object is a phantom LR of a copy-propagated named local (2DE0's TEXRECT `next()` n holds a0)**](#kit-cdxxiii-agent-c-run331) -- _fd8f407ba; 2DE0 / 3558 / 36694 negatives, ~2400 variants._
 - [kit CDXXIV (agent-g 2026-11-11, run 332): **a target value in a uopt colour (v0..t5) where ours has a ugen temp (t6..t9) is a missing NAMED carrier: post0b 4BAF4's else-arm spr->dl64 through d like the first packet's 0xCC pointer (+ ring lever re-tuned to one `& 8`) 99.007 -> 99.137, then me() receiver depths re-gridded on the new base -> 99.291; the C0 / ctx swap is a four-LR priority ORDER (count pool slot > ctx > g), not a tie (ctx 3.6 vs C0 1.5)**](#kit-cdxxiv-agent-g-run332) -- _7f5fb4c85, 645f1e396, 2872f8eae, 01b42dbd0; split / carrier / addA priority probes, ~800 variants; tscan.py scanner._
+- [kit CDXXXIV (agent-c 2026-11-11, run 342): **the "later code re-phases the FP FIFO" lever (kit CDXXXII) does not generalise: bootup E2D0's post-call block is FIFO-infeasible from all 720 entry queues and every ugen order (0x9F8 load and arg4 both f16 with only the 1.0 pop between needs a two-register free queue), so no float order up- or downstream can fix it; E68 / 4FD00 have no FP residual; 36694 term order flat on both the 712 B and the by-value-tail bodies, and its test-block residual is that our l is never coloured (adjsave 0, target l = f14, zero = f0); 4FD00: inline LOCALS land below the `mid.set(a)` by-value parameter (one fresh word per site) and a void `SV::add` in the second face sum frees 8 bytes -- param 20 reached but at frame 144**](#kit-cdxxxiv-agent-c-run342) -- _no gain; ~1700 variants; tools c342/run.py, c342/9/sim.py + bf*.py, c342/26/md.py._
+- [kit CDXXXIII (agent-g 2026-11-11, run 341): **per-region signature cross-basin factorial on post0b 4BAF4 (~8400 subsets of 17 committed <-> bd5 edits): only two basins -- "texr exact / clip 8+" (receivers via me(), ctx a2) and "clip exact / texr 12+" (receivers assigned to ctx) -- and no body takes both; the committed first-packet count is the top-priority LR (8.0 = 24 / 3 blocks, v1) ahead of the 0xEE head (5.0, a1) and ctx (4.5), and no count spelling (by-value param, named cn, int &n, cnt(), inline-internal split) changes its span; lead: the TEXRECT MAX clamps written into ctx (`E > 0 ? (ctx = (Ctx4B *)(int)E) : (ctx = 0)`) take the target's a3 in the clip basin (texr 17 -> 11, 99.303 -> 99.374); 42938's committed vs nD is one edit with a superset of mismatches (no second basin), fixing packages conflict on the same source lines**](#kit-cdxxxiii-agent-g-run341) -- _no gain; ~9900 variants; tools g341/t/reg.py, en.py, agg.py, cl.py, pk42.py._
 - [kit CDXXXII (agent-c 2026-11-11, run 340): **a code-free `if (1) {}` right before an inline operator's `return` ends a uopt promotion region inside the operator: game_uso 3558's promoted vb is written back before the r -> return-temp copy like the target; the FP temp FIFO start depends on the WHOLE function (truncation changes it, a preceding function does not), so after a structural change re-sweep operand orders everywhere (z row + w.len2() back to x / y / z); the last colour: two member calls on one object get one uopt colour when the pointer is ONE named variable reassigned before the second call (`(m = &s0->b0->mtx)->getPos(vb); ... m = &s0->b0->mtx;`), with an inner block after the intervening statements to keep the frame homes in order and a me() layer giving the ctx pool word its head live range; 36694 by-value tail inline with px / py / pz as its locals = frame 240 + every low slot but a double `0 < l` test**](#kit-cdxxxii-agent-c-run340) -- _game_uso 3558 NM 93.853 -> 95.786 -> 97.063 -> 99.881 -> EXACT (08e0a83a1, 67db206bc, 638df3279, 987ecb1b2); ~4500 variants._
 - [kit CDXXXI (agent-g 2026-11-11, run 339): **uopt interference is per BLOCK: 4BAF4's ctx and receiver word become block-disjoint with a split before 0xEE + depth-0 ctx loads, but the 0xEE dl head (a1) then leaves the first-packet block and the count / ctx fall to a1 / a2; extra inline parameters count only as me() depth; 42938's guard lda piece needs `2 x cla < lr36 + s6` at the scissor block (const phantoms move it, never to t0 / t2), function-local statics = the flag guards byte-for-byte; 48AEC reaches the 0x160 frame via inline params (97.12)**](#kit-cdxxxi-agent-g-run339) -- _no gain; ~2300 variants; tools g339/t/vr.py (SIGF signature runner), rsig.py._
 - [kit CDXXX (agent-c 2026-11-11, run 338): **a class-typed BY-VALUE inline parameter is allocated AFTER its argument's temps (below them), reference / pointer parameters BEFORE (above the pool): post0b 36694's sp+92 copy is such a parameter -- `get3((a = n * (F2(0.0f), dd), F2(0.0f), p - a), px, py, pz)` with `f32 dd = <dot>; V3 a;` lands every slot from 188 down on the target's, but the reference words + dd cost 16 B of frame and make px / py / pz memory; a named dot declared before `a` keeps the n reloads in comma forms; E2D0 / 4FD00 / 3558 subset grids flat**](#kit-cdxxx-agent-c-run338) -- _no gain; ~1300 variants; tool c338/t/cmb.py (subsets / VARS + SIGF structural signature)._
@@ -62707,3 +62709,183 @@ more pad words in that block reach the target's sp+20 but round the frame to 144
 the block overshoots (sp+36). The target has two fewer pool words above the temp; sum() spellings (no me(), me()
 on the second face / verts, const member) and me() depth pairs 0-6 x 0-6 (49) with the block do not free them
 (`c340/55`-`58`). A reassigned named normal pointer for the two gn() reads (`nn = gn(); ... nn = gn();`, 75): 980 B.
+
+## kit CDXXXIII (agent-g 2026-11-11, run 341): post0b 4BAF4's three "basins" are TWO, and they do not combine -- a per-region signature over ~8400 cross-basin subsets (committed vs bd5, both directions) splits every body into "texr exact, clip 8+" (receivers through me(), named ctx in a2) or "clip exact, texr 12+" (receivers assigned to ctx); the dump says why: in the committed body the first packet's count is the TOP-priority LR (8.0 = 24 / 3 blocks, v1) ahead of the 0xEE dl head (5.0, a1) and ctx (4.5, a2); 42938's committed vs `nD` is not a second basin (one edit, strict superset of mismatches) <a name="kit-cdxxxiii-agent-g-run341"></a>
+
+_agent-g run 341, base 452e21e11. No report.json gain, no commit (4BAF4 99.515, 42938 98.856 unchanged); ~9900
+variants. Scratch `/tmp/claude-1000/g341/` (1 = bases, a1 / b / c = 4BAF4 subset runs, k = slot climber, 2 / x1 / x2 =
+42938); tools `g341/t/reg.py` (per-region mismatch signature for 4BAF4: pre / clip / first / ee / ifarm / else /
+texr / b4 / b3 / final, target-line ranges in the file), `en.py` (toggle-subset runner with that signature, OFF / N
+chunking), `agg.py` (per-region minima + pareto queries over all chunks), `cl.py` (slot-template climber / grid on
+the B2 base: 17 slots = receiver depth or `(ctx = ..)` per site, append form per ctx packet, code-free tests),
+`files.py` (score a directory), `pk42.py` (42938 package combiner)._
+
+**1. Region signature, 4BAF4.** Equal-length bodies compared line by line against the target dis, mismatches
+counted per region. committed `[pre 1, clip 8, first 6, ee 0, ifarm 0, else 6, texr 0, b4 11, b3 3, final 6]`; bd5
+`[1, 0, 0, 0, 0, 8, 17, 22, 3, 3]`; c2 `[1, 0, 5, 3, 0, 5, 12, 19, 3, 5]` (c2 = committed + clip operand order + first
+packet addG + `if (h) {}`, so it is not a third basin). The `pre` line is the D_4BAF4_cam reloc addend (noise).
+
+**2. Cross-basin factorial (flat).** 17 atomic edits committed -> bd5 (nextO body, clip order, first ctx load depth,
+0xEE `(ctx = ..)`, `if (h) {}`, if-arm `if (ctx) {}` / `ctx =` argument, else `if (ctx) {}` / depth / addG, `if (self)
+{}`, TEXRECT / B4 / B3 `(ctx = ..)`, final load depth, final `if (ctx) {}`, final add()). Singles + leave-one-outs
+(36), then the full 2^12 over the 12 active edits with the other five at committed values (4096), then 2^11 from
+bd5 with the five at bd5 values (2048): texr = 0 occurs only in 12 bodies, all with clip >= 8 and b4 >= 11; clip = 0
+bodies have texr >= 12. First = 0 needs the five "neutral" edits together (only 8 of 2048). Best clip-0 body:
+bd5 with else addF, TEXRECT / B4 at me() depth 3, final addF = `[1,0,5,5,0,3,12,16,8,3]` 99.326 (< 99.515).
+
+**3. Probes on top (all flat or worse).** Committed basin: per-site append forms for else / B3 / final (7^3: add,
+addF, addG, addO, put4B(next()), `int n = gfx->n++` + put4B, put4B(me2(this)->next())) never move clip / first / b4;
+`if (ctx) {}` liveness factorial over 7 anchors (128) byte-identical or worse; the half-extent through d or r instead
+of ctx (36) <= 99.515; the B4 MIN arms through w / h / d reassignments (64) byte-identical (coalesced) or worse;
+a by-value count parameter `addC(int n, ..)` per ctx packet (64) <= 99.49; a named function-scope count `cn` for all
+three ctx packets: same length but frame 0xE8 (pool words gone), via `int &n` inline parameters +24 bytes (cn in
+memory), via `cn = ctx->cnt()` 99.42; a code-free split inside the count inline (52, flat -- unlike kit CDXXXII the
+split does not reach the count LR). Clip basin: `if (V) {}` at 7 anchors x 10 values (70) only lengthens or is
+neutral (the y LR does not want to span the else arm); receiver-depth grid with the ctx assignment inside or outside
+me() (100 + 192), packet getter forms nx() / nx2() / nxF() / pkR / pkR2 (64), 3 x 190 climber rounds on 17 slots:
+flat at 53. The ONLY else = 0 body: first addG + else `put4B(me2(this)->next(), ..)` (but texr 24).
+
+**4. Why (instrumented allocator, `c334/t/adj.sh`).** Committed body constrained order: count of the first packet
+(vfp-152, pri 8.0, cnt 3) -> v1; 0xEE head (vfp-156, 5.0) -> a1; ctx (vfp-100, 4.5, cnt 4) -> a2; receiver word
+(vfp-136, 3.0, cnt 9) -> a3. The target (count a2, ctx a3) needs the count coloured AFTER the a1 head and after
+some v1 holder of its block, i.e. count priority below 5.0 (span >= 5 blocks at the same save) or an earlier v1
+LR in the first-packet block; none of the count spellings above changed its span. Clip-basin order: ctx first
+(5.4, a3), which is right for clip / first, but then ctx is live through TEXRECT / B4 and their merge temps lose a3.
+
+**4b. Lead (clip basin): the TEXRECT clamp temps belong to ctx.** In the target the TEXRECT w0 xh MAX temp and the
+w1 xl MAX temp are a3 (`or a3,zero,zero` / `or a3,v0,zero` / `or a3,a0,zero`), in the SAME block as the a3 receiver
+load -- under block-level interference that is one LR, so write both clamps into ctx like the d clamps of kit
+CCCXCIV: `SHL4B(((E > 0 ? (ctx = (Ctx4B *)(int)(E)) : (ctx = (Ctx4B *)0)), (int)ctx), 12, 12)` (E =
+`(s16)((x + (int)(w * sx)) << 2)` and `(s16)(x << 2)`; ctx is dead there and re-assigned by the next receiver).
+On bd5 both clamps: texr 17 -> 11, 99.303 -> 99.374, same length (`g341/xx/bd5n110.cpp`); either alone 14; on the
+committed basin it breaks TEXRECT (0 -> 15). With first packet `put4B(me2(this)->next(), ..)` texr drops to 5 (b4
+16, first 8: 99.338). The same trick on the B4 x-half outer ternary costs a `v0 -> a3` copy (+4 bytes), ctx as the merge variable of all three arms (`((c ? (ctx = MAX) : (ctx =
+MIN)) : (ctx = 0)), (int)ctx)`) loses 4 bytes (1688), and the
+inner MAX / MIN arms through ctx or d are byte-identical (coalesced). Left on bd5n110: TEXRECT head / count / dst /
+y-reload a cyclic a1 -> v1 -> t0 -> a1 shift, the else-arm count, the B4 merges; tx / b4 receiver grid (144), append
+forms (100), `if (V) {}` anchors (71), cross toggles (256), 3 climber rounds: flat. Then the ctx packets'
+append forms re-gridded on bd5n110 with eight more `nextO` depth spellings (`&me2^a(this)->gfx->buf[me2^b(this)->gfx
+->n++]`) and five inline-body forms: the ELSE packet on addO (= the first packet's form) is register-exact when
+the FINAL packet uses a different spelling (addO with a = b = 1, or `put4B(me2(this)->next(), ..)`), and vice versa
+-- with both on addO they share the dl-head pool word (one LR, a1 in both; target a0), with different spellings the
+other packet's head / dst swap (v1 / a0, target a0 / v1): best `[1,0,0,0,0,0,11,22,3,6]` 99.444 (`g341/k/grx4/g6.cpp`,
+still < 99.515); TEXRECT / B4 packet getters (nx / nx2 / nxF / inline-body, 100) and a climber round on it: flat. coloring-solve
+on that body: the TEXRECT / B4 words are vfp-140 (head, ord 0 -> v1), vfp-148 (dst, ord 3 -> a1) and vfp-144
+(count, ord 7 -> t0); the target needs count v1 / head a1 / dst t0, i.e. the count word coloured before the head
+word. Getters with add()-like parameter lists (`nxH(u32 hi, u32 lo) { Gfx4B *g = next(); return g; }` with
+0 / x / y / iz / r / w / h arguments, nxJ, nxK; 144), 0xEE / B3 as block-local `_g` packets (25), and TEXRECT / B4 heads / counts as block-local named
+`GP4B *p` / `int n` (36; the named-count forms re-colour the prologue, pre 21-29): flat. `if (V) {}` at 8 anchors x
+8 values (64): a split right after the B4 block (`} if (1) {}` or `if (self) {}`) takes TEXRECT 11 -> 5 but B4 22 ->
+27 (99.303, `g341/n2/48.cpp`); a second split on top (64): flat.
+
+**5. 42938.** committed vs the `nD` form (v11/m99_f0nD, 98.663) differ by ONE edit (B6 packet next() -> nD()) and the
+nD mismatch lines are a strict superset of the committed ones: no second basin. Over all 1977 equal-length g339
+42938 objects only 23 committed-mismatch lines are ever fixed, by 40 distinct edit packages; packages that fix
+different lines edit the SAME source lines (B6 / B7 packets, the `if (V) {}` prefixes), so only 4 conflict-free pairs
+exist (pk42.py), best 98.817. The target holds the 0x158 ctx in ONE register (a2) across the scissor, B6 and B9
+packets (B9 has no reload of G.o->ctx), so a function-scope `Ctx *c` assigned at the scissor and used / reassigned
+per site was gridded (scissor `(c = G.o->ctx)->nC()`, B6 / B9 / B7 / BA through c or G.o->ctx, the call argument
+c / `c = G.o->ctx`, the setvp block's shadowing c kept or reassigned; 144): the scissor assignment alone is
+byte-identical to the committed body, every c use without a reload drops 8 bytes (1548) and every reassigned-c
+form is <= 98.817 (`g341/c42b`). Per-site getter forms (next / nA / nB / nC / nD) over all five packets, a random
+190 of 3125, and the same with the folded `+ 0` per site (190): <= 98.856 (`g341/f42`, `g341/g42`). Guard value spellings per guard (`rec[idx].a`, `(&rec[idx])->a`, block-local
+`Rec *rp`, `(rec + idx)->a`, `rec[idx + 0].a`, `(*(rec + idx)).a`; 190 of 216): byte-identical or <= 96.02 (`g341/h42`).
+
+## kit CDXXXIV (agent-c 2026-11-11, run 342): the kit CDXXXII "later code re-phases the FP FIFO" lever does NOT generalise to bootup E2D0 / post0b 36694 / 4FD00 / bootup E68 -- E2D0's post-call block is FIFO-infeasible from EVERY entry queue (so no upstream or downstream order can fix it), E68 / 4FD00 have no FP residual at all; 4FD00 frame-slot probes: an inline LOCAL is allocated below the `mid.set(a)` by-value parameter, a void `SV::add` in the second face sum frees 8 bytes, but no combination reaches the target's param-at-20 / frame-136 <a name="kit-cdxxxiv-agent-c-run342"></a>
+
+_agent-c run 342, base 4b28c9bd1. No gain (E2D0 99.542, E68 98.650, 36694 96.079, 4FD00 98.645). Scratch
+`/tmp/claude-1000/c342/` (2 / 3 / 8 / 20 = E2D0 sum / tail / random later-code grids, 9 = E2D0 FIFO sims `sim.py`
+(replays `cc -S` output against the f4 f6 f8 f10 f16 f18 queue), `bf.py` / `bf2.py` / `bf3.py`; 17-19 = E68 m splits;
+5 / 6 / 10 / 11 / 13-16 / 21 / 22 / 44-47 = 36694 (45 = its zdbug:5 dump); 7 / 12 / 23-43 = 4FD00; `run.py` = score a directory, cap 200, with a
+regex signature; `26/md.py` = minimal `.mdebug` local-symbol dumper for a `-g3` object, diagnosis only)._
+
+**1. bootup E2D0: later float expressions do not move arg4.** Sums in plain x + y + z / z + (y + x) / x + (y + z) /
+z + y + x on all four dots, product operand swaps, three scale-block forms (`v *= dot`, `v = v * dot`,
+`v = dot * v`), `1.0f + arg4` operand order, with / without `if (arg4) {}` (190 + 162 + 190 random): with the keep,
+arg4 is always the uopt colour f14 (1.0 in f6); without it always the ugen pops 1.0 f6 / arg4 f18 (or swapped).
+Only the known constant-LR levers (`if (dot) {}` / `if (-lim) {}` after the 0x9F8 multiply) move 1.0 to f8 / arg4
+to f16, and they strip f16 from the first half (86.76, 532 B; kit CCXCV). **Why no FP ORDER can work:** with arg4 a
+ugen temp, the target's post-call stream is `pop f16 (0x9F8 load); free f16; pop f8 (1.0); pop f16 (arg4); ...`.
+A free APPENDS, so after the 0x9F8 free f16 is at the tail; popping f8 and then f16 needs the free queue to be
+exactly [f8, f16], i.e. f4 / f6 / f10 / f18 all busy across a call. `bf2.py` replays every ugen order of the block
+(1.0 or arg4 first, either free order, sum before or after the 0x9F8 multiply) from all 720 entry queues: zero
+solutions; adding up to six zero-code pop+free rotations anywhere (`bf3.py`): still zero. So the target is not a
+re-phased FIFO: either the target's 0x9F8 load / arg4 are uopt colours with the first-half f16 values coloured too
+(kit CDXXI's e2sub2 found no such set), or the pool model is missing a rule. Do not spend more order sweeps here.
+
+**2. bootup E68 has no FP residual** (211 differing lines, none on an FP register); the m split is integer
+colouring. Two new negatives for the "two m LRs" goal: phase-2 or phase-3 m replaced by a DEAD int variable of the
+function with an explicit cast (`k2 / uls / ult / j / k / row / x / y / timg / arg2 / arg4`, 22): <= 91.49; a
+second function-scope `MgrE68 *m2` (5 declaration positions x phase 2 / 3) takes a home (frame +8, 88.40) and
+`padq[3] -> [2] / [1] / none` to give the words back stays 88.41-88.44 (self loses s1, as for agent-g's block m).
+
+**3. post0b 36694: plain term order is flat on both bodies.** On the committed 712 B body (dd 4 forms x l 4 forms
+x flip operand order x product order x `0 < l` / `l > 0`, 128): best = base 96.079. On the by-value tail inline
+(`c340/1/src/t1_dd_f.cpp`, 748 B, frame 240): 87.37 -> 87.62 (dd as z + (y + x)), still 748 B -- term order cannot
+remove the double `0.0f < l` test. Tail shapes that keep the test single (tail returning V3 with both returns 756 B /
+frame 328; writing the result into an out reference or into r 756-776 B; `if (!(0 < l)) return 0;` flag form 728 B
+but a `beqz v0`) are all <= 87. The target stores l at 212 only INSIDE the positive arm (bc1fl delay + after the
+flip) and reloads it for the sqrt call -- a by-value f32 inline parameter would explain that, but `fin(f32 s, ...)`
+/ `r.nrm(l)` / `sq(l)` forms are 712-736 B and <= 96.079. Other copy shapes for the 120 -> 140 -> 92 chain: `P3 t;
+t = p - a` (slicing copy) puts a word at 92 but at 740 B; a ctor `PV(V3 t)` / `setv(V3 t)` member puts the copy in
+the wrong place (<= 85.9); the product and difference in ONE full expression (`(a = n * dd, F2(0.0f), p - a)` bound
+to a const reference) gives the sub chain a fresh word (v1 108) but the binding lands high (180): 95.60.
+**The l colour is the real 36694 residual in the test block** (`-Wo,-zdbug:5`, `c342/45/uoptlist`; FPR 24..29 =
+f0 f2 f12 f14 f16 f18): ours colours py f2 (LR 50), px f12 (LR 77), pz f14 (LR 85), each adjsave 2.5, and l is
+NOT coloured -- LR 90 (block 9) and LR 279 (block 10) both adjsave 0 with hasstore, so the add result goes to a
+ugen temp f0 and is stored to l's home (212) at once. The target has the zero constant in f0, l COLOURED f14
+(tested from the register, stored to 212 only at the end of the flip region, reloaded for the sqrt call), and the
+three components in f16 / f18 / f2 with px spilled to sp+24 (an LR spill slot, not px's home at 208). Spellings of
+l that stay flat (all 96.079, l still uncoloured): `if (0.0f < (l = ...))`, `l = l;` in the arm, `0.0f < l + 0.0f`,
+`l > 0.0f`, a block copy `{ f32 s = l; ... sqrtf(s); }`, `(x + y) + z`; code-free FLOAT tests (`if (l) {}`, `if
+(px) {}`) are not code-free under NCC (frame 224 / 232). Components read straight from the binding (no px / py /
+pz variables, or declared inside the arm): <= 96.03. In the dump the register that matters is the SUM expression,
+not the variable: `ustr l, E` / `ules 0, E` share the uadd E (LR 96, adjsave 3.0, coloured f0 first), so l itself
+has no uses. The zero constant is LR 267 (adjsave 1.67: six uses over blocks 6 / 7 / 16 / 17 / 18, the fallback's
+`r.z = 0.0f` / `r.y = 0.0f` included) and is coloured late (f16). The target's zero in f0 and sum in f14 means the
+zero outranks the sum there (and something else holds f12 when the sum is coloured): raise the zero's priority or
+lower the sum's. A 2 x 190 climb over l spellings, zero initialisers on px / pz / l, flip operand orders, store
+orders, BB splits and F2 entries: flat at 96.079.
+
+**4. post0b 4FD00: the residual is integer + one frame slot.** FP registers already match; the differences are
+`v0` vs `t0` in the second face sum, the hoisted `move v0,zero`, and the `mid.set(a)` by-value parameter at sp+4
+(target sp+20, same frame 136). `-g3` (diagnosis only, `26/md.py`): the named locals sit at a 124 / b 112 / mid
+100 / d1 88 / d2 76 / s 68; everything below s is edg temporaries. Frame-slot facts: (a) an inline LOCAL (`f32 r`
+in `operator*`, `f32 k` in `operator/=`, `V3 *t = this` in `operator-=`) takes a fresh word per expansion site
+BELOW the parameter: one site -> param 12, three sites -> param 20, but the frame grows (+8 / +16); (b) the second
+face sum through a `void SV::add` instead of `SV &operator+=` frees 8 bytes (the first sum's or both sums' void form
+frees the same 8 only), so `sum(a) + sumv(b) + r / k locals` = param 20 at frame 144 (98.434); (c) braces around any
+one or two statement groups, sum signatures (parameter order, extra int, pointer / long / unsigned f) and inline
+locals in sum() never move the parameter; (d) removing the second sum (diagnosis) gives param 20 at frame 136 --
+the 16 bytes below the target's parameter are words the second sum's expansion would otherwise hand back. Still
+missing: one more 8-byte saving above the parameter. A 190-draw random round on the `sum + sumv + r / k` body
+(block braces, `if (1) {}` splits, void V3 operators, comma-joined sums, `(mid += b) /= 2.0f`, const locals,
+p1 / p2 declared apart): frame 144 or 152 only. Our 128-byte (`sumv`) body has 11 unused words between s and the
+parameter where the target has 9 above and 4 below; none of the sum / operator / dot statements owns them (each
+removed singly: frame unchanged). **Frame-exact lead:** with the second face sum TEXTUALLY after `mid.set(a)` the
+parameter lands at sp+20 in the 136 frame exactly like the target (edg hands out temp words in source order, and
+the second sum's words then fall below the parameter). Executed in that order it is wrong code order (988 B,
+66.9); a goto layout that keeps the execution order but puts `mid.set(a)` first in the text (`sum(a); goto L2;
+L1: mid.set(a); goto L3; L2: sum(b); goto L1; L3: ...`) keeps the frame-exact allocation at 988-1000 B / 75.9, and
+a 190-draw round of me() depths and `if (1) {}` splits on it reaches only 76.45 (the BB order changes the
+colouring of the whole sum block). So the target's source has some construct whose text puts the by-value
+parameter before the second sum while the code runs the sum first. Confirmation that the parameter word is
+POOLED: any by-value V3 inline parameter expanded between the two sums (`inline void F3(V3 p) {}`; `F3(b);`)
+takes the word at sp+20 and `mid.set(a)` then REUSES it (frame 136, param 20, every other slot unchanged), but its
+own argument copy is real code (+28 B, 92.67); `F3(V3())` still copies the temporary (+28 B), an `if (0)` body on
+the parameter (`F3b(a)`) gives 1008 B / 76.5. Wanted: a by-value V3 parameter between the sums whose
+initialisation is code the target already has. Negatives: the second sum folded into a parameter-carrying inline
+with `mid.set` (`mids(mid, a, b, f2, s)`, `V3::setx(a, this, b, f2, s)`, `Col::sumset`, 4 parameter orders):
+frame 144-152, 69.7-70.9; comma chains from the second sum through 2..8 of the following statements, with
+`sum` / `sumv` and void `+=` / `-=` / `/=` subsets (112): param 20 only at frame 144+ (best 92.88).
+
+**5. E2D0 lead for a later run (model only, untested in C).** Replaying OUR `cc -S` with f16 REMOVED from the ugen
+pool (every f16 value treated as a uopt colour, `9/sim5.py`) is also consistent with the whole first half -- f16
+pops never reorder the other five. Under that model the target's post-call block needs the free queue
+[f8 f18 f4 f6 f10] after the dot block (`9/bf5.py`, the only solution), and our dot block leaves
+[f6 f18 f8 f4 f10]: one register (the y product f6) freed early. So "all f16 values coloured" is one free-order
+step from the target, while the six-register model is infeasible; the open question is which source makes uopt
+colour the f16 values (arg3->y reloads, the sqrt partial sum, the dot x product, the 0x9F8 load, arg4, the scale
+block's z reload) that ours leaves as ugen temps. Caveat against it: the target loads arg3->y twice (once per
+reflection, both into f16), and a single-use load has priority 0 (kit CCXCV) so it should never be coloured --
+unless each reload is the head of a longer LR. Treat this as a hypothesis to test with `-Wo,-zdbug:5`, not a fact.
