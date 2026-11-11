@@ -62375,7 +62375,16 @@ the ctx loads, the 0xEE / B3 receivers), so it drops from a3 to t0 (23 + 14 line
 a3, the receivers and ctx must not overlap there; ctx loads at me() depth 0 (27 x 4 grid), a mutation round and
 the receiver-across-call forms (120, <= 97.87) did not separate them. Note why ctx took a2 with v0 / a0 free: it
 is live across the dlist call (spilled to sp+140), so the call's v0 / a0 are excluded -- the colour order is not
-"lowest free".
+"lowest free". Kit CDXXVIII's method applied (full factorial, 1023 subsets in six 200-variant commands, of ten
+atomic edits between the committed body and the structural bodies: first-packet addG, `if (h) {}`, clip flip,
+ctx-load depth 0 x 3, BB splits before the final load / 0xEE / the final call, B3 depth 5; scored by a structural
+signature = matching target lines over the clip, ctx packets, 0xEE, B4 and B3 regions, 177 lines, `g336/t/sig.py`):
+best signature 143 / 177 is the c2 subset itself (99.385; committed 137 / 177 at 99.515), best fuzzy the committed
+body. No subset gives the receivers a3 while ctx has it. Also negative: the else / final ctx packets as
+`F4B(GS4B, 0x158, Ctx4B *)->addD(d)` with the dlist call INSIDE the inline (so `this` is a pool word spilled
+across the call, the shape the target's sp+140 reload would have if ctx were a pool temp): 99.279 at frame 248;
+every frame-240 compensation (nextO / addF me2 depths, B3 depth, put / local forms, 60) <= 90.6; the else / final
+loads through dead ints (iz, or w / h / x / y for the final one) 98.84.
 
 **5. bootup E68 (98.650): the target's shape is load + copy in BOTH phases.** Target phase 2: `lw t0,24(t0)` ...
 `or v0,t0,zero` (the m variable, v0); phase 3: `lw t0,24(t0)` ... `or s1,t0,zero` (m again, s1, it crosses the
