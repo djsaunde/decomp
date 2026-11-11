@@ -14786,6 +14786,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CDXXII (agent-g 2026-11-11, run 329): **structurally-right bases re-coloured: post0b 4BAF4's ctx-shared half-extent body (the target's ext / ctx register pairing) climbs 96.96 -> 99.007 = committed via random code-free tests, a kit-CDXII live call result held in an EXISTING variable (`if ((r = (u32)f(..)) == 0)` + `if (r) {}`: no new home, x / y leave v0 like the target) and clip-test operand order; left: the target colours the 0xC0 bound before ctx; edg hands out frame words in SOURCE order (function-scope named, then per-statement pool temps and each later block's named locals as met: a block-scoped dead int lands BELOW an earlier temp), which locates 4FD00's 16-byte gap (52 / 0 pool bytes before / after the V3 temp vs the target's 36 / 16) and 48AEC's if-arm words (an n-free open-coded push gives the target's two words between cmd and g, but changes code)**](#kit-cdxxii-agent-g-run329) -- _No report.json gain, no commit; 4BAF4 / 48AEC / 4FD00 / 42938 / 3B9C0 / 4B620 negatives, ~3300 variants; new scratch tools mdl.py (.mdebug homes), rt.py / climb.sh (random test hill-climb), spmap.py._
 - [kit CDXXIII (agent-c 2026-11-11, run 331): **aim with the as0 + as1 oracle: read the target's ugen shape from a hand-edited `.s`, then spell it -- gui 2DE0's t-term MAX as zero-then-copy through xq (`((xq = 0), (v > 0 ? (xq = v) : xq))`) gives 98.399 -> 98.960 at 1212 B; the oracle then shows the body equals the target up to three uopt colours (pc t3, t-term a1, (s16)xh a0); a forbidden register with no code in the object is a phantom LR of a copy-propagated named local (2DE0's TEXRECT `next()` n holds a0)**](#kit-cdxxiii-agent-c-run331) -- _fd8f407ba; 2DE0 / 3558 / 36694 negatives, ~2400 variants._
 - [kit CDXXIV (agent-g 2026-11-11, run 332): **a target value in a uopt colour (v0..t5) where ours has a ugen temp (t6..t9) is a missing NAMED carrier: post0b 4BAF4's else-arm spr->dl64 through d like the first packet's 0xCC pointer (+ ring lever re-tuned to one `& 8`) 99.007 -> 99.137, then me() receiver depths re-gridded on the new base -> 99.291; the C0 / ctx swap is a four-LR priority ORDER (count pool slot > ctx > g), not a tie (ctx 3.6 vs C0 1.5)**](#kit-cdxxiv-agent-g-run332) -- _7f5fb4c85, 645f1e396, 2872f8eae, 01b42dbd0; split / carrier / addA priority probes, ~800 variants; tscan.py scanner._
+- [kit CDXXXV (agent-g 2026-11-11, run 343): **post0b 3B9C0's FP residual was the num STATEMENT, not a later order: `num = S - tris[i].d; t = -num / dn;` (num's own LR = the target's `sub.s f2`) + a code-free `if (1) {}` between p.z and the remap test (target block shape) + dx / dy carried in dead `self_al` / `pp` with explicit (s16) casts (no s16 homes: frame 232) = every FP register, the frame and every home of the target; a carrier that is also live elsewhere (the parameter b, read at the top) drags that region into the carrier's colour (b t0, target v0) -- pick a block-local carrier; left: remap / &p / ia colours (the target keeps v1 live into the remap block); 48AEC / 4B620 / 42938 / 4BAF4 have no FP residual for the later-code lever**](#kit-cdxxxv-agent-g-run343) -- _NM 3B9C0 99.211 -> 99.319 (4d4ab756d, fd1a7081e); ~1700 variants; tools g343/t/v.py, vr.py, gr.py, rc.py._
 - [kit CDXXXIV (agent-c 2026-11-11, run 342): **the "later code re-phases the FP FIFO" lever (kit CDXXXII) does not generalise: bootup E2D0's post-call block is FIFO-infeasible from all 720 entry queues and every ugen order (0x9F8 load and arg4 both f16 with only the 1.0 pop between needs a two-register free queue), so no float order up- or downstream can fix it; E68 / 4FD00 have no FP residual; 36694 term order flat on both the 712 B and the by-value-tail bodies, and its test-block residual is that our l is never coloured (adjsave 0, target l = f14, zero = f0); 4FD00: inline LOCALS land below the `mid.set(a)` by-value parameter (one fresh word per site) and a void `SV::add` in the second face sum frees 8 bytes -- param 20 reached but at frame 144**](#kit-cdxxxiv-agent-c-run342) -- _no gain; ~1700 variants; tools c342/run.py, c342/9/sim.py + bf*.py, c342/26/md.py._
 - [kit CDXXXIII (agent-g 2026-11-11, run 341): **per-region signature cross-basin factorial on post0b 4BAF4 (~8400 subsets of 17 committed <-> bd5 edits): only two basins -- "texr exact / clip 8+" (receivers via me(), ctx a2) and "clip exact / texr 12+" (receivers assigned to ctx) -- and no body takes both; the committed first-packet count is the top-priority LR (8.0 = 24 / 3 blocks, v1) ahead of the 0xEE head (5.0, a1) and ctx (4.5), and no count spelling (by-value param, named cn, int &n, cnt(), inline-internal split) changes its span; lead: the TEXRECT MAX clamps written into ctx (`E > 0 ? (ctx = (Ctx4B *)(int)E) : (ctx = 0)`) take the target's a3 in the clip basin (texr 17 -> 11, 99.303 -> 99.374); 42938's committed vs nD is one edit with a superset of mismatches (no second basin), fixing packages conflict on the same source lines**](#kit-cdxxxiii-agent-g-run341) -- _no gain; ~9900 variants; tools g341/t/reg.py, en.py, agg.py, cl.py, pk42.py._
 - [kit CDXXXII (agent-c 2026-11-11, run 340): **a code-free `if (1) {}` right before an inline operator's `return` ends a uopt promotion region inside the operator: game_uso 3558's promoted vb is written back before the r -> return-temp copy like the target; the FP temp FIFO start depends on the WHOLE function (truncation changes it, a preceding function does not), so after a structural change re-sweep operand orders everywhere (z row + w.len2() back to x / y / z); the last colour: two member calls on one object get one uopt colour when the pointer is ONE named variable reassigned before the second call (`(m = &s0->b0->mtx)->getPos(vb); ... m = &s0->b0->mtx;`), with an inner block after the intervening statements to keep the frame homes in order and a me() layer giving the ctx pool word its head live range; 36694 by-value tail inline with px / py / pz as its locals = frame 240 + every low slot but a double `0 < l` test**](#kit-cdxxxii-agent-c-run340) -- _game_uso 3558 NM 93.853 -> 95.786 -> 97.063 -> 99.881 -> EXACT (08e0a83a1, 67db206bc, 638df3279, 987ecb1b2); ~4500 variants._
@@ -62889,3 +62890,73 @@ colour the f16 values (arg3->y reloads, the sqrt partial sum, the dot x product,
 block's z reload) that ours leaves as ugen temps. Caveat against it: the target loads arg3->y twice (once per
 reflection, both into f16), and a single-use load has priority 0 (kit CCXCV) so it should never be coloured --
 unless each reload is the head of a longer LR. Treat this as a hypothesis to test with `-Wo,-zdbug:5`, not a fact.
+
+## kit CDXXXV (agent-g 2026-11-11, run 343): post0b 3B9C0's num form (`num = S - tris[i].d; t = -num / dn;`, kit CDV) is the target's FP order AND, with two s16 carriers and one BB split, also its frame and its block shapes -- the kit CDXXXII "later code" lever is flat on every other FP body on the list (48AEC / 4B620 / 4BAF4 / 42938 have no FP residual at all) <a name="kit-cdxxxv-agent-g-run343"></a>
+
+_agent-g run 343, base 4b28c9bd1. Commits 4d4ab756d (99.211 -> 99.247) and fd1a7081e (-> 99.319), NM only, same length
+(1116 B), no clip change. Scripts in `/tmp/claude-1000/g343/t/` (`v.py SPEC OUT` = dict of named edit lists, prints
+fuzzy / frame / FP-line count / total diff lines; `vr.py` = the same with the 4BAF4 region signature; `gr.py` = full
+product grid of multi-valued slots; `rc.py` = random fold climb for 3B9C0)._
+
+**1. Which spelling is the target's.** Of 14 spellings of the t numerator, only `num = S - d; t = -num / dn;` (or with
+the d read through `&tris[i]`, `(f32)` cast, extra parentheses: byte-identical) gives the target's `add.s f4 / lwc1 f8 /
+sub.s f2 / neg.s f6 / div.s f22` -- num's OWN LR holds S - d (f2), S itself is a temp. The committed `num = S;
+t = -(num - d) / dn;` (the 232 frame) had num = S in f2 and the subtraction in a temp. Later-expression operand orders
+(p.x..p.z: 4 forms, the cross-product test: 16 forms) are all worse than the plain ones (64 variants): the FIFO here is
+already in the target's phase, the num line itself was the wrong statement.
+**2. The shape: one code-free split before the remap test.** On its own the num form changes the remap block
+(`beqzl` + a second `lw 76(v0)`, 1128 B). An `if (1) {}` (or `if (0) {}`) anywhere between `p.z = ...` and the remap
+`if` restores the target's block (36 splitter sites x 6 test forms; any later or earlier site, or a test of a variable
+(`if (col) {}`, `if (self) {}`), changes code). Frame still 240.
+**3. The frame: kit CDVI's s16 carriers, but the carrier choice is a colour lever.** dx / dy as `self_al = (ObjB9 *)
+(int)(s16)(s32)(qa - v0[ia]); pp = (f32 *)(int)(s16)(s32)(qb - v0[ib]);` read back as `(f32)(int)self_al` /
+`(f32)(int)pp` (both dead at that point and re-written before every read) drop the two s16 homes: frame 232, every home
+at the target's offset, and every FP register matches. The FIRST carrier I tried for dx was the parameter `b` (dead after
+`d = b - a`): 99.247, but b's top LR (the three `lwc1 0/4/8(b)` before the sqrtf call) then shares the inner-loop dx
+colour (t0, target v0) -- uopt colours a variable's LR over every block where it is live, so a carrier must not also be
+live in an unrelated region you need coloured differently. The block-local `self_al` (dead after the grp test and the ib
+fold) has no other region: 99.319. 12 other carrier pairs (col / n / unused / b, both slots) are worse (98.4-99.0).
+**4. What is left (34 lines, all int).** The remap pointer (target a0, ours v1), &p (target t9 = a uopt colour at the
+end of the free list, ours v1), ia (target v1, ours a1) and the t8 / t9 ring that follows. Reading the target: v1 holds
+`self->tris` from the grp test (line 75) to the num line (109) and the remap pointer still avoids v1, so the target has
+v1 live INTO the remap block (uopt interference is per block, kit CDXXXI) -- ours does not. Flat this run on the 99.319
+body: removal of every existing fold / splitter singly and in pairs (56), `if (X) {}` / three-use tests of 14 variables
+at 6 sites (168, all <= 99.09: each test is a new block), `+ 0 * X` folds of 12 variables x 1-2 uses at 7 sites (168,
+flat), a 480-variant random multi-fold climb (flat), &p spelled without pp (48: ia then takes v1 like the target, but &p
+is still a coloured LR (a1) placed after the `lb`s, 97.96), ia named (frame 240) or carried in n / b / col (<= 99.25),
+`ia[pp]` / `*(ia + pp)` index-first spellings (byte-identical: the `addu idx, base` order is the register order).
+**5. The other targets.** 48AEC: the matrix product's FP is register-exact; `mtx[i][j] += A[i][k] * B[k][j]` is the
+only legal order (5 alternatives worse); its residual is the 0x170 vs 0x160 frame and int colours. 4B620 and 42938 have
+no FP register differences (4B620 has no FP code at all). 4BAF4 (g341 grx4 g6, 99.444): a 192-variant grid of the
+TEXRECT receiver (6 forms) x splitter x the four MAX-clamp forms, a 180-variant grid of the B4 / B3 receivers x final
+add form, and the 56 single / pair toggles from g6 back toward the committed body: all <= g6 (texr 11 / b4 22 is
+stable whatever the TEXRECT code says, so the rotation is fixed upstream, as kit CDXXXIII found).
+**6. Why the remap pointer misses a0 (zdbug:5 on the 99.319 body).** LR table (`/tmp/claude-1000/g343/t/p5.py DUMP
+COLOURS` parses `-Wo,-zdbug:5`): self->tris CSE LR (key 1450|1) v1 over bbs 9..13; remap pointer (509|1) v1 over bbs
+14..17 (the ib-line `0 * (int)(col->remap)` fold DOES extend it into bb 17); col v0 over 13..16; the i * 12 piece a1. The
+`if (1) {}` makes the num block (13) and the remap test (14) two uopt blocks, so tris and remap never meet in a block and
+remap reuses v1; ugen later merges them back (the target's `sll t8,s3,1` in the num block feeding the remap delay slot is
+reproduced). Without the split the test's load is NOT in the remap LR (PRE: test load a ugen temp, `beqzl`, then-arm
+reload; LR 509|2 starts in bb 14): 24 no-split variants (test spellings x phantom x col placement x dead f) all <= 97.8.
+Folded uses of tris / self / self_al / n in the remap test or arms (30) are flat or worse -- the reload of tris at the
+ib line says the target's tris LR also ends at the num line, so the v1 holder in the target's remap block is still unknown.
+**7. More negatives.** 3B9C0: 2 random climbs over 32 statement-spelling edits + 65 folds (900 variants), the ternary /
+`Col::face()` inline remap forms (frame 240, same colours), remap held in v0 / v1 / nx (<= 97.4), p as `f32 p[3]`
+(byte-identical). 4BAF4 on g6: a 450-variant random climb over 14 slots (receiver depth / `ctx =` at TEXRECT, B4, B3,
+0xEE, the three ctx loads; splitters; the three 0x06 append forms) never leaves [1,0,0,0,0,0,11,22,3,6]. 48AEC: dropping
+nextQ()'s dead `dd` home plus next()'s named n gives the target's frame 0x160 but every spill slot still off (97.58).
+**8. Lead: the target's &p is NOT a uopt LR.** The target's `addiu t9,sp,184` (t9 = ugen temp range) reused by both
+`addu t6,t8,t9` / `addu t8,t7,t9` is an lda that uopt left uncoloured (-ve save) and ugen materialised once and
+re-used from its register cache; ours is always a coloured uopt LR (pp v1; without pp the CSE'd lda takes a1, 16
+spellings incl. `(char *)&p + ia * 4`, `*(&p.x + ia)`, volatile views: identical). A splitter between the qa and qb loads
+(`qa = (&p.x)[ia]; if (1) {} qb = (&p.x)[ib];`) kills the lda LR (the loads fold to `addu tN,sp,idx; lwc1 184(tN)`) and
+gives ia v1 / ib a0 like the target, but reshuffles the top (cnt to a home, 94.5). So the &p LR must lose its priority
+some other way (more blocks, fewer counted refs) while the qa / qb loads stay in one block.
+**9. Second basin (no pp) and the rest.** `qa = (&p.x)[ia]; qb = (&p.x)[ib];` with pp unused (or pp dropped and dy a
+real s16: frame stays 232, pp's word pays for it) and `fv = (u16 *)f;` moved in front of the qa / qb line: ia v1 / ib a0 /
+fv a3 like the target, &p still a coloured single-block lda LR (a1, key 336|1, adj 10; free colours left in that block:
+a2 / t2 / t3 / t5, so it is not a colour shortage), 98.459 at the same 34 lines (placement costs fuzzy); statement
+permutations of sg / nx / vt / fv around the qa block (2 x 120) and a 750-variant fold / spelling climb (operand swaps
+in the edge loop, ++ forms, store order after the loop) are flat in both basins. 4BAF4 g6: the four TEXRECT clamps carried
+in ctx / d / iz / spr / r / MAX, paired and singly (76), flat at 99.444. 4B620: the first two appends with the slot or
+count as defaulted inline PARAMETERS (pool-word reuse, kit CDXXIX; 12 forms) are all below 99.725.
