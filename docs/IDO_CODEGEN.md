@@ -14785,6 +14785,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CDXXI (agent-c 2026-11-11, run 330): **the jump-table default steal (51AD8 / 396FC) is ONE empty as1 block in front of the default: 51AD8's fold only moves a `.alias $8,$sp` directive behind case 211's closing `b`; the `.s` oracle (as0 + as1 run by hand with the C path's flags, byte-identical) shows 396FC = our code + that block; only a register-held LDA used as a memory base (or unreachable unlabelled code) emits it, so 396FC is a verified cap; ugen FP temp FIFO simulator (`ring.py`) proves E2D0's target queue unreachable from its forced dot-block order (smallest consistent LR set = 7 values); extra case labels before `default:` flip the 396FC slot only by growing the decoded 6-entry table; gui 2DE0 reaches the target length by JOINT pc folds in both inner-MAX exits and the yl >= 0 zero**](#kit-cdxxi-agent-c-run330) -- _gui 2DE0 NM 97.805 -> 98.399 (1208 -> 1212 B = target, c733a022a); no exact; ~6000 variants (most of them 2DE0 climbs) + oracle runs._
 - [kit CDXXII (agent-g 2026-11-11, run 329): **structurally-right bases re-coloured: post0b 4BAF4's ctx-shared half-extent body (the target's ext / ctx register pairing) climbs 96.96 -> 99.007 = committed via random code-free tests, a kit-CDXII live call result held in an EXISTING variable (`if ((r = (u32)f(..)) == 0)` + `if (r) {}`: no new home, x / y leave v0 like the target) and clip-test operand order; left: the target colours the 0xC0 bound before ctx; edg hands out frame words in SOURCE order (function-scope named, then per-statement pool temps and each later block's named locals as met: a block-scoped dead int lands BELOW an earlier temp), which locates 4FD00's 16-byte gap (52 / 0 pool bytes before / after the V3 temp vs the target's 36 / 16) and 48AEC's if-arm words (an n-free open-coded push gives the target's two words between cmd and g, but changes code)**](#kit-cdxxii-agent-g-run329) -- _No report.json gain, no commit; 4BAF4 / 48AEC / 4FD00 / 42938 / 3B9C0 / 4B620 negatives, ~3300 variants; new scratch tools mdl.py (.mdebug homes), rt.py / climb.sh (random test hill-climb), spmap.py._
 - [kit CDXXIII (agent-c 2026-11-11, run 331): **aim with the as0 + as1 oracle: read the target's ugen shape from a hand-edited `.s`, then spell it -- gui 2DE0's t-term MAX as zero-then-copy through xq (`((xq = 0), (v > 0 ? (xq = v) : xq))`) gives 98.399 -> 98.960 at 1212 B; the oracle then shows the body equals the target up to three uopt colours (pc t3, t-term a1, (s16)xh a0); a forbidden register with no code in the object is a phantom LR of a copy-propagated named local (2DE0's TEXRECT `next()` n holds a0)**](#kit-cdxxiii-agent-c-run331) -- _fd8f407ba; 2DE0 / 3558 / 36694 negatives, ~2400 variants._
+- [kit CDXXIV (agent-g 2026-11-11, run 332): **a target value in a uopt colour (v0..t5) where ours has a ugen temp (t6..t9) is a missing NAMED carrier: post0b 4BAF4's else-arm spr->dl64 through d like the first packet's 0xCC pointer (+ ring lever re-tuned to one `& 8`) 99.007 -> 99.137, then me() receiver depths re-gridded on the new base -> 99.291; the C0 / ctx swap is a four-LR priority ORDER (count pool slot > ctx > g), not a tie (ctx 3.6 vs C0 1.5)**](#kit-cdxxiv-agent-g-run332) -- _7f5fb4c85, 645f1e396, 2872f8eae, 01b42dbd0; split / carrier / addA priority probes, ~800 variants; tscan.py scanner._
+- [kit CDXXV (agent-c 2026-11-11, run 333): **fix uopt colours in priority ORDER, read off the `-Wo,-zdbug:5` LR table (interference is pure basic-block granularity): gui 2DE0's (s16)xh needs a0, reachable only if xh is coloured before x (x's blocks are a subset of xh's) -- TEXRECT `nextp()` removes the a0 phantom n and dropping the run-309 xh test shrinks xh to 1.5 > x's 1.0; then two folded `0 * (int)_g` uses of the RDPHALF_1 packet pointer in the t-term arms lift it over the lda (packet t2, lda t3): 98.960 -> 99.109; pc t3 needs ONE &D LR split around the yl < 0 arm (a pc LR next to the lda LR can never share t3)**](#kit-cdxxv-agent-c-run333) -- _00bf7597e; ~1900 variants (receivers, next() spellings, carriers, phantoms, pc-less basin climb to 98.234 / 1196 with the t-term already a1), 3558 vb-add forms (16, flat); new tools c333/t/vs.py, dump.sh, lrs.sh, dd.sh, rs.py._
 - [kit CCCLXXXVI (agent-c 2026-11-05, run 305): **run a register-normalised diff before the copy lever: of five near-misses only gui 2DE0 had a target copy ours lacked; wrap the clamp's RESULT zero (`P > 0 ? P : I(0 + x * 0)`), not the compare's; partial leads for 493AC (named receiver copy + dead-stored pad), 3BE1C (hi folds / one home fewer = the inner MAXS's second edg temp), 469A8 (store / re-read forwarding; NCC port at the cfe score with four NCC-side fixes), 31A74 (in-call store frees the goto merge); jumptable default-steal cap of 396FC / 51AD8 re-confirmed (NCC emits no jumptables)**](#kit-ccclxxxvi-agent-c-run305) -- _gui 2DE0 NM 96.848 -> 96.914 (a77525f51); 469A8 cast cleanup (fd95e598b)._
 - [kit CCCLXXXIII (agent-c 2026-11-05, run 304): **the variable-reuse lever in cfe: reuse the variable for a later value the target passes in the same register, as an assignment INSIDE the call's argument list (`f(..., (v = X), ...)` keeps the argument order; a separate statement issues the load early); move a counted use from the variable the target colours later to the one it colours first; cfe zdbug:6 colours 1..12 = v0..t5, 13 = ra (t6..t9 never colours)**](#kit-ccclxxxiii-agent-c-run304) -- _post0b 469A8 NM 98.641 -> 98.786 (b21d409c0), 3B6A0 NM 96.65 -> 96.85 (0f8e9fea6); 3BE1C va / vb, 493AC p34 receiver / grid ring, 31A74 mode-1 raise, post1b 65EE4 cap re-check (still a cap) negatives._
 - [kit CCCLXXXII (agent-g 2026-11-05, run 301): **RE-GRID after every gain: swap an old zero-code lever for a new one, then re-run BB-split / one-site-wrap / pad-position sweeps on the new base; an unreferenced class-object block (`{ V3 t; }`) is a BB split**](#kit-ccclxxxii-agent-g-run301) -- _post0b 54E78 NM 99.565 -> 99.638 (c9b02204a) -> 99.819 (e4a19c2a2); register-span scan for the variable-reuse lever (rs.py); reuse / split / wrap / swap / BB-split negatives on 17 bodies._
@@ -61889,3 +61891,132 @@ post0b 48AEC: random code-free test / accessor climbs from agent-g's frame-352 `
 target's map (95.99); 64 product / binding spelling pairs: flat. game_uso 3558: 36 block layouts (row / store / add
 order, reference forms, natural z-row order): flat (93.853); the target loads vb into f14 / f16 / f18 at the block head
 and stores it after (uopt region promotion of the address-taken vb), ours keeps every vb access in memory.
+
+## kit CDXXIV (agent-g 2026-11-11, run 332): a target value held in a uopt colour (v0..t5) where ours uses a ugen temp (t6..t9) is a missing NAMED carrier -- post0b 4BAF4's else-arm `spr->dl64` through d (`d = spr->dl64; r = f(F4B(d, 0x60, int));`, the first packet's 0xCC shape) 99.007 -> 99.137; the "C0 before ctx" residual is NOT a tie (ctx adjsave 3.6 vs the bound's 1.5) but a four-LR priority order (count pool slot > ctx > g) that splits / carriers cannot hit without re-colouring the rest <a name="kit-cdxxiv-agent-g-run332"></a>
+
+_agent-g run 332, base dcfd84f89. One NM gain (7f5fb4c85). Scratch `/tmp/claude-1000/g332/` (1 = 4BAF4 sweeps on the run-329
+structural base, 3 = sweeps on the new base, d* / dd_* = `-Wo,-zdbug:5` dumps; tools in `g332/t/`: `dl.sh SRC TAG` (dump +
+lrinfo rows of the 4BAF4 LRs by hash: ctx 1107, count pool slot 403, g 659, 0xEE add g 275, C0 / C4 255), `g1.py`..`g4.py`
+generators, `tscan.py` (reads dd.py output, prints lines where one side's destination is a uopt colour and the other a
+ugen t6..t9 temp))._
+
+**1. GAIN post0b 4BAF4 NM 99.007 -> 99.137, 1692 B = target.** dd.py of the 99.007 structural body (kit CDXXII) shows the
+else arm's `lw v0,100(t2); lw a0,96(v0)` (spr->dl64 held in v0, a COLOURED LR) against ours `lw t8,100(t2)` (ugen temp).
+uopt never colours t6..t9 (kit CDVIII), so the target names that value: the else arm reads it through `d` exactly like the
+first packet's `d = F4B(self, 0xCC, char *)` (one variable for both dlist pointers, v0 in both). Alone it re-orders the
+`& 8` block's t-temps (97.85); the kit-CCCLXXXVIII ring lever then wants ONE `& 8` instead of four (period 4 shifted by the
+removed temp): 99.137, 336 vs 328 equal lines; the run-329 `if (d) {}` after the B4 w0 store and `if (r) {}` after the 0xCC
+call are stale on it (dropped, same score). Ring re-grid (iz mask 1-4 x `& 8` 1-8, 32): this is the only top. Rule: when a
+target instruction's destination is v0..t5 / s* and ours is t6..t9 on the SAME value, look for a named carrier (an
+existing dead variable of a compatible type) before colour levers -- `tscan.py` over 4B620 / 42938 / 4FD00 / 3B9C0 / bootup
+E68 finds no other such line (3B9C0's t9 &p is kit CDVIII's ugen-local case, the inverse direction).
+
+**2. 4BAF4's C0 / ctx swap is a priority ORDER, not a tie (zdbug:5).** ctx (one variable: the four half-extent reads + the
+0x158 context, 11 live blocks) has adjsave 3.6 and is coloured right after the gfx / count pool LRs (5.0 / 4.5 / 4.0: v1 /
+a0 / a1) -> a2; the CSE'd 0xC0 bound has 1.5 and gets a3 later. The target's whole a2 / a3 picture (C0 a2, ctx a3, first
+packet count a2, gfx a0, else-arm g v1, final add g a2) fits ONE order: the count pool slot (LR139, -144, 3.0) BEFORE ctx,
+ctx before g (LR145, -128, 3.0) and the 0xEE add's g (LR169, -152, 3.0) -- C0 then takes a2 because it does not interfere
+with the count. Ties at equal adjsave go to the lower LR id (ctx's id is always lower: it first appears in the clip test or
+at the 0x158 load, before the first next()). Measured: four `if (1) {}` after the 0x158 / 0xCC lines take ctx 3.6 -> 3.0
+(tie, ctx still first) or 2.57 (then g / LR169 outrank it: ctx t1); routing 1-3 of the four half-extent reads through r
+instead of ctx gives ctx 3.0 / 2.4 / 2.5 (r0001 / r0000 forms); an `addA` (split inside add() after next()) on the 0xEE
+site only drops LR169 to 1.5; `if (1) {} if (self) {} if (1) {}` after `g = PKT4B(ctx)` gives g an empty block (3.0 -> 2.0
+/ 1.5) -- but in every combination g still takes a3 before ctx and the splits re-colour the prologue t-registers (iz /
+self / spr t2..t5 shift): best 98.77 (r0000 + addA). Other single dimensions on the new base, all flat or lower:
+half-extent carriers per test (ctx / r / d / g mixes, 42 + 12: r mixes tie at 99.137 / 99.125), source position of the
+ctx assignment inside the clip tests (`x > C0 + (int)(ctx = ..)` etc., 180: edg normalises, two scores only), 1-6 folded
+`+ 0 * C0` uses per test (75: code from 2 up), else-arm g carriers (g / spr / iz / block-local g2 with pad0 dropped, 6),
+else-arm ctx carriers (block-local c2 / iz / g / spr, d first, 6), 0x158 / 0xCC splits (15), one random-test climb round
+(150; ctx / d / r / self / spr / x / y / g / iz / `1`).
+
+**3. Not re-run (read only): bootup E2D0 / E68.** E2D0's arg4-as-temp FIFO case (kit CDXXI) and E68's split m (kit CDV /
+CDVIII) were re-read against the dumps; no new lever was tried beyond `tscan.py` on E68 (no temp / colour mismatch line:
+its residual is pure colour permutation).
+
+**4. GAINS (same run, later): zero-code me() receiver depths re-gridded on the new base, 99.137 -> 99.291, same length.**
+A structural change (item 1) moves the edg pool entries, so the kit-CCLXXXIV receiver-depth optimum of run 296 is stale:
+re-grid after every structural gain. (a) 0xEE append receiver depth 0-4 x B3 3-7 x final 0-3 (99): 0xEE at 2, final at 0
+-> 99.196 (645f1e396); (b) the two TEXRECT `PKT4B(...)` receivers 0-4 x 0-4 x 0xEE 1-3 (74): both at 3 -> 99.243
+(2872f8eae); (c) the three `ctx = GS->0x158` loads through me() 0-3 each (63): ANY two at depth >= 2 -> 99.291, all three
+-> 99.102 (01b42dbd0, first + else arm). Flat after it: B3 / TEXRECT re-grid (74), first / else `PKT4B(ctx)` and final
+receiver depths (63), a random 1-3-site me() wrap draw over 36 pointer sites (self->0xCC / 0xD0 / 0x14, spr, spr->dl64,
+GS4B, ctx, 190), the ring masks (iz 1-3 x `& 8` 1-8 x `& 2` 1-4, 95).
+
+## kit CDXXV (agent-c 2026-11-11, run 333): fix uopt colours in priority order -- gui 2DE0 98.960 -> 99.109 (1212 B) by reading the `-Wo,-zdbug:5` LR table: the (s16)xh LR needs a0, which only a LR coloured BEFORE x's (60) can get; drop the phantom n (TEXRECT `nextp()`, `dl->n = n + 1` merges n into the load LR) and the run-309 xh test (xh's LR shrinks from 14 blocks / adjsave 0.8 to 2 blocks / 1.5, so it outranks x = 1.0 and takes a0, x falls to a2); the freed t2 then goes to the &D lda, so two folded `0 * (int)_g` uses of the RDPHALF_1 packet pointer inside the t-term arms raise the packet's LR above the lda's (packet t2, lda t3 like the target) <a name="kit-cdxxv-agent-c-run333"></a>
+
+_agent-c run 333, base 3c776ddeb. One NM gain (gui 2DE0, 00bf7597e). Scratch `/tmp/claude-1000/c333/` (tools in `c333/t/`:
+`vs.py` = spec-driven variant scorer (BASE + VARS list of replacement sets, cap 200), `dump.sh X.cpp N` = `-Wo,-zdbug:N` dump
+into `X_u.txt` (run in the scratch dir: the dump compiler writes `./uoptlist`), `lrs.sh X.cpp` = per-LR colour / adjsave /
+forbidden summary, `dd.sh X.o` = register-level diff vs the target)._
+
+**1. Read the colour constraint off the dump before touching source.** uopt interference is pure basic-block
+granularity (checked on the whole 2DE0 table: no two same-class LRs that share a block are ever non-interfering, even a
+`deadout` copy source and a `firstisstr` copy destination), and colours go out in adjsave order (v0 = 1, v1 = 2, a0 = 3,
+a1 = 4, a2 = 5, a3 = 6, t0 = 7, t1 = 8, t2 = 9, t3 = 10, s0 = 14). 2DE0's x LR (60, blocks 10..17) is a subset of the
+(s16)xh LR's blocks (10..23), so ANY a0 holder that forbids a0 for x also forbids it for xh: the target's x = a2 /
+xh = a0 is reachable only if xh is coloured before x. That turned "find a lever for xh" into "raise xh above 1.0 and
+remove n (2.0, a0)": `nextp()` (n is the load LR itself, no separate phantom) + dropping the run-309 `if ((s16)(xh)) {}`
+(which had stretched xh to block 23) = xh 1.5 -> a0. Either change alone is ~91 / ~96 (other colours cascade).
+
+**2. Re-pin what the fix freed.** With xh off t2, the lda (0.636) took t2 before the RDPHALF_1 packet pointer `_g`
+(0.43). Folded `0 * (int)_g` uses inside the p0 expression (gImmp1's own `_g` is in scope in its p0) count as references
+of the packet LR: ANY two of seven s-term / t-term slots (21 pairs, all 99.109) lift it over the lda; one fold is inert,
+code-free `if (_g) {}` tests before / after the stores are inert.
+
+**3. Still open: pc (a1 -> t3) and the t-term (v1 -> a1).** pc's LR (the `cvt(&D)` expression, PRE-computed at the yl < 0
+join by `la` and in the yl >= 0 arm by `move a1,t3`) interferes with the lda LR in that yl >= 0 block, and under
+block-level interference the two can never share t3; the target's missing yl >= 0 copy therefore needs ONE LR (pc == lda)
+whose yl < 0 piece is reloaded at the join -- i.e. a split lda, which needs t3 taken by an earlier LR in the yl < 0
+blocks. Not found. Negatives (all <= 99.109): 23 next() spellings for the TEXRECT append (n types, ++ / += forms, named
+pointers, `if (n) {}`), `int &n` / `int *n` carriers into `t` / xq (address taken: frame +8, 85-90), statement-hoisted
+TEXRECT packets with n in a function local (`Ctx *c` costs +8 frame / s0, 96-98), xh tests / `while (0)` tests at four
+macro slots (36), 72 receiver mixes through pc, pc declared at the top with 64 receiver subsets (89-99.03), pc-less bodies
+(97.48 / 1192), redundant `pc = (int)&D` re-assignments in either arm (inert: copy-propagated), dead `tt` stores in the
+yl < 0 arm (no phantom: code identical, frame +8), 64 tt carrier forms for the t-term MAX / MIN / yl >= 0 values (flat),
+`xq = 0` initialiser + xq tests / folds after the t-term (1232 B), random climbs 2 + 2 + 3 x 190 over 42-115 mutations
+(folds, tests on defined values, receivers, decl orders): flat.
+
+**4. Where the target's pc colour has to come from.** Two LRs that share a block always interfere, so a pc LR in t3
+next to an lda LR in t3 (with the yl >= 0 copy gone) is impossible; the target must be pc-less (one &D LR) with that
+LR reloaded at the yl < 0 join (`la $11` at $57, which as1 spreads to the yl < 0 entry and both MAX exits exactly as it
+does for our pc's `la $5`), i.e. a SPLIT lda LR, which needs t3 occupied in the yl < 0 blocks by an LR coloured before
+the lda (0.5) -- a long, late-coloured phantom. A random climb from the pc-less body (2 x 190 over 69 mutations) reaches
+98.234 at 1196 with the yl >= 0 arm and the final t-term (a1) already target-exact (`I2` zero, `I(xq)` false value,
+`if (spr) {}` dropped, `if (h) {}` after the call): left there = xq a0 vs v1 and exactly the missing reloads. Next: find a
+code-free phantom that spans bb ~10..45 (it gets the first free colour after v0..t2, i.e. t3) without moving a coded LR.
+
+**5. game_uso 3558 (flat, 93.853).** The vb block as a by-value accumulator (`Vec3 acc = vb; ... vb = acc`, three float
+locals loaded before / after the matrix pointer, `vb.x = ax + x` forms: 65-90, +24..+64 B) and eight interleavings of the
+`vb += x` / `stage = x` statements around the x / y / z rows (71-87): every form that loads vb early also spills, so the
+target's f14 / f16 / f18 head loads are not a source-order effect of the add statements.
+
+**6. Late 2DE0 negatives.** A distinct-extern alias (`gui_2DE0_D`, NM-only probe, not pinned) re-assigned into pc inside
+the yl < 0 arm makes pc a real variable at the join (no longer copy-propagated) but its first def is a `move` from the
+lda register (t4 / t5 here; 90 variants x receiver mixes: 84.8-89.2); copy propagation also folds pc's first def into
+every dominated receiver, so the lda LR still reaches the TEXRECT / RDPHALF_1 packets. Folded `0 * pc` uses with pc
+otherwise unused in the pc-less basin (127 sets) emit `move a1,zero; addu` for `xq + 0 * pc` (no PRE effect).
+
+**7. Oracle check of the pc-less reading.** `NCC -S` of the pc-less climb body (98.234 / 1196, `c333/20/p1.cpp`), hand-edited
+with `la $11, D_00000000` before the dtdy-sign branch and in both MAX exits plus the MAX written straight into the t-term
+register (`mul; sra; move $3,$0; move $5,$3; ble $2,0,L; la $11; move $5,$2; b J; L: la $11; b J`), assembles (as0 + as1,
+C-path flags, `c333/24/o1.s`) to the target up to ONE word (`move a1,zero` vs the target's `move v1,zero; move a1,v1`).
+So the target is the pc-less body: one &D LR in t3 that is NOT held through the yl < 0 arm (reloaded at its exits) and
+an xq LR that starts after the dtdy multiply (shares v1 with (s16)dtdy).
+Late flat on the 99.291 body: one random code-free test climb round (150), idv() depth 0-2 on the four clip-test ext
+uses (80: inert), me() depth 0-2 on the three `F4B(d, 0x60, int)` call arguments (26), TEXRECT receiver re-grid 0-5 x
+0-5 (35), 0xEE 0-4 x B3 3-7 x TEXRECT 2-4 (74); me() INSIDE `Ctx4B::next()` (7 spellings) costs a frame word (248) or
+code (1672 B). bootup E2D0: a volatile view of arg4 (`*(volatile f32 *)&arg4`, 8 forms) materialises the address
+(`addiu t6,sp,128` + two loads, 91.4), dropping the `if (arg4) {}` keep alone is 520 B (98.21).
+
+**8. The pc-less residual is ONLY the reloads.** On the climbed pc-less body, the t-term MAX spelled
+`(V > 0 ? V : (xq = I2(0 + (dtdy) * 0 + 0 * (int)_g)))` (`c333/21/v3/M01.cpp`, 97.954 at 1192) gives xq = v1 and the
+t-term = a1 like the target: the register-level diff is exactly the three `la t3` reloads (lui / addiu at the yl < 0
+entry and both MAX exits) plus the position of the hoisted `move a1,v1`. So 2DE0 = this body + an &D LR that is not
+live through the yl < 0 arm. PRE only re-evaluates the address at the yl < 0 join when the receiver's expression is
+available on the yl >= 0 path but not on the yl < 0 path, i.e. when it is a DIFFERENT expression from the bb-36 lda
+(`cvt(lda)` = pc) -- and then its yl >= 0 evaluation is a copy from the lda register in a block where both are live,
+so the two can never share t3. A small NCC probe (`c333/25/b.cpp`: a const &D LR across a two-level branch with extra
+pressure) keeps the lda in one register through every arm; no trimming of const LRs was observed.
+Killing a receiver expression in the yl < 0 arm via a variable folded into the address (`(char *)&D + 0 * xq`, xq
+initialised at its declaration) does not trigger a re-evaluation either: xq becomes memory-resident (`sw zero,84(sp)`
+per assignment) and the receivers re-form the address (`c333/21/spec14.py`, 84.9-96.9).
