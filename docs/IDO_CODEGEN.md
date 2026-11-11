@@ -14786,6 +14786,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CDXXII (agent-g 2026-11-11, run 329): **structurally-right bases re-coloured: post0b 4BAF4's ctx-shared half-extent body (the target's ext / ctx register pairing) climbs 96.96 -> 99.007 = committed via random code-free tests, a kit-CDXII live call result held in an EXISTING variable (`if ((r = (u32)f(..)) == 0)` + `if (r) {}`: no new home, x / y leave v0 like the target) and clip-test operand order; left: the target colours the 0xC0 bound before ctx; edg hands out frame words in SOURCE order (function-scope named, then per-statement pool temps and each later block's named locals as met: a block-scoped dead int lands BELOW an earlier temp), which locates 4FD00's 16-byte gap (52 / 0 pool bytes before / after the V3 temp vs the target's 36 / 16) and 48AEC's if-arm words (an n-free open-coded push gives the target's two words between cmd and g, but changes code)**](#kit-cdxxii-agent-g-run329) -- _No report.json gain, no commit; 4BAF4 / 48AEC / 4FD00 / 42938 / 3B9C0 / 4B620 negatives, ~3300 variants; new scratch tools mdl.py (.mdebug homes), rt.py / climb.sh (random test hill-climb), spmap.py._
 - [kit CDXXIII (agent-c 2026-11-11, run 331): **aim with the as0 + as1 oracle: read the target's ugen shape from a hand-edited `.s`, then spell it -- gui 2DE0's t-term MAX as zero-then-copy through xq (`((xq = 0), (v > 0 ? (xq = v) : xq))`) gives 98.399 -> 98.960 at 1212 B; the oracle then shows the body equals the target up to three uopt colours (pc t3, t-term a1, (s16)xh a0); a forbidden register with no code in the object is a phantom LR of a copy-propagated named local (2DE0's TEXRECT `next()` n holds a0)**](#kit-cdxxiii-agent-c-run331) -- _fd8f407ba; 2DE0 / 3558 / 36694 negatives, ~2400 variants._
 - [kit CDXXIV (agent-g 2026-11-11, run 332): **a target value in a uopt colour (v0..t5) where ours has a ugen temp (t6..t9) is a missing NAMED carrier: post0b 4BAF4's else-arm spr->dl64 through d like the first packet's 0xCC pointer (+ ring lever re-tuned to one `& 8`) 99.007 -> 99.137, then me() receiver depths re-gridded on the new base -> 99.291; the C0 / ctx swap is a four-LR priority ORDER (count pool slot > ctx > g), not a tie (ctx 3.6 vs C0 1.5)**](#kit-cdxxiv-agent-g-run332) -- _7f5fb4c85, 645f1e396, 2872f8eae, 01b42dbd0; split / carrier / addA priority probes, ~800 variants; tscan.py scanner._
+- [kit CDXXXVIII (agent-c 2026-11-11, run 346): **NCC homes follow edg ALLOCATION order (function-scope named locals hoisted to the top even when declared late; then pooled temps; a by-value V3 temp at its first use; then late block-scoped locals): post0b 4FD00's every target sp offset (frame 136, V3 temp sp+20) = block-scoped p1 / p2 + `void add()` for the SV adds (-2 pool words) + two volatile pad words in the late block, but that basin's `move v0,zero` lands inside the second sum (98.13 < 98.645); the real residual is that the SECOND wrapper expansion binds its parameters through temps so its `+=` references get a fresh pool word (t0) -- a dead `int d` parameter fed an address (`wb(b, f2, s, (int)&s)`) + void adds makes its three references share one word and, with the block / pad recipe, leaves ONLY that word's colour (t0 vs v0) and its knock-ons (98.606, `c346/78/s/v11.cpp`); with the second sum's first read at accessor depth 0 s.set's reference goes back onto the first sum's word (v0) and only the two adds stay on t0: 98.685, committed; a BB split anywhere between the two sums costs ~20 points (984 B), so the temp cannot be allocated between them; dead top-of-function pool blocks move the temp with identical code up to 7 words; 4B620 / 42938: every agent-g alternative body's residual set is a superset of the committed core (42938's scissor-head fix costs 7 ctx-reload lines)**](#kit-cdxxxviii-agent-c-run346) -- _post0b 4FD00 NM 98.645 -> 98.685 (c9fb1c206, same length); ~4300 variants; tools c346/20/res.py (per-variant mismatch-line sets), c346/83/gen.py (sum / sum2 climb), c346/30/sub.py, c346/35/hc.py, c346/39/gen.py._
 - [kit CDXXXVII (agent-g 2026-11-11, run 345): **post0b 3B9C0's `addiu t9,sp,184` is a ugen-HELD lda: a `0 * (int)(X)` fold is a register zero only when the same text occurs twice (CSE before folding), which gives kit CDVIII's phantom with no new block (`(char *)&p + 0 * (int)(self->tris)`, paired with the ib line's self_al->tris fold); a carrier merges with its inner-loop web (adjsave 115 > fv 103.3, fv loses a3) until one counted fv use in the ok line; then every uopt colour of the qa / qb block is the target's (35 lines / 98.62 vs committed 34 / 99.32) but the t6..t9 FIFO model says ugen itself materialises the target's lda (held in t9 through qb, or emitted after qa's `sll` with no ib load temp) -- every source puts lda in a coloured const LR, folds it into `l.s 184(..)`, PRE-hoists / spills the cvt, or (assignment inside qa's address) gets linearised before the load; 48AEC: NCC `-O2 -g3` + an .mdebug reader (`mdeb.py`) lists every named home vfp-relative (gaps = unnamed edg temps); the target = i / j / k block-scoped + cmd in a nested block (cmd at vfp-96, same code) with only 2 temp words before load()'s g where pushQ costs 8; frame 352 is reachable but only by dropping lower-arm homes (best 97.60 < 97.73)**](#kit-cdxxxvii-agent-g-run345) -- _no gain; ~5800 variants; tools g345/t/v2.py, v3.py, dump.sh, slots.py, hs.py, mdeb.py (NCC `-g3` .mdebug home reader), g345/4/fifo.py._
 - [kit CDXXXVI (agent-c 2026-11-11, run 344): **edg inline-temp frame words, measured on a mini harness: an inline's parameters cost words only when its body expands a temp-needing inline (a parameter read more than once); a second top-level call of a wrapper with ONE such nested call is free, with two or more (set + add, set + o.set, add + add, any parameter types) the second call costs +2 words (+4 for `SV &operator+=`; set + add then saturates, the committed sum() keeps growing), regardless of wrapper nesting, braces, splits or commas between the calls; top-level statements always pool. post0b 4FD00's target frame = "second face sum free": a hand-written second sum gives param 20 / frame 136 and every sp offset of the target, but that basin's code tops out at 91.63 / 1004 B with the frame kept (dead mid.z store kept or &mid / 12 not hoisted, vertex pointers not v0); 36694 dump: zero LR adjsave 1.67 coloured after E (3.0) and px / py / pz (2.5), a named zero is constant-propagated and only adds a home; E68 distinct MGR loads, carriers and test grids flat**](#kit-cdxxxvi-agent-c-run344) -- _no gain; ~2600 variants; tools c344/sig.py, lay.py, 15 (mini harness), 53/cl.py._
 - [kit CDXXXV (agent-g 2026-11-11, run 343): **post0b 3B9C0's FP residual was the num STATEMENT, not a later order: `num = S - tris[i].d; t = -num / dn;` (num's own LR = the target's `sub.s f2`) + a code-free `if (1) {}` between p.z and the remap test (target block shape) + dx / dy carried in dead `self_al` / `pp` with explicit (s16) casts (no s16 homes: frame 232) = every FP register, the frame and every home of the target; a carrier that is also live elsewhere (the parameter b, read at the top) drags that region into the carrier's colour (b t0, target v0) -- pick a block-local carrier; left: remap / &p / ia colours (the target keeps v1 live into the remap block); 48AEC / 4B620 / 42938 / 4BAF4 have no FP residual for the later-code lever**](#kit-cdxxxv-agent-g-run343) -- _NM 3B9C0 99.211 -> 99.319 (4d4ab756d, fd1a7081e); ~1700 variants; tools g343/t/v.py, vr.py, gr.py, rc.py._
@@ -63140,3 +63141,183 @@ nothing above the committed 97.726. The real lever is still an if-arm wrapper th
 g (target) instead of 8 while keeping pushQ's code. Making the nested inlines non-temp-needing with a named single
 read of the head (`MtxHead *h = mh; return &h->buf[h->count++];`, `DLHead *d = dl; ...` in load) so pushQ's params
 should cost nothing (kit CDXXXVI rule) moves g to -124..-136 and costs the code (92.0-95.7, 48 variants).
+
+## kit CDXXXVIII (agent-c 2026-11-11, run 346): NCC frame order = edg ALLOCATION order, and function-scope named locals are hoisted to the top (their homes sit above every temporary even when declared at the end); post0b 4FD00 reaches every target sp offset (frame 136, by-value V3 temp at sp+20) with block-scoped p1 / p2, `void add()` for the two SV adds and two volatile pad words in the late block -- but that basin's ugen places `move v0,zero` early (98.13 < committed 98.645); any BB split between the two face sums costs 20 points; the later wrapper expansion binds its parameters through pool temps (fresh reference words), and a dead address-fed parameter + void adds on the second sum with that layout gives 98.645 -> 98.685; 4B620 / 42938 subset passes over agent-g's alternative bodies <a name="kit-cdxxxviii-agent-c-run346"></a>
+
+_agent-c run 346, base 349fd7e1a. One NM gain: post0b 4FD00 98.645 -> 98.685 (report.json, 1004 B = target length,
+c9fb1c206; paragraph 10's form with the first sum's word kept for s.set, see the end); 4B620 99.725 and 42938 98.856
+unchanged; about 4300 variants. Scratch `/tmp/claude-1000/c346/` (1 = target / committed / v045 disassembly, 2 = committed vs
+v045 subset grid, 3-27 = 4FD00 V3-temp placement probes, 29 / 32-40 = 4FD00 block-scope layout + climbs on the new
+layout, 20 / 21 / 25 = 4B620, 30 / 31 = 42938; `20/res.py LIST START N` = per-variant set of target-mismatched
+line numbers, `30/sub.py` = which committed residual lines a variant fixes)._
+
+**1. 4FD00, committed vs v045 (kit CDXXXVI hand-written basin), full factorial.** Five atomic differences (sum()'s
+second / third read accessors, hand-written second sum in 4 accessor spellings, `if (1) {}` before d1.set, the two
+normal-read me() depths; 160 subsets): every hand-written-second-sum subset is <= 91.80; none keeps the committed
+code. The two basins do not mix.
+
+**2. How the frame is laid out (4FD00 measurements, all byte-identical code unless noted).** Homes are handed out
+in edg allocation order, downward from the top: function-scope named locals first (in declaration order, and
+`f32 p1 = ...` declared after the code still lands up there), then pooled 4-byte temps (first-fit, reused per
+statement), the 12-byte V3 by-value temp of `set(V3)` at its FIRST use, then anything allocated later (block-scoped
+named locals of a block entered after that first use, fresh temps). Measured: committed = V3 temp at sp+4 (13
+words above: p1 / p2 + 11 sum temps); p1 / p2 in a block `{ f32 p1 = ...; f32 p2 = ...; if ... }` = V3 at sp+12
+(p1 / p2 now below it), code identical; d2 in a late block = V3 at sp+20 but d2 below it (98.57). The target
+(9 words above, 4 below) is reached by (a) both SV adds as a void member `add(const SV &)` instead of
+`SV &operator+=` (the reference return is a pooled temp: -2 words; frame 128) plus (b) `volatile int pv0, pv1;` at
+the top of the late p-block (+2 words below): frame 136, V3 at sp+20 and EVERY sp offset = target
+(`c346/34/s/va00.cpp`). Its code is 98.13: the only residuals are `move v0,zero` scheduled inside the second sum
+(line 92; committed 231, target 146), so the second sum's vertex pointer takes t0 instead of v0, and the normal
+pointers t1 / a3 / v1 (target t0 / v1). Neighbourhood climbs on va00 (sum forms per call: accessor depth 0-5 / 9 x
+`+=` / add per site for sumA / sumB separately, normal-read depths / gn(), `if (1) {}` after the sums, return
+spellings incl. a named `r` placed anywhere, pad forms / positions; ~1000): flat at 98.13; the committed `+=` form
+with the p-block keeps 98.645 but costs +8 frame once the pads are added (144, 98.43). `move v0,zero` never lands at
+146 in any of ~250 inspected variants (positions 20 / 73 / 89-92 / 231 / 239).
+
+**3. Placing the V3 temp between the sums is impossible without a BB split.** A dead block before everything
+(`if (0) { E, mid.set(a); }` at the top) allocates its pool words first and moves the V3 temp up (sp+28 / 36 / 44)
+with byte-identical code, as long as it allocates <= 7 pool words; more (any dead sum() expansion, `(s += v) += w`,
+two adds) makes the real `int f` parameter temp share a word with the dead one: `move a3,a2` + 4 B (95.9-96.8) and
+the frame grows. Every construct that allocates the temp BETWEEN the sums (`if (0) mid.set(a);`, `while (0)`,
+`for (; 0;)`, `if (f1 & 0)`, `(f1 - f1) && (...)`, a dead block inside the first sum's inline body at any of its
+five statement boundaries) gives V3 at sp+20 but 984 B / 78.4 -- exactly what a plain `if (1) {}` between the sums
+gives (temp at sp+4): the split, not the temp, costs the code. Constructs edg folds before allocating
+(`0 ? mid.set(a) : (void)0`, `(void)sizeof(...)`) allocate nothing. By-value V3 copies whose result is unused
+(`nopv(a)` with empty / `(void)p` / read bodies, discarded V3 returns) keep their lw / sw copies (+40 B). Moving
+`mid.set(a)` before the second sum or into its statement (comma forms, `set2(a, (sum(..), 0))` either argument
+order) keeps the temp at sp+4 or loses the body (66-80): edg allocates an inline expansion's temps before any
+by-value copy in the same statement.
+
+**4. 4B620 (99.725).** Residual-line sets of 281 + 214 distinct agent-g alternative bodies (g339/3, g335/4, >= 99.5)
+are all SUPERSETS of the committed 17-line core (appends 1-2 old count s3 for s0, lines 118-120 a1, 184 / 192 s2,
+the loop's 198-228 s0 / v1 / s3): no subset to combine. The 8 x 8 grid of append forms for appends 1-2 (addG /
+addGN / addGI / addOK / addIK / add / addE / addO) leaves lines 55-73 untouched in all 64. zdbug:5 (`c346/21`):
+append 1's count++ temp is pool word M-32 (LR 39, s3, bbs 12..42 = one LR through appends 3+ and the loop), the
+s0 LR is M-24 (LR 32); the target needs appends 1-2's count in an s0 LR, i.e. a different pool word than the
+appends-3+ count -- not reached by any form here.
+
+**5. 42938 (98.856).** Residual sets of 322 distinct agent-g bodies (g339/2, >= 98.7): 48 fix the scissor head
+(lines 58-64: ctx a2 / head v0 / count v1 = target) via a `+ 0 * (int)&sym` phantom on the B6 packet or a guard
+value, at the cost of 7 new lines (105 / 110 / 128 / 139 / 151 / 154 / 159: the following ctx reloads in v1 instead
+of a2); others fix 61 / 64 / 174 / 177 (+12) or 95 (+13). The B6 packet through the function-scope g
+(`g = G.o->ctx->next(); g->w0 = ..`) is 98.83 (only the tail g colour moves), the B9 packet through g is
+byte-identical; `nR(int &n)` / nE forms for B9: <= 95.5.
+
+**6. 4FD00's real residual is the SECOND sum's parameter binding (zdbug:5, `c346/41/cm/uoptlist`).** The first
+`sum(a, f1, s)` is expanded DIRECTLY (no parameter temps; s.set's reference temp and both `+=` reference temps are
+ONE pool word, vfp-104, one LR coloured v0 -> the three vertex pointers in v0, as in the target). The second
+`sum(b, f2, s)` binds its parameters through fresh pool words (vfp-80 this, -84 &b, -88 f2, -92 / -100 &s, -96 this)
+and its body behaves as one full expression: s.set's word vfp-104 is reused (pointer 1 in v0) but the two `+=`
+references get a NEW word (vfp-116, coloured t0) -- that is the t0 at target lines 100-129, and it is why
+`move v0,zero` cannot sit at 146. The target has v0 in all six pointers, i.e. BOTH sums expanded directly. Measured:
+the later sum binds through temps whatever is changed (separate sumA / sumB functions, sum2 with a different SV
+local, swapped order, braces, `this->` / `me(this)->` receivers, pointer instead of reference parameters, `const int f`,
+a free inline `fsum(Col *, ...)`); a dead `sum()` (or any dead statement with two simultaneously-live temp-needing
+calls) at the top turns the FIRST real sum into a bound one too (`move a3,a2` = the bound f). A hand-written
+first sum makes the inline sum2 direct (all six pointers v0, `c346/7/vA_100`) but the hand-written sum loses the
+inline's double `move`s (988 B, 76-77). Next lead: find which edg state flips an inline expansion from direct to
+bound (it is not per function, not per argument variable, not statement-local) -- a mini harness counting `vreg`
+words per expansion (kit CDXXXVI's `c344/15`) with leaf vs wrapper inlines before the first wrapper call.
+
+**7. Mini-harness probes of the direct / bound switch (`c346/53`, `56`, `57`; kit CDXXXVI's c344/15 header, counting
+`ustr{M} {this}` binding stores in the zdbug:5 list -- a post-copy-propagation count, so only "0 vs >0" is reliable).**
+A single wrapper call is direct whatever precedes it (`s.x = 0;`, `a.x = 0;`, `mid.set(b);`, `if (f1) {}`, a named
+local; 8 preludes), but became bound once when the only thing after it was `return a.x > 1.0f;` (`c346/54/C1`). The
+second call is bound with every code-free separator (`me(this);`, `(void)0;`, `;`, braces, a label, `s.x = s.x`,
+`mid.set(a)`); BB splits (`if (0) {}`, `if (1) {}`, `goto`, a dead `if (0) { w(..); }`) only lower the count.
+Wrapper bodies with ONE nested inline call (`s.set(..)`, `o.set(s)`, a plain member read) add no words on the second
+call; two nested calls add 2, the full sum 3 vreg words. Wrapping both calls in another inline (`sums(a, f1, b, f2,
+s)`), one wrapper level per call (`sumw` / `sumw2`), a named `Col *c = this` receiver, an inline-local SV instead of
+the s parameter, and `for` / `do` loops over the two faces (NOT unrolled by uopt: 788 B) all leave the second
+sum's `+=` references on a fresh word (t0).
+
+**8. Where va00's 2 saved words come from (`c346/63`).** A member that RETURNS `SV &` costs the 2 pool words whether
+or not the caller uses the result (`s.add2(v)` / `(void)s.add2(v)` returning `*this`: frame 144 again); a void
+member written with compound member assignments (`x += o.x; ...`) also costs them (144); only `x = x + o.x`
+statements in a void member are free. Mixing (`+=` for one add, `add()` for the other) gives frame 136 / temp 20
+but 97.07. A hand-written pair of sums at top level (`c346/62`, 50 spellings) puts all six vertex pointers in v0 and
+the temp at sp+20 (frame 128) but re-schedules both sums (988 B, <= 76.7).
+
+**9. Late probes.** 4FD00: a declaration between the sums (`int k;`, `V3 *pp;`, `SV t;`, `volatile int k;`,
+`f32 p1, p2;` moved up, a typedef, a local static) changes nothing (second sum still bound); `if (0) return 0;`
+there is a BB split (78.4). 42938: the B9 packet through pooled-count next() forms (`&d->buf[d->inc()]`,
+`&dl->buf[dl->inc()]`, `inc2()` with a named n inside DLHead, `(d->count += 1) - 1`, `d->count++`) is
+byte-identical to next() (98.856), with or without the B6 packet through g (98.830).
+42938 full factorial (256, `c346/67`) over the levers of agent-g's partial fixers -- B6 `+ 0 * (int)&G`, `if
+(gl_d_42938_ia) {}` before B7, `if (G.o->ctx) {}` before B6 / before the ctx call, B7 nC, B6 nD, B9 nA, scissor nD:
+max = the committed 98.856 (no subset combines the scissor-head fix with the ctx-reload lines).
+Mini-harness caveat for paragraph 7 (`c346/54`, `56`, `57`, counting surviving `ustr{M} {f1}` / `{f2}` binding
+stores): with a BB split between the two calls (`if (0) {}`, `if (1) {}`, `goto`, a dead call) the f1 binding
+survives and the f2 one does not -- the surviving binding stores are what uopt's copy propagation leaves, so they
+do not show edg's decision directly; use the pool-word identity of the `+=` references (`ustr{M} {&verts[..]}`
+targets, as in paragraph 6) as the direct / bound signal.
+The mini harness reproduces the residual exactly (`c346/56/p02`: vertex-pointer base registers `v0 v0 v0 v0 t0 t0`),
+so further probes can run there in seconds (`c346/70`-`72`, lh base-register string as the signal). There: the FIRST
+call's three references share one word only because of the `me(this)` in its first read (without it, or with
+me() on all three reads, the first call is `v0 a3 a3` too); for the second call, 125 accessor-depth combinations
+(0-3 / `this->` per read), 54 receiver spellings (`(*me(&s)) += ..`, depth 1-2 per call) and wrapper rewrites
+(braces per statement, comma body, `SV &s = s0` alias, int return, static member with a Col * parameter, a named
+reference / copy argument) never give `v0 v0 v0` (best `v0 t0 t0`).
+Random wrapper-body search in the mini (`c346/73`, `74`; 380 bodies over per-read accessor depth, `+=` / void `add`,
+a code-free `me(this);` / `(void)me(&s);` / `(void)me(&o);` statement at any position, and a dead extra parameter
+`int d` / `int d1, int d2` / `Col *d` / `int &d` fed f1 / this, at the end or the front): the second call's three
+references can be made to SHARE one word -- `v0 v0 v0 a3 a3 a3` / `a1 a1 a1`, always with void `add()` for both adds
+plus a dead `int d` parameter (e.g. `wb(V3 &o, int f, SV &s, int d) { s.set(verts[me(me(this))->faces[f].vi[0]]);
+s.add(verts[this->faces[f].vi[1]]); s.add(verts[this->faces[f].vi[2]]); o.set(s); }` called `wb(b, f2, s, f1)`) --
+but never the FIRST call's word (v0). Lead for the next run: that shared second-call word plus a way to make it the
+first call's word (the target), e.g. the same dead-parameter wrapper for both calls with the first call's word
+released first; check in the real file with the va00 frame recipe (paragraph 2) on top.
+
+**10. Closest structural form so far (real file, `c346/77`-`80`).** Committed first sum + second sum through
+`void wb(V3 &o, int f, SV &s, int d0) { s.set(verts[me(me(this))->faces[f].vi[0]]); s.add(verts[this->faces[f].vi[1]]);
+s.add(verts[this->faces[f].vi[2]]); o.set(s); }` called `wb(b, f2, s, (int)&s)` (dead parameter fed an ADDRESS:
+`&s` / `&b` / `&a` / `&mid` / `this`; `f2` / `0` do not do it) + block-scoped p1 / p2 with ONE `volatile int` pad:
+frame 136, temp sp+20, every sp offset and every instruction = target except the second sum's three pointers in t0
+(one shared word, `c346/78/s/v11.cpp`, 98.606) and the follow-on: `move v0,zero` at 231 instead of 146 and the
+normal pointers t1-base / v0 / v1 instead of t0 / v1 / v1. zdbug:5 (`c346/79`): sum1's word vfp-96 is LR 0 (v0, adj
+8.0, bbs 0-2) and sum2's shared word LR 74 (t0, adj 6.0, bbs 0-1) -- two LRs over the same blocks, so they can never
+share v0; the target needs sum2's references on the FIRST sum's word. Variations of the first sum (same dead-param
+wrapper, trailing / leading `me(this);` or `(void)me(&s);`, void adds) leave it at t0 (35).
+
+**11. The committed form (98.645 -> 98.685, c9fb1c206).** A 190-variant climb over both sums' accessor depths,
+`+=` / `add` per add and the dead argument (`c346/83`, `84`) on top of paragraph 10: the second sum
+`void sum2(V3 &o, int f, SV &s, int d0) { s.set(verts[faces[f].vi[0]]); s.add(verts[this->faces[f].vi[1]]);
+s.add(verts[this->faces[f].vi[2]]); o.set(s); }` called `sum2(b, f2, s, (int)&s)`, the committed first sum
+unchanged, p1 / p2 in a block with one `volatile int` pad: s.set's reference is back on the first sum's word
+(pointer 1 in v0), only the two adds share t0 (target lines 100-129), then the `move v0,zero` / normal-pointer
+knock-ons. 98.685 is flat over a second 190-variant round. Next: the adds' word -- with void adds both adds share
+one word distinct from s.set's; find the spelling that lets the add references reuse s.set's (first-sum) word.
+Also negative on the committed 4FD00 form: sum2's adds through `addp(const SV *)`, `*&v`, `me(&s)->add`, a
+block-scoped `SV *p` hand add, `add2(a, b)` / `add2h` / one `sa(a, b, c)` member (<= 98.685, 61.9-88.8); the
+second sum hand-written through `SV &r = s` / `SV *r = &s` / plain s (74.6-88.9); normal-read depths / gn and
+`if (1) {}` after the sums (190, flat). 4B620: `+ 0 * (int)x` phantoms on appends 1-2's index (36), me()^k
+receivers on appends 1-2 (36), dead add expansions before append 1 or at the ctor top (24), the
+`0xBA001301` append's form x split position (24): the 17-line core never moves.
+Dead-parameter grid on the committed form (`c346/91`, 108: 1-3 dead ints, fed `&s` / `&b` / `this` / `&a`, at the
+end / front / middle of the parameter list, x three accessor patterns) and pad spellings / positions (`c346/90`):
+<= 98.685, never all six pointers on v0.
+All 24 parameter orders of sum2 (`c346/93`) and a dead int parameter on the 42938 B6 / B9 / BA next() calls
+(`nextd((int)&G)` / `nextd((int)G.o)`, 27, `c346/92`): flat.
+4B620: the same dead address-fed parameter on appends 1-2 (`addGd(.., int dd)` / `addOKd`, fed `this` / `cc` /
+`&cc` / `a1`, 24) moves the frame (line 1) and never touches the 17-line core; a second 190-variant 4FD00 climb
+over all the committed form's dimensions (`c346/94`) is flat at 98.685.
+The dead parameter's type does not matter as long as it is fed an address-valued argument (`SV *d0` / `SV &d0` /
+`const SV &d0` / `void *d0` / `V3 *d0` fed `&s` / `s` / `&b`, `unsigned` fed `(unsigned)&s`: all 98.685, `c346/96`);
+`Col *d0` fed `this` (74.9) and a kept `if (0) { d0 = 0; }` (75.5) break it.
+Splitting the second sum (top-level `s.set(..)` + a wrapper for the two adds and o.set, or one wrapper per add,
+with / without the dead parameter; `c346/98`, 10): 984-1008 B, <= 88.9 -- the second sum must stay one wrapper.
+42938: the dead address-fed parameter on setvp() / vpnext() / the scissor's nC() (5) is byte-identical (98.856).
+4B620 loop: the dead address-fed parameter on cur() / g1() at the per-element sites (6) leaves the core; the g1
+forms move the frame (99.65).
+Normal-read spellings on the committed form (named `V3 *n = gn()`, operand order `n[f] * d`, plain nrm, `*(gn() +
+f)`; `c346/103`, 6): <= 98.685.
+The first sum through the same dead-parameter wrapper shape (`sum1d(a, f1, s, (int)&s)`, 27 accessor patterns x
+`+=` / add; `c346/104`, 54): best = 98.685 (several forms tie), never the second sum's adds on v0.
+Two dead parameters on sum2 with mixed address / value arguments (`c346/105`, 40): <= 97.63 (s.set's word moves off
+the first sum's).
+Three more 190-variant climbs over all of the committed form's dimensions (`c346/97`, `99`, `106`, `107`) and six
+o.set / last-add spellings in sum2 (`c346/108`): flat at 98.685 (direct o.x = s.x stores: 976 B).
+Mini three-call check (`c346/110`): a third expansion is `v0 t0 a1` -- s.set back on the first call's word, the first
+add on the second call's add word, the second add on yet another fresh word: every bound expansion's references
+after the first nested call are allocated while the earlier ones are still held.
+Six further 190-variant random climbs (`c346/111`-`116`): flat at 98.685.
