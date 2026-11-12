@@ -303,6 +303,7 @@ explicit shared blocks (goto a common label), not regeneration.
 - [Standalone NCC probe loop and NM-only donor size (agent-g run 119): compile a .cpp draft with NCC straight into scratch and diff it against expected/ (relocs stripped, stack offsets optionally masked) -- ~1 s per variant, no tree build; an NM-only REPLACE_FUNC_BODY donor may differ in word count from the target (24BC: 152 vs 150) and still splices into the NON_MATCHING object, which grows/shrinks the NM .o only](#ncc-standalone-probe-loop-run119)
 - [Single-unit expected/ refresh after a .s edit (2026-11-04, coordinator): scripts/refresh-expected-baseline.py currently dies on src/match_imports (cfe syntax error) after a `make clean`; rebuild ONE unit's pure-INCLUDE_ASM baseline instead and check that only the target function's score moves](#single-unit-expected-refresh)
 - [Uninitialised-local exception (2026-10-27, coordinator + user): empty tests on uninitialised locals stay BANNED unless the target shows the same function reading an uninitialised local elsewhere; the source must cite that evidence in a comment (first use: titproc_uso_func_000005DC, s5v read at 0x5C(sp))](#uninitialised-local-exception)
+- [MIPSpro 7.2.1 donor recipe (agent-h run 355): per-function `*_mp72_*.cpp` donors through tools/ncc721.sh (period EDG 2.29 edgcpfe + IDO 7.1 back end, installed by tools/fetch-mipspro721.sh) for the 4-label jump-table family only; layout-only `<func>_lay` functions put the table at the target's in-place %lo; placeholder re-emits the RoData; score drafts with `objdiff-cli diff -c functionRelocDiffs=none`](#mipspro721-donor-recipe) -- _game_uso B3C EXACT; titproc 116C NM 99.514 -> 99.586; gl 76F0 NM 99.0 -> 99.0035; 8CD8 / 1ADC not improved (why inside); 116C case-3 colour lead + the as1 `la` hoist it triggers._
 
 
 ---
@@ -13552,3 +13553,73 @@ every hit with `scripts/refresh-report.sh`. A hit that changes length counts onl
 When an exact needs a `.s` change (func_800018F0: its `bnel` targeted `func_80001994`, which is not a function, so the .s now branches to a local `.L80001994`), the tracked `expected/<unit>.c.o` still carries the old reloc and the function scores just under 100 (99.96). `scripts/refresh-expected-baseline.py` is the full recipe but currently fails: after its `make clean`, the serial baseline build dies on `src/match_imports/game_libs_func_0000CBF0.c` (cfe syntax error from the INCLUDE_ASM swap), leaving the tree with no build/ (sources are restored).
 
 Single-unit recipe (in the landing worktree, run as a scratch script): import the refresh script's `strip_decomp_in_file` and `func_map`, swap only `src/<seg>/<unit>.c` to INCLUDE_ASM, `make -j1 build/src/<seg>/<unit>.c.o RUN_CC_CHECK=0 EXPECTED_BASELINE=1`, copy the object to `expected/src/<seg>/<unit>.c.o`, restore the source in a `finally`. Then run the landing gate and diff every function's fuzzy against HEAD's report.json: only the target function may move. For kernel_000 the new object also drops some stale data labels (D_800003xx) that the old baseline defined; no other function's score changed.
+
+## MIPSpro 7.2.1 donor recipe (agent-h run 355, 2026-11-12) <a name="mipspro721-donor-recipe"></a>
+
+**When.** Only for a function whose target needs EDG 2.29's switch rule: a 4-label dense switch lowered as a
+4-entry jump table (`sltiu at,x,4; beqz; ...; jr`), which no IDO-era front end emits (cfe tables from 5 labels,
+IDO 7.1 NCC = EDG 2.19 never emits `xjp`). The period MIPSpro 7.2.1 o32 `edgcpfe` (EDG 2.29, Mar 1998) does
+(table iff n >= 4 and size <= 2n). Provenance and the evidence: TOOLING_DECOMP "Toolchain forensics III".
+**Never move an existing NCC donor to it** (87 / 214 of them change: evaluation order, temp frames, `this`
+spills). It is a per-function donor front end, spliced like any other donor, so no existing exact recompiles.
+
+**Toolchain.** `tools/fetch-mipspro721.sh` (project repo, idempotent) downloads `c++_fe.idb/.sw` (Varsity Update
+Aug 1998, discmaster 9077) + decomp.me's `mipspro7.4.4.tar.xz` (only for `qemu-irix` and IRIX `rld` / `libc` /
+`libC`), checks every sha256 and installs under `tools/ido-static-recomp/build/mipspro721/` (gitignored, reached
+through the same `tools/ido-static-recomp` symlink as IDO, so worktrees and the gate's clean checkout need nothing
+extra; CI runs the script). `MIPSPRO_CACHE=<dir>` reuses local archives. `tools/ncc721.sh <in.cpp> <out.o> [-O2]`
+= edgcpfe under qemu-irix, then the IDO 7.1 uopt / ugen / as1 recomps with exactly the `NCC -show` flags (the
+front end is the only change; 7.1-NCC-identical donors such as game_uso 0000 / D204 / 10694 come out the same).
+
+**Makefile.** Name donors `src/<seg>/<seg>_mp72_<OFF>.cpp`; a per-segment pattern rule beats `build/src/%.cpp.o`
+(shorter stem):
+```make
+NCC721 := $(TOOLS)/ncc721.sh
+build/src/game_uso/game_uso_mp72_%.cpp.o: src/game_uso/game_uso_mp72_%.cpp $(NCC721)
+	@mkdir -p $(dir $@)
+	$(NCC721) $< $@ $(OPT_FLAGS)
+GAMEUSO_B3C_DONOR := build/src/game_uso/game_uso_mp72_B3C.cpp.o
+build/src/game_uso/game_uso.c.o build/non_matching/src/game_uso/game_uso.c.o: private REPLACE_FUNC_BODY += game_uso_func_00000B3C=$(GAMEUSO_B3C_DONOR)
+build/src/game_uso/game_uso.c.o build/non_matching/src/game_uso/game_uso.c.o: $(GAMEUSO_B3C_DONOR)
+```
+NM-only (not exact yet): splice into `build/non_matching/...` only (titproc 116C).
+
+**The jump table's %lo.** The switch's `.rodata` reloc is renamed `<func>_rodata` by the splice (pin it in
+undefined_syms_auto.txt). In a raw-text Yay0 unit (game_uso: no reloc bake) the bytes are the in-place addends,
+so the table must sit at the target's RoData offset INSIDE the donor's own .rodata: put layout-only functions
+before it in the donor that emit what precedes it in the unit (B3C: a 1/6 literal fn + a copy of 940 with its 3
+tables -> table at +0x50; titproc 116C: a 12-case switch -> +0x30), named `<func>_lay` so they never alias a real
+symbol (a call to a same-TU definition could get an in-place jal target). Pin `<func>_rodata = 0`.
+Blank jals: declare the callee as the unit's real `*_func_00000000` (with the prototype the call needs).
+
+**Host placeholder.** Replace INCLUDE_ASM (and the cfe NM body, kept under `#if 0` as the reference if useful)
+with a placeholder that re-emits the function's RoData words at its place in the layout (the INCLUDE_ASM .s
+carried them as `.late_rodata`): distinct float literals, none with a zero low half (those load by `lui`, no
+literal). B3C: 16 floats for the 4-word table + 12 string words.
+
+**Scoring a draft.** `objdiff-cli diff -c functionRelocDiffs=none -1 expected/<unit>.o -2 draft.o <func> -o -`
+reproduces report.json's fuzzy number (without the `-c` it counts relocation-name diffs and reads ~0.8 low).
+
+**Gate.** As any donor: ROM cmp, verify-blocks 6/6 (`lo16=0` proves the table offset), non_matching_objects,
+report. Landing purge: `purge-landing-objs.sh` only sweeps `*_ncc_*.cpp.o`, so pass the `*_mp72_*.cpp.o` and
+the host units (`game_uso/game_uso`, `titproc_uso/titproc_uso`, `game_libs/game_libs`) explicitly.
+
+**Results (run 355).** game_uso B3C EXACT (706/706). titproc 116C NM 99.514 -> 99.586 (residual = the cfe set:
+constant 40 a1 vs v0, case-3 object/`c` v0/v1 swap). Under edg the 7 cfront-style vtable calls are plain C++
+virtual calls (`struct VO { char pad[0x28]; virtual void m1(); ... m12(); }; (*(VO **)(s0 + 0x58))->m11();`
+gives the target's `lw v1; lw v0,40(v1); lw t9; lh; jalr; addu a0` exactly, no vt locals; same score, cleaner
+source). Lead for the case-3 swap: giving the 0x40100 block's record pointer its own block-scoped local
+(not the shared `v1` variable) colours the case-3 fade pointer v1 and `c` v0 exactly as the target, but then v1 is
+dead on the then-arm fall-through and as1 hoists the else-arm's `la v1,&D` (placed by ugen at the else block's
+start, on the `} else {` line) into the if-head and the `beqz` delay slot: 1156 bytes, 98.67. A 16-cell grid
+(fade pointer through `v1` or direct / reload / per-block names) found no form with both; `if (1) {}` /
+`do {} while (0)` after every statement (96 + 96 + 106 variants on both bases) never beat 99.586. as1 steals
+the `la` in ours but not in the target although the target's else block also has a single predecessor and its
+then-arm also rewrites v1 before reading it, so the fill rule's other input is still unknown. Constant 40: a single
+uopt constant LR spanning case 0 and case 3 (bitpos 139 in the `-zdbug:6` trace, coloured last -> a1);
+`40u` / unsigned / `(short)` / struct-array spellings either keep it or turn the case-0 one into a ugen t-temp. game_libs 76F0 NM 99.0 -> 99.0035 (NM-only donor, virtual-call form; left: head `beqzl at; lw t3,0x500(s0)`
+where the target has `beqz` + the table-index `sll` in the delay slot although both default blocks start with
+the same load, plus t6/t7 ring swaps). Not improved under 7.2.1: game_uso 8CD8 (agent-c's NCC-tuned donor: 88.41
+vs NCC 90.43; frame / temp-slot / colour divergence from the first block, needs a full retune), kernel 1ADC
+(92.54 vs cfe 95.66, and its hiptr is read uninitialised on the LO16-before-HI16 path, so it needs an
+initialised spelling first).

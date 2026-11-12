@@ -31,6 +31,17 @@ Then, in order:
    `-Wo,-zdbug:6` regalloc dump) requires a *source* build of
    ido-static-recomp — if you need `./uoptlist`, build IDO from source and
    apply the patch there; the prebuilt binary cannot take it.
+   Then, in the project, run `bash tools/fetch-mipspro721.sh` (idempotent). It
+   downloads the SGI MIPSpro 7.2.1 C++ front end (`c++_fe.idb/.sw` from the
+   Varsity Update Aug 1998 CD on discmaster) and decomp.me's
+   `mipspro7.4.4.tar.xz` (for `qemu-irix` + IRIX `rld` / `libc` / `libC`),
+   checks every sha256, and installs `edgcpfe` + runtime under
+   `tools/ido-static-recomp/build/mipspro721/` (gitignored; worktrees and the
+   landing gate's clean checkout reach it through the `tools/ido-static-recomp`
+   symlink). `tools/ncc721.sh` runs it with the IDO 7.1 back end for the
+   per-function `*_mp72_*.cpp` donors; the build fails at those donors without
+   it. Needs host `libglib-2.0` and `libpcre.so.3` (for qemu-irix). If the
+   archives are already on disk, `MIPSPRO_CACHE=<dir>` skips the downloads.
 3. **Memory** — untar the memory bundle into
    `~/.claude/projects/<project-slug>/memory/`. 729 memos: user preferences,
    project state, and gotchas that are deliberately NOT in the repo.
