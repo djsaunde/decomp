@@ -6,6 +6,7 @@ _10 entries. Auto-generated from per-memo notes; content may be rough on first p
 
 ## Index
 
+- [Toolchain forensics: every IDO-family toolchain we can run, and what each 1080 cap really is (run 349)](#toolchain-forensics-run349) — _Downloaded decomp.me's ido5.3_cfront, which bundles cfront 3.0.1 and Delta C++ (EDG 2.19) plus qemu-irix. bootup 6204 / E9FC were edg static initializers (__sti__: the prologue is on the TU's last line, the ctor call on the definition line, so lui comes before sw ra) and are now EXACT. Mixing 5.3 / 7.1 uopt / ugen / as1 gives byte-identical code on 396FC / 1824 / E2D0. DCC does not explain the C++ near-misses. The 4-entry jump-table family: IDO 4.1's pcc-derived ccom / accom genswitch (table iff n >= 4 && 0 < range <= 3n) matches the target exactly. Confirmed by running accom (through the docker-snapshot glibc + glib shim) with the 7.1 back end: native `sltiu 4` tables, and kernel 1ADC reaches 114/134 words (cfe NM: 103). But 76F0's operand order and float compares match cfe, not accom, so the likely original is a cfe with a 4-label threshold (IDO 6.x?). The 4.1 as1 / as1 options are ruled out for 396FC / 1824 / E2D0 by whole-object fingerprints._
 - [decode-sweep.py: automated objdiff-gated m2c-graft decode transforms (2026-06-16)](#decode-sweeppy-automated-objdiff-gated-m2c-graft-decode-transforms-2026-06-16) — _`scripts/decode-sweep.py` automates the three biggest mechanical post-graft %-movers (graft-cleanup items 21/22 + struct-copy collapse): builds a per-(base-register,offset) WIDTH CATALOG from the target's own `.s` (lb/lbu/lh/lhu/lw/lwc1...; handles BOTH raw-.word USO and mnemonic kernel/bootup formats), then (1) retypes mistyped `*(s32*)((char*)BASE+0xOFF)` derefs to the cataloged sub-word type, (2) splits absolute `*(T*)0xADDR` derefs to `&D_00000000+0xADDR` (also strips `(unaligned sN)` artifacts — a COMPILE-ENABLER, not just a %-mover), (3) collapses >=4 contiguous word-copies into Quad4 (16B exact, no whole-struct overshoot). Each transform is OBJDIFF-GATED (rebuild + re-read fuzzy, revert on regression) and idempotent. Validated: retype +2.58pp (gl_func_00021498 28.20->30.79), +3.77pp (gl_func_00064588 48.67->52.44); revert path byte-verified. NO-OP on already-correctly-typed fns (no false gains)._
 - [disasm-raw.py dropped pinned jal/lui reloc-alias lines from raw-.word .s (FIXED 2026-08-22)](#disasm-rawpy-dropped-pinned-jallui-reloc-alias-lines-from-raw-word-s-fixed-2026-08-22) — _Pre-fix, its `.word`-regex scan silently dropped pinned `jal sym` / `lui $r,%hi(sym)` lines (word only in the `/* OFF WORD -> sym */` comment): calls vanished, every later offset shifted -4. Now parses line-by-line, shows callee names, and has `--selftest`. Distrust pre-2026-08-22 disasm-raw output for any USO fn with pinned relocs._
 - [coloring-solve.py: inverse register-coloring solver from the uopt trace (2026-06-15)](#coloring-solvepy-inverse-register-coloring-solver-from-the-uopt-trace-2026-06-15) — _`scripts/coloring-solve.py` parses a `-Wo,-zdbug:6` coloring trace for one function (decodes LR bitpos -> register, constrained/unconstrained, priority/bitpos color order, spills, splits) and, given target+build `.s`, aligns the two instruction streams to separate REGISTER-RENUMBER residuals (shape-correct, wrong reg) from STRUCTURAL diffs, emitting the target<-build register-pairing histogram + algorithm-derived levers. The generalizable regalloc-cap diagnostic instrument: tells you WHICH LR is mis-colored and WHY before you touch the C._
@@ -1613,3 +1614,148 @@ pinned jal+lui lines must round-trip at 7/7 insns with correct offsets.
 Rule: if you decoded a USO function with pre-fix disasm-raw output and the
 reconstruction "mysteriously" missed calls or had -4-shifted branch targets,
 re-derive from the fixed tool before concluding anything about the function.
+
+## Toolchain forensics: every IDO-family toolchain we can run, and what each 1080 "proven cap" really is (agent-c run 349, 2026-11-12) <a name="toolchain-forensics-run349"></a>
+
+**Question.** Finished IDO decomps (OoT, Paper Mario) have no "impossible" functions. Their apparent caps turned out to be
+(a) a different compiler / flags, (b) original hand-written asm, (c) a post-compile patch (OoT iQue `driverominit.o`,
+`oot/tools/patch_ique_driverominit.py`), or (d) a wrong decode. This run checked 1080's caps against every toolchain we
+could get.
+
+**Inventory (local + downloaded).**
+- On disk: IDO 5.3 and 7.1 static recomps (`projects/<1080>/tools/ido-static-recomp/build/{5.3,7.1}/out`; 7.1 has
+  `NCC` + `edgcpfe`), and the original IRIX binaries under `tools/ido-static-recomp-dump/ido/{5.3,7.1}`. KMC GCC is Glover-only.
+- Downloaded into `tools/forensics/` (untracked) from decomp.me's compiler bucket:
+  `https://github.com/decompme/compilers/releases/download/compilers/ido5.3_cfront.tar.gz` and `.../ido4.1.tar.gz`.
+  - `ido5.3_cfront` ships its own `qemu-irix`. It holds the IRIX 5.3 IDO (cfe/uopt/ugen/as1 are md5-identical to our 5.3; only
+    as0 differs) plus two C++ front ends:
+    - AT&T **cfront 3.0.1**: `usr/lib/c++/cfront`, which emits C.
+    - SGI **Delta C++ = EDG C/C++ front end 2.19**: `usr/lib/DCC/edgcpfe`, which emits ucode. It is a different edg from
+      7.1 NCC's.
+  - The `CC` driver dies under qemu (sgisys 24). Drive the phases by hand. Run cfront directly as
+    `qemu-irix -silent -L <dir> <dir>/usr/lib/c++/cfront +a1 +f<name> < in.ii > out.c`, then use any IDO cc.
+  - Run DCC's edgcpfe with the argument list that `DCC -v` prints (make a symlink named `DCC` to `usr/bin/cc` and run it
+    under qemu-irix), then run our uopt / ugen / as1 from either version. Scratch wrappers: `/tmp/claude-1000/c349/scripts/{dcc,cfront}.sh`.
+  - `ido4.1` is ECOFF. Its bundled `qemu-irix-4.0` needs glibc 2.38, which this machine (2.35) does not have, so it was not run.
+- NOT downloaded: decomp.me's `ido5.2`, `ido6.0` and `mips_pro_744`. decomp.me's own `cromper/cromper/compilers.py` pulls
+  them from `github.com/LLONSIT/qemu-irix-helpers`, which is outside the approved source list. **Getting IDO 6.0 (and any
+  7.2) is the one open lead for the jump-table family**, and it needs the user's OK on that source.
+
+**Fingerprint results.**
+1. **bootup 6204 / E9FC (`lui a0` above `sw ra`) = (d) decode, now EXACT.** Both are **edg static initializers**
+   (`__sti__<stamp>`) for namespace-scope objects. The mechanism:
+   - edg emits the __sti__ at the END of the TU, so its prologue carries the last source line.
+   - The constructor call carries the object definition's earlier line.
+   - So the argument `lui` outranks `sw ra` in as1. A C function can never do this, because its call cannot sit on a line
+     before its own `{`.
+
+   Details:
+   - 6204 = `struct T { T(); }; T obj;`.
+   - E9FC = `struct B { B(); int w[10]; }; struct Dv : B { Dv() {} virtual void v(); }; Dv obj;`. That is the base ctor
+     call, then `obj.vptr = &vtbl` at +0x28. The ROM word is `AC2E0028`; splat's `func_00000008 + 0x20` was an artefact.
+   - It needs at least one source line after the definition. With the definition on the last line you get `sw ra` first.
+   - NCC also writes a 16-byte `.data` link record `{0, __sti__, 0, 0}`.
+   - The __sti__ name embeds a compile timestamp. The Makefile renames it with
+     `--redefine-sym $$($(CROSS)nm $@ | awk '$$3 ~ /^__sti__/ {print $$3}')=func_X`.
+   - **Generalisation: look for prologue-order "caps" on tiny call-then-store functions. They may be compiler-generated
+     (`__sti__` / `__std__` / vtable thunks), not user functions.**
+2. **Backend version is NOT the cause of the as1 / ugen / uopt caps.** On standalone extracts that reproduce each residual
+   (post0b 396FC bound-check steal, mgrproc 1824 `li at,1` fill, bootup E2D0 FP FIFO), we ran 7.1 cfe followed by every
+   mix of 5.3 / 7.1 uopt, ugen and as1. All of them gave byte-identical objects.
+3. **DCC (edg 2.19) does not explain the C++ near-misses.**
+   - Our donors for 4B620 and 3B9C0 give identical words under DCC + 7.1 backend and under NCC.
+   - 42938 is worse under DCC.
+   - The float-heavy units (4FD00, 48AEC, 36694, 4BAF4) come out 4-8 words SHORTER and wrong under DCC.
+   - The 65EE4 argument-order micro (`f(&G, G.base)`, -Olimit 1) gives the same `addiu a0` jal slot under DCC 5.3 / 7.1 and NCC.
+4. **Jump tables (B3C / 8CD8 / 116C / 76F0 / 1ADC): still (a), with the toolchain unknown.**
+   - None of the IDO 5.3 / 7.1-era front ends emits a 4-label table:
+     - cfe 5.3 and 7.1 build tables only at 5 or more labels;
+     - edg 2.19 (DCC) and 7.1 (NCC) never emit `xjp`;
+     - cfront passes the switch through to cfe unchanged (8CD8's donor through cfront + cfe 7.1 gives a compare chain).
+   - Why not hand-written (b): the targets use pure IDO idioms (`lui at; addu at; lw tN,%lo(at); jr tN; nop`, ugen's
+     synthesised bound check).
+   - Why not a post-compile patch (c): the table has exactly 4 words (kit CDXX), so a patch would have had to rebuild
+     the table too.
+   - **Lead: IDO's OLD pcc-derived C front ends `ccom` / `accom` use exactly the target's rule.** Both ship in IDO 4.1
+     (`tools/forensics/ido4.1/usr/lib/{ccom,accom}`, ECOFF). Statically disassembled with
+     `mips-linux-gnu-objdump -d -M no-aliases` (it reads ECOFF):
+     - The genswitch is at ccom 0x401c80 and accom 0x402500. It is pcc's classic test:
+       `range = hi - lo; if (range > 0 && range <= 3 * n && n >= 4)` build a table, otherwise a compare chain.
+     - The table path then emits `lod` (0x52), `xjp` (0x8c) and `clab` (0x11) with length range + 1.
+     - So a 4-label dense switch (0..3, or 1..4 in 1ADC) becomes a 4-entry table, and ugen synthesises `sltiu 4`.
+       That is exactly the target.
+     - cfe's rule never tables fewer than 5 labels. pcc's rule never tables a sparse switch like 2FB74's 21-entry
+       [19..39], so 2FB74 is cfe and these five are not.
+     - The IDO 5.3 and 7.1 drivers still carry `ccom` / `accom` / `oldccomflag` strings, but neither recomp ships those
+       binaries, and no driver option we found (`-oldc`, `-Xoldc`, `-cckr`, ...) selects them.
+     - **Confirmed by running it.** `qemu-irix-4.0` needs glibc 2.38. It runs on this machine through the loader and
+       libc of the local Ubuntu 24.04 docker snapshot
+       (`~/.local/share/docker/containerd/.../snapshots/2/fs/lib64/ld-linux-x86-64.so.2 --library-path <snap>/usr/lib/x86_64-linux-gnu:/lib/x86_64-linux-gnu`)
+       plus a 2-function glib shim (`g_assertion_message_cmpint`, `g_string_free_and_steal`) passed with `--preload`.
+       Wrappers are in `tools/forensics/scripts/` (`q41.sh`, `accom.sh`; untracked).
+     - The 4.1 cc driver's default C front end is `accom -Xprototypes -Xxansi`.
+     - On a 4-case switch, accom ucode run through our 7.1 uopt / ugen / as1 gives
+       `sltiu at,a0,4; beqz; sll; lui; addu; lw; jr; nop` plus a 4-word table, which is the target's head.
+       accom's ucode is accepted by 7.1 uopt.
+     - **kernel func_80001ADC under accom + 7.1 back end:** 134 / 134 words (cfe gives 139 without the phantom label).
+       114 / 134 positionally-equal words (reloc fields masked), against 103 / 134 for the committed cfe NM under the
+       same metric. The changes were:
+       - drop `case 5:`;
+       - drop the `+ 0 *` fold;
+       - write `D_80012C44` as a function-pointer variable (the target calls it with `jalr`);
+       - write the R_26 OR as `(sum) | (*p & 0xFC000000)`.
+       What is left: the head's `andi a2` / `lw a3` order (uopt hoists `info & 7` into an s-register in every
+       type-before-flags order), the HI16 arm's delay slot (`lh t4` vs `addu a2`), and a t6 / t7 / t8 rotation in the
+       LO16 / R_32 arms. Best source: `tools/forensics/scripts/accom_1ADC_best.c`.
+     - With the IDO 4.1 back end the code is longer: 137 words, with `lwl` / `lwr` for the `char *` struct loads.
+       If it were accom at all, it would be with the 5.3 / 7.1 back end, not the 4.1 back end. The 76F0 result below
+       argues against accom.
+     - **titproc 116C under accom + 7.1:** native `sltiu 4` head after removing the phantom `case 4:`, at the same length
+       (290 words). But all 10 vtable-call `this + off` adds come out `addu a0,v1,tN` against the target's (and cfe's)
+       `tN,v1`. That is the same accom canonical order seen in 76F0, so it is evidence against accom here too.
+     - **But game_libs 76F0 argues against accom as the original front end.**
+       - Under accom + 7.1 its three tables come out native: `sltiu 6`, `sltiu 4`, `sltiu 4`.
+       - Everything else gets worse than cfe: 447 / 578 aligned against cfe's 473 / 577.
+         - Every `vt->e[k].off + self` add comes out `addu a0,s0,tN` where the target and cfe give `tN,s0`. Swapping
+           the source operands does not help, because uopt canonicalises the accom ucode.
+         - Three float tests come out `c.lt.s f2,f0` where the target and cfe give `c.le.s f0,f2`.
+       - With the 4.1 back end it is 641 words.
+       - So the original front end looks like a **cfe build with a 4-label table threshold**, which our 5.3 / 7.1 cfe
+         lack. IDO 6.x cfe is the obvious candidate (decomp.me's `ido6.0` and `mips_pro_744` live at
+         `github.com/LLONSIT/qemu-irix-helpers`, not yet approved).
+       - accom 4.1 reproduces the switch rule but is not that compiler. Do not wire accom donors on this evidence alone.
+       - Also: accom sorts compare-chain cases (2, 4, 3 becomes 2, 3, 4), the same as cfe.
+     - Policy / infra question before landing anything: the build would need IDO 4.1 accom runnable. Options are the
+       glibc trick above, a container, or a static recomp of the ECOFF binary, which ido-static-recomp does not support
+       as-is.
+5. **IDO 4.1 as1 (an older as1) removes both as1-order residuals, but it is NOT the original assembler.**
+   - Reassemble 7.1 ugen output with the 4.1 as1:
+     `q41.sh <4.1>/usr/lib/as1 -G 0 -p0 -mips2 -EB -g0 -O2 x.G -o x.o -t x.T`. It warns "version stamps wrong" but works.
+   - For 396FC: no bound-check steal (`sll t7` stays in the slot, `or a0,a3` stays at the default head), and every
+     other word is unchanged.
+   - For mgrproc 1824: the `li at,1` pull disappears. But other blocks also schedule differently: 144 words against
+     the target's 142.
+   - Whole post0b object (asm-processor pre-pass, `cc -K`, then the .G through each as1): **167 of 902 functions
+     differ** from the 7.1 as1.
+     - Both sides were run without `-r4300_mul`, which the 4.1 as1 lacks. The 7.1 as1 with `-t5_ll_sc_bug
+       -r4300_mul` reproduces the build's object exactly, 902 / 902.
+     - Most of the 167 are exact today, so the 4.1 as1 is ruled out as the original.
+     - The 7.1 as1 at `-O1` / `-O0` changes 350 functions, so it is ruled out too.
+   - The 5.3 as1 is byte-identical to 7.1 on 396FC / 1824 / E2D0.
+   - **as1 option fingerprint (7.1 as1, whole post0b, compared with the build object):**
+
+     | as1 option | functions changed | 396FC fixed? |
+     |---|---|---|
+     | `-r4600` | 290 | no |
+     | `-multi_issue` | 544 | no |
+     | `-t5_mtc1` | 113 | no |
+     | `-tfp` | 536 | no |
+     | `-t5_r31` | all 902 | no |
+     | `-t5_muldiv`, `-force_branch_fixup` | 0 | no |
+     | `-r4200` | rejected | n/a |
+
+     None helps 1824 or E2D0 either. A per-file as1 flag is ruled out for these residuals.
+   - An as1 between 4.1 and 5.3 (decomp.me `ido5.2`, also on the LLONSIT host) is the only untested candidate.
+     Gate any as1 candidate on a whole-object reassembly with zero exact-function changes.
+6. **cfront as a 396FC explanation: negative.** The 396FC body through cfront + cfe 7.1 still steals `or a0,s0` into
+   the bound-check slot, and the code shape changes (146 vs 153 words).
