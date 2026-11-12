@@ -14797,6 +14797,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CDXLVII (agent-h 2026-11-12, run 361): **PHANTOM mask temps realign the ugen ring after an if-body: when every later t-temp is N FIFO slots off from a join onward, N folded masks at the first divergent statement (`(u16)(lo & 0xFFFF)` in kernel 1ADC's LO16 tail store: same stored low half, two `andi`s that as1 deletes) burn exactly N slots; a mask placed one statement early shifts that statement too; register-operand masks are real code. 1ADC already read hiptr / hival uninitialised exactly as the target (the 2026-11-12 extension only adds the citing comment); its 7.2.1 residual is two as1 schedules (head val load, case-1 store / delay fill), flat under every statement / declaration order. 8CD8: the double phase store gains in the committed 7.2.1 basin; the a0 guard `this` is not reached by any subset / ctor / site spelling**](#kit-cdxlvii-agent-h-run361) -- _6e05bd8f7 (1ADC NM 95.66 -> 96.26, 7.2.1 draft 92.54 -> 93.13) and 918139a46 (game_uso 8CD8 NM 91.182 -> 91.288); ~1000 variants._
 - [kit CDXLVIII (agent-g 2026-11-12, run 362): **uopt live ranges are BLOCK-granular (`-zdbug:5` `live bb` = block id; a range takes the lowest colour not used by a range sharing one of its blocks), so the `if (0)` inside a kept identity can recolour a temp by splitting its block: 4B620 append 2 through `K3(T *p) { p = p; return p; }` (`&head->buf[K3(this)->head->count++]`, hi kept) gets run 359's extra pool word WITHOUT the split -- old count s0 and g a1, byte-exact append (99.773 -> 99.822); only `p = p` works (q-copy, `+ 0`, const-ref, int cast, `if (1) return` do not); `if (0)` / `if (1)` inside inline bodies is byte-identical; append 5's g (a1) needs three lower-coloured ranges in its block and only comes with append 4's head / count as fresh ranges (costs s0 / s3 and two `it` words); 48AEC ctor `this` / 4BAF4 packets / loop receivers flat**](#kit-cdxlviii-agent-g-run362) -- _post0b 4B620 NM 99.773 -> 99.822 (76669de5b, same length); ~2500 variants._
 - [kit CDXLIX (agent-h 2026-11-12, run 363): **uopt drops every statement `loc` in a join block it folds into a test's fall-through (`if (c) {} else { continue; }` then statements: check `ugen -d` after uopt), so the block carries the test's line and as1 breaks aftercycles ties by ugen order; as1 ties otherwise go to the LOWER line. Writing the statements INSIDE the then-arm (`if (c) { ...; } else { continue; }`) keeps their lines and the layout; a dead `i = i;` line after an arm's last statement gives uopt's inserted loop-tail code a later line (store before the end-pointer `sll`, reload in the delay slot). Also: a greedy K3 / K1 kept-identity climb over every member-access receiver lifts 8CD8 (needs class temporaries; flat on 116C / 76F0)**](#kit-cdxlix-agent-h-run363) -- _EXACT kernel func_80001ADC (440696bf7, 7.2.1 donor, 96.26 -> 100, 536 B); game_uso 8CD8 NM 91.288 -> 92.254 (8dd599a10, 102a65623); ~1900 variants._
+- [kit CDL (agent-c 2026-11-12, run 365): **a `.alias` / `.noalias` pseudo-op between an unconditional `b` and the next LABEL (`cc -S`: `b $49 / .alias $8,$sp / $48:`) makes that labelled block UNREACHABLE in as1's CFG (`-Wb,-xbbdbg,9`: weight 65534, dominated only by itself), so xbb never takes a delay-slot / idle-cycle filler from it -- the real mechanism of 51AD8's counted-`pp` exact (the fold moved pp's `.alias` to just before the default label); reproduces 396FC's target bound-check slot, but only with extra code (no zero-code alias-tracked LR in case 114). The kit CDXLIX line lever is inert on 1824 / 396FC / 65EE4 (the decisions are not ties; 65EE4's call args all carry one line, and its blocks need one line each) and E68 / E2D0 (uopt / ugen colours)**](#kit-cdl-agent-c-run365) -- _no gain; ~450 variants + probes; `-Wb,-xbbdbg,N` (not `-Wab`) works._
 - [kit CDXXXVIII (agent-c 2026-11-11, run 346): **NCC homes follow edg ALLOCATION order (function-scope named locals hoisted to the top even when declared late; then pooled temps; a by-value V3 temp at its first use; then late block-scoped locals): post0b 4FD00's every target sp offset (frame 136, V3 temp sp+20) = block-scoped p1 / p2 + `void add()` for the SV adds (-2 pool words) + two volatile pad words in the late block, but that basin's `move v0,zero` lands inside the second sum (98.13 < 98.645); the real residual is that the SECOND wrapper expansion binds its parameters through temps so its `+=` references get a fresh pool word (t0) -- a dead `int d` parameter fed an address (`wb(b, f2, s, (int)&s)`) + void adds makes its three references share one word and, with the block / pad recipe, leaves ONLY that word's colour (t0 vs v0) and its knock-ons (98.606, `c346/78/s/v11.cpp`); with the second sum's first read at accessor depth 0 s.set's reference goes back onto the first sum's word (v0) and only the two adds stay on t0: 98.685, committed; a BB split anywhere between the two sums costs ~20 points (984 B), so the temp cannot be allocated between them; dead top-of-function pool blocks move the temp with identical code up to 7 words; 4B620 / 42938: every agent-g alternative body's residual set is a superset of the committed core (42938's scissor-head fix costs 7 ctx-reload lines)**](#kit-cdxxxviii-agent-c-run346) -- _post0b 4FD00 NM 98.645 -> 98.685 (c9fb1c206, same length); ~4300 variants; tools c346/20/res.py (per-variant mismatch-line sets), c346/83/gen.py (sum / sum2 climb), c346/30/sub.py, c346/35/hc.py, c346/39/gen.py._
 - [kit CDXXXVII (agent-g 2026-11-11, run 345): **post0b 3B9C0's `addiu t9,sp,184` is a ugen-HELD lda: a `0 * (int)(X)` fold is a register zero only when the same text occurs twice (CSE before folding), which gives kit CDVIII's phantom with no new block (`(char *)&p + 0 * (int)(self->tris)`, paired with the ib line's self_al->tris fold); a carrier merges with its inner-loop web (adjsave 115 > fv 103.3, fv loses a3) until one counted fv use in the ok line; then every uopt colour of the qa / qb block is the target's (35 lines / 98.62 vs committed 34 / 99.32) but the t6..t9 FIFO model says ugen itself materialises the target's lda (held in t9 through qb, or emitted after qa's `sll` with no ib load temp) -- every source puts lda in a coloured const LR, folds it into `l.s 184(..)`, PRE-hoists / spills the cvt, or (assignment inside qa's address) gets linearised before the load; 48AEC: NCC `-O2 -g3` + an .mdebug reader (`mdeb.py`) lists every named home vfp-relative (gaps = unnamed edg temps); the target = i / j / k block-scoped + cmd in a nested block (cmd at vfp-96, same code) with only 2 temp words before load()'s g where pushQ costs 8; frame 352 is reachable but only by dropping lower-arm homes (best 97.60 < 97.73)**](#kit-cdxxxvii-agent-g-run345) -- _no gain; ~5800 variants; tools g345/t/v2.py, v3.py, dump.sh, slots.py, hs.py, mdeb.py (NCC `-g3` .mdebug home reader), g345/4/fifo.py._
 - [kit CDXXXVI (agent-c 2026-11-11, run 344): **edg inline-temp frame words, measured on a mini harness: an inline's parameters cost words only when its body expands a temp-needing inline (a parameter read more than once); a second top-level call of a wrapper with ONE such nested call is free, with two or more (set + add, set + o.set, add + add, any parameter types) the second call costs +2 words (+4 for `SV &operator+=`; set + add then saturates, the committed sum() keeps growing), regardless of wrapper nesting, braces, splits or commas between the calls; top-level statements always pool. post0b 4FD00's target frame = "second face sum free": a hand-written second sum gives param 20 / frame 136 and every sp offset of the target, but that basin's code tops out at 91.63 / 1004 B with the frame kept (dead mid.z store kept or &mid / 12 not hoisted, vertex pointers not v0); 36694 dump: zero LR adjsave 1.67 coloured after E (3.0) and px / py / pz (2.5), a named zero is constant-propagated and only adds a home; E68 distinct MGR loads, carriers and test grids flat**](#kit-cdxxxvi-agent-c-run344) -- _no gain; ~2600 variants; tools c344/sig.py, lay.py, 15 (mini harness), 53/cl.py._
@@ -64133,6 +64134,15 @@ split:
   - In -g3 homes (base: g -24, -40 ... -56, iterator copy -80), each pooled replacement for a named g takes 2 words
     where the g took 1. This holds for `set`, an assigned parameter (`stS`) and a plain parameter (`stP`).
   - Still needed: pairing append 2 with append 5 at 1 word.
+- Second lead: the 4B620 blocks are probably cut by uopt's 20-load block limit (agent-c's 4FD00 note in kit CDXXXVIII's
+  donor), not only by `if`s.
+  - The appends fall into blocks of two (13 = 1-2, 14 = 3-4, 15 = 5), and the boundary between appends 4 and 5 has no
+    `if` in the source.
+  - Removing append 2's trailing hi keep joins appends 3-5 into one block (`hi = hi;` in its place keeps the
+    boundary). Append 5's g then gets a0 (colour 3), one short of a1, but appends 1-2 lose their colours.
+  - The aim is a cut INSIDE append 5 (g defined in block 14 with appends 3-4, stores in the next block).
+  - First try, flat (105 variants): 1-4 nested K3 identities on append 3 / 4's `this`, append 5's buffer base or g,
+    with and without the `if (1) {}` after append 5.
 
 **4. Negative results (no change).**
 - 4B620 loop: the iterator sites' receivers (`it.` / `me()` / `me(me())` / `K1(&it)` / `K3(&it)`, cur <-> ref; 380
@@ -64151,6 +64161,10 @@ split:
   - 36694's F2 keep as `v = v`: flat.
   - 42938 entry block: our t4 / t5 / t3 run 2 ring slots AHEAD of the target's t2 / t3 / t0, so phantom masks
     (which only add slots) cannot help there.
+  - Random code-free `if (x) {}` insertion (1-2 per variant, statement ends x live locals) on 3B9C0, 4BAF4 and the
+    4B620 ctor: 380 variants each, nothing above the committed score. The same on the 48AEC body: 380 variants, flat.
+  - 48AEC loop receivers through `K3(&it)` / `me(K3(&it))` / `K3(GS->ctx)` (sites and `next()`): 570 random draws,
+    best 98.017, below the committed 98.037.
 
 ## kit CDXLIX (agent-h 2026-11-12, run 363): uopt DROPS every statement LOC in a join block it folds into a test's fall-through (`if (c) {} else { continue; }` + statements), so the whole block carries the test's line and as1 breaks aftercycles ties by ugen order; the same statements INSIDE the then-arm (`if (c) { ... } else { continue; }`) keep their lines and the lower-line instruction wins the tie -- kernel 1ADC EXACT (7.2.1 donor, 95.07 -> 98.51 -> 100) <a name="kit-cdxlix-agent-h-run363"></a>
 
@@ -64265,3 +64279,134 @@ give at most 2 flipped sites (`XZ e(XZ(b->pos) - K1(a)->pos)` + `s->p84 = XZ(a->
 a named `XZ wp(s->w->pos)` for d2 + `(*K1(&s->p84))` in f: 90.15), and a fuzzy + 0.15 x flips climb from there
 stalls after one round (91.13, 2 sites). The flip is per-site here, so the slot ranges are being split, not
 re-ranked; the next try should look at the two LRs' block lists in the dump rather than search blindly.
+
+## kit CDL (agent-c 2026-11-12, run 365): the line-number lever (kit CDXLIX) is inert on the as1-side C caps (1824 / 396FC / 65EE4: ~400 layouts byte-identical or worse; E68 / E2D0 residuals are uopt / ugen colours); NEW as1 rule found instead: a `.alias` / `.noalias` pseudo-op between an unconditional `b` and the next LABEL makes that labelled block unreachable in as1's CFG (weight 65534, dominated only by itself), so xbb never takes a delay-slot / idle-cycle filler from it -- this is how 51AD8's counted `pp` use cracked the bound-check slot, and it reproduces 396FC's target slot (`sll t7`), but no zero-code C source of such an LR exists in 396FC <a name="kit-cdl-agent-c-run365"></a>
+
+_agent-c run 365, base 97e659ed1. No source change, no exact. Scratch `/tmp/claude-1000/c365/` (1 = 1824 one-function TU,
+3 / 4 / 11 = 396FC, 5 = 65EE4, 6 = bootup E68 / E2D0, 8 = 51AD8 ex / pre, 12 = 1824 probes). Tools in `c365/t/`:
+`c.sh in.c out.o fn tgt.s "flags"` (Makefile cc line + score), `grid.py cfg.py outdir` (substitution variants, score +
+per-function hash), `sweep.py src lo hi fn tgt outdir flags vars` (a `v = v;` line after every statement, every
+adjacent-line join, every `; ` split), `dd.py o fn tgt.s [lo hi]` (side-by-side disasm vs target words),
+`alabel.py src.c fn [cc flags]` (lists `b` + `.alias` runs before a label inside fn from `cc -S`, and counts the
+unit's weight-65534 blocks from `-Wb,-xbbdbg,9`; 51AD8 exact: `$43` and `$48` runs, 3 blocks; without the fold: `$43`
+only, 2), `nccx2.sh` / `nccx3.sh` (tools/ncc721.sh pipeline keeping ugen's `-l` listing, as1 `-xbbdbg 9`; nccx3 adds
+`$XO` to uopt and as1, e.g. `XO="-Olimit 1"`)._
+
+**Trace options that work:** `-Wab,-R` (scheduler trace, kit CDXVIII) and `-Wb,-xbbdbg,N` (N = 3: MOVETO / MOVEFROM
+lines; N = 5 adds the per-procedure block WEIGHT table; N = 9 also prints the dominator / post-dominator sets and,
+for every move, both blocks' instruction lists with `Line` numbers). `-Wab,-xbbdbg,3` fails (as1 gets `3` as a file name).
+
+**1. Line-number tests (the kit CDXLIX lever), all flat.**
+- mgrproc 1824 (`li at,1` hoisted into the head block's load-latency idle cycle): the moved node has lineno = the
+  switch line and is the ONLY ready node at that cycle, so there is no tie for a line to break. 22 targeted layouts
+  (`s0 = s0;` / `v0 = v0;` before / after the counter, the counter in `if (1) {}` / `do {} while (0)` / a one-pass
+  `for` init, header joins of the import call / counter / switch, `goto L; L:` before the switch, blank lines, self-
+  assigns inside the switch and case 1) plus a 112-variant sweep (self-assign after every statement, every join and
+  split): all byte-identical (`if (v0) {}` before the counter and a `for` step form change code and are worse). A
+  probe that ends a global-address LR in the head block puts its `.alias` after `beq v0,1`, not between `beqz` and the
+  `li at,1` block: the whole compare chain is ONE uopt block (ugen expands `beq 0; beq 1; b default` from it), so no
+  directive can split the hoist source from the head (see 3).
+- post0b 396FC (bound-check slot takes the default's `or a0,a3`): the default call's lineno can be made higher than
+  (base), equal to (`switch (a1[0]) { default: ...;` on one line) or LOWER than (`goto sw; df: call; return; sw:
+  switch ... default: goto df;`) the switch line: the move is taken in all three; 135-variant sweep byte-identical. The
+  choice is not a tie (see 2).
+- post1b 65EE4 (jal-slot argument order): every argument node of a call carries the call statement's FIRST line
+  (args split over lines, -Olimit 1 fallback body: `lineno 19` for all six nodes), so no layout separates `&G` from
+  `G.base`. Expanding the macro into one statement per line costs 69.18 -> 48.63: the target's interleaving NEEDS
+  each block on ONE line (the macro is right). 26 split-point layouts (a newline after statement k, k pairs): split
+  after the `end` store (before call 1) or after `f34 = 0` -> 65.07 / 65.75 / 65.07 (worse), all others identical.
+  Also flat: the body through the 7.2.1 EDG front end with uopt / as1 `-Olimit 1` (byte-identical to cfe: same
+  argument order); 32 data-store x call-1-argument spellings (`| 0x10`, `0x10 + (B)`, `base + 0x10`, casts, `16U`;
+  all fold to the same constant, or worse). The first residual (`lui t7; ori a2,t7,0x10` vs the target's `lui a2;
+  ori a2,a2,0x10`) is as1 CSE of ugen's `li $15,C; sw $15` (store) and `li $6,C` (uopt-forwarded `G.data` argument):
+  the lui stays in the store's temp. The target's form needs the store to come from `$6` itself in ugen's output; a
+  `register int d` local gives the right t-ring after it (69.18 -> 81.91 lcs) but puts d in s0 (+1 word, frame 40);
+  making d a (fake) parameter homes it (worse). Back-end / front-end versions do not move 65EE4 either: cfe of IDO
+  5.2 / 6.0 / MIPSpro 7.2.1 / 7.4.4 (then 7.1 uopt -Olimit 1 / ugen / as1), and uopt + ugen + as1 of those versions
+  on 7.1's `.B`, or their ugen alone on 7.1's `.O`: all 69.18, byte-identical.
+- bootup E2D0: 88-variant sweep (`arg0 = arg0;` / `dot = dot;`, joins, splits) byte-identical; its residual words
+  are FP ring NAMES after the call (`f14` vs `f16`, `f6` vs `f8`: one ring step), a ugen register choice, not an
+  as1 order. E68: 83-variant sweep of the phase-2 loop: identical, except `k = k;` / `m = m;` / `vidx = vidx;` after
+  the vs / ve line or after the CULL macro, which move the three emit-time spill slots 76 / 80 / 84 -> 84 / 88 / 92
+  (statement presence, not lines; worse), and one join (worse). E68's residual is uopt colouring (t0 vs a3 from the
+  first loop on). Decisive check: aligned against the target, E68 differs in ZERO mnemonics over 759 words (only
+  register fields) and E2D0 in zero over 131 (17 words: FP register fields / branch offsets), so as1's order is
+  already the target's in both and no line / tie lever can touch them. Side checks on the colours (no gain): E68 phase
+  1 (lines `vidx = 0` .. the row loop end) with `if (1) {}` / `if (0) { V = 0; }` (V = x / y / vidx / n / row) after
+  every statement, 180 variants: every split is worse (78.92 -> 74.04 .. 77.87 strict), and the `if (0)` forms equal
+  the bare split (the dead store adds nothing). E2D0's arg4 keep-live (`if (arg4) {}` after the call): dropping it,
+  `arg4 = arg4;`, moving it before the call / to the top / after the `lim` load, `arg4 + 1.0f` order: <= base;
+  `if (arg4 != 0.0f) {}` is byte-identical. uopt of IDO 6.0 / MIPSpro 7.2.1 / 7.4.4 on 7.1's bootup `.B` writes a `.O`
+  identical to 7.1's except one header byte (version stamp): E68 / E2D0 unchanged, so their colours are not a uopt
+  version question either.
+
+**2. NEW: `.alias` before a label makes the block unreachable for xbb.** `-Wb,-xbbdbg,9` prints each block's weight
+(1 + 3 per enclosing conditional; jump-table arms one level deeper) and dominator set. A block whose dominator set is
+only itself and whose weight is 65534 is unreachable in as1's CFG, and xbb never moves an instruction OUT of it. That
+happens when ugen emitted a `.alias` (or `.noalias`) pseudo-op after an UNCONDITIONAL branch (`b`) and before the
+next block's label (`b $49 / .alias $8,$sp / $48:`; check with `cc -S`, same flags: the .s is the as1 input
+with every directive). A directive between a FALL-THROUGH block's last instruction and a label does not do it (76F0's
+7.2.1 donor has `s.s $f16,0($2) / .alias $2,$sp / $61:` three times and no 65534 block). In post0b only `.alias` / `.rdata` ever sit between a `b` / `j` and a label (474 plain, 1 +
+1 `.alias` runs, 3 `.rdata`).
+- **51AD8 explained** (the run-326 exact): `cc -S` of the exact donor and of the same body without the fold differ
+  ONLY in where `.alias $8,$sp` (end of pp's LR) is emitted: without the fold it sits before `$47:` (after the
+  `*pp == 0` call), with `+ 0 * (int)(pp)` in case 211 it moves to the end of case 211, i.e. before the DEFAULT label
+  `$48:`. xbbdbg 9: pre = default bb5 weight 4, xbb moves its head into the bound-check slot; exact = default bb6
+  weight 65534, dominated only by 6, and xbb fills the slot from the jump block (`MOVEFROM bb 7`: the `sll`).
+- **396FC reproduced (with extra code):** `{ int *gp = (int *)&D_00000000; gp[a1[2]] = 0; gp[a1[3]] = 0; }` at the
+  end of case 114 makes `la $2` an LR whose `.alias $2,$sp` lands after `b $50`, before `$49:` (default); default
+  = bb5 weight 65534 and the slot holds `sll t7,t7,2` exactly like the target (+11 words, not kept). So the
+  target's 396FC had SOME alias-tracked LR ending in case 114's last uopt block.
+- **Micro-corpus** (`c365/22/gen4.py`, 7-case dense switch, last arm `case 3`, default `f(b, a)` so its head is a
+  register move): exclusive default -> `beqz at; or a0,a2` (steal); the same with `{ int *g = G; g[b[4]] = 0;
+  g[b[5]] = 0; }` at the end of case 3 (`.alias` after its `b`, before the default label) -> `beqz at; sll t6`;
+  default shared with `case 2:` (two predecessors) -> `sll t6` with or without the alias. If the default's head
+  needs no move (`f(a, b)`), there is nothing to steal and the slot keeps `sll` anyway.
+- **What emits the directives** (cc -S survey of post0b, 305 `.noalias`): `.noalias $r,$sp` at the first deref of a
+  register holding a GLOBAL address (`la` kept in a register: CSE'd base with variable-index uses, loop-hoisted
+  addresses) or a pointer computed from one (`addu` of such a base + index); `.noalias $r,$gp` for STACK addresses
+  kept in a register (`addu $r,$sp,N` hoisted out of a loop, pointers to local arrays with variable indices); and
+  register-pair forms (`.noalias $22,$17`) for two such pointers. The matching `.alias` goes at the END OF THE uopt
+  BLOCK holding the LR's last use (after its branch), while ugen-temp ones close right after the use. Constant
+  addresses used once (`&xf` as an argument, `l.s $f, D+off`) and pointers loaded from memory / derived from
+  parameters get NO directive.
+- **396FC: no zero-code source.** Case 114 holds no global / stack address in a uopt register (the 0.01f and 1/32767
+  loads are `lui at; lwc1 off(at)`, `&xf` is a one-shot argument, `m` / `q` / `s` come from a0 / a1). Tried, all
+  byte-identical: `p = (int *)&xf;` passed to the call with `0 * (int)(p)` folded into the copy's destination or
+  source, the same with `p = (int *)&D_00000000`, `0 * (int)(&xf)`, a `kp` pointer for the 0.01f loads (constant-
+  propagated to `D+6672`, no LR); `if (m) {}` / `if (&xf) {}` / `if (xp) {}` after the copy are real tests (+2 / +3
+  words). The case-114 struct copy is ONE uopt statement (ugen expands the loop), so a fold anywhere in it would end
+  an LR in the right block -- the missing piece is an alias-tracked pointer with zero code. The 7.2.1-edg C++ body
+  (run 358's 94.77 `k2.cpp`, built with a copy of tools/ncc721.sh that keeps ugen's `-l` listing and runs as1 with
+  `-xbbdbg 9`: `c365/t/nccx2.sh`) is flat too: K3 / K1 kept identities on `&xf` / `b1` / `&kS` / `m` with the fold in
+  the copy, an inline member `xf.fin(a0, m)` folding `this` (plain / K3 / K1), a `Xform &r = xf` reference -- zero
+  directives in every listing: a stack or global address with no variable part is always propagated as a constant.
+  Only `la` bases CSE'd over several uses (`la $2, D` with four `0($2)`.. stores in 36074), loop-hoisted `addu $r,$sp,N`
+  and struct copies to / from LOCALS (`a = *(Vec3 *)(o + 0x88)` gives `.noalias $3,$gp` on `addu $3,$sp,100`) make
+  such LRs.
+- **Use elsewhere:** any residual where xbb takes a filler from a labelled block the target leaves alone (a stolen
+  default head, a branch-target head in a delay slot) is a candidate: look for a pointer LR (global address in a
+  register, stack array pointer) whose last use you can move into the block before that label with a folded use
+  (`+ 0 * (int)(p)`) -- the 51AD8 shape. Check `cc -S` for the directive and xbbdbg 9 for weight 65534.
+  Corroboration: the only two other post0b functions with an `.alias` run before a label, game_libs_func_0004F2DC
+  (exact) and gl_func_00036694 (NM 96.08, `.alias $5,$gp` before `$136:`), both show weight-65534 blocks in
+  one-function xbbdbg 9 traces. 36694 is a lead for its owner: check whether its residual is an xbb move that the
+  directive enables or blocks.
+
+**as1 version check (new).** 7.1's ugen output (`cc -K` keeps `one.G` / `one.T`) re-assembled with the as1 of IDO 5.2,
+IDO 6.0, MIPSpro 7.2.1 (`/tmp/claude-1000/r1/root72`) and MIPSpro 7.4.4 (`tools/forensics/x_*`, run under
+`x_mipspro744/usr/bin/qemu-irix -silent -L <root>`, same as1 line as `cc -show`): 1824 keeps the `li at,1` hoist in all
+five (97.89 each); 396FC keeps the default-head steal in all five (5.2 / 6.0 also differ elsewhere, 152 words). The
+same with uopt + ugen of 7.2.1 / 6.0 / 7.4.4 on 7.1's `.B` (then 7.1 as1), and ugen alone of 7.2.1 / 6.0 / 5.2 / 7.4.4
+on 7.1's `.O`: unchanged for both (5.2 ugen worse). So neither residual is a back-end-version difference: the target's as1 saw a different ugen input (for 396FC, the
+`.alias`-before-label CFG of section 2 is the one mechanism found that gives its slot).
+
+**3. 1824 left as before.** The hoisted `li at,1` comes from the fall-through block of the head's `beqz`, which ugen
+expands from the same uopt switch block, so no directive can sit before it, and it has no label anyway. Weights
+(head 1, compare block 4, case blocks 7..13) give nothing to exploit: the target keeps four xbb moves of the same
+weight step (4 -> 1, 7 -> 4).
+
+**Housekeeping.** This worktree's `build/src/game_libs/game_libs_post0b.c.o` was STALE (an earlier run's flag
+experiment, newer mtime than the source, so plain `make` kept it): ROM mismatch from +0x35C90 into game_libs. Rebuilt
+with `make -W src/game_libs/game_libs_post0b.c -W src/bootup_uso/bootup_uso.c` -> ROM OK. After any in-tree flag
+experiment, rebuild the touched units with `-W` before the gate.
