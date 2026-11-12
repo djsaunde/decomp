@@ -14788,6 +14788,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CDXXIV (agent-g 2026-11-11, run 332): **a target value in a uopt colour (v0..t5) where ours has a ugen temp (t6..t9) is a missing NAMED carrier: post0b 4BAF4's else-arm spr->dl64 through d like the first packet's 0xCC pointer (+ ring lever re-tuned to one `& 8`) 99.007 -> 99.137, then me() receiver depths re-gridded on the new base -> 99.291; the C0 / ctx swap is a four-LR priority ORDER (count pool slot > ctx > g), not a tie (ctx 3.6 vs C0 1.5)**](#kit-cdxxiv-agent-g-run332) -- _7f5fb4c85, 645f1e396, 2872f8eae, 01b42dbd0; split / carrier / addA priority probes, ~800 variants; tscan.py scanner._
 - [kit CDXXXIX (agent-c 2026-11-11, run 347): **post0b 4FD00: BOTH face sums as separate statements inside ONE inline wrapper (`sums(a, f1, b, f2, s)`) put all six vertex references on one edg pool word (v0 like the target) and land `move v0,zero` at the target's slot, because within one expansion a fresh reference word is released after each nested call while a LATER expansion holds any word it reuses from an earlier statement (`v0 t0 t0`; comma-joined calls: whole second sum on one fresh word); left: 2.0f in $f2 (target $f0) + the normal pointers, set by uopt's 20-load block boundary (kit XXXV) now falling after p1 -- a split before p1 restores $f0 but drops the entry hoists; edg drops `(void)x;` loads, IDO keeps `+ 0 * f` index folds, dead locals collapse the sums; 48AEC open-coded push forms flat**](#kit-cdxxxix-agent-c-run347) -- _post0b 4FD00 NM 98.685 -> 99.004 (1876249f6, same length, frame 136); ~2700 variants; tools c347/sc4.py, c347/wseq.py (pool-word store sequence + LR colours), c347/17/clim.py, c347/23/clim.py, c347/sc5.py._
 - [kit CDXL (agent-c 2026-11-11, run 348): **post0b 4FD00: bind BOTH normal references before either dot (`V3 &n1 = me^7(this)->gn()[f1]; V3 &n2 = me^8(this)->gn()[f2];`): the second binding's counted loads put uopt's 20-load boundary in front of p1, so the 2.0f divisor takes $f0 with the entry hoists kept; every other added counted load (self-assignments, `(&a)[f1 & 0]`, dead locals) lands in fixed layout classes (+1 = 980 B, +2 / +4 = 972 B); the pointer residual is per-block interference of the two early-bound pointers**](#kit-cdxl-agent-c-run348) -- _post0b 4FD00 NM 99.004 -> 99.024 (3066b9ad1, same length, frame 136); ~1900 variants; tools c348/fr.py, c348/9/vr.py, c348/20/vr2.py._
+- [kit CDXLI (agent-g 2026-11-12, run 350): **the "one shared helper library" hypothesis tested: the EXACT NCC donors do not share one helper set (six DL-append spellings, 329C uses all in one body; every exact also carries per-site me / I2 / keep / fold noise), house-style rewrites score 1-12 points BELOW the lever-fitted near-misses (4B620 uniform append 96.66 -> best 98.53 with real old-GBI gSPSetOtherMode macros vs 99.72; 3B9C0 as a 3BE1C-style member 87.80-91.18 vs 99.32), and member vs free functions / operators, const methods, P3 base, unused header declarations, `new X(...)` vs the explicit null-this ctor call are byte-identical under NCC; 48AEC's complete target frame layout (frame 352: for-scoped counters, arm-1 block without pushQ, gp declared before gbi, n / dd home moves) reached word-for-word but that basin tops out at 96.83 < 97.726 (arm-1 mt-in-s0 needs pushQ's src parameter)**](#kit-cdxli-agent-g-run350) -- _No score change; ~1700 variants; tools g350/t/en.py, grid.py (score + sp-offset-set mismatch), offs.sh, lay.sh; catalogue g350/2/house.h. No evidence of different NCC options for the post0b units._
 - [kit CDXXXVIII (agent-c 2026-11-11, run 346): **NCC homes follow edg ALLOCATION order (function-scope named locals hoisted to the top even when declared late; then pooled temps; a by-value V3 temp at its first use; then late block-scoped locals): post0b 4FD00's every target sp offset (frame 136, V3 temp sp+20) = block-scoped p1 / p2 + `void add()` for the SV adds (-2 pool words) + two volatile pad words in the late block, but that basin's `move v0,zero` lands inside the second sum (98.13 < 98.645); the real residual is that the SECOND wrapper expansion binds its parameters through temps so its `+=` references get a fresh pool word (t0) -- a dead `int d` parameter fed an address (`wb(b, f2, s, (int)&s)`) + void adds makes its three references share one word and, with the block / pad recipe, leaves ONLY that word's colour (t0 vs v0) and its knock-ons (98.606, `c346/78/s/v11.cpp`); with the second sum's first read at accessor depth 0 s.set's reference goes back onto the first sum's word (v0) and only the two adds stay on t0: 98.685, committed; a BB split anywhere between the two sums costs ~20 points (984 B), so the temp cannot be allocated between them; dead top-of-function pool blocks move the temp with identical code up to 7 words; 4B620 / 42938: every agent-g alternative body's residual set is a superset of the committed core (42938's scissor-head fix costs 7 ctx-reload lines)**](#kit-cdxxxviii-agent-c-run346) -- _post0b 4FD00 NM 98.645 -> 98.685 (c9fb1c206, same length); ~4300 variants; tools c346/20/res.py (per-variant mismatch-line sets), c346/83/gen.py (sum / sum2 climb), c346/30/sub.py, c346/35/hc.py, c346/39/gen.py._
 - [kit CDXXXVII (agent-g 2026-11-11, run 345): **post0b 3B9C0's `addiu t9,sp,184` is a ugen-HELD lda: a `0 * (int)(X)` fold is a register zero only when the same text occurs twice (CSE before folding), which gives kit CDVIII's phantom with no new block (`(char *)&p + 0 * (int)(self->tris)`, paired with the ib line's self_al->tris fold); a carrier merges with its inner-loop web (adjsave 115 > fv 103.3, fv loses a3) until one counted fv use in the ok line; then every uopt colour of the qa / qb block is the target's (35 lines / 98.62 vs committed 34 / 99.32) but the t6..t9 FIFO model says ugen itself materialises the target's lda (held in t9 through qb, or emitted after qa's `sll` with no ib load temp) -- every source puts lda in a coloured const LR, folds it into `l.s 184(..)`, PRE-hoists / spills the cvt, or (assignment inside qa's address) gets linearised before the load; 48AEC: NCC `-O2 -g3` + an .mdebug reader (`mdeb.py`) lists every named home vfp-relative (gaps = unnamed edg temps); the target = i / j / k block-scoped + cmd in a nested block (cmd at vfp-96, same code) with only 2 temp words before load()'s g where pushQ costs 8; frame 352 is reachable but only by dropping lower-arm homes (best 97.60 < 97.73)**](#kit-cdxxxvii-agent-g-run345) -- _no gain; ~5800 variants; tools g345/t/v2.py, v3.py, dump.sh, slots.py, hs.py, mdeb.py (NCC `-g3` .mdebug home reader), g345/4/fifo.py._
 - [kit CDXXXVI (agent-c 2026-11-11, run 344): **edg inline-temp frame words, measured on a mini harness: an inline's parameters cost words only when its body expands a temp-needing inline (a parameter read more than once); a second top-level call of a wrapper with ONE such nested call is free, with two or more (set + add, set + o.set, add + add, any parameter types) the second call costs +2 words (+4 for `SV &operator+=`; set + add then saturates, the committed sum() keeps growing), regardless of wrapper nesting, braces, splits or commas between the calls; top-level statements always pool. post0b 4FD00's target frame = "second face sum free": a hand-written second sum gives param 20 / frame 136 and every sp offset of the target, but that basin's code tops out at 91.63 / 1004 B with the frame kept (dead mid.z store kept or &mid / 12 not hoisted, vertex pointers not v0); 36694 dump: zero LR adjsave 1.67 coloured after E (3.0) and px / py / pz (2.5), a named zero is constant-propagated and only adds a home; E68 distinct MGR loads, carriers and test grids flat**](#kit-cdxxxvi-agent-c-run344) -- _no gain; ~2600 variants; tools c344/sig.py, lay.py, 15 (mini harness), 53/cl.py._
@@ -63431,3 +63432,109 @@ target's colouring needs there. The one late form that keeps the sums (`V3 *cons
 `p2 = d2 * m2[f2]`, 97.59) binds too few counted loads ($f2), and adding a filler binding to it falls to 980 again.
 zdbug colour map for the current form: col 1 v0 (vertex pointer), 2 v1 (f1*8, then the nrm ilod), 6 a3 (f2*8, then
 n1), 7 t0 (sums pool word -100, nodes 0-1), 8 t1 (const 6, then n2), 9-11 t2-t4 (sp+20, sp+100, 12).
+
+## kit CDXLI (agent-g 2026-11-12, run 350): the "one shared helper library" hypothesis tested -- the EXACT NCC donors do NOT share one helper set (329C alone has six append spellings), house-style rewrites land 1-12 points BELOW the lever-fitted near-misses, and the structural choices a shared header would fix (member vs free functions / operators, const methods, base structs, unused declarations, `new X(...)` vs the explicit null-this ctor call) are byte-identical under NCC; 48AEC's full target frame layout found (frame 352, every home on target) but that basin tops out at 96.8 <a name="kit-cdxli-agent-g-run350"></a>
+
+_agent-g run 350, base cb79660e3. No score change committed. Scratch: `/tmp/claude-1000/g350/` (`t/en.py SPEC OUT`
+= subset toggles with `MANG`; `t/grid.py GEN OUT` = generator variants with score + sp-offset-set mismatch vs the
+target; `t/offs.sh OBJ FN` = sorted sp offsets; `t/lay.sh SRC PROC` = -g3 home layout one-liner via g345 mdeb.py;
+`2/house.h` = the catalogue below)._
+
+**1. Helper catalogue (exact donors only).** Display-list head `{Gfx *buf; int n/count}` at ctx+0xC everywhere. Append
+spellings in EXACT bodies: (A) `int n = dl->n++; return &dl->buf[n];` (gui 3F18 / 413C / 4354, 2DE0 nD, 4568 with an
+unused `DL *` parameter); (B) `return &head->buf[head->count++];` (493AC); (C) `int n = dl->n; dl->n = n + 1;` (3714,
+329C); (D) `DLHead *d = dl; int n = d->count; d->count = n + 1; return &dl->buf[n];` (4B0A8); (E) a named `Gfx *g`
+result (46FA8); (F) `Gfx *r = &dl->buf[dl->n++]; return r;` (3714). 329C uses SIX of them in one function. Packets:
+gui = stock 2.0I gbi.h macro text (`gui_ncc_gbi.h`), post0b = `struct Gfx {w0, w1}` member stores. Iterator: the
+by-value `AIter : IBase {a, idx, last}` with `next()` as if / return `&(*a)[++idx]` (4B0A8, 41D40, 49B3C, 493AC),
+built by a member `Arr::iter()` (493AC) or a free `iter(Arr *)` (4B0A8, 41D40). Allocation: cfront this == 0
+protocol with `operator new` = the blank USO alloc. V3: flat or P3-based, ctor direct or via `set()`, free or member
+by-value operators (64388 / 4F2DC / 3558 / 54E78 all differ). And EVERY exact also carries the per-site noise: me()
+depths, I2 / I4 pool identities, kept inline parameters, folded counted uses, BB splits, carriers. So there is no
+single house header to recover from the exacts: per-site spelling variety is part of the target, not an artefact.
+
+**2. House-style rewrites, scored fresh (all lengths = target unless noted).**
+- 4B620 with one `add()` append and the 493AC iterator: 96.66; best of 128 subsets of the old levers on top: 97.79.
+  With real gbi macros (`gDPPipeSync` / `gDPSetCycleType` / `gDPSetDepthSource` / `gDPSetTextureFilter` /
+  `gDPSetTexturePersp` / `gSPTexture` -- 0xBA001402 etc. decode as OLD-GBI `gSPSetOtherMode` with sft in byte 1) over a
+  uniform `next()`: 96.59; with `next()` = `&dl->buf[dl->inc()]` + AIter keep + ref(): 98.38; per-site (A) / (B) on
+  the first two packets: 98.53. Committed lever body: 99.72. The diff of the uniform-macro body shows the reason: the
+  target's appends 1-2 colour head v1 / count s0 and appends 3-9 head s0 / count s3 -- two different edg pool shapes
+  inside one function, which a uniform helper cannot give.
+- 3B9C0 as a 3BE1C-style member `int Obj::ray(...)` with `Col::face()`, named ia / ib, s16 dx / dy: 87.80 (1116 B);
+  with 3B9C0's committed declaration order: 91.18 but 1132 B / frame 248 (the face() expansion and the de-carried
+  dx / dy cost homes). The committed C-struct body converted 1:1 to a member function (self -> this): 99.319,
+  byte-identical to the extern "C" body.
+- 36694: member vs free `operator-` / `operator*`, `set()`-forwarding vs direct ctor, P3 base vs flat V3 (48 variants):
+  all byte-identical (96.079); only operator/'s named `k` moves code. `V3 d = p - a` / `V3 t; t = p - a` / no
+  px / py / pz floats: 81.9-89.4, the frame shrinks (the target's sub chain 120 -> 140 -> 92 is NOT a named V3 local).
+- 4B620 grouping the packets into setup helpers (`beg(cc)` for packets 1-2, `tex(cc)` for 4-6, `beg3(d0)`): every
+  grouping SHORTENS the body (1212-1232 B, 85-99.06): a helper expansion changes edg's reload pattern.
+
+**3. Code-neutral under NCC (byte-identical, do not spend variants on them):** member vs free inline functions
+(including extern "C" `f(Obj *self, ...)` vs `int Obj::f(...)`), `const` on inline member functions (4B620 cur / ref
+/ operator[] / add*: 116 of 116 compiling subsets identical), member vs free operators, a P3 base vs a flat V3,
+unused declarations in the header (30 unused inline functions + 30 unused structs with operators prepended to 4B620:
+identical), `cc = new DL(name, n, 0, 0, 0, 0)` with an out-of-line ctor vs the explicit
+`gl_func(0, name, n, 0, 0, 0, 0)` (the decode is confirmed: the null first argument IS the cfront this == 0
+protocol), `cc->fin()` / `m64->bind(&m34)` non-virtual member calls vs free calls. What DOES move code is only what
+creates or removes an edg pool temp or a home: named inline locals, kept parameters, accessor depth, expression form.
+
+**4. 48AEC: the target's frame layout, completely.** On top of kit CDXXXVII 5: target homes (vfp 352) gctx -4, A -8,
+B -12, mtx -76, i / j / k + 1 word, c -96, g -108, g2 -124, it1 -144, shared iter return temp 196 (all three loops),
+iter() temps 184 / 112 / 60, gbi 140 (its w1 at 144: there is NO gp home), it2 128, it3 72. Reached word-for-word
+(sp-offset set = target except 232 vs 256, which is c's spill, a colouring choice) by: for-scoped
+`for (int i ...)` counters; NO cmd / pushQ -- arm 1 as a block `{ Mtx *c; func(mt, c = me(gctx)->mtx());
+me(me(gctx))->load(c); }`; arm 2 `Mtx *c2; ... me(me(me(me(gctx))))->load(c2);`; n-free `mtx()` / `mtxQ()`, no dd
+in `mtxQ()` / `nextQ()`; `prim()` through the n-free `nextQ()`; arm-2 `dlcall()` with a dead `DLHead *dd = dl;`
+first; `Gfx *gp;` declared BEFORE `Gfx gbi = g34;` (body `/tmp/claude-1000/g350/5/g8/v1l0.cpp`, 95.35; with
+`func(I2(mt), c = ...)` c spills to 256 like the target, 96.12 (`g10/b3f0g0.cpp`)). That basin's ceiling over ~600
+variants (load / mtx accessor depths, I1 / I2, pushL / pushM / free pushF forms, a named `Mtx *m`, 200 random lever
+subsets) is 96.83, below the committed 97.726 (frame 368). The arm-1 residual is the target's mt address held in s0
+across BOTH calls with c spilled: a named `Mtx *m = mt` is copy-propagated by uopt (rematerialised lui / addiu, home
+placed between i and j at block entry), I2(mt) does not hold it either; the committed body gets it only through
+pushQ's src parameter + the double `0 * mt` fold, which costs the 16 frame bytes. Open lead: an arm-1 form that keeps
+one non-constant LR for mt without pushQ's parameter homes.
+
+**5. NCC options.** No evidence of different NCC options for these units: every structural probe above behaved as
+the committed bodies predict, and 4B620 / 4BAF4 / 3B9C0 / 42938 / 4FD00 already have the target's exact sp-offset
+set (frames on target); only 48AEC (frame 368 vs 352) and 36694 (temp chain) are layout-off, both explained by
+source shape.
+
+**6. Follow-ups (same run).** 48AEC: what puts the arm-1 mt address in s0 (target) is pushQ's `src` PARAMETER, not
+the double `0 * mt` fold -- on the committed body dropping the fold keeps s0 (97.698), replacing pushQ by the same
+two calls open-coded (with or without me()) loses it (95.39, 2060 B); a one-use wrapper `fwd(void *s, Mtx *d)`,
+a kept `fwdK`, or `c = fwdR(mt, ...)` around the second call in the frame-correct basin do not give s0 either (45
+variants, best 96.87). 4B620: per-site append spellings from the catalogue (inc / count++ / count++ + keep / named n
+/ explicit n + 1 / inc + keep / free addG) over all nine packets, 54 single + 146 double mutations of the committed
+body: nothing above 99.725. 36694: the target's extra p - a copy (120 -> 140 -> 92, the 140 temp reused by the final
+division) is not a by-value inline parameter (`get(V3 t, f32 &x, ...)`, kept or not, 82.8-84.2, 716-728 B) nor a
+`V3(p - a)` functional cast bound to a const reference (84.6-84.7, 720 B).
+Also code-neutral (add to point 3): 4B620's hand-written vptr store `*(char **)(this + 0x28) = S(0)` vs a real
+virtual (`BB { char pad[0x28]; BB(...); virtual void f(); }`, Base padding 0x2C..0x84, `virtual void f()` in Obj):
+byte-identical, edg emits only Obj's `__vtbl__3Obj` store (no Base vptr store), at the same point.
+Destructors are NOT neutral: an empty `~AIter() {}` / `~IBase() {}` on 4B620's by-value iterator adds 28 bytes
+(1264 B, 94.69) -- edg emits the temporary-destruction bookkeeping, so the target's iterator classes have no
+destructor; a declared-only `~DL()` or `~Gfx() {}` on types never constructed by value is neutral. 4B620's
+append-1 / append-2 count (target s0, ours s3) does not move with counted uses inside addG / addOK (`if (n) {}`,
+`if (g) {}`, `+ 0 * (int)(d)` / `(this)` / `(g)` folds; 25 variants, <= 99.725): the swap is the loop pool var's.
+Random joint rounds on the committed bodies with the catalogue forms added (4B620: 28 loop-accessor / next() / keep /
+BB-split / per-site append toggles, 3 x 200 random 2-5 subsets; 42938: the five append spellings over its six
+packets, 30 single + 170 double / triple): nothing above the committed 99.725 / 98.856. 4FD00 written house-style
+(by-value `sum()` returning V3, `(a + b) / 2.0f`, `(mid - a) * nrm[f1]`): 13.8 % / 1140 B -- the committed in-place
+`set` / `+=` / `-=` / `/=` members ARE the decode.
+48AEC, last probe: on the frame-correct base (point 4) a NESTED `{ Mtx *cmd; gctx->pushQ(mt, cmd); }` gives BOTH
+the target's mt-in-s0 and cmd at -96 (sp+256), with it / gbi / it2 / it3 still on target -- the only layout miss is
+load()'s g at -120 (target -108) and arm 2 below it (c2 -128 / g -132, target g -124): pushQ's inline machinery
+costs 3 words more than the target between cmd and g (96.05, `g350/5/g17/p0d0e0.cpp`; 40 pushQ-body / accessor
+variants, 95.7-96.2). Target reading: the s0 register is ONE uopt variable = one edg pool word holding pushQ's src
+(mt) and then load()'s old count (`lw s0,4(v0)` in the load packet), so the arm-1 wrapper is a pushQ-like inline
+whose parameter word is reused by load()'s count; what is left is a pushQ / load spelling whose temps cost 2 words.
+Compiler-generated C++ pieces in the run-350 near-misses (coordinator check, after agent-c's `__sti__` finding):
+4B620 is itself a cfront ctor (this == 0 -> new(0xD8), inline Base ctor with its own new(0xCC) fallback, Obj vptr
+store: hand-written and real-virtual forms identical) and calls out-of-line ctors with a null this (`new DL(...)`
+identical); 48AEC's three `arr.iter()` loops each carry the by-value return chain (iter temp 184 / 112 / 60 -> ONE
+shared temp 196 -> it) with the inline IBase ctor's this == 0 -> new(12) protocol, reproduced by the committed
+source; 36694 / 4FD00 carry by-value V3 operator / parameter temporaries. No destructor, thunk or `__sti__` code in
+any of them (an empty dtor on the iterator adds 28 bytes); 3B9C0 / 42938 / 4BAF4 have no C++ machinery beyond
+inline members.
