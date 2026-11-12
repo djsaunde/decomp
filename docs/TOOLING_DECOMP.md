@@ -6,6 +6,7 @@ _10 entries. Auto-generated from per-memo notes; content may be rough on first p
 
 ## Index
 
+- [Toolchain forensics III: MIPSpro 7.2 / 7.2.1 C++ edgcpfe (1997 / 1998) against the 1080 caps (run 352)](#toolchain-forensics-run352) — _Found on discmaster.textfiles.com: the MIPSpro C++ 7.2 CD, the Varsity Update Aug 1998 CD (7.2.1 c++_fe / c_fe) and IRIX 6.4 IDF 1.1 (7.2.1 driver / uopt / ugen / as1). sha256s and an IRIX inst extractor are included. Both o32 edgcpfe builds say "EDG 2.29" (Aug 29 1997 / Mar 13 1998), have the 4-label table rule, AND inline class-returning-by-value operators (no weak copies; 1DDC stays 384 words). So 7.4.4's non-inlining is a later SGI change. B3C is 706/706 standalone, and 116C / 76F0 / 1ADC are identical to 7.4.4's output. 8CD8 gets the target length plus a native table at the target's position. But on the NCC donor gate it is 127 same / 87 differ (7.2 and 7.2.1 give identical objects): evaluation order, temp frames, `this` spills. 57D8's 8-way compare chain rules it out for that donor. So 1080 mixed two edg front ends. It is safe only as a per-function donor front end._
 - [Toolchain forensics II: IDO 5.2 / 6.0 / MIPSpro 7.4.4 against the 1080 caps (run 351)](#toolchain-forensics-run351) — _The three LLONSIT archives are decomp.me's own sources (decompme/compilers values.yaml), with sha256s recorded. No cfe (5.2 / 6.0 / 7.1 / 7.4.4) tables a 4-label switch, so "IDO 6.x cfe" is false. EDG 2.29 (MIPSpro 7.4.4 DCC) has the target's rule (n >= 4, size <= 2n). For C-style code it is cfe plus native tables: game_uso B3C comes out 706/706 standalone, with the unit's leading 1/6 literal in place, and 940 is unchanged, and 116C / 76F0 are left with only the cfe residuals. But 93 of the 214 NCC donors change under it (it will not inline class-returning operators, so the copy chains disappear), and it was built in 2002. 8CD8 (inlined operators plus a 4-entry table) rules out both EDG builds. game_uso also holds 57D8, whose dense switches are compare chains, so it most likely mixes two front ends. The original is likely an EDG between 2.19 and 2.29 that we do not have. 5.2 / 6.0 / 7.4.4 as1 and back ends: 396FC / 1824 / 65EE4 are unchanged, and 5.2 / 6.0 as1 break sentinel exacts. No new compiler-generated functions among the open non-exacts._
 - [Toolchain forensics: every IDO-family toolchain we can run, and what each 1080 cap really is (run 349)](#toolchain-forensics-run349) — _Downloaded decomp.me's ido5.3_cfront, which bundles cfront 3.0.1 and Delta C++ (EDG 2.19) plus qemu-irix. bootup 6204 / E9FC were edg static initializers (__sti__: the prologue is on the TU's last line, the ctor call on the definition line, so lui comes before sw ra) and are now EXACT. Mixing 5.3 / 7.1 uopt / ugen / as1 gives byte-identical code on 396FC / 1824 / E2D0. DCC does not explain the C++ near-misses. The 4-entry jump-table family: IDO 4.1's pcc-derived ccom / accom genswitch (table iff n >= 4 && 0 < range <= 3n) matches the target exactly. Confirmed by running accom (through the docker-snapshot glibc + glib shim) with the 7.1 back end: native `sltiu 4` tables, and kernel 1ADC reaches 114/134 words (cfe NM: 103). But 76F0's operand order and float compares match cfe, not accom, so the likely original is a cfe with a 4-label threshold (IDO 6.x?). The 4.1 as1 / as1 options are ruled out for 396FC / 1824 / E2D0 by whole-object fingerprints._
 - [decode-sweep.py: automated objdiff-gated m2c-graft decode transforms (2026-06-16)](#decode-sweeppy-automated-objdiff-gated-m2c-graft-decode-transforms-2026-06-16) — _`scripts/decode-sweep.py` automates the three biggest mechanical post-graft %-movers (graft-cleanup items 21/22 + struct-copy collapse): builds a per-(base-register,offset) WIDTH CATALOG from the target's own `.s` (lb/lbu/lh/lhu/lw/lwc1...; handles BOTH raw-.word USO and mnemonic kernel/bootup formats), then (1) retypes mistyped `*(s32*)((char*)BASE+0xOFF)` derefs to the cataloged sub-word type, (2) splits absolute `*(T*)0xADDR` derefs to `&D_00000000+0xADDR` (also strips `(unaligned sN)` artifacts — a COMPILE-ENABLER, not just a %-mover), (3) collapses >=4 contiguous word-copies into Quad4 (16B exact, no whole-struct overshoot). Each transform is OBJDIFF-GATED (rebuild + re-read fuzzy, revert on regression) and idempotent. Validated: retype +2.58pp (gl_func_00021498 28.20->30.79), +3.77pp (gl_func_00064588 48.67->52.44); revert path byte-verified. NO-OP on already-correctly-typed fns (no false gains)._
@@ -2011,3 +2012,129 @@ run. **None of them is the original toolchain for any open function. Nothing was
   dedicated rule (`EDGX := ...`, the edgcpfe front end plus the 7.1 uopt / ugen / as1 with `-t5_ll_sc_bug
   -r4300_mul`), spliced with `REPLACE_FUNC_BODY` and the `<fn>_rodata` pin for the jump table (29CCC recipe). No
   container or system package is needed for either route, but it is still the user's call.
+
+## Toolchain forensics III: MIPSpro 7.2 / 7.2.1 C++ (o32 edgcpfe, Aug 1997 / Mar 1998) against the 1080 caps (run 352, 2026-11-12) <a name="toolchain-forensics-run352"></a>
+
+Follow-up to [run 351](#toolchain-forensics-run351), which guessed the original was "an EDG between 2.19 and 2.29 in a
+MIPSpro 7.2 / 7.3". Period-correct MIPSpro 7.2 and 7.2.1 C++ front ends were found and tested. **Neither is the
+original for the NCC donors. Nothing was wired into the build.**
+
+**Where they came from.** All files are on discmaster.textfiles.com (public CD-ROM image browser, no login), each
+file is fetchable raw at `https://discmaster.textfiles.com/file/<id>/<iso name>/<path>`. Downloads are in
+`tools/forensics/dl_*` (untracked), extractions in `tools/forensics/x_*`.
+- **MIPSpro C++ 7.2** CD (collection 9046, `SGI MIPSpro C++ 7.2.iso`, Sept 1997), `dist/c++_fe{,.idb,.sw}`
+  → `dl_mipspro72cxx/`, `x_mipspro72cxx/`.
+  - `c++_fe.sw` `0ca465c71d7dc6c51aaff422a6a542a88e433a57d0febde52c188846e604586d`
+  - `c++_fe.idb` `1a281f8d681e33cf2e45326400532a6153c4e2c866be9a111eb98801d3a85074`
+  - `usr/lib/DCC/edgcpfe` (o32, ucode-emitting; build path `v7.2/targ32_m2/edgcpfe`): banner "Edison Design
+    Group C/C++ Front End, version **2.29**", built **Aug 29 1997**. sha256
+    `48c06d7a4382b95e2defffb2f818a9a720d41900ae0f477c895c8ea705a8363f`.
+- **SGI Varsity Update 1998 August** CD (collection 9077), `dist/c++_fe{.idb,.sw}` and `dist/c_fe{.idb,.sw}` =
+  **MIPSpro 7.2.1** C++ / C front ends → `dl_varsity9808/`, `x_mipspro721cxx/`.
+  - `c++_fe.sw` `6c6dfae3c42a270266b67d4e69c478c754ba10985e017ba09fa53200a6ff7423`
+  - `c++_fe.idb` `e5aa2611352f8db296281a59e9d8b219904e44f27cb129f1a1adcfd34313e4e1`
+  - `c_fe.sw` `11fe2dcabf74fb8c65afbff64232e1030b999afd72347d402094a856412651c5`
+  - `c_fe.idb` `a55b7f3b88dc4068f33a76a6c448a78740a370ecb89a6b32fedf636be795e4b4`
+  - `usr/lib/DCC/edgcpfe`: also says **2.29**, built **Mar 13 1998** (`v721/.../targ32_m2/edgcpfe`). sha256
+    `459cc16e72de63fb17137cd7dc02f4bc211044e40e0956a92e81eeda47e1d9a3`.
+  - `usr/lib/cfe` (7.2.1 o32 C) sha256 `36ed994e531cca27002f3e6c7e33bc10e885ba34f603285665e545539977cd13`.
+- **IRIX 6.4 Development Foundation 1.1** CD (collection 9002), `dist/dist6.4/compiler_dev{.idb,.sw}` = the
+  MIPSpro 7.2.1 o32 `driver` / `uopt` / `ugen` / `as1` → `dl_idf64_721/`, `x_idf64_721/`.
+  - `compiler_dev.sw` `ec14087bc8cba83e7446f80254f5efb4affd72b57c3345a6a5ee3b7ba54f4959`
+  - `compiler_dev.idb` `699aecdd5308ddd2422c2b34316a2f3309e3f2374405d2d227a14e10f15bd367`
+- Also fetched, not useful: the **MIPSpro 7.2.1 Compiler Patches June 1998** CD (collection 9044). Its C++ rollup
+  `patchSG0003048` only replaces `usr/lib32/cmplrs/fecc`, the n32 front end, which emits WHIRL, not ucode
+  (`dl_mipspro721p/`; `patchSG0003048.c++_fe_sw` `eb6e9206b867766236c7e43bfa2d1b522f7ab1962060966fb9ed1a2e82132993`).
+- Other MIPSpro 7.2 CDs on discmaster: 9045 (C 7.2), 9047 / 9048 (Fortran). No MIPSpro 7.3 CD was found there.
+
+**How to run them.**
+- IRIX inst format: `.idb` is text (`f mode owner group dst src subsys ... size(N) cmpsize(M)`). In the
+  `<product>.<sw>` file each file is stored as `u16 len, path, data`; data is Unix `compress` (`.Z`) when cmpsize > 0.
+  Extractor: `tools/forensics/scripts/idbx.py <idb> <dir> <outdir> [path-substr...]` (gzip -dc decompresses).
+  The extracted binaries need `chmod +x`.
+- They run under `x_mipspro744/usr/bin/qemu-irix` with a root that has 7.4.4's `lib/rld`, `lib/libc.so.1`,
+  `usr/lib/libc.so.1`, `usr/lib/libexc.so` (as1) and `lib/libmalloc.so` (cfe). Run 352 used a symlink root at
+  `/tmp/claude-1000/r1/root72`.
+- The 7.2.1 driver (`qemu-irix -0 /usr/bin/NCC .../driver -show ...`) prints the exact edgcpfe command line, then
+  stops at the FlexLM licence check. The flags are the same as the 7.1 driver's, except that 7.1's `-Qn` is
+  missing. So `ncc744.sh` with the front end swapped is the faithful invocation. Wrappers:
+  - `tools/forensics/scripts/ncc72.sh`: the 7.2 edgcpfe, or `FEBIN=<edgcpfe>`, followed by the 7.1 back end.
+  - `ncc72b.sh` also accepts BE=721 (the 7.2.1 uopt / ugen / as1).
+  - `one.sh` and `optmap.py` run the donor gate against `1080-agent-d/build`.
+
+**Results.**
+- **(a) 4-label table: YES.** Both 7.2 and 7.2.1 table a dense 4-case switch natively. The head is
+  `sltiu at,a0,4; beqz; sw ra; sll; lui; addu; lw; jr`, and for 1..4 they subtract 1 first. This is EDG 2.29's
+  rule.
+  - The 7.2.1 **cfe**, like every cfe, still builds a compare chain at 4 cases. So this rule is specific to the edg
+    front end.
+- **(b) Class-returning-by-value inlines: YES, unlike 7.4.4.**
+  - Across all 214 donor objects, 7.2 / 7.2.1 emit **no** weak out-of-line copies (`__ml__2V3CFf` and so on).
+    Under 7.4.4, 17 of the donor objects do.
+  - game_uso 1DDC stays 384 words (7.4.4: 300). The copy chains are present.
+  - So the "EDG 2.29 never inlines class returns" finding of run 351 is a **later SGI change, made between
+    Mar 1998 and the Nov 2002 7.4.4 build**. It is not EDG 2.29 behaviour.
+  - The version string "2.29" therefore covers 1997–2002 SGI builds. Run 351's date argument against "2.29" does
+    not hold. The argument against the 7.4.4 *binary* still holds.
+- **(c) Family.** All results below are identical between 7.2 and 7.2.1.
+  - B3C standalone (`c351/b3c/y5.cpp`): **706/706, and 940 is 107/107**. The .text is byte-identical to the
+    EDG-2.29 (7.4.4) object, all 820 words.
+  - 116C (`c351/t116/t*.cpp`), 76F0 (`c351/t76/g*.cpp`) and 1ADC (`c351/k3/fa_first.cpp`, 116/134) are each
+    byte-identical to run 351's 7.4.4 objects, so run 351's residual analysis applies unchanged.
+  - **8CD8** (the agent-d NM donor `game_uso_ncc_8CD8_nm.cpp`, unmodified) is the first build with **both**
+    properties at once:
+    - 709 words, the target's length;
+    - inlined operator copy chains;
+    - a native `sltiu 4` table at insn 627 with `jr` at 634, exactly the target's positions. 7.1 NCC has no
+      table there.
+
+    Run 351 said this function "rules out both EDG builds". The 7.2 front end is **not** ruled out by it.
+    What remains is guard-pointer / temp register colouring and stack-offset residuals. Strict reloc-masked
+    aligned score is 18.3 %, against 28.9 % for the tuned 7.1-NCC donor. That is expected, because the body was
+    tuned under NCC.
+  - game_uso **57D8**, an 8-way dense switch that the target lowers as a compare chain, comes out as a table under
+    7.2. It is an exact NCC donor, so game_uso still mixes the two front ends.
+- **(d) Gate.** All 214 non-`_nm` `src/*/*_ncc_*.cpp` were compiled at their Makefile -O, with
+  `-I<srcdir> -I include -I src`. Each .text was compared with agent-d's `build/src/...cpp.o`.
+  - **7.2: 127 identical, 87 differ.**
+  - **7.2.1: the same 127 / 87, and all 214 objects are byte-identical to 7.2's.**
+  - With the 7.2.1 back end instead of the 7.1 one, only 107 are identical. Keep the 7.1 back end.
+  - Same harness with the 7.4.4 front end, for calibration: 125 / 89. Run 351's 121 / 93 used a different include
+    set. 7.2 only gains game_libs 4E244 and game_uso 3558.
+  - 15 of 7.4.4's 17 weak-copy objects still differ under 7.2, for other reasons.
+  - Breakdown of the 87: game_libs 57, game_uso 12 (1DDC, 24BC, 28C0, 2CC8, 3AC0, 43D8, 57D8, 6A30, 6FA8, 71E0,
+    97EC, BB8C), bootup 7, timproc_b5 5, gui 2, arcproc / h2h / timproc_b1 / timproc_b3 1 each.
+  - 41 change length and 46 keep it. Even small exacts move.
+  - The differences are edg-front-end ucode, not the back end. The same classes appear under 7.4.4:
+    - argument / operand evaluation order: 485C (2 words), 3D71C (a 4-word swap);
+    - bigger frames for stack-resident class temporaries: 3D54C is 32 vs 8 and 38598 is 64 vs 40;
+    - `this` spilled to the stack and reloaded in constructors: 15FC;
+    - a base address materialised with `addiu` instead of folded into `%lo`: 5165C;
+    - `this` taken from the copy rather than the argument register: 24BC (`lw v1,60(a2)` vs `60(a0)`).
+  - edgcpfe.eh, the EH variant, is worse.
+  - A sweep of every single `-Z<c>`, `-Y<c>` and `-Q<c>` flag over 485C, 3D54C and 24BC fixes only 24BC (`-Yc`).
+    `-Yc` on the whole gate gives 128 / 86.
+
+**Verdict.**
+- MIPSpro 7.2 / 7.2.1 edgcpfe has the family's rule: a 4-label table, together with 2.19-style
+  class-return inlining. It is period-correct: Aug 1997 / Mar 1998, and 1080 shipped in 1998.
+- It is the best candidate yet for the compiler of B3C / 8CD8 / 116C / 76F0 / 1ADC. B3C is byte-exact standalone.
+  For 8CD8 it is the only front end that gives the target's length and table shape.
+- **But it is not the compiler of the 214 NCC donors.**
+  - 87 of the donors change under it, many of them the same functions that run 351 broke. 57D8 needs a compare chain
+    at 8 cases, which this front end cannot produce.
+  - So the game was built with **both** an EDG-2.19 NCC (IDO 7.1-era) and an SGI EDG-2.29 (MIPSpro 7.2.x-era)
+    front end. That could be per file or per developer.
+  - The other reading: the original is a single front end we still lack, with 2.19 lowering for ordinary code and
+    2.29 switch lowering. That seems unlikely, because switch lowering lives in SGI's mbe code, not EDG's.
+- **Adopting it per file is safe only for files that contain no NCC donor.**
+  - The family functions sit in `game_uso.c` / `titproc` / `game_libs` / `kernel`. Their bodies are C and C-style
+    C++ compiled into the unit object, and they would be spliced as separate donors (`REPLACE_FUNC_BODY`). So a
+    per-function 7.2 donor does **not** recompile any existing NCC exact.
+  - Run 351 found about 155 of 167 cfe-exact C functions byte-identical under 2.29. Per-function donors avoid that
+    question entirely.
+  - Do not switch whole NCC donor files to it: 87 exacts would regress.
+- **Wiring is the user's call.** The rule is the same as run 351's: a B3C "exact" through 7.2.1 uses a period
+  front end, not an anachronistic one, so it is defensible on provenance. Still, it means running an
+  IRIX binary under qemu-irix in the build, unless an `ido-static-recomp` of this edgcpfe is made. That recomp
+  is the obvious next step.
