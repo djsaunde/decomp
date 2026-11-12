@@ -6,6 +6,7 @@ _10 entries. Auto-generated from per-memo notes; content may be rough on first p
 
 ## Index
 
+- [Toolchain forensics II: IDO 5.2 / 6.0 / MIPSpro 7.4.4 against the 1080 caps (run 351)](#toolchain-forensics-run351) — _The three LLONSIT archives are decomp.me's own sources (decompme/compilers values.yaml), with sha256s recorded. No cfe (5.2 / 6.0 / 7.1 / 7.4.4) tables a 4-label switch, so "IDO 6.x cfe" is false. EDG 2.29 (MIPSpro 7.4.4 DCC) has the target's rule (n >= 4, size <= 2n). For C-style code it is cfe plus native tables: game_uso B3C comes out 706/706 standalone, with the unit's leading 1/6 literal in place, and 940 is unchanged, and 116C / 76F0 are left with only the cfe residuals. But 93 of the 214 NCC donors change under it (it will not inline class-returning operators, so the copy chains disappear), and it was built in 2002. 8CD8 (inlined operators plus a 4-entry table) rules out both EDG builds. game_uso also holds 57D8, whose dense switches are compare chains, so it most likely mixes two front ends. The original is likely an EDG between 2.19 and 2.29 that we do not have. 5.2 / 6.0 / 7.4.4 as1 and back ends: 396FC / 1824 / 65EE4 are unchanged, and 5.2 / 6.0 as1 break sentinel exacts. No new compiler-generated functions among the open non-exacts._
 - [Toolchain forensics: every IDO-family toolchain we can run, and what each 1080 cap really is (run 349)](#toolchain-forensics-run349) — _Downloaded decomp.me's ido5.3_cfront, which bundles cfront 3.0.1 and Delta C++ (EDG 2.19) plus qemu-irix. bootup 6204 / E9FC were edg static initializers (__sti__: the prologue is on the TU's last line, the ctor call on the definition line, so lui comes before sw ra) and are now EXACT. Mixing 5.3 / 7.1 uopt / ugen / as1 gives byte-identical code on 396FC / 1824 / E2D0. DCC does not explain the C++ near-misses. The 4-entry jump-table family: IDO 4.1's pcc-derived ccom / accom genswitch (table iff n >= 4 && 0 < range <= 3n) matches the target exactly. Confirmed by running accom (through the docker-snapshot glibc + glib shim) with the 7.1 back end: native `sltiu 4` tables, and kernel 1ADC reaches 114/134 words (cfe NM: 103). But 76F0's operand order and float compares match cfe, not accom, so the likely original is a cfe with a 4-label threshold (IDO 6.x?). The 4.1 as1 / as1 options are ruled out for 396FC / 1824 / E2D0 by whole-object fingerprints._
 - [decode-sweep.py: automated objdiff-gated m2c-graft decode transforms (2026-06-16)](#decode-sweeppy-automated-objdiff-gated-m2c-graft-decode-transforms-2026-06-16) — _`scripts/decode-sweep.py` automates the three biggest mechanical post-graft %-movers (graft-cleanup items 21/22 + struct-copy collapse): builds a per-(base-register,offset) WIDTH CATALOG from the target's own `.s` (lb/lbu/lh/lhu/lw/lwc1...; handles BOTH raw-.word USO and mnemonic kernel/bootup formats), then (1) retypes mistyped `*(s32*)((char*)BASE+0xOFF)` derefs to the cataloged sub-word type, (2) splits absolute `*(T*)0xADDR` derefs to `&D_00000000+0xADDR` (also strips `(unaligned sN)` artifacts — a COMPILE-ENABLER, not just a %-mover), (3) collapses >=4 contiguous word-copies into Quad4 (16B exact, no whole-struct overshoot). Each transform is OBJDIFF-GATED (rebuild + re-read fuzzy, revert on regression) and idempotent. Validated: retype +2.58pp (gl_func_00021498 28.20->30.79), +3.77pp (gl_func_00064588 48.67->52.44); revert path byte-verified. NO-OP on already-correctly-typed fns (no false gains)._
 - [disasm-raw.py dropped pinned jal/lui reloc-alias lines from raw-.word .s (FIXED 2026-08-22)](#disasm-rawpy-dropped-pinned-jallui-reloc-alias-lines-from-raw-word-s-fixed-2026-08-22) — _Pre-fix, its `.word`-regex scan silently dropped pinned `jal sym` / `lui $r,%hi(sym)` lines (word only in the `/* OFF WORD -> sym */` comment): calls vanished, every later offset shifted -4. Now parses line-by-line, shows callee names, and has `--selftest`. Distrust pre-2026-08-22 disasm-raw output for any USO fn with pinned relocs._
@@ -1759,3 +1760,254 @@ could get.
      Gate any as1 candidate on a whole-object reassembly with zero exact-function changes.
 6. **cfront as a 396FC explanation: negative.** The 396FC body through cfront + cfe 7.1 still steals `or a0,s0` into
    the bound-check slot, and the code shape changes (146 vs 153 words).
+
+## Toolchain forensics II: IDO 5.2 / 6.0 and MIPSpro 7.4.4 (o32) tested against the 1080 caps (agent-c run 351, 2026-11-12) <a name="toolchain-forensics-run351"></a>
+
+Follow-up to [run 349](#toolchain-forensics-run349). All three remaining decomp.me IRIX toolchains were downloaded and
+run. **None of them is the original toolchain for any open function. Nothing was wired into the build.**
+
+**Provenance.**
+- decomp.me's compiler list is `github.com/decompme/compilers` `values.yaml`. Read at commit `2d480975`
+  (2026-11-08), it pulls its n64 IRIX compilers from these LLONSIT URLs:
+  - `ido5.2`, lines 88-91: `https://github.com/LLONSIT/qemu-irix-helpers/raw/refs/heads/n/qemu/ido5.2.tar.xz`
+  - `ido6.0`, lines 109-112: `.../raw/n/qemu/ido6.0.tar.xz`
+  - `mips_pro_744`, lines 127-130: `.../raw/n/qemu/mipspro7.4.4.tar.xz`
+- `decomp.me/cromper/cromper/compilers.py` only names the ids. It does not contain any URL.
+- Downloaded into `tools/forensics/dl_*` (untracked) and extracted to `tools/forensics/x_{ido5.2,ido6.0,mipspro744}`.
+  No archive member has an absolute path or `..`. sha256:
+  - `ido5.2.tar.xz` `870cd946d31d6abee24d47926328d15909771520240a0a4f5cb7d27aea90e1ad`
+  - `ido6.0.tar.xz` `c56d4be020bdaf76310ceec455ebc0d443fb7a46c740491f74898b04f6a60356`
+  - `mipspro7.4.4.tar.xz` `df33be0d9605b00b44070e567121fc00283a9b1f97763403f0898d2216028d24`
+
+**How to run them.**
+- Each archive's own `usr/bin/qemu-irix` works with the glibc 2.35 on this machine:
+  `qemu-irix -silent -L <root> <root>/usr/lib/<phase> ...`. ido5.2's `qemu-irix-4.0` needs glibc 2.38 and is not needed.
+- The 6.0 `usr/bin/cc` driver runs end to end.
+- The 5.2 and 7.4.4 drivers (`usr/lib/driver`, run with `-0 cc`) run, but 5.2's cfe asserts under the driver
+  (`main.c:155`). Drive the phases by hand instead, which works for every version: cfe, then uopt, then ugen, then as1.
+- MIPSpro 7.4.4 o32 still ships the ucode chain (`cfe` / `uopt` / `ugen` / `as1`). It also ships
+  `DCC/edgcpfe` = **EDG 2.29** (built Nov 2002); IDO 7.1 NCC is EDG 2.19.
+- `ecfe` (in 5.2, 6.0 and 7.4.4) is EDG's 1.26 C-to-C translator, not a ucode front end. It needs `TMPDIR`, and
+  under qemu it emits wrong case labels. Ignore it.
+- 5.2 and 6.0 as1 do not know `-r4300_mul` or `-t5_ll_sc_bug`.
+- Scratch wrappers live in `/tmp/claude-1000/c351/scripts/`:
+  - `irix.sh in.c out.o FE BE [OPT] [AS]` mixes cfe / uopt-ugen / as1 from 52 / 60 / 744 / 53 / 71.
+  - `ncc744.sh` and `dcc744.sh` run EDG 2.29 followed by the 7.1 back end.
+  - `e71.sh` runs the 7.1 edgcpfe with extra flags.
+
+**1. 4-entry jump-table family (B3C / 8CD8 / 116C / 76F0 / 1ADC): no available cfe makes a 4-label table.**
+- cfe 5.2, 6.0 and 7.4.4-o32 all build a compare chain for a dense 4-case switch, and a table at 5. This holds at
+  -O0 / -O1 / -O2 and in mixed back ends.
+- 7.1 cfe gives the same at every -O / -g / -mips / -cckr / -ansi / -xansi level. None of the 31 cfe-private options in
+  its strings changes it (`-cplus`, `-XF`, `-XL`, `-XQ`, `-XT`, `-XU`, `-Xh`, `-Xp`, `-dwopcode`, ...).
+- **So the "IDO 6.x cfe with a 4-label threshold" hypothesis from run 349 is FALSE.**
+- 7.1 NCC (EDG 2.19) never emits `xjp`. That holds for 4 / 5 / 8 dense cases, default / return / unsigned / enum /
+  char / member-function switches, and -O0 / -O1 / -O2 / -g. None of the 62 single `-Z<c>` edgcpfe options changes it.
+  **The code confirms it.** In the 7.1 edgcpfe recomp (`tools/ido-static-recomp-dump/build/7.1/edgcpfe.c`),
+  `mbe_statement` sends EDG statement kind 9 to `func_51d740`, the switch lowering. That function writes ucode only
+  through `ucw_write`, with opcodes 0x88 / 0x23 / 0x7f / 0x42 / 0x52, i.e. compare-and-jump plus one `lod`. It
+  never writes 0x8c (`xjp`). It also contains no threshold test. 7.1 NCC simply has no table path, so no option
+  can enable one.
+  The same goes for 7.1 cfe (`build/7.1/cfe.c`). The cluster decision in `func_465d90` is `if (count < 5)`, with
+  5 as an immediate, sending small clusters to the compare chain. Larger clusters reach `func_465654` and then
+  `func_46508c`, which writes `xjp` (0x8c) and `ujp` (0x88). The threshold is hard-wired, not an option variable.
+- **EDG 2.29 (MIPSpro 7.4.4 DCC) is the only compiler found with the target's rule.** It builds a table iff
+  n >= 4 and the table size is at most 2n:
+  - [0..3], [1..4], {0,1,2,5}, {0,1,2,7} and {0,2,4,6} get a table;
+  - {0,1,2,9} and {0,10,20,30} do not.
+
+  Its head is exactly the target's: `sltiu at,x,4; beqz; sw ra; sll; lui; addu; lw; jr; nop`, and for 1..4 it
+  subtracts 1 first, as 1ADC does.
+- **On the family's C-style bodies, EDG 2.29 + the 7.1 back end gives cfe's code plus native tables.** Each body was
+  extracted standalone from the cpp output with `/tmp/claude-1000/c351/scripts/extract.py`, wrapped in
+  `extern "C"`, with `()` prototypes turned into `(...)`.
+  - **game_uso B3C: byte-exact standalone, with a native `sltiu 4`.** The phantom `case 4:` was removed, and two source changes
+    were needed:
+    - store `ob[0]` through `*(char **)((char *)ob + 0)`, because edg forwards a plain `ob[0] = tv`;
+    - write `x == 1` instead of `1 == x` in one `&&` test.
+
+    That leaves only the jump-table `%lo`, 0x4C against 0x50. It is a standalone layout artefact: the unit's first
+    RoData word is game_uso_func_00000000's 1/6 literal. **With that literal function placed first
+    (`/tmp/claude-1000/c351/b3c/y5.cpp`), B3C is 706/706 and 940 is 107/107.** Only the relocated `lui` / `jal`
+    fields are masked, so `%lo` offsets and jump-table offsets are compared too. The result is the same with the
+    7.4.4 and 6.0 back ends, so it does not depend on the back end.
+  - **game_uso 940 (cfe-exact, tables 7 / 6 / 6):** unchanged under EDG 2.29, as above.
+  - **titproc 116C:** a native `sltiu 4` once the phantom `case 4:` is removed. edg canonicalises `ptr + short` to
+    ptr-first, which `(*(short *)(vt + 0x58) + (int)v1)` fixes. What is left is exactly the cfe NM's own residual set
+    (v0 / v1 and a1 / v0 swaps) plus the `%lo` artefact.
+  - **76F0:** the same picture. Drop both phantom `case 4:` labels and write the 16 vcall this-adjusts as
+    `(char *)(vt->e[k].off + (int)self)`. Then all three tables come out native (`sltiu 6 / 4 / 4`), and what is
+    left (122 diff lines, against cfe's 124) is the cfe NM's own residual set: the head `beqz` / `beqzl` and t / v
+    register numbering.
+  - **kernel 1ADC:** 116/134, the best of any front end (accom 114, cfe NM 103).
+    - The flags test comes before the `value` / `type` reads.
+    - edg drops unused locals, so a first-declared `s32 info; Sym *sym;` with a dead `if (0)` store restores the
+      0x50 frame. The uninitialised hival / hiptr homes then land at 40 / 52, as in the target.
+    - The residuals are where val's `lw` is scheduled relative to `sltiu`, the R_26 arm's store / delay order and
+      a t6 / t7 / t8 rotation in the LO16 / R_32 arms. 18 load-order variants plateau at 116
+      (`/tmp/claude-1000/c351/k3/fa_first.cpp`).
+- **C-side consistency.** edgcpfe 2.29 also compiles C: `--c` is ANSI C, and `-K` / `--old_c` is K&R C, which promotes
+  float to double. Whole cpp'd units in `-K` mode, compared with cfe:
+  - titproc: 41 of 43 cfe-exact functions are identical. The 2 differences are K&R float promotion. In ANSI `--c`
+    mode it is 42 / 43; that run needed `(void *)` casts on the 18 int-to-pointer assignments that ANSI edg
+    rejects. The one left, 1E9C, is a decode lever: `int * volatile slot` used as `f(slot = expr, ...)`. edg
+    re-reads the volatile after the store, and cfe passes the value through.
+  - kernel: 46 of 51 identical, the same in `-K` and in ANSI `--c` (one call needed argument casts). 18F0 and 12BC
+    differ only in `addu` operand order for ptr + int, which source order can fix. 0168 and 2250 differ in
+    register colouring (a1 / v1, branch-likely shape). The edg ucode web order differs from cfe's for those cfe-tuned
+    bodies. 2530 is not a cfe exact.
+  - h2hproc: 34 of 37 identical. 15F0 and 17A0 are K&R double promotion; 9F8 is `addu` order.
+  - gui: 34 of 37 identical. 25B4 is double promotion, 13E8 is `beql` operand order, and 3B14 is order plus a
+    register shift.
+
+  In total that is about 155 of 167 cfe-exact C functions byte-identical. The rest are:
+  - K&R float-promotion artefacts of `-K` mode;
+  - source-order operand placement (ptr + int `addu`, `==` operands);
+  - edg's volatile re-read after assignment;
+  - and a few register-colouring changes in cfe-tuned bodies (kernel 0168 / 2250, gui 3B14).
+
+  So for C-style code EDG 2.29 is very close to cfe, plus the table-at-4 rule. Bodies that were fitted to cfe would
+  need small re-spellings under an edg-family original.
+- **But EDG 2.29 is ruled out as 1080's C++ compiler, by the unit gate and by date:**
+  - Whole-file gate: all 214 non-NM NCC donors (`src/*/*_ncc_*.cpp` without `_nm`) were compiled with EDG 2.29 +
+    the 7.1 back end at each one's own -O, and each .text was compared with the build's NCC object.
+    - **121 are identical and 93 differ.** The 121 include all 7 `_o0_` donors and the 4 gui donors that need
+      `-I src/gui_uso` (sentinel 4568 among them).
+    - The differences include 13 game_uso donors (1DDC, 24BC, 28C0, 2CC8, 3558, 3AC0, 43D8, 57D8, 6A30, 6FA8, 71E0,
+      97EC, BB8C), which surround B3C and 8CD8.
+    - **EDG 2.29 does not inline inline functions that return a class by value**, such as `V3 operator*(float)
+      const` and `XZ operator-`. It emits them as weak out-of-line copies (`__ml__2V3CFf`, `__mi__2XZCFRC2XZ`) and
+      calls them. That holds with an explicit `inline`, with a named-return spelling, and under every single
+      `-Z` / `-Y` / `-Q<c>` flag. EDG 2.19 inlines them, which produces 1080's three-hop copy chains. So 1DDC drops
+      from 384 to 300 words (13 jals against 5), and the 8CD8 NM donor drops from 709 to 473 words (target 692).
+      EDG 2.29 still inlines simple members (`dot`, `set`).
+    - In member functions it also spills `this` to the stack and reloads it at every use. A free function with an
+      explicit self pointer, as in the 116C decode, keeps it in a register.
+    - 485C (2 words, argument scheduling) shows that even small exact functions change.
+  - Date: EDG 2.29 was built in 2002, and 1080 shipped in 1998.
+  - Both EDG 2.19 and EDG 2.29 emit `addu a0,tN,this` for virtual-call this-adjusts, the same as cfe and the target.
+    So run 349's operand-order argument rules out accom but cannot tell cfe from edg.
+- **Status: still (a), but the front-end family is now located.** The 4-entry functions were compiled by an
+  **edg-based front end with SGI's `xjp` lowering (n >= 4, size <= 2n)**. For C-style code it is otherwise
+  indistinguishable from cfe: B3C and 940 are byte-exact under EDG 2.29 standalone. It is not cfe (no cfe
+  version tables 4 labels) and not 7.1 NCC (EDG 2.19 never tables). It is also not EDG 2.29 itself: that breaks
+  about 93 exact C++ donors, and it dates from 2002.
+  - The likely original is an SGI EDG release between 2.19 and 2.29, i.e. a MIPSpro 7.2.x / 7.3 DCC or NCC that
+    keeps 2.19's copy chains but has the table lowering. It is not on decomp.me.
+  - Is 1080 then one compiler throughout? cfe-exact C would also come out identical under it, given the C-side
+    results above. Testing that needs that compiler.
+  - No per-file toolchain is legal on the current evidence. **Do not wire EDG 2.29.** A B3C "exact" through it
+    would be a fit from an anachronistic compiler.
+  - **Per-unit gate, even if EDG 2.29 were allowed:**
+
+    | unit | exact NCC donors | new exact from EDG 2.29 |
+    |---|---|---|
+    | kernel | 2 / 2 identical (1184, 598) | none (1ADC 116/134) |
+    | mgrproc | 3 / 3 (23FC, 2B7C, o0_700) | none (1824 gets worse) |
+    | titproc | no C++ donors | none (116C keeps the cfe residuals) |
+    | game_uso | 13 differ | B3C |
+    | gui | 0F04 (sentinel) and 3B80 differ | none |
+
+    Where EDG 2.29 passes the gate it gains nothing. The only unit where it gives an exact is game_uso, and that is
+    where it breaks 13 exacts. Both ways, nothing to wire.
+  - The same table argument applies to whole units. 1824 (`sltiu 5`) and 396FC (`sltiu 6`) need tables, which cfe
+    or a table-capable edg can give. Under NCC 2.19 their C bodies become compare chains (139 / 143 diff lines
+    against cfe's 2), so they are not 2.19.
+    - mgrproc's C++ donors come out the same under 2.19 and 2.29, so mgrproc cannot tell them apart.
+    - post0b (game_libs) holds many 2.19-only donors next to 396FC. So if a unit is one TU, its compiler had both
+      the table lowering and 2.19's C++ codegen: the same intermediate-EDG conclusion.
+
+**2. as1 / back-end candidates for 396FC and mgrproc 1824: negative.**
+- **post0b, whole object** (run 349's `post0b2.G`; the 7.1 as1 `-t5_ll_sc_bug -r4300_mul` oracle reproduces the
+  build object):
+  - 5.2 as1 changes 46 / 902 functions and 6.0 as1 changes 44 / 902. Most of that is the missing `-r4300_mul`,
+    because 7.1 without it changes 40.
+  - Compared with 7.1 without `-r4300_mul`:
+    - 5.2 still changes 6 functions: 3CB00, **415A4**, 52674, 533EC, 5721C, **62F08**;
+    - 6.0 still changes 4: 3CB00, **415A4**, 52674, **62F08**.
+
+    The bold ones are sentinel exacts.
+  - Neither touches 396FC.
+  - MIPSpro 7.4.4 as1 is byte-identical to 7.1 (902 / 902).
+- **post0b back end:** 6.0 uopt + ugen + 7.1 as1 changes 1 / 902 functions (5E288); 7.4.4 changes 0. 396FC is
+  unchanged in both.
+- **mgrproc, whole object** (asm-processor pre-pass, `-DNON_MATCHING`, `cc -K`):
+  - 5.2 as1 and 6.0 as1 are byte-identical to 7.1 for all 42 functions, 1824 included.
+  - 6.0 uopt + ugen are also identical.
+  - 5.2 uopt (which reads 7.10 ucode as 3.18) changes 9 functions, 1824 among them (143 words).
+- **65EE4:** `-O2 -Olimit 1` gives the same 146 words (95 / 146) under every combination tried: front ends
+  5.2 / 6.0 / 7.4.4 / 7.1 with back ends 60 / 744 / 71, NCC 2.19 and EDG 2.29. Every version agrees, so the
+  residual is not the compiler version.
+  - The macro body expands onto one line. Splitting it into one statement per line drops it to 83 / 146, so as1
+    line numbers do matter here. A greedy search over the 29 statement-boundary newlines (two starts, 89 evaluations,
+    `/tmp/claude-1000/c351/e2/greedy.py`) peaks at the same 95. Line layout does not fix it.
+- **Every IDO-family back end we can run (4.1, 5.2, 5.3, 6.0, 7.1, 7.4.4) is now ruled out for these residuals.**
+- **Building through text assembly (ugen's `-K` `.s` listing reassembled by the 7.1 `cc`, i.e. as0 + as1) is ruled
+  out too.** Kit LXXIX saw no `li at,1` hoist in 1824 under `cc -S`, but across the whole mgrproc object this route
+  changes 25 of 42 functions (macro / `la` expansions and lengths), and 1824 becomes 156 words. It fails the
+  whole-object gate.
+
+**3. Sweep for compiler-generated functions among the open non-exacts (fresh target reads).**
+- Every target is a single, correctly sized function: one prologue, `jr ra` at the end, and no mid-body prologue.
+  This covers 396FC, 4B620, 4BAF4, 3B9C0, 4FD00, 42938, 48AEC, 36694, E68, E2D0, 1824 and 65EE4.
+- None has the shape of an `__sti__` / `__std__` / thunk / vtable stub. E2D0 is an ordinary by-value Vec3 member body.
+- 65EE4 is three straight-line copies of an init block on one global. A C++ inline-member version (`this` = &G)
+  puts &G in s0 (106 words), while the target rematerialises &G at every use. So it is not a member expansion.
+- 42938 opens with three edg function-local-static guards (`lw flag; bnez; sw 1,flag; ...`). Its `_nm.cpp` already
+  models them.
+
+**4. Jump-table census and the other residuals under EDG (run 351 follow-up).**
+- **Census of every IDO-emitted table in `build/src/*/*.c.o`** (62 tables; `/tmp/claude-1000/c351/scripts/jtrule.py`):
+  - The ROM has exactly five 4-entry tables, all dense (n = 4): 1ADC, B3C, 8CD8, 116C and 76F0.
+  - Exact cfe functions that have 4 real labels in a wider range (40304 / 68990 / 343F4 / timproc_b5 87A0 / 4118,
+    K = 6..8) already reach cfe's 5-label rule with in-range "phantom" labels on the default arm (e.g. 40304's
+    `case 0x70: case 0x71: default:`). The edg rule would table those with 4 labels, so they do not discriminate.
+  - Several exact game_libs `_o2_` split files have very sparse tables that the EDG 2.29 rule (size <= 2n) refuses
+    unless they had many more default-arm labels: 2FB74 (K = 21, 5 non-default slots), 2BB7C (K = 41 / 97), 2C7A4
+    (K = 113), 2E290 (K = 32) and 26790 (K = 16). That fits those split files being cfe-compiled C.
+- **8CD8 is the deciding function.** It has a native 4-entry table (no EDG 2.19 build can emit one) AND edg by-value
+  copy chains from inlined class-returning operators (EDG 2.29 calls those operators out of line: the NM donor drops
+  from 709 to 473 words, against 692 in the target). Neither available EDG produces both. The target's only callees
+  are 055750 (the `this == 0` operator-new guard of inlined ctors) and 071028, so its operators really are inline.
+  EDG 2.29 puts every class-returning inline function (member or not, const or not, 2- or 3-float ctor) out of line
+  as a local / weak copy. No single `-Z` / `-Y<c>[0|1]` flag changes that, and `--remarks` gives no inline
+  diagnostic. Test any future EDG candidate on 8CD8 first.
+- **game_uso mixes two switch-lowering regimes, so it is at least two TUs or front ends.**
+  - **game_uso_func_000057D8 is EXACT under NCC 2.19 with dense `[1..7]` and `[0..3]` switches lowered as compare
+    chains.** cfe would table the 7-case one, and EDG 2.29 tables both.
+  - B3C has the identical `[0..3]` shape as a 4-entry table, and 940 has 7 / 6 / 6 tables.
+  - So the same unit holds a no-table regime (57D8, EDG 2.19) and a table regime (B3C, 940, ECEC, 8CD8).
+  - The evidence for the split is strong but not conclusive. 57D8 written as an if / else-if chain or a goto chain
+    gives 88 words (target 84) under both EDG builds, so the natural source is a switch, but some other spelling
+    could exist. Other "chains" flagged by a scan (E5C8 / E91C) are already if / goto source and do not count.
+  - That would make it a front-end split inside game_uso, but its boundary is not located. A per-file toolchain
+    would still need the table-regime compiler itself. cfe cannot do B3C, accom gives 940 82/107 and B3C 719 words
+    on the same source, and EDG 2.29 cannot do 8CD8's inlining.
+- **Other differences between EDG 2.29 and 2.19 on exact donors.** There are 25 same-length diffs, which do not come
+  from the inlining difference:
+  - more frame for temporaries: 38598 / 3D54C get frames +24, with the slots shifted;
+  - different CSE base registers: 24BC, 1 word;
+  - argument evaluation order: 485C.
+- **396FC / 1824 / E2D0 through EDG 2.29 (extracted standalone, extern "C"):**
+  - 396FC keeps exactly the cfe residual (`or a0,a3` stolen into the bound-check slot), plus 3 `mul.s` operand
+    swaps that source order can fix.
+  - 1824 still has the `li at,1` pull, plus new v0 / t9 colouring diffs (114 diff lines against cfe's 2).
+  - E2D0 gets worse (200 against 26).
+  - So these residuals depend neither on the front end nor on the back-end version.
+
+**5. Integration plan, if the table-regime compiler is ever obtained (NOT wired).**
+- **Gate first.**
+  - It must reproduce B3C and 940 natively (EDG 2.29 already does).
+  - It must reproduce 8CD8's inlined copy chains with a native 4-entry table.
+  - It must leave every exact function in the target unit's split file byte-identical.
+  - The split boundary must be located: which game_uso TU holds B3C / 8CD8 / 940 / ECEC, and which holds 57D8.
+- **Running it.** Two candidates:
+  - **ido-static-recomp.** It already recompiles IDO 7.1's dynamically linked `DCC/edgcpfe` (MIPS-I). A MIPSpro
+    edgcpfe is MIPS-II, so the recompiler may need more opcodes. It gives a native, reproducible binary under
+    `tools/ido-static-recomp/build/<ver>/out/`, with no qemu.
+  - **Fallback: a pinned qemu-irix wrapper** in `tools/`, using that archive's own sha256-pinned `qemu-irix` (glibc
+    2.35 works today). This works, but it adds a non-native step to the build.
+- **Wiring.** Use the existing donor recipe: a `src/<unit>/<unit>_edgX_<addr>.cpp` (or `.c`) per function, built by a
+  dedicated rule (`EDGX := ...`, the edgcpfe front end plus the 7.1 uopt / ugen / as1 with `-t5_ll_sc_bug
+  -r4300_mul`), spliced with `REPLACE_FUNC_BODY` and the `<fn>_rodata` pin for the jump table (29CCC recipe). No
+  container or system package is needed for either route, but it is still the user's call.
