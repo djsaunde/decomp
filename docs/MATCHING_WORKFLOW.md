@@ -13483,6 +13483,13 @@ First use: titproc_uso_func_000005DC (1424 B, agent-g run 178). Its prologue rea
 trailing `if (t) {}` after the do-while (t unset on the case-1 exit path) that keeps t live around the loop and gives
 the target's d = s0 / t = s1 colouring landed as an exact.
 
+**Extension (2026-11-12, coordinator):** the source may also *itself read* an uninitialised local when the target
+provably does the same read: a load from that local's stack home (or use of its register) that no path writes
+before it. That is a faithful decode of the original's bug, not a matching lever. The same three conditions apply,
+with the comment citing the never-written load(s). First candidate: kernel func_80001ADC (`lw t4,0x28(sp)` at
+0x80001B30 / `lw t2,0x34(sp)` at 0x80001B34 read hival / hiptr; the only stores to those homes are at the loop exit,
+0x80001CCC / 0x80001CD0).
+
 ## scripts/spelling-grid.py: explicit spelling-grid search (2026-10-27) <a name="spelling-grid-search"></a>
 
 Agents were hand-running the same grids over and over (kits CXII-CXXV): increment spellings around a shared
