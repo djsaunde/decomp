@@ -6,6 +6,7 @@ _10 entries. Auto-generated from per-memo notes; content may be rough on first p
 
 ## Index
 
+- [Toolchain forensics IV: period toolchain sweep (run 356)](#toolchain-forensics-run356) — _The 12 non-exacts outside the 4-entry family were run under MIPSpro 7.2 / 7.2.1. None moved closer. **Correction to run 352:** its "7.2.1 back end breaks 107 donors" omitted `-r4300_mul -t5_ll_sc_bug`. With them, 7.2.1 uopt / ugen / as1 match 7.1 byte for byte on all 214 NCC donors (under both edg front ends). 7.2.1 cfe + back end also match 7.1 on every NM C unit (221 units, 3409 functions). Only the edgcpfe front end differs. The C++ near-misses (4B620 / 4FD00 / 42938 / 36694 / 48AEC) are NCC-built: edg 2.29 frames contradict the targets (176 / 136 / 88 = NCC), and stripping the levers ("plain") does not help. 4BAF4 / 3B9C0 compile identically under both front ends. The C caps (E68, E2D0, 396FC's steal across 10 switch shapes, 1824, 65EE4) are unchanged under every combination, including edg as C++._
 - [Toolchain forensics III: MIPSpro 7.2 / 7.2.1 C++ edgcpfe (1997 / 1998) against the 1080 caps (run 352)](#toolchain-forensics-run352) — _Found on discmaster.textfiles.com: the MIPSpro C++ 7.2 CD, the Varsity Update Aug 1998 CD (7.2.1 c++_fe / c_fe) and IRIX 6.4 IDF 1.1 (7.2.1 driver / uopt / ugen / as1). sha256s and an IRIX inst extractor are included. Both o32 edgcpfe builds say "EDG 2.29" (Aug 29 1997 / Mar 13 1998), have the 4-label table rule, AND inline class-returning-by-value operators (no weak copies; 1DDC stays 384 words). So 7.4.4's non-inlining is a later SGI change. B3C is 706/706 standalone, and 116C / 76F0 / 1ADC are identical to 7.4.4's output. 8CD8 gets the target length plus a native table at the target's position. But on the NCC donor gate it is 127 same / 87 differ (7.2 and 7.2.1 give identical objects): evaluation order, temp frames, `this` spills. 57D8's 8-way compare chain rules it out for that donor. So 1080 mixed two edg front ends. It is safe only as a per-function donor front end._
 - [Toolchain forensics II: IDO 5.2 / 6.0 / MIPSpro 7.4.4 against the 1080 caps (run 351)](#toolchain-forensics-run351) — _The three LLONSIT archives are decomp.me's own sources (decompme/compilers values.yaml), with sha256s recorded. No cfe (5.2 / 6.0 / 7.1 / 7.4.4) tables a 4-label switch, so "IDO 6.x cfe" is false. EDG 2.29 (MIPSpro 7.4.4 DCC) has the target's rule (n >= 4, size <= 2n). For C-style code it is cfe plus native tables: game_uso B3C comes out 706/706 standalone, with the unit's leading 1/6 literal in place, and 940 is unchanged, and 116C / 76F0 are left with only the cfe residuals. But 93 of the 214 NCC donors change under it (it will not inline class-returning operators, so the copy chains disappear), and it was built in 2002. 8CD8 (inlined operators plus a 4-entry table) rules out both EDG builds. game_uso also holds 57D8, whose dense switches are compare chains, so it most likely mixes two front ends. The original is likely an EDG between 2.19 and 2.29 that we do not have. 5.2 / 6.0 / 7.4.4 as1 and back ends: 396FC / 1824 / 65EE4 are unchanged, and 5.2 / 6.0 as1 break sentinel exacts. No new compiler-generated functions among the open non-exacts._
 - [Toolchain forensics: every IDO-family toolchain we can run, and what each 1080 cap really is (run 349)](#toolchain-forensics-run349) — _Downloaded decomp.me's ido5.3_cfront, which bundles cfront 3.0.1 and Delta C++ (EDG 2.19) plus qemu-irix. bootup 6204 / E9FC were edg static initializers (__sti__: the prologue is on the TU's last line, the ctor call on the definition line, so lui comes before sw ra) and are now EXACT. Mixing 5.3 / 7.1 uopt / ugen / as1 gives byte-identical code on 396FC / 1824 / E2D0. DCC does not explain the C++ near-misses. The 4-entry jump-table family: IDO 4.1's pcc-derived ccom / accom genswitch (table iff n >= 4 && 0 < range <= 3n) matches the target exactly. Confirmed by running accom (through the docker-snapshot glibc + glib shim) with the 7.1 back end: native `sltiu 4` tables, and kernel 1ADC reaches 114/134 words (cfe NM: 103). But 76F0's operand order and float compares match cfe, not accom, so the likely original is a cfe with a 4-label threshold (IDO 6.x?). The 4.1 as1 / as1 options are ruled out for 396FC / 1824 / E2D0 by whole-object fingerprints._
@@ -2138,3 +2139,86 @@ file is fetchable raw at `https://discmaster.textfiles.com/file/<id>/<iso name>/
   front end, not an anachronistic one, so it is defensible on provenance. Still, it means running an
   IRIX binary under qemu-irix in the build, unless an `ido-static-recomp` of this edgcpfe is made. That recomp
   is the obvious next step.
+
+## Toolchain forensics IV: period toolchain sweep over the 12 remaining non-exacts (agent-c run 356, 2026-11-12) <a name="toolchain-forensics-run356"></a>
+
+Follow-up to [run 352](#toolchain-forensics-run352). Every remaining non-exact outside agent-h's 4-entry family
+(B3C / 8CD8 / 116C / 76F0 / 1ADC) was compiled with the MIPSpro 7.2 / 7.2.1 toolchains, to test whether its
+residual is just "built with the other compiler". **Result: no function moved closer. No exacts, nothing wired.**
+
+**Harness** (scratch, `/tmp/claude-1000/c356/scripts/`):
+- `cc.sh FE BE in out [-O]`. FE = `ncc71` (7.1 edgcpfe), `e721` / `e72` (MIPSpro 7.2.1 / 7.2 edgcpfe), `cfe71`,
+  `cfe721` (7.2.1 o32 cfe). BE = `71` (static recomp) or `721m` (7.2.1 uopt / ugen / as1 under qemu-irix,
+  root `/tmp/claude-1000/r1/root72`).
+  - The cfe command line is the 7.1 `cc -v` line (`-Xcpluscomm -std -Xv -D_CFE ...`); `UOPTX="-Olimit 1"` for 65EE4.
+- C units are scored from the asm-processor output of the real unit with `-DNON_MATCHING`, so the NM body
+  compiles in its real context. Standalone extractions (`extern "C"`, K&R `()` -> `(...)`) are only used to put a
+  C body through edgcpfe as C++. Each extraction was first checked to reproduce the unit's cfe bytes.
+- `score.py` gives reloc-masked positional and LCS word scores. It reads both splat line forms: `/* off vram WORD */ .word` and the USO `insn   /* off WORD -> sym */` reloc lines. A first version missed the second form, which made 1824 look 16 words long.
+- `fcmp.py` compares the .text of two objects function by function.
+- `gate.sh` compiles all 214 non-`_nm` NCC donors under two configs; `cgate.sh` compiles every
+  `build/non_matching/src/**/*.c` under two configs, at -O2.
+
+**Correction to run 352: the 7.2.1 back end is byte-identical to IDO 7.1's.**
+- Run 352 reported "107 identical with the 7.2.1 back end, keep the 7.1 one". That came from `ncc72b.sh BE=721`
+  passing **no `-r4300_mul -t5_ll_sc_bug`** to as1. The 7.1 `cc` / `NCC` drivers pass both (`-Wab,-r4300_mul` in
+  the Makefile), so without them only multiply scheduling changes.
+- With the flags passed (config `721m`):
+  - all 214 NCC donors are byte-identical: `ncc71/71` vs `ncc71/721m` gives 214 / 0;
+  - `e721/71` vs `e721/721m` gives 214 / 0 too;
+  - every asm-processed C unit is byte-identical function by function (`cfe71/71` vs `cfe721/721m`): 221 units, 3409 functions, 0 differ. titproc needs `-I src/titproc_uso` for its `#include "titproc_uso_5DC.c"`.
+- Without `-r4300_mul`, bootup changes in 6 functions (03F8, 82F8, B520, BF8C, D900 and E2D0). That is the
+  artifact, not a real codegen difference.
+- So **7.2.1 uopt / ugen / as1 = 7.1, and 7.2.1 cfe = 7.1 cfe, on all 1080 code**. The only period component that
+  changes 1080 codegen is the edgcpfe front end, which run 352 already characterised. No back-end or C-front-end
+  "second compiler" exists to explain a residual.
+
+**Per-function table** (reloc-masked LCS word score, our metric, not objdiff. "tuned" = the current donor / NM
+body; "plain" = the donor with its zero-code levers removed by `strip.py`: `if (...) {}`, `if (0) {...}`,
+`(void)x;`).
+
+| function | NCC / cfe (tuned) | 7.2.1 edg + 7.1 BE | 7.2.1 edg + 7.2.1 BE | 7.2 edg | plain NCC | plain 7.2.1 edg |
+|---|---|---|---|---|---|---|
+| post0b 4B620 (309 w) | 94.50 | 17.27 (328 w, frame 168 vs 176) | 17.27 | 17.27 | 63.11 | 18.52 |
+| post0b 4BAF4 (423 w) | 90.78 | 90.78 (identical) | 90.78 | 90.78 | 81.56 | 81.56 |
+| post0b 3B9C0 (279 w) | 88.53 | 88.53 (identical) | 88.53 | 88.53 | 63.93 | 63.93 |
+| post0b 4FD00 (251 w) | 96.41 | 33.93 (frame 144 vs 136) | 33.93 | 33.93 | 96.41 (no levers) | 33.93 |
+| post0b 42938 (389 w) | 79.69 | 50.19 (frame 192 vs 88) | 50.19 | 50.19 | 77.89 | 49.17 |
+| post0b 48AEC (519 w, agent-g) | 70.91 | 39.39 (537 w) | 39.39 | 39.39 | 53.04 | 37.50 |
+| post0b 36694 (178 w) | 79.21 | 52.25 | 52.25 | 52.25 | 55.62 | 35.96 |
+| bootup E68 (759 w) | 79.18 | as C++: 31.45 (frame differs) | C: identical | as C++: 31.45 | 43.04 (765 w) | 35.78 (756 w) |
+| bootup E2D0 (131 w) | 92.37 | as C++: 44.11 (132 w) | C: identical | as C++: 44.11 | 79.54 (128 w) | 36.78 (130 w) |
+| post0b 396FC (153 w) | 94.77 | as C++: 92.81, same `or a0,a3` steal + 3 mul.s operand swaps | C: identical | as C++: 92.81 | 83.72 (148 w, steal kept) | 81.73 (148 w, steal kept) |
+| mgrproc 1824 (142 w) | 97.89 | as C++: 61.97 (142 w) | C: identical | as C++: 61.97 | (no levers) | (no levers) |
+| post1b 65EE4 (146 w) | 69.18 | as C++: 69.18 (identical) | C: identical | as C++: 69.18 | (no levers) | (no levers) |
+
+- C rows: "plain" is cfe 7.1 vs edg as C++. "C: identical" means the real unit, run through 7.2.1 cfe + 7.2.1 back end, gives byte-identical bytes for the function and the whole unit. E68's NM body under `-Olimit` 200 .. 3000 is unchanged; only `-Olimit 1` changes it (1079 w). So no driver Olimit default explains it. The 7.2.1 `driver -show` cfe line for C equals 7.1's; the driver stops at the FlexLM check before the later phases.
+- The "7.2.1 BE" column uses `721m`. The C++ rows are identical between 7.1 and 7.2.1 back ends once the flags
+  are passed. The `-Yc` edg flag (run 352's 24BC fix) changes nothing on these 7.
+- `plain` is the same source with only the code-free tuning removed. The plain logic does not land closer under
+  edg: every class-heavy body keeps edg 2.29's frame / temp layout, which contradicts the target.
+- **The C++ near-misses are NCC-built.** For 4B620, 4FD00 and 42938 the target's frame equals NCC's and not
+  edg 2.29's: 176 vs 168, 136 vs 144, 88 vs 192. The 2.29 front end puts by-value class temporaries in different
+  stack homes, whatever the source spelling. 4BAF4 and 3B9C0 are C-style bodies, and both front ends give
+  identical code there, so their caps are uopt / as1 caps under either.
+  - Two more edg 2.29 traits the targets lack:
+    - 4FD00: edg spills `this` and reloads it (`sw a0,144(sp); lw v0,144(sp)` at entry). The target starts the
+      face reads straight off a0, with the frame set up at insn 6, as NCC does.
+    - 42938: edg uses a frame of 192 where the target uses 88.
+  - A single-flag sweep of every `-Y<c>` / `-Z<c>` / `-Q<c>` (156 flags) under e721 on 4FD00 and 42938 leaves the
+    `this` spill in place. No flag gives frame 136 / 88: `-Yc` gives 42938 a frame of 152 at the same score, and
+    `-YC` / `-YJ` / `-Yi` are much worse.
+  - Removing the `me()` accessor chains and `gn()` getter from 4FD00 (`p1` / `p2`, plus a version with the two sums
+    written inline) gives NCC 39 / 38 / 15 and edg 34 / 12 / 12. edg never comes closer than NCC.
+- **The C caps' kits are unchanged by every period toolchain:**
+  - E2D0's FP ring (arg4 f14 vs f16);
+  - 1824's `li at,1` pass-2 pull;
+  - 396FC's default-head delay-slot steal (also under edg as C++, where a dense 6-case switch still gives one
+    predecessor);
+  - 65EE4's jal-slot argument order (also as C++).
+  - For 396FC, 10 switch shapes were also run through edg 2.29 and NCC: default first / middle / with `return` / without `break`, cases reversed, an `(unsigned)` or local selector, a rebased `a1[0] - 109`, and an if-guard. Every same-length shape still steals `or a0,a3` (the `unsigned` and if-guard shapes are +4 words).
+  - E68 / E2D0 through edg as C++ are far worse (frame changes).
+
+**Unit gate.** Nothing improved, so no unit or per-function switch was attempted. For a future 7.2.1 edg donor,
+note that 7.2.1 C-side components are interchangeable with 7.1. The only thing a per-unit gate has to check is
+the front end.
