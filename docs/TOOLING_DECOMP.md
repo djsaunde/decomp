@@ -6,6 +6,7 @@ _10 entries. Auto-generated from per-memo notes; content may be rough on first p
 
 ## Index
 
+- [Toolchain forensics V: opt levels, driver options and TU boundaries (run 358)](#toolchain-forensics-run358) — _Every uopt `-Wo` / ugen `-Wc` (which does reach ugen) / as1 `-Wb` option, plus -O1 / -O3 / -g* / -mips1 / Olimit grids, was run on E2D0, E68, 1824, 396FC and 65EE4. Nothing moves a cap toward the target with evidence. 396FC's default-head steal is one as1 xbb move (`-Wb,-xbbdbg 3`): `-Wb,-noxbb` or as1 `-Olimit <= 23` makes it 153/153. But uopt needs `-Olimit >= 25`, so no driver `-Olimit` gives both, and the 7.1 and 7.2.1 drivers pass identical back-end flags (7.2.1 `-show` works on `.B` / `.O` / `.G` input, past FlexLM). All caps are TU-context-independent. -O3 traps uopt on bootup. game_libs RoData 16-byte pads mark TU boundaries at +0x1A10 and +0x1A90. The TU between them (37E98..39C8C) starts with a file-scope `0.01f` that only 396FC uses. That is a C const array (cfe puts const scalars in .data) or a 7.2.1-edg C++ const, and NCC 7.1 is ruled out (the TU has tables)._
 - [Toolchain forensics IV: period toolchain sweep (run 356)](#toolchain-forensics-run356) — _The 12 non-exacts outside the 4-entry family were run under MIPSpro 7.2 / 7.2.1. None moved closer. **Correction to run 352:** its "7.2.1 back end breaks 107 donors" omitted `-r4300_mul -t5_ll_sc_bug`. With them, 7.2.1 uopt / ugen / as1 match 7.1 byte for byte on all 214 NCC donors (under both edg front ends). 7.2.1 cfe + back end also match 7.1 on every NM C unit (221 units, 3409 functions). Only the edgcpfe front end differs. The C++ near-misses (4B620 / 4FD00 / 42938 / 36694 / 48AEC) are NCC-built: edg 2.29 frames contradict the targets (176 / 136 / 88 = NCC), and stripping the levers ("plain") does not help. 4BAF4 / 3B9C0 compile identically under both front ends. The C caps (E68, E2D0, 396FC's steal across 10 switch shapes, 1824, 65EE4) are unchanged under every combination, including edg as C++._
 - [Toolchain forensics III: MIPSpro 7.2 / 7.2.1 C++ edgcpfe (1997 / 1998) against the 1080 caps (run 352)](#toolchain-forensics-run352) — _Found on discmaster.textfiles.com: the MIPSpro C++ 7.2 CD, the Varsity Update Aug 1998 CD (7.2.1 c++_fe / c_fe) and IRIX 6.4 IDF 1.1 (7.2.1 driver / uopt / ugen / as1). sha256s and an IRIX inst extractor are included. Both o32 edgcpfe builds say "EDG 2.29" (Aug 29 1997 / Mar 13 1998), have the 4-label table rule, AND inline class-returning-by-value operators (no weak copies; 1DDC stays 384 words). So 7.4.4's non-inlining is a later SGI change. B3C is 706/706 standalone, and 116C / 76F0 / 1ADC are identical to 7.4.4's output. 8CD8 gets the target length plus a native table at the target's position. But on the NCC donor gate it is 127 same / 87 differ (7.2 and 7.2.1 give identical objects): evaluation order, temp frames, `this` spills. 57D8's 8-way compare chain rules it out for that donor. So 1080 mixed two edg front ends. It is safe only as a per-function donor front end._
 - [Toolchain forensics II: IDO 5.2 / 6.0 / MIPSpro 7.4.4 against the 1080 caps (run 351)](#toolchain-forensics-run351) — _The three LLONSIT archives are decomp.me's own sources (decompme/compilers values.yaml), with sha256s recorded. No cfe (5.2 / 6.0 / 7.1 / 7.4.4) tables a 4-label switch, so "IDO 6.x cfe" is false. EDG 2.29 (MIPSpro 7.4.4 DCC) has the target's rule (n >= 4, size <= 2n). For C-style code it is cfe plus native tables: game_uso B3C comes out 706/706 standalone, with the unit's leading 1/6 literal in place, and 940 is unchanged, and 116C / 76F0 are left with only the cfe residuals. But 93 of the 214 NCC donors change under it (it will not inline class-returning operators, so the copy chains disappear), and it was built in 2002. 8CD8 (inlined operators plus a 4-entry table) rules out both EDG builds. game_uso also holds 57D8, whose dense switches are compare chains, so it most likely mixes two front ends. The original is likely an EDG between 2.19 and 2.29 that we do not have. 5.2 / 6.0 / 7.4.4 as1 and back ends: 396FC / 1824 / 65EE4 are unchanged, and 5.2 / 6.0 as1 break sentinel exacts. No new compiler-generated functions among the open non-exacts._
@@ -2222,3 +2223,198 @@ body; "plain" = the donor with its zero-code levers removed by `strip.py`: `if (
 **Unit gate.** Nothing improved, so no unit or per-function switch was attempted. For a future 7.2.1 edg donor,
 note that 7.2.1 C-side components are interchangeable with 7.1. The only thing a per-unit gate has to check is
 the front end.
+
+## Toolchain forensics V: opt levels, driver options and TU boundaries (agent-c run 358, 2026-11-12) <a name="toolchain-forensics-run358"></a>
+
+Follow-up to [run 356](#toolchain-forensics-run356). The five C caps were swept over every per-file optimisation /
+driver option the IDO 7.1 toolchain accepts, and their translation-unit context was tested.
+**No exact and nothing wired.** One cap (post0b 396FC) is reproduced exactly by an as1-only option, but no driver
+path or TU grouping produces that option, so it is not an evidenced flag.
+
+**Harness** (scratch, `/tmp/claude-1000/c358/s/`):
+- `sw.sh outdir tag "flags" units...` compiles the real asm-processed NM unit (`build/non_matching/src/...`) with the
+  Makefile's `cc` line plus extra flags, and scores the cap with the run 356 `score.py` plus a per-function hash
+  (`fh.py`) so "changed but same score" is visible. `run1.sh` loops it over a flags file; `an.py` tabulates.
+- `keep2.py in.c out.c fn...` drops every top-level function body except the listed ones (comment / string aware,
+  keeps `#ifdef` lines), giving a one-function TU in the unit's own context.
+- `o3.py show.txt dir` replays a `cc -show` pipeline with the static-recomp tools, swapping in the qemu 7.2.1 uopt.
+
+**Option inventory** (from `strings` on the MIPS-ELF 7.2.1 binaries, which equal 7.1's; the recomp binaries hide
+their option tables):
+- uopt (`-Wo,`): `-z{aloc,scm,stor,como,copy,movc,dbug,vref,mark}:N`, `-regr N`, `-rege N`, `-varref N`,
+  `-Olimit`, `-nomultibbunroll`, `-unrolllimit`, `-loopunroll`, `-trapuv`, `-fp32reg`, `-strictIEEE`, `-dwopcode`,
+  `-[no]kpicopt`, `-no_r23`, `-moremotion`, `-noPalias`, `-f77alias`, `-createbb`, `-nordstore`, `-domtag`,
+  `-notail`, `-nogenvreg`, `-norecur`, `-docodehoist`, `-no_const_in_reg`, `-do_opt_saved_regs`, `-noheurAB`,
+  `-norlodrstropt`, `-noprecolor`, `-dowhyuncolor`, `-doassoc`, `-docopy`.
+- ugen (**`-Wc,`** -- this does reach ugen; `cc -show` prints it on the ugen line, and an unknown one gives
+  "not understood". Correction to the 2026-07-14 IDO_CODEGEN note that no `-W` prefix reaches ugen):
+  `-nooffsetopt`, `-notailopt`, `-nounsignedconv`, `-[no]cpalias`, `-checkstack`, `-fp32regs`, `-prototypes`,
+  `-align8/16/32/64`.
+- as1 (`-Wb,` = `-Wa,`): `-noxbb`, `-aggr_xbb`, `-nopeep`, `-nobopt`, `-no_const_opts`, `-no_lui_opts`,
+  `-no_div_rem_opts`, `-no_at_compression`, `-no_branch_target`, `-nopool`, `-noswpipe`, `-nosymregs`, `-noglobal`,
+  `-multi_issue`, `-fpstall_nop`, `-newhilo`, `-force_branch_fixup`, `-t5_mtc1/-t5_muldiv/-t5_r31`,
+  `-r3000/r4000/r4200/r4600/r6000`, `-tfp`, `-RD`, `-NR`, `-fli`, `-mednat`, `-dwalign`, `-f0..f4`, `-Olimit N`,
+  plus the debug switches `-xbbdbg N` (prints every cross-block move: `MOVETO bb A inst i / MOVEFROM bb B, inst j`),
+  `-peepdbg`, `-swpdbg`.
+- Note: `-Wb,-O0/-O1/-O3` are inert through the driver because the driver appends its own `-O2` after them; run
+  as1 by hand on a `cc -K` `.G` to test as1 levels (as1 -O0 / -O1 = no scheduling: 396FC 91.26, worse).
+
+**Sweep results** (reloc-masked LCS words; 116 single options plus Olimit / regr / rege / zmovc value grids;
+every unit compiled whole, so "changed" is per function):
+
+| cap | best change | distinctive residual |
+|---|---|---|
+| bootup E2D0 (FP ring, 92.37) | none better; -g3 88.55, `-Wo,-zcomo:0` 90.08, `-Wb,-t5_r31` 91.60 | unchanged by every option that keeps the length |
+| bootup E68 (phase-2 m colour, 79.18) | none better; `-Wb,-t5_r31` 79.13 | unchanged |
+| mgrproc 1824 (`li at,1` hoist, 97.89) | none better; `-Wb,-aggr_xbb` changes bytes at the same score | xbb off (`-Wb,-noxbb` / `-Wb,-Olimit,<=30`) removes the hoist (firstdiff 13 -> 19) but also undoes the four hoists the target keeps (`li t2,1` etc.): 83.10 |
+| post0b 396FC (default-head steal, 94.77) | **`-Wb,-noxbb` or `-Wb,-Olimit,N` with N <= 23: 153/153 masked-exact** | the steal is an as1 cross-block move |
+| post1b 65EE4 (jal-slot arg order, 69.18 at `-Olimit 1`) | `-Olimit 1 -mips1` / `-Olimit 1 -Wb,-RD` 71.23; `-Wo,-nokpicopt` at plain -O2 71.17 (135 w) | unchanged |
+
+- `-O1` and `-g` / `-g1` / `-g2` turn uopt off and are far worse everywhere; `-mips1` is worse everywhere.
+- **-O3** (driver passes `-Olimit 5000` to uopt and as1 and runs uld / usplit / umerge): bootup's uopt
+  hits a `break` trap (the static recomp asserts, and the real 7.2.1 uopt under qemu traps too, on
+  func_00005F34 and func_000027E8). So the real bootup unit could not have been built at -O3. With those two
+  cut, 189 of 242 bootup functions change and E2D0 / E68 drop to 79 / 25. mgrproc -O3 changes 5 other
+  functions and leaves 1824 alone; post0b -O3 changes 73 others; 396FC keeps its score.
+
+**396FC: the steal is an as1 xbb move, and no legal switch turns it off.**
+- `-xbbdbg 3` on a one-function TU shows the only move in 396FC: `MOVETO bb 3 inst 11 / MOVEFROM bb 4, inst 2`.
+  The range check's `beqz` delay slot takes `or a0,a3` from the default block. With xbb off, the slot keeps
+  `sll t7,t7,2`, which is the target, and the rest of the function is unchanged.
+- The target CFG is the same as ours. The default block at 0x39944 has one predecessor, the `beqz` (all case ends
+  branch to 0x39950 / 0x39954). So the original as1 had the move available and did not take it.
+- `-Wb,-noxbb` over all of post0b changes 229 functions; `-Wb,-Olimit,22` changes 50, including sentinels
+  (34890, 35B1C, 46790, 4F2DC, 493AC, 5A2C4). The 7.2.1 NCC near-misses get worse too (3B9C0 81.79,
+  4BAF4 79.29, 48AEC 61.74).
+- **Driver `-Olimit` cannot do it.** uopt needs `-Olimit >= 25` to optimise 396FC; as1 skips xbb only at
+  `-Olimit <= 23`. At 24 uopt falls back (13.18 %). The two use different size measures: across post0b the
+  as1 threshold minus the uopt value ranges from -11 to +76. The `cc` / `NCC` drivers pass no default
+  `-Olimit` at -O2 (only -O3 passes 5000).
+- **TU context is irrelevant.** One-function TUs give byte-identical 396FC / E2D0 / E68 / 1824, ignoring the
+  rodata addends. So does 396FC after the heaviest `.alias` emitters (48AEC / 4C300 with 21 each, 4F2DC, 5B90C),
+  and after its real neighbours 39094 / 39624. as1 carries no `.alias` or xbb state across procedures that
+  matters here.
+- **The MIPSpro 7.2.1 drivers pass the same back-end flags.** The `driver` (cc) and a `CC` symlink stop at FlexLM
+  for `.c` / `.s` input, but **not for ucode input**. `driver -show -O2 -c t.B / t.O / t.G` prints
+  `uopt -G 8 -mips2 -EB -g0 -O2`, `ugen ... -O2` and `as1 -t5_ll_sc_bug -elf -G 8 -p0 -mips2 -EB -g0 -O2`.
+  These equal 7.1's lines, with no -Olimit and no xbb switch. The 7.2.1 driver strings list `-noaliasok` among
+  its as1 arguments, but neither as1 accepts it ("unknown option").
+- 65EE4's uopt size value is 15. Its target is the uopt-skipped body, so its original TU had an `-Olimit`
+  between 10 and 14. Every function between 659D0 (value 16) and 6612C (value 15) has a value of 9 or less, so a
+  [65B40 .. 65EE4] TU at `-Olimit 10..14` would be self-consistent. But even the fallback body is only 69 %
+  (argument order), so this is not a lever.
+
+**TU boundary evidence: game_libs RoData alignment pads.**
+- Scanning the USO RoData (ROM 0xDA183C = RoData +0x19F8) for zero runs that end on a 16-byte boundary finds
+  3-word pads at +0x1A04 and +0x1A84, and 2-word pads before +0x1980, +0x19E0 and +0x1B30. The rodata references
+  are the `lui at,0` + `lw / lwc1 / ldc1 imm(at)` pairs in `asm/nonmatchings/game_libs`, mapped to functions.
+  Over 0x2E000-0x55000 the rodata order is monotonic in .text order, except 396FC's `0x1A10`.
+- The TU between the pads holds the message-stream readers: rodata +0x1A10 .. +0x1A83 =
+  `0.01f` (+0x1A10, used only by 396FC), 37E98's / 37F10's `10000.0f` (+0x1A14 / +0x1A18), 38A28's table
+  (+0x1A1C), 39094's table (+0x1A40), 396FC's table + `1/32767` (+0x1A64 / +0x1A7C) and 39C8C's `30000`
+  (+0x1A80). The next TU starts at +0x1A90 (3AC5C's table). Its .text runs from after 37540 up to before 3AC5C.
+  .text shows no 16-byte pads in game_libs, so the text-side cut is not visible.
+- The first item, `0.01f`, is referenced only by 396FC. A per-function literal cannot sit there: cfe and NCC emit
+  per-function rodata in function order, and do not share literals across functions (tested). So it is a named
+  file-scope constant. Placement rules (tested, -O2 -G 0):
+  - IDO 7.1 / 7.2.1 cfe put a `const` / `static const` file-scope float **scalar in `.data`**, but a
+    **const array** (`static const float k[1] = {0.01f};`) goes in `.rodata` at the TU start, ahead of each
+    function's `[table][literals]`.
+  - NCC 7.1 and the MIPSpro 7.2.1 edg (C++) put even a const scalar at the start of `.rodata`.
+  - NCC 7.1 makes no jump tables (8 dense cases still compile to a compare chain), and this TU has three. That
+    rules out NCC 7.1 and leaves **C with a file-scope const float array (index 0 used by 396FC)** or a
+    **7.2.1-edg C++ TU**.
+  - Hints toward C++: 39094 dispatches through `vt->fn(vt->delta + (char *)obj)` (the cfront / edg this-adjusted
+    virtual call), and 38A28's cfe donor compiles byte-identically through 7.2.1 edg as C++.
+  - 396FC as C++ under 7.2.1 edg, with `static const f32 kS = 0.01f` and `s2[k] * kS` operand order, reaches 94.77,
+    the same as cfe: only the steal is left, and as1 is shared. 39094's cfe-tuned body does not port as-is (51 %
+    under edg).
+  - In C, the natural source spelling for 396FC's literal is a file-scope `static const float` array in post0b ahead
+    of the 37E98 group. It replaces the `D_00000000 + 0x1A10` extern without changing code.
+- No `-Olimit` or flag is attached to that boundary, and the caps are TU-context-independent, so the split
+  would not move a cap. It is recorded for whoever re-homes post0b's 37E98..39C8C as its own unit.
+
+**Not done / not evidenced:** an as1-only `-Wb,-noxbb` (or `-Wb,-Olimit,22`) per-function split for 396FC. It
+reproduces the bytes, but no driver produces it, and the evidenced TU holds other exacts that it changes:
+38830 and 39094 under `-Wb,-Olimit,22`; 39094, 39624, 39990 and 39B58 under `-noxbb`. That makes it a flag
+without evidence under the match policy.
+
+**as1 xbb internals for the next attempt on 396FC.** Read from `tools/ido-static-recomp-dump/build/7.1/as1.c`
+(`func_42a9f0` is the xbb driver; `func_429620` computes block weights; `func_428920` is the +1 / +3 edge test).
+The original as1 binary with its .data is `tools/ido-static-recomp-dump/ido/7.1/usr/lib/as1`.
+- `-xbbdbg 9` prints, per region: `LOOP:` block lists (each loop is its own region), per-bb `weight`,
+  dominator and postdominator sets, then the `current bb / MOVETO / MOVEFROM` trace.
+- **as1 `-Olimit` counts as1 basic blocks.** 396FC has 24 (bb0..23), so xbb is skipped at `-Olimit <= 23`. The
+  default (no `-Olimit` from the driver at -O2) is large enough that no 1080 function hits it.
+- **Weight.** Entry blocks get 1. A successor gets pred + 3, or pred + 1 when the pred has a successor outside the
+  region. A block in the pred's (post)dominance row gets pred - 3. Each block takes the minimum over its
+  predecessors. In 396FC: bb3 (range check) 1, bb4 (default) 4, bb5 (dispatch) 4, case blocks 7, and the
+  copy-loop blocks bb8 / bb12 1.
+- **Candidates.** Blocks are sorted by weight. A block is processed when its +68 flag bits 13 and 6 are set and it
+  has stalls. For each, the later blocks in sorted order are tried while:
+  - the weight difference is `< 3*G + 3` (G is the as1 .data word at 0x1001b8c0, initially 1, and as1.c never writes to that address by name, so
+    the window is 6);
+  - the candidate is dominated by the current block;
+  - the candidate's +68 bit 5 is clear;
+  - fewer than 10 candidates have been tried, or 100 when the function has more than one region (396FC has loops,
+    so 100).
+  A move is kept when both blocks' rescheduled times do not get worse. In 396FC: bb3 old 9 / new 9, bb4 old 3 /
+  new 2.
+- So the target's missing steal is NOT the candidate cap (100) and NOT the window: bb4 is at distance 3, and every
+  path to it runs through bb3, so its weight cannot be raised. The deciding factor is the candidate ORDER among
+  equal weights, which is block id:
+  - 396FC numbers the default bb4 and the dispatch bb5, so the default head is tried first and the move is legal
+    (a0 is dead on every arm).
+  - 38A28 (default in the table) numbers the dispatch bb4, so xbb takes the dispatch's `sll`, which is the target
+    pattern.
+  - 3AC5C / 2119C / 61F8C (default single-predecessor, exact) take the dispatch `sll` because their default head
+    is not movable: `addiu s0` with s0 live, a `lbu` that can trap, and a `jal` respectively.
+  - 51AD8's run-326 fix and [kit CDXXI](IDO_CODEGEN.md)'s empty as1 block (an `.alias` / unreachable instruction
+    after the last arm's `b`) work by inserting a block in front of the default.
+  - `if (1) {}` makes no as1 block: 1 / 3 / 6 / 12 copies in default, in case 114 or ahead of the switch leave
+    396FC byte-identical.
+- ROM-wide census (all segments): 79 `sltiu at; beqz at` bound checks; **no target delay slot holds the default's
+  first instruction** (6 nop / nop coincidences aside). This agrees with kit CXXXII's 82-table game_libs census.
+- C++ spellings under 7.2.1 edg (the TU evidence above leaves C++ possible) were tried on 396FC's case 114, the arm
+  in front of the default: an inline member setter through `this` on the stack Xform, a `Xform &` reference, an
+  `Xform *` pointer, an inline static copy helper for the 64-byte matrix, and a 3-float member setter. uopt folds
+  them all to sp / param addressing: 94.77, steal kept, no directive. This confirms kit CDXXI's verdict
+  (verified cap) for the C++ front end too.
+- **mgrproc 1824's `li at,1` is the same mechanism.** `-xbbdbg 9` on a one-function TU shows
+  `current bb 5, weight = 1, stalls = 1 / MOVETO bb 5 inst 5 / MOVEFROM bb 23, inst 1` (bb5 old 6 / new 6,
+  bb23 old 3 / new 2). bb5 is `lw t6; addiu t7; sw t7; lw v0; beqz v0` and bb23 is the `li at,1; beq v0,at`
+  compare block. `-Wb,-noxbb` alone removes the hoist (firstdiff 13 -> 19), so this is do_xbb_opt's move, not
+  only the list scheduler's second pass that kit CDXVIII names.
+  - The taken successor bb6 (`lw t8,2020(s0)`, a load that may trap) is tried first and rejected; then bb23 is
+    accepted.
+  - No branch in the target hits 0x1864, so the compare block has a single predecessor there too.
+  - The target keeps the other four xbb moves (weight 10 <- 13), so the original as1 did run xbb in 1824.
+  - 396FC and 1824 are the only two caps where the target lacks a legal, profitable xbb move into a weight-1 block.
+    xbb moves into weight-1 blocks are otherwise everywhere: 403 of them in post0b, mostly in exact functions.
+- **post1b rodata pads near 65EE4:** 16-byte pads at +0x20A0 (62D70 | 63F34) and +0x20F0 (64588 | 66810). 64DEC ..
+  6612C carry no rodata, so they neither confirm nor rule out the `-Olimit 10..14` [65B40 .. 65EE4] TU above.
+- **65EE4's `-Olimit` TU is self-consistent but buys nothing.** Compiling the whole post1b unit at `-Olimit 10`,
+  `12` or `14` changes, between 659D0 (uopt value 16) and 6612C (15), only 65EE4. Its bytes are identical to the
+  current `-Olimit 1` NM donor (69.18), and every other function in 65B40 .. 65EB4 stays byte-identical. So an
+  original TU spanning (659D0, 6612C) built at `-Olimit 10..14` explains the fallback. It cannot fix the
+  argument-order residual, so nothing was rewired.
+- **Front-end language modes** (`-cckr`, `-cckr -float`, `-float`, `-signed`, `-xansi`, `-use_readonly_const`,
+  `-fullwarn`, `-wlint`, `-Wf,-Xs`, `-Wf,-XNh2000`, `-Wf,-Xdollar`) on the five caps: only `-cckr` changes
+  anything. Its K&R float-to-double promotion takes E2D0 to 22.51 and 396FC to 73.72, and 65EE4 under
+  `-Olimit 1 -cckr` is unchanged. `-ansi` / `-ansiposix` do not compile the units (`//` comments, `long long`).
+- **Standalone rerun.** All 116 single options on one-function TUs (`keep2.py`) for E2D0 / E68 / 1824 / 396FC:
+  464 results, identical to the in-unit sweep wherever both compiled. The exceptions:
+  - `-Wb,-dwalign` on 1824 is position-dependent (in unit 92.31, standalone 96.48, both below base);
+  - standalone `-O3` (no uopt trap without the rest of bootup) takes E2D0 to 85.50 and leaves E68 / 1824 / 396FC
+    unchanged;
+  - `-Wb,-r4200` (which crashes in-unit) takes E68 to 67.06.
+- **as1 block ids are positions in its bb list, not layout order.** `f_do_xbb_opt` numbers the list it is handed.
+  In 396FC the default block, laid out last, is bb4, right after the range check, with the dispatch at bb5. In
+  38A28, whose default is also a table-hole target, the dispatch is bb4 and the default bb5. This fits (but does
+  not prove) the reading that the first forward reference to the default label, from the bound-check `beqz`, puts
+  the default straight after the check in the list, unless the label was already referenced; the table's `.word`
+  entries would count as references. Equal-weight
+  candidates are tried in id order, which is why 396FC's default head is offered first. Every legal way to
+  reference the default earlier was checked: table holes (+1 entry, a decode error per kit CDXXI), an earlier
+  `goto` (uopt removes it or it costs a branch), and placing the default before the check (contradicts the target
+  layout). None is available.
