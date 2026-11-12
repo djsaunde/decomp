@@ -14795,6 +14795,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CDXLIV (agent-g 2026-11-12, run 354): **48AEC: the frame-0x160 body (run 352's h5_17) already carried the four committed gains; reading loop 1's ctx6C through cur() instead of ref() lifts it past the committed body (98.033 at frame 0x170 -> 98.037 at frame 0x160 = target). The residual is now ONLY registers plus two home words (g of arm 1 / else at sp+236 / 220, target 244 / 228). -g3 homes give the edg temp-pool split: the target has 2 pool words before arm 1's ld() g, 2 after it and 2 fresh after the else arm's g, ours 4 / 2 / 0. cp() with ld()'s body written inline (cpZ) gives EXACTLY the target's two g homes but loses mt-in-s0 (gctx takes s0); with the cpZ pool the loops keep our colours, so the loop shift (ctor `this` a2 vs t1, idx*4 v0 vs t0) is a separate residual; ~2600 variants flat**](#kit-cdxliv-agent-g-run354) -- _post0b 48AEC NM 98.033 -> 98.037 (f8cc4685c), same length; about 1900 variants, all other axes flat._
 - [kit CDXLVI (agent-g 2026-11-12, run 359): **48AEC pool accounting: edg pool words are untyped and reused across statements (even words placed above c), so the arm-1 frame region is c + arm 1's TOTAL need (cp with nested ld() 5 words, cpZ 3, target 3); the 4 words between the else arm's g and `it` are the else arm's own ld2 words, and a kept wrapper in ld2 (`K1(this)->dl->buf + dl->count++`) on the cpZ body gives ALL THREE target homes (g1 sp+244, g2 sp+228, it sp+208, 519 words, 95.69) -- but the ctor `this` stays a2 there (the loop shift is independent of the homes), and every mt-in-s0 spelling (nested ld(), K1 / I2 receiver or src) costs 5 words; a third basin (`cB(Mtx *c, void *src) { c = mtx(); ... }`: c's parameter temp is the target's sp+256 spill, mt in s0, 97.71); A / B as macros, counters as inline params, a hand-unrolled k all change code; 4B620: Base-ctor / member definition placement, line layout and class order byte-identical (104); a kept-parameter identity on a post-increment's BASE (`&d->head->buf[K1(d)->head->count++]`) puts one pool word between the old-count and head temps and gives append 1 the target's head v1 / count s0 (99.725 -> 99.773); on 48AEC the same lever gives arm 1's count s0 / the else arm's mh v1 but costs homes or flips B**](#kit-cdxlvi-agent-g-run359) -- _post0b 4B620 NM 99.725 -> 99.773 (9bfec061e, same length); 48AEC unchanged (98.037); about 2400 variants._
 - [kit CDXLVII (agent-h 2026-11-12, run 361): **PHANTOM mask temps realign the ugen ring after an if-body: when every later t-temp is N FIFO slots off from a join onward, N folded masks at the first divergent statement (`(u16)(lo & 0xFFFF)` in kernel 1ADC's LO16 tail store: same stored low half, two `andi`s that as1 deletes) burn exactly N slots; a mask placed one statement early shifts that statement too; register-operand masks are real code. 1ADC already read hiptr / hival uninitialised exactly as the target (the 2026-11-12 extension only adds the citing comment); its 7.2.1 residual is two as1 schedules (head val load, case-1 store / delay fill), flat under every statement / declaration order. 8CD8: the double phase store gains in the committed 7.2.1 basin; the a0 guard `this` is not reached by any subset / ctor / site spelling**](#kit-cdxlvii-agent-h-run361) -- _6e05bd8f7 (1ADC NM 95.66 -> 96.26, 7.2.1 draft 92.54 -> 93.13) and 918139a46 (game_uso 8CD8 NM 91.182 -> 91.288); ~1000 variants._
+- [kit CDXLVIII (agent-g 2026-11-12, run 362): **uopt live ranges are BLOCK-granular (`-zdbug:5` `live bb` = block id; a range takes the lowest colour not used by a range sharing one of its blocks), so the `if (0)` inside a kept identity can recolour a temp by splitting its block: 4B620 append 2 through `K3(T *p) { p = p; return p; }` (`&head->buf[K3(this)->head->count++]`, hi kept) gets run 359's extra pool word WITHOUT the split -- old count s0 and g a1, byte-exact append (99.773 -> 99.822); only `p = p` works (q-copy, `+ 0`, const-ref, int cast, `if (1) return` do not); `if (0)` / `if (1)` inside inline bodies is byte-identical; append 5's g (a1) needs three lower-coloured ranges in its block and only comes with append 4's head / count as fresh ranges (costs s0 / s3 and two `it` words); 48AEC ctor `this` / 4BAF4 packets / loop receivers flat**](#kit-cdxlviii-agent-g-run362) -- _post0b 4B620 NM 99.773 -> 99.822 (76669de5b, same length); ~2500 variants._
+- [kit CDXLIX (agent-h 2026-11-12, run 363): **uopt drops every statement `loc` in a join block it folds into a test's fall-through (`if (c) {} else { continue; }` then statements: check `ugen -d` after uopt), so the block carries the test's line and as1 breaks aftercycles ties by ugen order; as1 ties otherwise go to the LOWER line. Writing the statements INSIDE the then-arm (`if (c) { ...; } else { continue; }`) keeps their lines and the layout; a dead `i = i;` line after an arm's last statement gives uopt's inserted loop-tail code a later line (store before the end-pointer `sll`, reload in the delay slot). Also: a greedy K3 / K1 kept-identity climb over every member-access receiver lifts 8CD8 (needs class temporaries; flat on 116C / 76F0)**](#kit-cdxlix-agent-h-run363) -- _EXACT kernel func_80001ADC (440696bf7, 7.2.1 donor, 96.26 -> 100, 536 B); game_uso 8CD8 NM 91.288 -> 92.254 (8dd599a10, 102a65623); ~1900 variants._
 - [kit CDXXXVIII (agent-c 2026-11-11, run 346): **NCC homes follow edg ALLOCATION order (function-scope named locals hoisted to the top even when declared late; then pooled temps; a by-value V3 temp at its first use; then late block-scoped locals): post0b 4FD00's every target sp offset (frame 136, V3 temp sp+20) = block-scoped p1 / p2 + `void add()` for the SV adds (-2 pool words) + two volatile pad words in the late block, but that basin's `move v0,zero` lands inside the second sum (98.13 < 98.645); the real residual is that the SECOND wrapper expansion binds its parameters through temps so its `+=` references get a fresh pool word (t0) -- a dead `int d` parameter fed an address (`wb(b, f2, s, (int)&s)`) + void adds makes its three references share one word and, with the block / pad recipe, leaves ONLY that word's colour (t0 vs v0) and its knock-ons (98.606, `c346/78/s/v11.cpp`); with the second sum's first read at accessor depth 0 s.set's reference goes back onto the first sum's word (v0) and only the two adds stay on t0: 98.685, committed; a BB split anywhere between the two sums costs ~20 points (984 B), so the temp cannot be allocated between them; dead top-of-function pool blocks move the temp with identical code up to 7 words; 4B620 / 42938: every agent-g alternative body's residual set is a superset of the committed core (42938's scissor-head fix costs 7 ctx-reload lines)**](#kit-cdxxxviii-agent-c-run346) -- _post0b 4FD00 NM 98.645 -> 98.685 (c9fb1c206, same length); ~4300 variants; tools c346/20/res.py (per-variant mismatch-line sets), c346/83/gen.py (sum / sum2 climb), c346/30/sub.py, c346/35/hc.py, c346/39/gen.py._
 - [kit CDXXXVII (agent-g 2026-11-11, run 345): **post0b 3B9C0's `addiu t9,sp,184` is a ugen-HELD lda: a `0 * (int)(X)` fold is a register zero only when the same text occurs twice (CSE before folding), which gives kit CDVIII's phantom with no new block (`(char *)&p + 0 * (int)(self->tris)`, paired with the ib line's self_al->tris fold); a carrier merges with its inner-loop web (adjsave 115 > fv 103.3, fv loses a3) until one counted fv use in the ok line; then every uopt colour of the qa / qb block is the target's (35 lines / 98.62 vs committed 34 / 99.32) but the t6..t9 FIFO model says ugen itself materialises the target's lda (held in t9 through qb, or emitted after qa's `sll` with no ib load temp) -- every source puts lda in a coloured const LR, folds it into `l.s 184(..)`, PRE-hoists / spills the cvt, or (assignment inside qa's address) gets linearised before the load; 48AEC: NCC `-O2 -g3` + an .mdebug reader (`mdeb.py`) lists every named home vfp-relative (gaps = unnamed edg temps); the target = i / j / k block-scoped + cmd in a nested block (cmd at vfp-96, same code) with only 2 temp words before load()'s g where pushQ costs 8; frame 352 is reachable but only by dropping lower-arm homes (best 97.60 < 97.73)**](#kit-cdxxxvii-agent-g-run345) -- _no gain; ~5800 variants; tools g345/t/v2.py, v3.py, dump.sh, slots.py, hs.py, mdeb.py (NCC `-g3` .mdebug home reader), g345/4/fifo.py._
 - [kit CDXXXVI (agent-c 2026-11-11, run 344): **edg inline-temp frame words, measured on a mini harness: an inline's parameters cost words only when its body expands a temp-needing inline (a parameter read more than once); a second top-level call of a wrapper with ONE such nested call is free, with two or more (set + add, set + o.set, add + add, any parameter types) the second call costs +2 words (+4 for `SV &operator+=`; set + add then saturates, the committed sum() keeps growing), regardless of wrapper nesting, braces, splits or commas between the calls; top-level statements always pool. post0b 4FD00's target frame = "second face sum free": a hand-written second sum gives param 20 / frame 136 and every sp offset of the target, but that basin's code tops out at 91.63 / 1004 B with the frame kept (dead mid.z store kept or &mid / 12 not hoisted, vertex pointers not v0); 36694 dump: zero LR adjsave 1.67 coloured after E (3.0) and px / py / pz (2.5), a named zero is constant-propagated and only adds a home; E68 distinct MGR loads, carriers and test grids flat**](#kit-cdxxxvi-agent-c-run344) -- _no gain; ~2600 variants; tools c344/sig.py, lay.py, 15 (mini harness), 53/cl.py._
@@ -64079,3 +64081,187 @@ Inline accessors for that w (`wof(s)->pos`, `wpos(s)`, `wpos2(s->w)`) keep the 2
 but add the same 8 frame bytes (pads re-trim the frame: 89.28 at 528); the shared word then colours v1 at all four
 sites, because &w->pos is no longer an expression in v1 at site 3 -- the target needs both (shared word AND &w->pos
 in v1 there) to push the guard to a0.
+
+## kit CDXLVIII (agent-g 2026-11-12, run 362): uopt live ranges are BLOCK-granular, so a dead `if (0)` keep inside a kept identity can move a temp's colour by splitting its block -- post0b 4B620 append 2: `K3(T *p) { p = p; return p; }` gives the same pool word as run 359's `K1` (`if (0) { p = 0; }`) without the split, so the old count takes s0 AND g keeps a1 (99.773 -> 99.822) <a name="kit-cdxlviii-agent-g-run362"></a>
+
+_agent-g run 362, base 647c245b7. Commit 76669de5b (4B620 NM 99.773 -> 99.822, same length 1236 B). 48AEC, 4BAF4, 3B9C0
+and 42938 unchanged. Scripts in `/tmp/claude-1000/g362/t/`: `reg4.py` (4B620 per-append region signature: a1..a6,
+iterator, L1..L5), `en4.py` (subset runner with that signature), `ml.py` (mismatch line lists), `en48.py` (48AEC runner:
+mismatches, loop mismatches, frame, ctor-`this` t1 count, MT). About 2500 variants._
+
+**1. How to read the colouring (agent-c's `-Wo,-zdbug:5` dump, `/tmp/claude-1000/c334/t/dump.sh`).**
+- Each `>>>active<<<{var} idx colour` entry is followed by `forbidden`, `interfere with` and `- live bb - N ...`; N is
+  the block id (`flow graph` at the top of the dump lists the blocks).
+- Colours 1-4 are v0 / v1 / a0 / a1, 5 is a2, 14 is s0, 16 / 17 are s2 / s3. A range takes the LOWEST colour that is not
+  forbidden.
+- Two ranges interfere when they share a block. In 4B620, appends 1-2 share block 13, appends 3-4 share block 14, and
+  append 5 and append 6 each have their own block (the `if (1) {}` after append 5 separates them).
+- The per-append `g` homes are separate vars (-40, -44, ... from the frame top). Appends 3-6 `g` take colours 1 / 2 /
+  1 / 1. So the target's append-5 g in a1 needs three LOWER-coloured ranges in its block.
+
+**2. The lever.** On run 359's body (append 1 through `K1(d)->head->count++`), `K1(this)->head->count++` in append 2 fixed
+the old count (s0) but moved g from a1 to v0, at every keep / member / free-inline spelling (about 300 variants). The
+dump shows why: g's range lost its interference with append 1's head (v1) and g (a0), because the `if (0)` inside K1
+starts a new block. A self-assigning identity `K3(T *p) { p = p; return p; }` adds the same pool word with no block
+split:
+`void addOK(unsigned hi, unsigned lo) { Gfx *g = &head->buf[K3(this)->head->count++]; g->w0 = hi; g->w1 = lo; if (0) { hi = 0; } }`
+- Result: append 2 is byte-exact (head v1, count s0, g a1), 99.773 -> 99.822.
+- `K2` (`T *q = p; return q;`), `K4` (`p + 0`), `K5`, `K6` (const-ref parameter), `K7` (int cast), `K8` and `K9`
+  (`if (1) return p;`) give either run 359's result or the old one. Only `p = p` works.
+- Swapping the other `if (0) { x = 0; }` keeps (addG, IBase / AIter ctors, g1, the K1 definition) for `x = x;` is
+  byte-identical, singly and in all 64 subsets. These keeps sit at block edges already, so the split only matters inside
+  an expression.
+
+**3. Append 5's g (target a1, ours v0) is not reached.**
+- No spelling of append 5 changes it: about 180 index / buffer / keep forms with K1 / K3, inline setters, `Gfx &`,
+  struct copy, receivers K3(cc) / K1(cc) / me(cc), explicit statement bodies with `if (1) {}` / `if (g) {}` inside,
+  statement-level splits before or after appends 3-6, and joint random draws over appends 3-6.
+- The only spellings that give append 5 a1 make append 4's head / count fresh ranges (v1 / a0) in append 5's block. One
+  is a front keep of both parameters in append 4 (`if (0) { hi = lo = 0; } ...head->inc()`); another is a K1(cc)
+  receiver on append 4. Both cost append 4's s0 / s3 and move `it` by two words (sp+88 / 100 vs 96 / 108). Removing the
+  other keeps does not give the two words back (128 subsets).
+- An `if (0) {}` / `if (1) {}` INSIDE an inline body changes nothing (96 variants, byte-identical). Only statement-level
+  splits and the keeps' own blocks move ranges.
+- Lead for the next run: the target's g colours (a0, a1, v0, v1, a1, v0) fit a SHARED variable for appends 2 and 5.
+  One variable is one live range over all of its blocks, so a range spanning append 2's block would get a1 in both
+  appends. Named inline locals and parameters never share: every expansion's g is a fresh var (-40, -44, ... -56 in the
+  dump), even as an assigned parameter (`put(Gfx *g, ...) { g = g; ... }`).
+  - An inline MEMBER's `this` is a pooled edg temp. Through `struct Gfx { ... void set(unsigned a, unsigned b) { w0 = a;
+    w1 = b; } }` on appends 5 and 6 (`head->buf[head->inc()].set(hi, lo)`), the two appends share that temp, and BOTH
+    take a1: append 5 is fixed and append 6 goes wrong.
+  - Every `set` spelling costs 2 frame words (`it` at sp+88 / 100 instead of 96 / 108), and some move the frame.
+  - In -g3 homes (base: g -24, -40 ... -56, iterator copy -80), each pooled replacement for a named g takes 2 words
+    where the g took 1. This holds for `set`, an assigned parameter (`stS`) and a plain parameter (`stP`).
+  - Still needed: pairing append 2 with append 5 at 1 word.
+
+**4. Negative results (no change).**
+- 4B620 loop: the iterator sites' receivers (`it.` / `me()` / `me(me())` / `K1(&it)` / `K3(&it)`, cur <-> ref; 380
+  random draws plus an L1 x L2 x L3 grid) stay at L1 / L2 / L3 / L5 = 2 each.
+- 48AEC: IBase / AIter keeps, `idx += 1`, `iter()` through K1 / K3 and self-assigning keeps (committed and cpZ bodies,
+  192 subsets) leave the ctor `this` in a2. The committed body's colour-5 ranges are forbidden only 1-4 / 6, so t1 would
+  need three more live ranges in those blocks. K3 receivers on cpZ bring mt back into s0 (97.01) but lose the g1 / g2
+  homes (sp+220 / 224 / 236), like kit CDXLVI's K1 / I2 forms.
+- 4BAF4: K1 / K3 in nextF / nextO (first, else and final packets) and code-free tests after each packet (161 variants)
+  stay flat at 99.515. 3B9C0 / 42938 residuals are t-register renumbering, not pool words.
+- More flat results:
+  - 4B620 stale levers after the K3 change: `addE` -> `add`, the L2 `me(&it)` and the IBase keep are now
+    byte-identical; nothing else can be removed.
+  - 48AEC's cB basin with the K3 / self-assign else-arm levers: best 97.77, layout off.
+  - 48AEC I2 -> self-assign / plain identity per loop site: 64 subsets, flat.
+  - 36694's F2 keep as `v = v`: flat.
+  - 42938 entry block: our t4 / t5 / t3 run 2 ring slots AHEAD of the target's t2 / t3 / t0, so phantom masks
+    (which only add slots) cannot help there.
+
+## kit CDXLIX (agent-h 2026-11-12, run 363): uopt DROPS every statement LOC in a join block it folds into a test's fall-through (`if (c) {} else { continue; }` + statements), so the whole block carries the test's line and as1 breaks aftercycles ties by ugen order; the same statements INSIDE the then-arm (`if (c) { ... } else { continue; }`) keep their lines and the lower-line instruction wins the tie -- kernel 1ADC EXACT (7.2.1 donor, 95.07 -> 98.51 -> 100) <a name="kit-cdxlix-agent-h-run363"></a>
+
+_Commit 440696bf7 (kernel func_80001ADC EXACT, 536 B, MIPSpro 7.2.1 donor `src/kernel/kernel_mp72_1ADC.cpp` spliced
+on both trees, `func_80001ADC_rodata = 0x8000A63C`). ~300 variants. Tools in `/tmp/claude-1000/h363/`: `nccr.sh`
+(tools/ncc721.sh with the as1 stdout kept in `<out>.as1`; `ASX=-R` = the kit CDXVIII scheduler trace, `UGENX=-d` =
+the ugen tree dump on stderr, after uopt), `bin/tr.py f.cpp [inst words]` (compile + per-instruction `lineno` sets
++ fuzzy), `bin/ties.py traces...` (every pick with an aftercycles tie, with lines / INST order / ready times)._
+
+**Reading the as1 tie-break from traces.** Among ready nodes as1 takes the highest `aftercycles`; on a tie the LOWER
+`lineno` wins in every tie collected here (about 30 distinct ties over 1ADC variants) except one recurring case-1 pair
+(`sll t6,s0,2` line 35 beat `and t8,v1,ra` line 34; not explained); with equal lines the first-listed node wins
+(newly ready nodes are listed first, then ugen order). So a pure as1 order residual between two instructions of
+EQUAL priority is a line question, and between different priorities it is a DAG question (kit CDXVIII's root rule).
+
+**Where the lines go (1ADC head).** The front end (EDG 2.29; cfe not checked) emits a `loc` per statement: the four head
+statements (type, p, val, orig) after `if (flags & 8) {} else { continue; }` sit at the join label with lines 28..31.
+After uopt (`UGENX=-d`, "Tree dump after Build") the block that follows the flags test's `fjp` has NO loc at all:
+uopt inverted the test, made the join the fall-through, and dropped every loc in it, so ugen gives all head
+instructions the test's line. Every spelling of that shape collapses (`{} else continue;`, `{;}`, goto forms,
+multi-line braces, `i = i;` / `if (1) {}` / blank-statement LOC carriers in the then-arm, the else-arm or the head:
+19 forms). The `if (!(flags & 8)) continue;` family keeps the locs but changes the layout (`bnezl` + a duplicated
+head load, 86-91%). Wrapping the WHOLE rest of the body in `if (flags & 8) { ... }` keeps the locs and the target
+head, but loses the `continue` loop shape (424 B, 72%).
+
+**The fix.** Put only the head statements in the then-arm and keep the `continue`:
+```c
+if ((&symtab[rel[i].info >> 4])->flags & 8) {
+    type = rel[i].info & 7;
+    p = (u32 *)(base + rel[i].offset);
+    val = (&symtab[rel[i].info >> 4])->value;
+    rel[i].orig = *p;
+} else { continue; }
+switch (type) { ... }
+```
+Same layout (`beqzl` with the continue path's first word in the likely slot), but the then-arm is the test's
+fall-through block in the front end already, so uopt keeps its locs. With PLAIN loads the val load (`lw a3`, line 30,
+aftercycles 2) ties with the switch's `sltiu` (switch line, aftercycles 2, newly ready) at cycle 2 and wins on the
+lower line: `lw t8; addiu t6; lw a3; addu v0; lw t9; sltiu` = the target. The run-361 volatile views (which forced a
+load-load edge and gave `lw a3` aftercycles 4, too early) must be dropped: with the then-arm they cost 1.49 (98.51).
+
+**Case-1 store / delay fill: a later line for uopt-inserted code.** In a switch arm, the code uopt adds at the end of
+the block (here the strength-reduced loop's end-pointer recompute `sll / subu / sll / addu a2` and the `rel[i].info`
+reload for the `|= 8` after the switch) carries the line of the LAST loc in the block. A dead self-store on its own
+line after the arm's statement (`*p = ...;` then `i = i;`) gives that code the later line, so the arm's `sw` (earlier
+line) beats the end-pointer `sll` on their aftercycles tie, and the info reload (now tied with `addu a2` on the same
+line) lands in the branch delay slot: the target's case 1 exactly (95.07 -> 98.51 on the volatile draft; still
+required on the final body: without it 96.57). `hiptr = hiptr;` works the same; `if (1) {}` / `if (val) {}` change
+the code (-4).
+
+**Also confirmed on the final body.** The `(u16)(lo & 0xFFFF)` phantom masks (kit CDXLVII) are still needed (without:
+99.40); the unreferenced `info` / `sym` with the dead `if (0) { info = 0; sym = 0; }` keep the 0x50 frame (without:
+99.985); the hiptr / hival uninitialised read is the target's own (citing comment kept in the donor). The three
+`if (1) {}` lines of the earlier drafts (after the first `continue`, before `case 4:` / `default:`) were dead weight
+(byte-identical without them).
+
+**Negatives (before the fix).** On the volatile draft: 64 cells of volatile offset / val / orig-load / orig-store x
+4 statement orders (flat 98.51); BB splitters (`if (1) {}`, `do {} while (0)`, code-free tests) at 5 head positions
+(<= 88.96: they move the layout to `bnezl`); a precomputed `k = type - 1` switched on 0..3 (same order, +8 frame);
+val read in every case arm / in the switch operand (88.96 / 94.03).
+
+**Where else to look.** Any as1 order residual inside a block that follows an empty-then / else-`continue` (or other
+folded join) is probably this loc drop: check `UGENX=-d` for missing locs before trying DAG levers. 116C / 76F0's
+remaining words are uopt colours and ugen ring temps, not this.
+
+**8CD8 GAIN: kept identities on member-access receivers (91.288 -> 91.358 -> 91.714 -> 92.254, 2824 B; 8dd599a10,
+102a65623).** A sweep of `K3(x)->` (`K3(T *p) { p = p; return p; }`, kit CDXLVIII) over every `s->` / `a->` / `b->`
+access of the committed 7.2.1 donor, then a greedy climb with `K1(x)->` (`if (0) { p = 0; }`) as a second move
+(`/tmp/claude-1000/h363/bin/climbK3.py` / `climbK4.py`: insert K3 / K1 at each access, K3 / K1 on local members
+`K(&e)->x`, remove / swap existing ones): K3 on dir's `a` operand (`XZ dir(XZ(b->pos) - K3(a)->pos)`) and the
+return's receiver (`return K3(s)->p84 - s->w->pos`), each useless alone (91.29 / 91.05) but 91.358 together; then
+`K3(s)->kDC` in the else-arm dot (91.714); then K1 on the two flag-arm `+=` receivers and the else-arm `wpos` view
+(92.254). Each of the six is needed. Converged: the full K1 / K3 neighbourhood (106 moves), 180 random 2-3-move draws
+and the altsJ spelling axes re-climbed on the new body (+0.0014 at most) are flat. Same sweeps on titproc 116C
+(K3 / K1 on all 69 `s0` / `v1` pointer bases) and gl 76F0 (K3 / K1 on all 86 `self->`): flat or worse -- plain
+pointer arithmetic has no inline-temp pool words to move; the lever needs class temporaries (8CD8's XZ / Vec3
+chains). Also flat on the 92.254 body: K3 / K1 wrapping whole objects (`(*K3(&b->pos))`, `(*K1(&dir))`, 166
+moves), K3 / K1 on `this` / `&v` inside Vec3's set / ctor / `=` / `+=` / `*=` / `*` (16, <= 92.254),
+`if (1) {}` after every statement (36) and `s = s;` / `a = a;` / `b = b;` lines (72). The 2836-byte
+`W &w = *s->w; XZ d2(XZ(w.pos) - a->pos)` body with the PadN frame fix and the new K levers climbs only
+90.20 -> 91.19. Other identity forms on every s / a / b access (`K2` = `T *q = p; return q;`, `K4` = `p + 0`,
+`K6(T *const &p)`, 93): flat, like agent-g's 4B620 result -- only `p = p` and the `if (0)` block change uopt.
+116C: K3 / K1 on every `c` / `v1` use in case 3 (24): flat; routing case-3 accesses through `c` (41 subsets) only
+helps where it changes the instruction (`*c = 0` = `sw zero,0(v1)` vs the target's `sw zero,60(v1)`: 99.60 but
+not the target's store, not kept).
+
+**8CD8 (earlier in this run, no gain).** The kit CDXLVII 2836-byte bodies (`W *w = s->w;` / `W *const w` /
+`W &w = *s->w;` / `const W &w` + `XZ d2(XZ(w...pos) - a->pos)`, all 89.22 at frame 536; `W *&w` / `W *const &w` /
+`Self &ss` fall to the s-in-s0 basin, 82.44) are frame-tunable: a one-float class pad with a user ctor
+(`struct PadN { float a[1]; PadN() {} };`, `Vec3 pad1, pad2; PadN pq;` in the else arm; unused POD arrays get no home)
+gives the target's 528 at 2836 B, but only 89.29; a 16-axis greedy climb from there (altsJ axes + 5 d2 / 4 pad
+spellings, 85 variants) tops at 90.34 (copy-init d2, back to 2824 B). K3 (`p = p`) / K1 kept identities on every d2
+operand (`K3(s)`, `K3(s->w)`, `*K3(&s->w->pos)`, `K3(a)`, `*K3(&a->pos)`, also with named `XZ d2`, 15 forms): <= 91.2863.
+
+**116C / 76F0 (this run, no gain).** Dead self-assignment lines (`s0 = s0;` / `self = self;`) after every statement
+(84 / 101 positions) are byte-identical: neither residual is a line question. 116C's `-zdbug:5` dump: the constant-40
+range (blocks 8 / 82 / 85, coloured 178th) is forbidden v0 by the shared `v1` variable's piece (var 1056, blocks
+62-64 / 82 / 85, adjsave 6.0, coloured 17th -> v0), and `c` (adjsave 4.0, coloured 76th) gets v1; the target has the
+`v1` variable in v1 and `c` / the constant in v0, i.e. `c` outranks it there. Folded `+ 0 * (int)(c)` uses (21 subsets,
+EDG folds them before uopt), `if (c) {}` / `if (v1) {}` after each case-3 statement (80) and fresh locals for the fade
+pointer / the 0x40100 record pointer (6) are flat or worse (98.0-99.26). 76F0's ring divergence (`sll t9` vs `t5`)
+has no 16-bit store nearby for kit CDXLVII phantoms.
+
+**8CD8 lead for the next run (from the `-zdbug:5` dump of the 92.254 body, `/tmp/claude-1000/h363/52/uoptlist`).** The
+second-level guard / copy pointers are a2 / a3 SWAPPED against the target at every site (target: the sp+356 chain
+pointer a3, the sp+372 return-slot pointer a2; ours the reverse). Both are rematerialised address-constant ranges:
+LR 643 = vfp-172 (sp+356, adjsave 1.00, coloured first -> a2) and LR 644 = vfp-156 (sp+372, adjsave 0.96 -> a3). A
+change that gives the sp+372 slot one more counted use (or the sp+356 one fewer) should flip the pair and fix two
+words at each of the ~10 sites; the first-level guard (`this`, target a0 at sites 1 / 6 / 9, ours v1) is separate.
+Tried on that lead (scored by the count of `addiu a2,sp,372`, target 14 / ours 0): 180 random joint K / altsJ draws
+give at most 2 flipped sites (`XZ e(XZ(b->pos) - K1(a)->pos)` + `s->p84 = XZ(a->pos)` without the cast: 91.12;
+a named `XZ wp(s->w->pos)` for d2 + `(*K1(&s->p84))` in f: 90.15), and a fuzzy + 0.15 x flips climb from there
+stalls after one round (91.13, 2 sites). The flip is per-site here, so the slot ranges are being split, not
+re-ranked; the next try should look at the two LRs' block lists in the dump rather than search blindly.
