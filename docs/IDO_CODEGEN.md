@@ -14786,6 +14786,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CDXXII (agent-g 2026-11-11, run 329): **structurally-right bases re-coloured: post0b 4BAF4's ctx-shared half-extent body (the target's ext / ctx register pairing) climbs 96.96 -> 99.007 = committed via random code-free tests, a kit-CDXII live call result held in an EXISTING variable (`if ((r = (u32)f(..)) == 0)` + `if (r) {}`: no new home, x / y leave v0 like the target) and clip-test operand order; left: the target colours the 0xC0 bound before ctx; edg hands out frame words in SOURCE order (function-scope named, then per-statement pool temps and each later block's named locals as met: a block-scoped dead int lands BELOW an earlier temp), which locates 4FD00's 16-byte gap (52 / 0 pool bytes before / after the V3 temp vs the target's 36 / 16) and 48AEC's if-arm words (an n-free open-coded push gives the target's two words between cmd and g, but changes code)**](#kit-cdxxii-agent-g-run329) -- _No report.json gain, no commit; 4BAF4 / 48AEC / 4FD00 / 42938 / 3B9C0 / 4B620 negatives, ~3300 variants; new scratch tools mdl.py (.mdebug homes), rt.py / climb.sh (random test hill-climb), spmap.py._
 - [kit CDXXIII (agent-c 2026-11-11, run 331): **aim with the as0 + as1 oracle: read the target's ugen shape from a hand-edited `.s`, then spell it -- gui 2DE0's t-term MAX as zero-then-copy through xq (`((xq = 0), (v > 0 ? (xq = v) : xq))`) gives 98.399 -> 98.960 at 1212 B; the oracle then shows the body equals the target up to three uopt colours (pc t3, t-term a1, (s16)xh a0); a forbidden register with no code in the object is a phantom LR of a copy-propagated named local (2DE0's TEXRECT `next()` n holds a0)**](#kit-cdxxiii-agent-c-run331) -- _fd8f407ba; 2DE0 / 3558 / 36694 negatives, ~2400 variants._
 - [kit CDXXIV (agent-g 2026-11-11, run 332): **a target value in a uopt colour (v0..t5) where ours has a ugen temp (t6..t9) is a missing NAMED carrier: post0b 4BAF4's else-arm spr->dl64 through d like the first packet's 0xCC pointer (+ ring lever re-tuned to one `& 8`) 99.007 -> 99.137, then me() receiver depths re-gridded on the new base -> 99.291; the C0 / ctx swap is a four-LR priority ORDER (count pool slot > ctx > g), not a tie (ctx 3.6 vs C0 1.5)**](#kit-cdxxiv-agent-g-run332) -- _7f5fb4c85, 645f1e396, 2872f8eae, 01b42dbd0; split / carrier / addA priority probes, ~800 variants; tscan.py scanner._
+- [kit CDXXXIX (agent-c 2026-11-11, run 347): **post0b 4FD00: BOTH face sums as separate statements inside ONE inline wrapper (`sums(a, f1, b, f2, s)`) put all six vertex references on one edg pool word (v0 like the target) and land `move v0,zero` at the target's slot, because within one expansion a fresh reference word is released after each nested call while a LATER expansion holds any word it reuses from an earlier statement (`v0 t0 t0`; comma-joined calls: whole second sum on one fresh word); left: 2.0f in $f2 (target $f0) + the normal pointers, set by uopt's 20-load block boundary (kit XXXV) now falling after p1 -- a split before p1 restores $f0 but drops the entry hoists; edg drops `(void)x;` loads, IDO keeps `+ 0 * f` index folds, dead locals collapse the sums; 48AEC open-coded push forms flat**](#kit-cdxxxix-agent-c-run347) -- _post0b 4FD00 NM 98.685 -> 99.004 (1876249f6, same length, frame 136); ~2700 variants; tools c347/sc4.py, c347/wseq.py (pool-word store sequence + LR colours), c347/17/clim.py, c347/23/clim.py, c347/sc5.py._
 - [kit CDXXXVIII (agent-c 2026-11-11, run 346): **NCC homes follow edg ALLOCATION order (function-scope named locals hoisted to the top even when declared late; then pooled temps; a by-value V3 temp at its first use; then late block-scoped locals): post0b 4FD00's every target sp offset (frame 136, V3 temp sp+20) = block-scoped p1 / p2 + `void add()` for the SV adds (-2 pool words) + two volatile pad words in the late block, but that basin's `move v0,zero` lands inside the second sum (98.13 < 98.645); the real residual is that the SECOND wrapper expansion binds its parameters through temps so its `+=` references get a fresh pool word (t0) -- a dead `int d` parameter fed an address (`wb(b, f2, s, (int)&s)`) + void adds makes its three references share one word and, with the block / pad recipe, leaves ONLY that word's colour (t0 vs v0) and its knock-ons (98.606, `c346/78/s/v11.cpp`); with the second sum's first read at accessor depth 0 s.set's reference goes back onto the first sum's word (v0) and only the two adds stay on t0: 98.685, committed; a BB split anywhere between the two sums costs ~20 points (984 B), so the temp cannot be allocated between them; dead top-of-function pool blocks move the temp with identical code up to 7 words; 4B620 / 42938: every agent-g alternative body's residual set is a superset of the committed core (42938's scissor-head fix costs 7 ctx-reload lines)**](#kit-cdxxxviii-agent-c-run346) -- _post0b 4FD00 NM 98.645 -> 98.685 (c9fb1c206, same length); ~4300 variants; tools c346/20/res.py (per-variant mismatch-line sets), c346/83/gen.py (sum / sum2 climb), c346/30/sub.py, c346/35/hc.py, c346/39/gen.py._
 - [kit CDXXXVII (agent-g 2026-11-11, run 345): **post0b 3B9C0's `addiu t9,sp,184` is a ugen-HELD lda: a `0 * (int)(X)` fold is a register zero only when the same text occurs twice (CSE before folding), which gives kit CDVIII's phantom with no new block (`(char *)&p + 0 * (int)(self->tris)`, paired with the ib line's self_al->tris fold); a carrier merges with its inner-loop web (adjsave 115 > fv 103.3, fv loses a3) until one counted fv use in the ok line; then every uopt colour of the qa / qb block is the target's (35 lines / 98.62 vs committed 34 / 99.32) but the t6..t9 FIFO model says ugen itself materialises the target's lda (held in t9 through qb, or emitted after qa's `sll` with no ib load temp) -- every source puts lda in a coloured const LR, folds it into `l.s 184(..)`, PRE-hoists / spills the cvt, or (assignment inside qa's address) gets linearised before the load; 48AEC: NCC `-O2 -g3` + an .mdebug reader (`mdeb.py`) lists every named home vfp-relative (gaps = unnamed edg temps); the target = i / j / k block-scoped + cmd in a nested block (cmd at vfp-96, same code) with only 2 temp words before load()'s g where pushQ costs 8; frame 352 is reachable but only by dropping lower-arm homes (best 97.60 < 97.73)**](#kit-cdxxxvii-agent-g-run345) -- _no gain; ~5800 variants; tools g345/t/v2.py, v3.py, dump.sh, slots.py, hs.py, mdeb.py (NCC `-g3` .mdebug home reader), g345/4/fifo.py._
 - [kit CDXXXVI (agent-c 2026-11-11, run 344): **edg inline-temp frame words, measured on a mini harness: an inline's parameters cost words only when its body expands a temp-needing inline (a parameter read more than once); a second top-level call of a wrapper with ONE such nested call is free, with two or more (set + add, set + o.set, add + add, any parameter types) the second call costs +2 words (+4 for `SV &operator+=`; set + add then saturates, the committed sum() keeps growing), regardless of wrapper nesting, braces, splits or commas between the calls; top-level statements always pool. post0b 4FD00's target frame = "second face sum free": a hand-written second sum gives param 20 / frame 136 and every sp offset of the target, but that basin's code tops out at 91.63 / 1004 B with the frame kept (dead mid.z store kept or &mid / 12 not hoisted, vertex pointers not v0); 36694 dump: zero LR adjsave 1.67 coloured after E (3.0) and px / py / pz (2.5), a named zero is constant-propagated and only adds a home; E68 distinct MGR loads, carriers and test grids flat**](#kit-cdxxxvi-agent-c-run344) -- _no gain; ~2600 variants; tools c344/sig.py, lay.py, 15 (mini harness), 53/cl.py._
@@ -63321,3 +63322,68 @@ Mini three-call check (`c346/110`): a third expansion is `v0 t0 a1` -- s.set bac
 add on the second call's add word, the second add on yet another fresh word: every bound expansion's references
 after the first nested call are allocated while the earlier ones are still held.
 Six further 190-variant random climbs (`c346/111`-`116`): flat at 98.685.
+
+## kit CDXXXIX (agent-c 2026-11-11, run 347): post0b 4FD00 98.685 -> 99.004 -- BOTH face sums as statements inside ONE inline expansion put all six vertex pointers on one edg pool word (v0, like the target) and move `move v0,zero` to the target's slot; edg's held-word rule for later expansions; the residual 2.0f-in-$f2 is uopt's 20-load block boundary landing after p1 <a name="kit-cdxxxix-agent-c-run347"></a>
+
+_agent-c run 347, base 5ae2bd553. One NM gain: post0b 4FD00 98.685 -> 99.004 (report.json, 1004 B = target length,
+frame 136, 1876249f6). 48AEC unchanged (97.726). About 2700 variants. Scratch `/tmp/claude-1000/c347/` (`sc4.py LIST
+START N` = 4FD00 scorer printing fuzzy / size / frame / the two add-pointer registers / mismatched-line count against
+`c346/1/tgt.s`; `wseq.py SRC OUT` = zdbug:5 dump of the stores into edg pool words in order plus the colour and bbs of
+each pool-word LR; `17/clim.py`, `23/clim.py` = random climbs over the single-wrapper form; `sc5.py` = 48AEC scorer)._
+
+**1. The fix: one wrapper, both sums.** Replacing `sum(a, f1, s); sum2(b, f2, s, (int)&s);` by one inline
+`void sums(V3 &a, int f1, V3 &b, int f2, SV &s) { s.set(V(f1,0)); s += V(f1,1); s += V(f1,2); a.set(s);
+s.set(V(f2,0)); s += V(f2,1); s += V(f2,2); b.set(s); }` (separate statements, `+=` everywhere, no dead
+parameter) puts every vertex reference on the SAME pool word (one LR, coloured v0); the `move v0,zero` that run 346
+could not move lands at the target's slot (146) and the whole sum code is the target's (97.55 as written, frame
+136). A random climb then gave 98.825 (normal-read depths 6 / 5), 98.845 (second sum's first read through
+`me(this)->`) and 99.004 (depths 7 / 4). Flat afterwards: ~1300 more climb variants (per-read accessor depth, `+=` /
+`s = s + v` / `s += *&v`, code-free `me()` / `if (this) {}` / `if (1) {}` / dead-local statements at every sums and
+tail position, o.set spellings, mid / d receivers through `me(&x)`), a 13 x 13 depth grid and 168 normal-read
+spellings (`nrm[f]`, `*(gn() + f)`, `(*me(&d1)) * ..`, `d1.operator*(..)`).
+Related negatives: the flat wrapper with the SV as a wrapper LOCAL (90.2, 1012 B), with a dead address-fed parameter
+(97.30, frame 144), with void adds on the second half (988 B); the two sums joined by a comma (`sum(..), sum2(..);`:
+the second sum's three references share ONE fresh word, t0 -- 97.34, frame 144), a `do { } while (0)` or goto
+reordering of the two calls (980 B), `s = verts[..]` struct assignment for s.set (992 B), pointer / index parameters
+(`setp(const SV *)`, `seti(i, verts)`, `sumf(verts, faces[f])` on SV: 964-1028 B).
+
+**2. The edg pool rule behind it (fits every run-346 / 347 observation).** Inside ONE expansion a word freshly
+allocated for a nested call's reference is released after that call and reused by the next one (all three
+references of the first sum share a word). In a LATER expansion of a temp-needing wrapper, a word that is REUSED from
+an earlier statement stays held until that expansion ends: the second sum's s.set reuses the first sum's word and
+holds it, so its first add takes a fresh word, which is released and reused by the second add (`v0 t0 t0`); a third
+expansion holds both earlier words (`v0 t0 a1`, run 346's mini check); a comma-joined second call finds the first
+call's word still held and puts all three references on one fresh word. So two expansions can never share a word
+for all references -- one expansion can.
+
+**3. The residual is uopt's 20-load block boundary (kit XXXV).** Left: the 2.0f divisor in $f2 (target $f0) and the
+normal pointers (a3-base t1 / v1, target t0-base v1 / v1). zdbug:5: the second straight-line boundary now falls
+AFTER `p1 = ..` (p1's LR is bbs 1-2, the 2.0f constant's bb 1, so they interfere and the constant takes $f2); in the
+run-346 form the boundary fell before p1 (p1 in bb 2 only, constant and p1 both $f0) because the bound second
+expansion's binding loads came first. A real split right before p1 (`if (1) {}`) restores `mtc1 at,$f0` but drops
+the entry-hoisted `addiu t2,sp,20` / `addiu t3,sp,100` (984 B, 75); a `goto L; L:;` label boundary does the same at
+every tail position (bare labels are dropped, byte-identical), and `-Wo,-varref,N` on the split-before-p1 body is
+54-77 for every N (`c347/36`, `37`); `-Wo,-varref,N` (diagnostic only) for N 14-30:
+72-82 everywhere (both boundaries move together). Ways to add counted loads between the first boundary and p1
+without code all failed: `(void)f1;` / `(void)s.x;` / `f1;` statements are dropped by edg (byte-identical); `+ 0 * fN`
+folds on face / vertex / normal indices are NOT folded away by IDO here (+4 B), while `+ (f1 - f1)` / `(s.x - s.x)`
+style folds at any of the 12 sum index sites are byte-identical AND leave the block layout unchanged (120, `c347/44`:
+edg folds them before ucode, so they add no counted load); dead block-scoped locals (`{ int t =
+f1; }`) and `me(&mid)`-style receivers take pool words or homes and collapse the sums (980 B: the third adds' double
+`move`s vanish); BB splits inside the sums wrapper at all 9 statement boundaries x 5 forms (948-1000 B). Next: find a
+zero-code construct that adds a COUNTED variable load (kit XXXV rules: a load of a variable not assigned earlier in
+the block) to the mid / d statements without allocating a pool word, or a sums spelling that moves the first boundary
+one statement earlier while keeping the single expansion.
+
+**4. 48AEC.** Agent-g's run-345 lead (block-scoped i / j / k in the `if (B != 0)` block, nested `{ Mtx *cmd; .. }`)
+x eight if-arm push spellings (pushQ / gctx->pushQ / mtxQ or mtx + load open-coded at the call site, with / without
+me()) x three cmd placements: <= 97.726; every open-coded form changes the code (2060 B, <= 95.4), `gctx->pushQ`
+without me() costs +8 frame (376). The kit CDXXXVI cost model applied to pushQ itself (its body open-coded so its
+parameters bind nothing: mtxQ's dd / n and load()'s g as pushQ locals, 6 bodies x 4 receiver depths x lead on / off,
+48, `c347/39`): frame 368 or 376 in every form, <= 97.726.
+4FD00 note: with the single sums() expansion the volatile pad word is no longer needed (block-scoped p1 / p2 alone give
+frame 136 and the same 99.004, `c347/38`). All 120 parameter orders of sums() are byte-identical (`c347/43`); nesting
+the old sum() wrapper inside sums() for either / both halves costs the frame (152-168, <= 96.72, `c347/41`); a 4-round
+large-step climb (`c347/23/c`) is flat. 48AEC: a 3-round random climb of code-free tests (`if (this) {}`, `if (1) {}`,
+`(void)me(this);`, `if (gctx) {}`, `if (A) {}`) after any statement plus pushQ / load() receiver depths (`c347/42`):
+flat at 97.726.
