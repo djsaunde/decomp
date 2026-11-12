@@ -14793,7 +14793,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CDXLIII (agent-c 2026-11-12, run 353): **bootup E68: uopt priority = save / APPEARANCE blocks; m is coloured 13th (pri 1603, only v0..a2 forbidden) and splits only under ~200 code-free tests, and then phase 2 shatters into homed pieces -- the target's v0 / s1 pair is not a Chow split of one m; the two-variable 88.4 cascade is buf's BFS piece (m2 = a 5th first-time neighbour at the phase-3 entry, so the piece rejects that block and takes the phase-1 loop instead); `if (&self) {}` is byte-identical on the committed body and pins self on the two-variable body (96.42 -> 97.80 with a phase-3 append re-grid); the residual dl / count colours point back to ONE shared `m->dl` expression; post0b 4BAF4: TEXRECT / B4 are a 3-register rotation that getter / pool-holder shapes and the kit CDXIV recipe do not move; a third basin from `+ 0 * (int)ctx` on the if-arm call's last argument (clip 8 -> 1, texr 0 -> 16)**](#kit-cdxliii-agent-c-run353) -- _bootup E68 NM 98.650 -> 98.781 (b33fde2dd: m2 for phase 3 + `if (&self) {}` + padq[2] + per-site NEXTB climb; 8b29b1689: two code-free tests; bae3ed66e: phase-3 loop count in the dead uls; 570266e22: inter-TRI1 tests dropped; same length); ~3500 variants; tools c353/1/sc.sh, nd.sh, diag.sh, lrq.py, nb.py, bfs.sh, 13/climb.py, 15/mini.py, b/sp.sh, b/dgc.sh._
 - [kit CDXLV (agent-h 2026-11-12, run 357): **EDG 2.29 (MIPSpro 7.2.1) vs EDG 2.19 (IDO 7.1 NCC) levers: the kit CDXXXVI inline-temp frame rules and kit CDXXVII size-shared pool words are identical (27-object harness, same bytes), but pool-word ORDER is reversed (first statement temporary = higher word), expression and const-ref-bound temporaries sit ABOVE all named locals (read the target's ctor-guard addresses to tell temporaries from named locals), a base-class copy-init (`Vec3 d = XZ-expr`) copies memberwise while `XZ d(expr)` copies words, and a temporary built straight from `s->w->pos` can push the parameter s into s0 (a zero-code const-ref view avoids it); NCC-tuned donors must be re-tuned from the plain body**](#kit-cdxlv-agent-h-run357) -- _game_uso 8CD8 NM 90.429 -> 91.182 (5137775bd, b5bfc5550, 6366acc51, 3d433a935, 4e80db6d3: 7.2.1 NM donor game_uso_mp72_8CD8.cpp); 116C / 76F0 / 1ADC flat on 7.2.1 (1ADC's uninitialised hiptr / hival are read by the target itself); ~4500 variants._
 - [kit CDXLIV (agent-g 2026-11-12, run 354): **48AEC: the frame-0x160 body (run 352's h5_17) already carried the four committed gains; reading loop 1's ctx6C through cur() instead of ref() lifts it past the committed body (98.033 at frame 0x170 -> 98.037 at frame 0x160 = target). The residual is now ONLY registers plus two home words (g of arm 1 / else at sp+236 / 220, target 244 / 228). -g3 homes give the edg temp-pool split: the target has 2 pool words before arm 1's ld() g, 2 after it and 2 fresh after the else arm's g, ours 4 / 2 / 0. cp() with ld()'s body written inline (cpZ) gives EXACTLY the target's two g homes but loses mt-in-s0 (gctx takes s0); with the cpZ pool the loops keep our colours, so the loop shift (ctor `this` a2 vs t1, idx*4 v0 vs t0) is a separate residual; ~2600 variants flat**](#kit-cdxliv-agent-g-run354) -- _post0b 48AEC NM 98.033 -> 98.037 (f8cc4685c), same length; about 1900 variants, all other axes flat._
-- [kit CDXLVI (agent-g 2026-11-12, run 359): **48AEC pool accounting: edg pool words are untyped and reused across statements (even words placed above c), so the arm-1 frame region is c + arm 1's TOTAL need (cp with nested ld() 5 words, cpZ 3, target 3); the 4 words between the else arm's g and `it` are the else arm's own ld2 words, and a kept wrapper in ld2 (`K1(this)->dl->buf + dl->count++`) on the cpZ body gives ALL THREE target homes (g1 sp+244, g2 sp+228, it sp+208, 519 words, 95.69) -- but the ctor `this` stays a2 there (the loop shift is independent of the homes), and every mt-in-s0 spelling (nested ld(), K1 / I2 receiver or src) costs 5 words; a third basin (`cB(Mtx *c, void *src) { c = mtx(); ... }`: c's parameter temp is the target's sp+256 spill, mt in s0, 97.71); A / B as macros, counters as inline params, a hand-unrolled k all change code; 4B620: Base-ctor / member definition placement, line layout and class order byte-identical (104), keep-set / inc / loop-wrapper grids flat**](#kit-cdxlvi-agent-g-run359) -- _no score change, no commits; about 1700 variants._
+- [kit CDXLVI (agent-g 2026-11-12, run 359): **48AEC pool accounting: edg pool words are untyped and reused across statements (even words placed above c), so the arm-1 frame region is c + arm 1's TOTAL need (cp with nested ld() 5 words, cpZ 3, target 3); the 4 words between the else arm's g and `it` are the else arm's own ld2 words, and a kept wrapper in ld2 (`K1(this)->dl->buf + dl->count++`) on the cpZ body gives ALL THREE target homes (g1 sp+244, g2 sp+228, it sp+208, 519 words, 95.69) -- but the ctor `this` stays a2 there (the loop shift is independent of the homes), and every mt-in-s0 spelling (nested ld(), K1 / I2 receiver or src) costs 5 words; a third basin (`cB(Mtx *c, void *src) { c = mtx(); ... }`: c's parameter temp is the target's sp+256 spill, mt in s0, 97.71); A / B as macros, counters as inline params, a hand-unrolled k all change code; 4B620: Base-ctor / member definition placement, line layout and class order byte-identical (104); a kept-parameter identity on a post-increment's BASE (`&d->head->buf[K1(d)->head->count++]`) puts one pool word between the old-count and head temps and gives append 1 the target's head v1 / count s0 (99.725 -> 99.773); on 48AEC the same lever gives arm 1's count s0 / the else arm's mh v1 but costs homes or flips B**](#kit-cdxlvi-agent-g-run359) -- _post0b 4B620 NM 99.725 -> 99.773 (9bfec061e, same length); 48AEC unchanged (98.037); about 2400 variants._
+- [kit CDXLVII (agent-h 2026-11-12, run 361): **PHANTOM mask temps realign the ugen ring after an if-body: when every later t-temp is N FIFO slots off from a join onward, N folded masks at the first divergent statement (`(u16)(lo & 0xFFFF)` in kernel 1ADC's LO16 tail store: same stored low half, two `andi`s that as1 deletes) burn exactly N slots; a mask placed one statement early shifts that statement too; register-operand masks are real code. 1ADC already read hiptr / hival uninitialised exactly as the target (the 2026-11-12 extension only adds the citing comment); its 7.2.1 residual is two as1 schedules (head val load, case-1 store / delay fill), flat under every statement / declaration order. 8CD8: the double phase store gains in the committed 7.2.1 basin; the a0 guard `this` is not reached by any subset / ctor / site spelling**](#kit-cdxlvii-agent-h-run361) -- _6e05bd8f7 (1ADC NM 95.66 -> 96.26, 7.2.1 draft 92.54 -> 93.13) and 918139a46 (game_uso 8CD8 NM 91.182 -> 91.288); ~1000 variants._
 - [kit CDXXXVIII (agent-c 2026-11-11, run 346): **NCC homes follow edg ALLOCATION order (function-scope named locals hoisted to the top even when declared late; then pooled temps; a by-value V3 temp at its first use; then late block-scoped locals): post0b 4FD00's every target sp offset (frame 136, V3 temp sp+20) = block-scoped p1 / p2 + `void add()` for the SV adds (-2 pool words) + two volatile pad words in the late block, but that basin's `move v0,zero` lands inside the second sum (98.13 < 98.645); the real residual is that the SECOND wrapper expansion binds its parameters through temps so its `+=` references get a fresh pool word (t0) -- a dead `int d` parameter fed an address (`wb(b, f2, s, (int)&s)`) + void adds makes its three references share one word and, with the block / pad recipe, leaves ONLY that word's colour (t0 vs v0) and its knock-ons (98.606, `c346/78/s/v11.cpp`); with the second sum's first read at accessor depth 0 s.set's reference goes back onto the first sum's word (v0) and only the two adds stay on t0: 98.685, committed; a BB split anywhere between the two sums costs ~20 points (984 B), so the temp cannot be allocated between them; dead top-of-function pool blocks move the temp with identical code up to 7 words; 4B620 / 42938: every agent-g alternative body's residual set is a superset of the committed core (42938's scissor-head fix costs 7 ctx-reload lines)**](#kit-cdxxxviii-agent-c-run346) -- _post0b 4FD00 NM 98.645 -> 98.685 (c9fb1c206, same length); ~4300 variants; tools c346/20/res.py (per-variant mismatch-line sets), c346/83/gen.py (sum / sum2 climb), c346/30/sub.py, c346/35/hc.py, c346/39/gen.py._
 - [kit CDXXXVII (agent-g 2026-11-11, run 345): **post0b 3B9C0's `addiu t9,sp,184` is a ugen-HELD lda: a `0 * (int)(X)` fold is a register zero only when the same text occurs twice (CSE before folding), which gives kit CDVIII's phantom with no new block (`(char *)&p + 0 * (int)(self->tris)`, paired with the ib line's self_al->tris fold); a carrier merges with its inner-loop web (adjsave 115 > fv 103.3, fv loses a3) until one counted fv use in the ok line; then every uopt colour of the qa / qb block is the target's (35 lines / 98.62 vs committed 34 / 99.32) but the t6..t9 FIFO model says ugen itself materialises the target's lda (held in t9 through qb, or emitted after qa's `sll` with no ib load temp) -- every source puts lda in a coloured const LR, folds it into `l.s 184(..)`, PRE-hoists / spills the cvt, or (assignment inside qa's address) gets linearised before the load; 48AEC: NCC `-O2 -g3` + an .mdebug reader (`mdeb.py`) lists every named home vfp-relative (gaps = unnamed edg temps); the target = i / j / k block-scoped + cmd in a nested block (cmd at vfp-96, same code) with only 2 temp words before load()'s g where pushQ costs 8; frame 352 is reachable but only by dropping lower-arm homes (best 97.60 < 97.73)**](#kit-cdxxxvii-agent-g-run345) -- _no gain; ~5800 variants; tools g345/t/v2.py, v3.py, dump.sh, slots.py, hs.py, mdeb.py (NCC `-g3` .mdebug home reader), g345/4/fifo.py._
 - [kit CDXXXVI (agent-c 2026-11-11, run 344): **edg inline-temp frame words, measured on a mini harness: an inline's parameters cost words only when its body expands a temp-needing inline (a parameter read more than once); a second top-level call of a wrapper with ONE such nested call is free, with two or more (set + add, set + o.set, add + add, any parameter types) the second call costs +2 words (+4 for `SV &operator+=`; set + add then saturates, the committed sum() keeps growing), regardless of wrapper nesting, braces, splits or commas between the calls; top-level statements always pool. post0b 4FD00's target frame = "second face sum free": a hand-written second sum gives param 20 / frame 136 and every sp offset of the target, but that basin's code tops out at 91.63 / 1004 B with the frame kept (dead mid.z store kept or &mid / 12 not hoisted, vertex pointers not v0); 36694 dump: zero LR adjsave 1.67 coloured after E (3.0) and px / py / pz (2.5), a named zero is constant-propagated and only adds a home; E68 distinct MGR loads, carriers and test grids flat**](#kit-cdxxxvi-agent-c-run344) -- _no gain; ~2600 variants; tools c344/sig.py, lay.py, 15 (mini harness), 53/cl.py._
@@ -63906,6 +63907,15 @@ c -96, g1 -108, g2 -124, it -144 (frame 352).
 - In the full-homes body the AIter ctor `this` is STILL a2. Its pool word's uopt LR (-104) now starts at loop 1 (adjsave
   20) and no longer covers arm 1. This is the second confirmation that the loop shift does not come from the home words.
 
+**Per-parameter attribution.** These counts come from -g3 homes with stmt 1 written as `c = 0;`.
+- `gctx->ld(c)` costs 1 word: m.
+- `cp()` with `ld(0)` inside costs 2: this and m. That is exactly the target's g1 = -108.
+- `cp(src)` with `ld(0)`, or `cp(c)` with `ld(c)`, costs 3.
+- `cp(src, c)` with `ld(c)` or `ld(0)` costs 4.
+- Stmt 1 `me(me(gctx))->mtx()` alone costs 3, which later statements reuse.
+So the target's arm 1 has room for the `this` temp plus ONE more word. mt in s0 needs a src temp, so the target's c and
+ld()'s m must not cost; no spelling found does that.
+
 **2. mt in s0 needs cp's `this` as a pool temp, and that costs words.** The spellings tried:
 - cp with ld() nested;
 - a `me(K1(gctx))` / `me(I2(gctx))` receiver on cpZ;
@@ -63926,6 +63936,9 @@ holds for 105 bodies (arm-1 basin x else-arm K1 spelling x else receiver).
 - g1 is at sp+240, g2 at 224 and `it` at 220.
 - The else-arm K1 spellings move `it` but also g1 / g2, or shorten the body. ldRf / const-ref ld make c memory-resident
   (`sw zero,256(sp)`).
+- Binding the named c by reference (`cBr(Mtx *&c, void *src) { c = mtx(); ... }`, with ld / ldRf / const-ref ld): the
+  homes are those of the committed body (g1 236, g2 220) at 95.2-96.7.
+- Taking `&c` (`cpPp(src, &c)`) or binding `Mtx *&c` on the committed cp: 95.3-96.6.
 
 **4. Matrix-loop slots are fixed.**
 - These change code: A or B as a macro (515 words, frame 368 / 360), loop counters as inline parameters (475-520 words),
@@ -63946,3 +63959,123 @@ before BB, iter() / addGN next to the ctor). Other results:
 - The head as an inline local costs a frame word (frame 184).
 - inc() / `buf + n` / me()-head / store-order forms (90) and a random draw of I2 / I1 / me() wrappers over the loop's
   eight element reads (150) are flat or worse.
+
+**6. 4B620 99.725 -> 99.773 (commit 9bfec061e).** Every keep-set gives the (head, count) pair as ADJACENT pool words:
+(v1, s3) with 3 parameter words, (s3, s0) with 2 and (s0, a0) with 1. The target's pair (v1, s0) is two words apart.
+- One more pool word BETWEEN the old-count temp and the head temp gets there. The kept-parameter identity goes on the
+  count's BASE: `addG(DL *d, hi, lo) { if (0) { hi = 0; } Gfx *g = &d->head->buf[K1(d)->head->count++]; ... }`, with
+  `K1(T *p) { if (0) { p = 0; } return p; }`.
+- `I2(d)` works the same; keeping lo instead of hi also works.
+- This is code-free: same 1236 B and frame 176, and append 1 now matches.
+- K1 on the address (`K1(&d->head->count)[0]++`) gives the same pair, but it materialises the address (`addiu v1,v1,4`)
+  and costs frame 184.
+- On append 2 (`&head->buf[K1(this)->head->count++]`, keep hi) the head / count also land right, but append 2's g moves
+  v0 vs a1: a tie, not committed.
+- Flat on the new body:
+  - BB splitters after the appends (92);
+  - the K1 base on appends 3..9 (random 160);
+  - K1 bases inside cur() / ref() / next() (47, worse) and in the IBase / AIter ctor / iter() (29);
+  - append-form random draws on appends 2..9 (3 x 170, including on the append-2 tie basin);
+  - append-5 forms (27);
+  - accessor depth per loop it-site (81 + 121);
+  - K1(&it) / me() result wrappers per element read (2 x 170).
+- The first loop read at depth 0 (`it.cur()->m64 = ...`) gives the element pointer the target's s2 but moves the it.a
+  reloads to s0 (99.757).
+
+**7. The same lever on 48AEC (kept base under a post-increment).**
+- In ld() (`&dl->buf[K1(this)->dl->count++]`) with a `K1(gctx)` cp receiver, arm 1 takes the target's old count in s0.
+  It is 519 words with mt in s0, but 97.84: the K1 words push g1 / g2 three words deeper.
+- Per-site matrix slots (`mE1() { return &mh->buf[K1(this)->mh->count++]; }` in the else arm) give the else arm the
+  target's mh in v1, but B moves v1 -> v0 (lines 23 / 31), so the score ties at 98.037.
+- B-fold removal, `if (B) {}` / `if (1) {}` splits, A / B order and random code-free insertions (160) do not move B back.
+  The basin is recorded but not committed. The zdbug:5 dump shows B (LR 8, adjsave 2.0) and i (LR 17, 1.0) swap v0 / v1.
+- Also flat on the committed body:
+  - K1 bases under the loop post-increments (nextQ / next / AIter::next / IBase ctor, 143);
+  - kit CDXV `if (0) {}` / `if (1) {}` splits before / after each `AIter it` declaration and at each while head
+    (162 singles + pairs);
+  - a per-read wrapper grid on loops 1 / 2 over the v01 body (128);
+  - K1 bases in dlcallQ / dlcall / prim (26), setup() (7), the three `AIter it = ...` receivers (63) and the IBase /
+    AIter ctor / iter() (29);
+  - random code-free insertions including commented statement lines (190);
+  - two joint random draws over 13 of this run's toggles, 2-4 per variant (2 x 190, best 98.027).
+- 4B620 joint draws (append forms + loop receiver depths / K1 receivers, 2 x 190) and g as a defaulted parameter word
+  (6) are flat at 99.773.
+
+## kit CDXLVII (agent-h 2026-11-12, run 361): PHANTOM mask temps realign the ugen ring after an if-body (kernel 1ADC: `(u16)(lo & 0xFFFF)` in the LO16 tail store burns exactly two FIFO slots and as1 deletes both masks, cfe 95.66 -> 96.26, 7.2.1 92.54 -> 93.13); the 8CD8 double phase store lands in the committed 7.2.1 basin (91.182 -> 91.288) <a name="kit-cdxlvii-agent-h-run361"></a>
+
+_Commits 918139a46 (game_uso 8CD8 NM 91.182 -> 91.288) and 6e05bd8f7 (kernel 1ADC NM 95.66 -> 96.26); ~1000
+variants; tools h361/bin (climb.py, sig.py = bnez/bnezl guard-register signature, cfep.py = in-tree cfe variant
+scorer from (old, new) replacement lists, ncc721u.sh = ncc721 with UGENX / ASOPT hooks for `ugen -d` tree dumps)._
+
+**1ADC: what the uninitialised-read extension changes.** Nothing in the code: both the in-tree cfe body and the 7.2.1
+draft (run 357) already read hiptr / hival before any write on the LO16-before-HI16 path, and both compile to the
+target's `lw t4,0x28(sp)` / `lw t2,0x34(sp)` loop-entry loads and the exit stores. The extension only makes that read
+citable; the cfe body now carries the citing comment.
+
+**The tail ring shift.** In both front ends the case-2 if-body's registers are the target's (t9 t6 t7 t8 t9 t6 t7), but
+the tail store `((s16 *)p)[1] = (hival << 16) + lo + val` took t8 / t9 where the target has t6 / t7, and every later
+ring temp (case 4, the `|= 8`) stays two slots off. A diagnostic statement in the if-body (`D = v + 3`) confirmed a
+pure FIFO continuing through the join label (t1 / t0 / t2 / t4 are uopt colours, so the pool is t6..t9 only). Two
+slots burnt with no code = two PHANTOMS: `(u16)(lo & 0xFFFF)` (same low half, so the stored s16 is unchanged) makes
+ugen emit `andi` + `andi 0xffff` that as1 drops entirely before the `sh` (no andi survives), so the tail computes in
+t6 / t7 and everything after it matches. Equivalents: `((lo & 0xFFFF) & 0xFFFF)`, `(lo & 0xFFFF & 0xFFFF)`; one mask
+alone (`lo & 0xFFFF`, or `& 0xFFFF` on the whole sum) burns one slot. A mask on the `*hiptr` store instead
+(`(... >> 16) & 0xFFFF`) burns the slot BEFORE the `srl`, so it shifts the if-body's last temp too: put the phantom
+where the ring first diverges. Masks with a register operand (0x3FFFFFF, held in t3) are real code, not phantoms.
+
+**1ADC 7.2.1 residual (6 words, both as1 scheduling).** (1) head: the target issues `lw a3,4(v1)` (val) before
+`addu v0` / `lw t9` / `sltiu`; ours schedules it last (val has no consumer in the block). `ugen -d` shows uopt hands
+ugen type / val / p / orig in that order whatever the source order: 24 statement permutations, 12 orig-store
+placements, `switch (type = ...)`, 150 declaration orders, volatile views of every head load (no effect at all under
+ncc721), code-free `if (val) {}` tests (85-87, they re-colour everything) and loop forms are flat or worse.
+(2) case 1: the target puts `sw t9,0(v0)` before the end-pointer `sll` and the info reload `lw a0` in the branch
+delay; ours fills the delay with `addu a2`. cfe gets case 1 right but keeps the 5-label table (sltiu 5) and a v0 / v1
+swap of p / v; lever-sweep `all` on the new cfe body: no hit. Folded `0 * (int)(*p)` uses, split statements, BB splits
+and mask spellings in case 1 do not move it on 7.2.1.
+
+**8CD8 (7.2.1 donor).** `s->phase++; switch (s->phase &= 3)` reproduces the double phase store and, unlike in the run
+357 basin (-0.17), gains in the committed one: 91.182 -> 91.288 (2824 / 2836 B). Guard register: the target's
+`this` is a0 at the four XZ(const Vec3 &) guards; we have v1 / v1 / a0 / v1 (a0 only at the d2 site, where &w->pos
+holds v1). The full factorial between the shared-v1 body (90.60) and the committed one (32 incl. the phase store),
+36 XZ / Vec3 ctor spellings, 16 NRV forms of operator- / perp / operator*, 56 unused-local sets (no frame effect) and
+48 site spellings (dir / d2 / e / g initialisers) never gave a0 at sites 1 / 6 / 9; the a1-basin bodies (84) put
+`bnezl` at both b->pos sites but on v1 / a1. The target's colour order is &dir (a2) before &w->pos (v1) before
+`this` (a0); ours colours `this` first.
+
+**Reading EDG 2.29's pool words per source line (new instrument).** Keep ncc721's intermediates and run IDO 7.1
+`ugen -d -O0` on the FRONT-END ucode (`<out>.mp721.B`, before uopt): the "Tree dump after Build" lists every
+`loc` (source line) with its `str/lod dtype=A mtype=M blockno=5 offset=-N` pool words, i.e. which pool word each
+inlined ctor `this`, reference parameter and call-argument temporary got (h361/bin/pool.py prints the stored words
+per line). Findings on 8CD8: each inlined `XZ(const Vec3 &)` builds a `this` chain of FOUR words (XZ this, the `v`
+reference, the Vec3-base this, set()'s this; the guard register is the base-this word after copy propagation), and
+the operator- call's outer words are allocated BEFORE the XZ chain. Line 61 (`XZ dir(XZ(b->pos) - a->pos)`) allocates
+one early word (-112) before its chain (-116 ...); line 65 (`const Vec3 &d2 = XZ(s->w->pos) - a->pos`) allocates two
+(-112 for the binding / result slot, stored last, then -116), so its chain starts one word lower (-120 ...) and its
+base-this is a different uopt variable (-128, a0) from sites 1 / 6 / 9 (-124, v1). Every d2 form tried (named Vec3 /
+XZ / const objects, member or free `dot()` without d2, `XZ dir = ...`, inline `dirOf()` helpers, call-argument
+variants of `game_uso_func_071028(&dir)` incl. `XZ *` / reference prototypes) keeps the one-word offset. A
+`(const Vec3 &)` cast on dir's initialiser aligns both lines' chains (-120 ...) but lands in the s-in-s0 basin (80.5),
+and even there uopt splits the shared pool variable into per-site LRs (v1 / a1), so sharing a pool word is necessary
+but not sufficient for the target's single a0.
+
+**Volatile views ORDER loads only against other volatile accesses (1ADC 7.2.1 head, 93.13 -> 95.07).** A single
+volatile view on val's load changes nothing (as1 still schedules the consumer-less `lw a3` last). Two volatile
+reads keep their ugen order: `val = *(volatile s32 *)&sym->value;` plus `rel[i].orig = *(volatile u32 *)p;` pins
+`lw a3` between the offset load and the `*p` load, which is the target's head order except that as1 now issues
+`lw a3` straight after `lw t8` (its volatile edge to `lw t9` makes its path longer than `addiu t6`'s), where the
+target has `addiu t6` first: 32-cell grid (offset / val / orig-load / orig-store volatile x P/V order) tops at
+95.07. Run 357's `lw zero` dead volatile read (93.51) is the same effect plus an extra instruction. The 7.2.1 draft
+stays below the cfe body (96.26), so the in-tree body is unchanged; case 1's store / delay fill is untouched by
+volatile stores, volatile `*p` loads or a volatile `|= 8`.
+
+**8CD8 leads left open.** The same one-word pool shift at line 65 also explains the site-4 FP pair (target
+`sub.s $f12` / `$f0` = the next set() float pool words, ours `$f0` / `$f2`) and the 332 / 340 and 416 / 404 homes,
+so one fix should move all of them. Direct-initialising d2 (`XZ d2(XZ(s->w->pos) - a->pos)`) aligns the pool but
+moves s into s0 (82.44; guards shared v1 with `bnezl` at both b->pos sites). `W *w = s->w; XZ d2(XZ(w->pos) - a->pos)`
+gives exactly the target's 2836 bytes with sites 1 / 3 / 6 / 9 sharing one guard register (v1), but w's named local
+grows the frame to 536 (89.22): the next step is a zero-frame-cost spelling of that `w` (an inline accessor or a
+view that EDG does not home).
+Inline accessors for that w (`wof(s)->pos`, `wpos(s)`, `wpos2(s->w)`) keep the 2836 bytes and the shared guard word
+but add the same 8 frame bytes (pads re-trim the frame: 89.28 at 528); the shared word then colours v1 at all four
+sites, because &w->pos is no longer an expression in v1 at site 3 -- the target needs both (shared word AND &w->pos
+in v1 there) to push the guard to a0.
