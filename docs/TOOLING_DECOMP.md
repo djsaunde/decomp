@@ -6,6 +6,7 @@ _10 entries. Auto-generated from per-memo notes; content may be rough on first p
 
 ## Index
 
+- [Toolchain forensics VI: TU-scoped as1 settings (run 360)](#toolchain-forensics-run360) — _Refuted for all three caps, nothing wired. 396FC: in its evidenced TU (37E98..39C8C), `-Wb,-Olimit,23` also changes the exact donors 39094 / 38DC0 / 393B8, and `-noxbb` changes about 25 functions. as1 `-Olimit N` skips xbb only in procedures with more than N blocks, those three are bigger than 396FC (24), and their targets contain xbb moves. 39094's table (+0x1A40) sits between 396FC's `0.01f` (+0x1A10) and 396FC's table (+0x1A64), so no sub-boundary can separate them. The 5.3 / 7.1 drivers pass `-Olimit` to uopt and as1 together. 65EE4: no boundary evidence (its sym1520 BSS record is shared from 64DEC to 69B94), and `-Olimit 12` with 110 options peaks at 71.23. 1824: the four target hoists that `-noxbb` undoes are xbb moves inside 1824 itself, so no TU boundary can separate them._
 - [Toolchain forensics V: opt levels, driver options and TU boundaries (run 358)](#toolchain-forensics-run358) — _Every uopt `-Wo` / ugen `-Wc` (which does reach ugen) / as1 `-Wb` option, plus -O1 / -O3 / -g* / -mips1 / Olimit grids, was run on E2D0, E68, 1824, 396FC and 65EE4. Nothing moves a cap toward the target with evidence. 396FC's default-head steal is one as1 xbb move (`-Wb,-xbbdbg 3`): `-Wb,-noxbb` or as1 `-Olimit <= 23` makes it 153/153. But uopt needs `-Olimit >= 25`, so no driver `-Olimit` gives both, and the 7.1 and 7.2.1 drivers pass identical back-end flags (7.2.1 `-show` works on `.B` / `.O` / `.G` input, past FlexLM). All caps are TU-context-independent. -O3 traps uopt on bootup. game_libs RoData 16-byte pads mark TU boundaries at +0x1A10 and +0x1A90. The TU between them (37E98..39C8C) starts with a file-scope `0.01f` that only 396FC uses. That is a C const array (cfe puts const scalars in .data) or a 7.2.1-edg C++ const, and NCC 7.1 is ruled out (the TU has tables)._
 - [Toolchain forensics IV: period toolchain sweep (run 356)](#toolchain-forensics-run356) — _The 12 non-exacts outside the 4-entry family were run under MIPSpro 7.2 / 7.2.1. None moved closer. **Correction to run 352:** its "7.2.1 back end breaks 107 donors" omitted `-r4300_mul -t5_ll_sc_bug`. With them, 7.2.1 uopt / ugen / as1 match 7.1 byte for byte on all 214 NCC donors (under both edg front ends). 7.2.1 cfe + back end also match 7.1 on every NM C unit (221 units, 3409 functions). Only the edgcpfe front end differs. The C++ near-misses (4B620 / 4FD00 / 42938 / 36694 / 48AEC) are NCC-built: edg 2.29 frames contradict the targets (176 / 136 / 88 = NCC), and stripping the levers ("plain") does not help. 4BAF4 / 3B9C0 compile identically under both front ends. The C caps (E68, E2D0, 396FC's steal across 10 switch shapes, 1824, 65EE4) are unchanged under every combination, including edg as C++._
 - [Toolchain forensics III: MIPSpro 7.2 / 7.2.1 C++ edgcpfe (1997 / 1998) against the 1080 caps (run 352)](#toolchain-forensics-run352) — _Found on discmaster.textfiles.com: the MIPSpro C++ 7.2 CD, the Varsity Update Aug 1998 CD (7.2.1 c++_fe / c_fe) and IRIX 6.4 IDF 1.1 (7.2.1 driver / uopt / ugen / as1). sha256s and an IRIX inst extractor are included. Both o32 edgcpfe builds say "EDG 2.29" (Aug 29 1997 / Mar 13 1998), have the 4-label table rule, AND inline class-returning-by-value operators (no weak copies; 1DDC stays 384 words). So 7.4.4's non-inlining is a later SGI change. B3C is 706/706 standalone, and 116C / 76F0 / 1ADC are identical to 7.4.4's output. 8CD8 gets the target length plus a native table at the target's position. But on the NCC donor gate it is 127 same / 87 differ (7.2 and 7.2.1 give identical objects): evaluation order, temp frames, `this` spills. 57D8's 8-way compare chain rules it out for that donor. So 1080 mixed two edg front ends. It is safe only as a per-function donor front end._
@@ -2418,3 +2419,59 @@ The original as1 binary with its .data is `tools/ido-static-recomp-dump/ido/7.1/
   reference the default earlier was checked: table holes (+1 entry, a decode error per kit CDXXI), an earlier
   `goto` (uopt removes it or it costs a branch), and placing the default before the check (contradicts the target
   layout). None is available.
+
+## Toolchain forensics VI: TU-scoped as1 settings (agent-c run 360, 2026-11-12) <a name="toolchain-forensics-run360"></a>
+
+Follow-up to [run 358](#toolchain-forensics-run358). Question: within the *evidenced* original TU of each cap,
+does an as1-only setting fix the cap while leaving every other exact function in that TU byte-identical?
+**No for all three caps. Nothing wired, no split made.**
+
+**Harness** (scratch `/tmp/claude-1000/c360/1/tu.py LO HI "v0|v1|..." outdir`): recompiles every *real* source
+that supplies an exact function in [LO, HI) with the Makefile's own recipe plus each variant flag, and hashes
+each function's .text against variant 0. Sources: the asm-processed `game_libs_post0b.c` (matching path, plus
+`-DNON_MATCHING` for 396FC), `game_libs_o2_38A28.c`, the `match_imports` C donors (3800C, 39094, 39B58, 3A58C),
+and the NCC donors (37540, 37938, 38598, 3863C, 38728, 38964, 38C98, 38DC0, 393B8, 39E24).
+Run 358's "changes 39094 / 39B58" was measured on the in-unit NM bodies; this run uses the donors that make
+those functions exact.
+
+**post0b 396FC, TU 37E98..39C8C** (text range 37540 < start <= 37E98, 39C8C <= end < 3AC5C; all 67 functions
+from 37540 to 3AA5C are exact except 396FC):
+
+| setting | exact functions that change (outside 396FC) |
+|---|---|
+| `-Wb,-Olimit,23` | 38DC0 (NCC donor), 39094 (match_imports donor), 393B8 (NCC donor); outside the minimum range also 3A164, 3AA5C |
+| `-Wb,-Olimit,22` | as 23, plus 38830 and 38728 (NCC donor) |
+| `-Wb,-Olimit,16` | as 22, plus 37540, 37AF0, 38108, 3863C, 38A28, 38C98 |
+| `-Wb,-noxbb` | 15 in-unit C functions, plus 38A28 / 39094 and 8 of the 10 NCC donors |
+
+396FC itself is 153/153 under `-Olimit,23` (and `-noxbb`), as in run 358.
+- **Structural reason it can never work.** as1 `-Olimit N` skips xbb in procedures with **more than N** as1 basic
+  blocks. 396FC has 24, so any N that turns xbb off for 396FC also turns it off for every larger procedure. 39094
+  (>= 47 bbs), 38DC0 and 393B8 are larger, and their targets **contain** xbb moves: `-Wb,-xbbdbg,3` on their
+  exact donors prints 5 / 5 / 8 `MOVETO` lines. So the original as1 ran xbb on them.
+- **No sub-boundary can separate them.** 396FC's `0.01f` sits at RoData +0x1A10 (TU start) and its table at
+  +0x1A64, while 39094's table is at +0x1A40, between them. A TU's .rodata is contiguous, so 39094 is in 396FC's
+  TU. Hence a TU-scoped `-Olimit` / `-noxbb` for 396FC is refuted, not merely unevidenced.
+- Driver check: the 5.3 and 7.1 `cc -show -O2 -Olimit 23` both pass `-Olimit 23` to uopt **and** as1 (one
+  `olimitflags` list in the driver strings). No per-phase split exists at the driver level, and it would not
+  matter given the point above. A web search for period makefiles that pass `-Wb,-Olimit` / `-Wa,-Olimit`
+  (N64 SDK tutorials, sm64-era makefiles, IRIX `as(1)`) found none.
+
+**post1b 65EE4, TU (659D0, 6612C):**
+- Boundary evidence: none in RoData (64DEC..6612C carry no rodata). The BSS record it writes (sym1520,
+  BSS 0x3F030) is also used by 64DEC, 652D8, 65360, 65C54, 66D54, 67C1C, 683D4, 695F4 and 69B94 (their
+  episodes), so it is a shared global, not TU-local evidence.
+- `-Olimit 12` combined with each of 110 single options (run 358's flags1 set, -O/-g removed): best 71.23
+  (`-mips1`, `-Wb,-RD`, both non-evidenced and still far off); every as1 option leaves the argument-order residual.
+  The residual is ugen's materialisation order in the uopt-skipped body (target: `lui a1; lui a0; lui a2;
+  lw a2; addiu a0; jal; lw a1` per call), so it is a source-shape question, not an as1/uopt setting.
+
+**mgrproc 1824:** the four target hoists that `-noxbb` undoes are **inside 1824 itself**. `-xbbdbg,3` on a
+one-function TU lists 13 MOVETO/MOVEFROM events in one procedure: the unwanted bb5 <- bb23 `li at,1` (weight 1),
+plus bb6, bb25 and the weight-10 blocks bb8 / 10 / 14 / 18 / 20 whose moves the target keeps. xbb is
+per-procedure all-or-nothing under `-noxbb` / `-Olimit`, so no TU boundary can separate them, and mgrproc rodata
+boundary evidence is moot for this cap.
+
+**Conclusion:** for 396FC and 1824, the missing move is an as1 xbb decision *inside* a procedure whose
+neighbours (396FC) or own other blocks (1824) prove xbb was on. Only a C-level change in block numbering or
+movability (run 358's internals note) can fix them.
