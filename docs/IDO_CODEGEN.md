@@ -14801,6 +14801,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CDLI (agent-h 2026-11-12, run 364): **a shared-register colour residual is usually ONE LR coloured too early: read the `-zdbug:5` adjsave order, then add `if (1) {}` block splits where only that LR is live (units without refs: titproc 116C's `v1` 6.0 -> 2.4 under `c`'s 3.0, fixing all 22 v0 / v1 / constant-40 words); when the fix lets as1 xbb hoist a neighbour's head (`la v1` from the else arm), make the fall-through head READ that register -- one variable for every case-3 pointer role lets uopt sink `c = v1 + 0x3C` into the then-arm, so xbb pulls that addu instead (the target's `addiu v0,v1,60; slti; beqz; nop`); track objdiff-aligned rows, not only fuzzy, when the length moves. 8CD8's a2 / a3 swap is a constrained max-adjsave order (chain temps 1.000 > the sp+372 pool LR 0.96), not a tie; a target `or rX,rY,zero` right after `sw rY,off(base)` is as1 forwarding a RELOAD of the field (re-read it, no temp): gl 76F0 99.0035 -> 99.3328**](#kit-cdli-agent-h-run364) -- _EXACT titproc_uso_func_0000116C (6faaddbee, 99.586 -> 100, 1160 B); NM 76F0 (30520255f, b6ebd41a4); 8CD8 flat; ~3200 variants._
 - [kit CDLII (agent-g 2026-11-12, run 366): **two inline expansions share one uopt LR only through an edg POOL temp: a member setter on the packet (`head->buf[i].set0(hi)`, `this` = pool word) gives 4B620's appends 2 and 5 one LR (a1 like the target), where every named g is a fresh var; one-parameter `set0` (both appends write lo = 0) keeps the frame (`set(a, b)` costs a word); pool slots are function-wide vars with one colour, so loop temps take the colour of whichever append slot they land in (target: element = cc slot s2, Arr * = count slot s3, ref = head slot s0) -- re-draw the receivers after any slot shift; the kit CDXLIX line levers are inert on 4B620 / 42938 / 3B9C0 / 4BAF4 / 48AEC / 4FD00 / 36694 (all residuals fixed before as1); 36694's kit-CDL alias label is not its residual; 42938's guard constants are uopt colours pushed up by per-expansion append vars in the scissor block; a PER-SITE accessor with an internal zero-code `me(this)` (`curM()`) shifts only that statement's slots (changing the shared accessor moves every site and breaks the slot pairing)**](#kit-cdlii-agent-g-run366) ; `NCC -S -O0` keeps every pool temp in its own $16.. register in allocation order = a cheap pool-slot ORACLE (filter spellings at -O0, score survivors at -O2); a static accessor (`AIter::satD(it.a, it.idx)`) drops the `this` pool temp and gave the last slot**](#kit-cdlii-agent-g-run366) -- _post0b gl_func_0004B620 EXACT (99.822 -> 99.854 -> 99.935 -> 100; a7233f6ea, 90beebc76, 5847bbba4); ~3800 variants._
 - [kit CDLIII (agent-c 2026-11-13, run 367): **ugen emits `.alias` / `.noalias` only for a register holding an LDA-derived address (struct copy: both sides LDA; `f_eval` opcode 137 bitset); uopt REMATERIALISES a global address after every call (`la` again, never an s-register), so 396FC's post-call block (only `m` / `a0` reloads, parameter-derived) can have no code-free alias LR -- a pre-call fold (`+ 0 * (int)&D`) makes an `la` LR but its `.alias` lands after the `jal`; 65EE4's target schedule = ugen PAR order `lw $5; la $4; lw $6` (a1 before a0), unreachable from C / EDG member calls / prototypes; `register d` in the `-Olimit` fallback is always an s-register**](#kit-cdliii-agent-c-run367) -- _no gain; ~110 variants + ugen-recomp reading + hand-permuted `.s` diagnostics._
+- [kit CDLIV (agent-h 2026-11-13, run 368): **as1 xbb (read in the static-recomp as1.c: `func_42a9f0` move loop, `func_4299a4` side-exit legality, `func_41faa4` gen / kill) gives a jump-table `jr` uses = ALL registers, so a register reaching a later table `jr` undefined is LIVE; 76F0's bound-check `sll t7` could not enter the `beqz` slot (ours `beqzl` + default-head copy) because t7 reached the unk4D8 switch's `jr t6` -- the slot residual WAS the downstream t6 / t7 ring offset; fixed by a one-shift bit-16 test (ugen `sll t9`, off the ring; drops the old `var_v0 =` hack), `a < 1 - b` (the only spelling that makes ugen load 4E4 first) and `if (1) {}` between `m28()` and the 4F8 temp (temp v0); candidates for a move are any later DOMINATED block within weight + 6, at most 10 tried; tool `live4.py` checks the liveness from a label; 8CD8: address-constant adjsave caps at 1.000; the sp+372 pool is `operator-`'s pooled return slot; removing all five block adders + a site-1 `KR1` return identity orders the pool before every chain temp, but `wpos` (a2 here, v1 in the target, lower LR id) still takes a2 first; without the view (`XZ(K1(s->w)->pos)`) all 14 sites flip to the target's a2 at 92.12, below the committed 92.254; GAIN: a dead block INSIDE an inline's `return` (`return KR1(Vec3(...))` in `Vec3::operator*`, KR1 = kept const-ref identity with `if (0)`) lowers only that return's chain temps, 8CD8 92.254 -> 94.426, then one pad Vec3 fewer for KR1's pool words (frame 528) -> 94.509, then KR1 on the d2 / f bindings -> 94.561, then on dir's initialiser and `dir * dot` (no pad left) -> 94.564**](#kit-cdliv-agent-h-run368) -- _game_libs gl_func_000076F0 EXACT (99.33 -> 100, 2308 B; 0d295c175); game_uso 8CD8 NM 92.254 -> 94.564 (6e7c11eec, 400bece38, 8b2e00d5e, d88850c29); ~900 variants._
+- [kit CDLV (agent-g 2026-11-13, run 369): **the `-O0` pool-slot oracle as a per-append `gfx:count` register-pair readout (`lw $G,12($C); lw $N,4($G)`): post0b 4BAF4's first ctx packet shares its count slot with every expression packet (one LR, adjsave 8, v1); slot pairs disjoint from the expression packets' exist (`me2^a(this)` gfx base) but add pool homes and shift every t-colour (97.3-97.8); zdbug:5 shows the real residual is colour ORDER -- ctx (adjsave 4.5) is coloured before the C0 centre and takes a2; carrying the first three clip half-extents in d / r / d drops ctx to 3.0 and gives the centre the target's a2; 48AEC's two extra arm-1 words are pool homes between `c` and `ld()`'s g that no code-free spelling moves; 42938 append-spelling grid (8 forms incl. static) flat; 48AEC: the per-site `curM()` accessor on both ctx6C loop tests**](#kit-cdlv-agent-g-run369) -- _post0b 4BAF4 NM 99.515 -> 99.539 (2b7c378a0, 1692 B), 48AEC NM 98.037 -> 98.297 (1d0d394b3, 2076 B); ~3600 variants._
 - [kit CDXXXVIII (agent-c 2026-11-11, run 346): **NCC homes follow edg ALLOCATION order (function-scope named locals hoisted to the top even when declared late; then pooled temps; a by-value V3 temp at its first use; then late block-scoped locals): post0b 4FD00's every target sp offset (frame 136, V3 temp sp+20) = block-scoped p1 / p2 + `void add()` for the SV adds (-2 pool words) + two volatile pad words in the late block, but that basin's `move v0,zero` lands inside the second sum (98.13 < 98.645); the real residual is that the SECOND wrapper expansion binds its parameters through temps so its `+=` references get a fresh pool word (t0) -- a dead `int d` parameter fed an address (`wb(b, f2, s, (int)&s)`) + void adds makes its three references share one word and, with the block / pad recipe, leaves ONLY that word's colour (t0 vs v0) and its knock-ons (98.606, `c346/78/s/v11.cpp`); with the second sum's first read at accessor depth 0 s.set's reference goes back onto the first sum's word (v0) and only the two adds stay on t0: 98.685, committed; a BB split anywhere between the two sums costs ~20 points (984 B), so the temp cannot be allocated between them; dead top-of-function pool blocks move the temp with identical code up to 7 words; 4B620 / 42938: every agent-g alternative body's residual set is a superset of the committed core (42938's scissor-head fix costs 7 ctx-reload lines)**](#kit-cdxxxviii-agent-c-run346) -- _post0b 4FD00 NM 98.645 -> 98.685 (c9fb1c206, same length); ~4300 variants; tools c346/20/res.py (per-variant mismatch-line sets), c346/83/gen.py (sum / sum2 climb), c346/30/sub.py, c346/35/hc.py, c346/39/gen.py._
 - [kit CDXXXVII (agent-g 2026-11-11, run 345): **post0b 3B9C0's `addiu t9,sp,184` is a ugen-HELD lda: a `0 * (int)(X)` fold is a register zero only when the same text occurs twice (CSE before folding), which gives kit CDVIII's phantom with no new block (`(char *)&p + 0 * (int)(self->tris)`, paired with the ib line's self_al->tris fold); a carrier merges with its inner-loop web (adjsave 115 > fv 103.3, fv loses a3) until one counted fv use in the ok line; then every uopt colour of the qa / qb block is the target's (35 lines / 98.62 vs committed 34 / 99.32) but the t6..t9 FIFO model says ugen itself materialises the target's lda (held in t9 through qb, or emitted after qa's `sll` with no ib load temp) -- every source puts lda in a coloured const LR, folds it into `l.s 184(..)`, PRE-hoists / spills the cvt, or (assignment inside qa's address) gets linearised before the load; 48AEC: NCC `-O2 -g3` + an .mdebug reader (`mdeb.py`) lists every named home vfp-relative (gaps = unnamed edg temps); the target = i / j / k block-scoped + cmd in a nested block (cmd at vfp-96, same code) with only 2 temp words before load()'s g where pushQ costs 8; frame 352 is reachable but only by dropping lower-arm homes (best 97.60 < 97.73)**](#kit-cdxxxvii-agent-g-run345) -- _no gain; ~5800 variants; tools g345/t/v2.py, v3.py, dump.sh, slots.py, hs.py, mdeb.py (NCC `-g3` .mdebug home reader), g345/4/fifo.py._
 - [kit CDXXXVI (agent-c 2026-11-11, run 344): **edg inline-temp frame words, measured on a mini harness: an inline's parameters cost words only when its body expands a temp-needing inline (a parameter read more than once); a second top-level call of a wrapper with ONE such nested call is free, with two or more (set + add, set + o.set, add + add, any parameter types) the second call costs +2 words (+4 for `SV &operator+=`; set + add then saturates, the committed sum() keeps growing), regardless of wrapper nesting, braces, splits or commas between the calls; top-level statements always pool. post0b 4FD00's target frame = "second face sum free": a hand-written second sum gives param 20 / frame 136 and every sp offset of the target, but that basin's code tops out at 91.63 / 1004 B with the frame kept (dead mid.z store kept or &mid / 12 not hoisted, vertex pointers not v0); 36694 dump: zero LR adjsave 1.67 coloured after E (3.0) and px / py / pz (2.5), a named zero is constant-propagated and only adds a home; E68 distinct MGR loads, carriers and test grids flat**](#kit-cdxxxvi-agent-c-run344) -- _no gain; ~2600 variants; tools c344/sig.py, lay.py, 15 (mini harness), 53/cl.py._
@@ -64634,3 +64636,175 @@ $16) left 11 candidates; the only one that also kept the -O2 colours was the sta
 parameter p as the opaque Arr * copy, no `this`) with `&me(&it)->ref()->m34` (me's parameter word keeps the count slot
 in the statement) -> 100, ROM byte-identical. Lesson: when the remaining residual is "which pool slot", enumerate
 spellings with the -O0 oracle first and only -O2-score the survivors.
+
+## kit CDLIV (agent-h 2026-11-13, run 368): game_libs 76F0 EXACT -- as1 xbb treats a jump-table `jr` as READING EVERY REGISTER, so a register that reaches a later jump-table `jr` without being redefined is live on that path; the bound-check `sll` could not move into the `beqz` slot while t7 was live at the switch default, and fixing the downstream t-ring (one-shift bit test, `a < 1 - b` operand order, `if (1) {}` after a call) killed t7 there <a name="kit-cdliv-agent-h-run368"></a>
+
+_agent-h run 368, base 97cac9038. Commit 0d295c175 (gl_func_000076F0 EXACT, 2308 B, MIPSpro 7.2.1 donor
+`src/game_libs/game_libs_mp72_76F0.cpp` spliced on both trees over a placeholder; `gl_func_000076F0_rodata = 0xE04`,
+`D_76F0_fadeA/B/C = 0`). Scratch `/tmp/claude-1000/h368/` (01 = base, 04 = statement-deletion sweep, 05 / 07 = the
+two flipped deletions, 08-13 = the fix sweeps, 20-24 = 8CD8). Tools in `h368/bin/`: `nccx.sh` (tools/ncc721.sh
+pipeline keeping ugen's `-l` listing, `$XAS` passed to as1, e.g. `XAS="-xbbdbg 9"` or `XAS=-R`), `live4.py
+ugen.s '$56' '$15'` (does a register reach a read -- jump-table `jr` = reads all, `jal` = kills t0-t9 / v / a -- from a
+label without a def?), `sbs.py exp.o mine.o fn lo hi` (aligned side by side), `slot.sh dir` (bound-check slot of
+every variant), `adj.sh src.cpp` (8CD8 pool-LR adjsave from a `-zdbug:5` dump)._
+
+**1. The as1 xbb algorithm (read in the static-recomp `as1.c`, `tools/ido-static-recomp-dump/build/7.1/as1.c`).**
+`f_do_xbb_opt` -> `func_42a9f0` (the move loop), `func_42a028` (pick an instruction), `func_4299a4` (legality),
+`func_41faa4` (per-block gen / kill sets). As read:
+- Blocks with idle cycles ("current bb N, weight W, stalls S" in `-xbbdbg 9`) are visited in ascending weight.
+  For each, the candidate SOURCE blocks are the later blocks of the weight-sorted list (ties: block number) that
+  the current block DOMINATES and whose weight is < current + 6. At most 10 (or 100) are tried, then the loop stops.
+  (A move does not have to come from an immediate successor.)
+- A move is accepted when both blocks' rescheduled times improve (`time: old / new` lines).
+- Legality (`func_4299a4`): for every block on the path between the two blocks, every successor OUTSIDE the path is
+  a side exit. If the moved instruction's defs intersect that exit's live-in set, the move is refused.
+- Live-in (`func_41faa4` + the dataflow): a backward scan per block. A `jal` uses the `.livereg` mask (or the
+  default) and defines the caller-saved set. A **register `jr` that is not a return (the jump-table `jr`) gets
+  uses = ALL registers.** So a register is live at a label whenever some path from that label reaches a
+  jump-table `jr` before redefining the register, even though no instruction ever reads it.
+
+**2. 76F0's bound check.** Ours had `beqzl at; lw t3,0x500(s0)` (a likely-copy of the switch-1 default head) where
+the target has `beqz at; sll t7,t7,2`. In `-xbbdbg 9` the bound-check block (bb 4) is visited ("stalls 3"). Its only
+dominated candidate is the jump block (bb 5), but nothing moves: t7 (the table index) is live at the default (the
+post-switch join). The deletion sweep found two statements whose removal flips the slot; both build traces show
+`MOVETO bb 4 inst 3 / MOVEFROM bb 5` (the `sll`). `live4.py` on the three ugen listings: base reaches the later
+`switch (self->unk4D8)` table `jr $14` from `$56` with `$15` never written; both flips write `$15` first. The target
+loads unk4D8 into t7 (`lw t7,0x4d8(s0)`; ours t6): the same t6 / t7 ring offset seen downstream all along.
+**The slot residual and the ring residual were one residual.**
+
+**3. The ring fix (three legal source changes, then exact).**
+- **Bit-16 test as one signed shift:** `(s32)((u32)self->unk4F0 << 15) < 0`. ugen then gives the `sll` t9, OFF the
+  t-ring (target `sll t9,t4,15`). The run-326 `var_v0 = self->unk4E4` dead store had been compensating for the ring
+  slot the two-shift form burned, so it goes too. 2312 B, 45 rows; the `-4E8 >= 4E4` load order is now wrong.
+- **Case-1 end test `self->unk4E4 < 1 - self->unk4E8`.** The target allocates 4E4 first (t6), then 4E8 (t7), then the
+  negation (t8). `-b >= a`, `a <= -b`, `!(a > -b)`, `0 - b`, casts and `+ 0` forms all canonicalise to the same uopt
+  tree (4E8 first). Only `a < 1 - b` reaches ugen with 4E4 as the first operand: 99.974, 2308 B. The head slot is
+  now the target's `beqz at; sll t7`, because unk4D8's selector is t7 again.
+- **`if (1) {}` between `m28()` and `temp = self->unk4F8`** (statement form of the old comma condition): temp's
+  LR no longer shares a uopt block with the call, so it colours v0 (target) instead of v1. -> 100. The comma form
+  `((m28(), 1) && (((temp = ...) == 0) || temp == 5))` also gives 100; the plain statement form without the split
+  stays at v1.
+Rodata: the donor's `.rodata` is table 1 (6 words), table 2 (4), the five float literals, table 3 (4) = the target's
+order from game_libs RoData +0xE04 (lo16s 0xE04 / 0xE1C / 0xE2C.. / 0xE40), so one pin covers all of it.
+
+**Rule of thumb.** A switch bound check with `beqzl` + a copy of the default head, where the target has the
+table-index `sll` in a plain `beqz` slot: run `live4.py` on the ugen listing from the default label with the index
+register. If it reaches a later jump-table `jr` (or any read) without a def, the residual is that register's
+liveness. Usually that is a downstream ring offset in the next switch's selector, not the bound check itself.
+Fix the ring, not the slot. The same liveness rule applies to every xbb move whose side exit leads to a
+jump-table `jr`.
+
+**8CD8 (no gain).** The a2 / a3 swap is the order of two max-adjsave colourings. The sp+372 pool LR has adjsave 0.96
+over 97 blocks (15 with refs). Every per-site chain temp (vfp -172 = sp+356, -196, -368, ...) has 1.000: refs 4, span 7 blocks.
+A refs-3 chain temp (LR 672) reads 0.667, consistent with (refs - 1) / 3 at N = 7.
+- `K1` inside `operator-`'s arguments (four placements) adds blocks to the POOL span only (pool 0.889, chain temps
+  still 1.000, 92.13). The arguments are evaluated outside the chain temp's guard span.
+- `K1` on the `XZ(const Vec3 &)` arguments removes the pool LR entirely (91.49).
+- `K1(this)` / dead blocks in the `XZ(float, float)` or `Vec3` constructor bodies change the code (68 / 54 %).
+- Dropping all five block adders (both flag-arm `if (1) {}` and the three `K1` receivers) lifts the pool to exactly
+  1.000, a TIE that the chain temps still win (0 of 14 `addiu a2,sp,372` sites, 91.98). Any 1-4 of the five keeps
+  0.96.
+- **The adjsave of an address constant (const kind 5) seems to be capped at 1.000.** All 23 of 8CD8's constant LRs
+  are <= 1.000 and 17 are exactly 1.000. The pool stays at 1.000 under further block removals (switch / phase-store
+  / K3 variants on top of the all-removed body). So the pool can at best TIE, and in the tie a chain temp is
+  coloured first.
+- Zero-code bodies in the `XZ(float, float)` / `XZ(const Vec3 &)` constructors (`if (a) {}`, `if (this) {}`,
+  `K3(this);`, `do {} while (0);`, `K1(&v);` ..., 13 forms) are byte-identical or change code.
+- The target's order therefore needs the chain temps BELOW 1.0, i.e. a span of 8+ blocks inside each guard, or a
+  different tie order (kits XCIX / CDXV: ties go to the lower LR id).
+- **The pool word sp+372 is `operator-`'s pooled RETURN slot.** The chain temp is the `XZ` temporary inside
+  `return XZ(...)`, copied into that slot.
+  - A site-1-only copy of the operator, `sub1(a, b) { return KR1(XZ(a.x - b.x, a.z - b.z)); }` (KR1 = a kept
+    const-ref identity with an `if (0)` dead block), puts the dead block INSIDE the chain temp's span. That chain
+    temp drops to 0.667 (refs 3), and on the all-removed body the pool (1.000) is now coloured before every chain
+    temp (they all list colour 6 as forbidden).
+  - The pool still gets a3. The variable `wpos` (the else arm's `&s->w->pos`, LR id 279 < the pool's, adjsave
+    1.000, interferes with the pool) takes a2 first. In the target `wpos` is v1 (`lw v1,48(a1); addiu v1,v1,180`,
+    spilled at sp+0x1A0); ours is a2, spilled at sp+0xB8.
+  - **FLIP reached (not kept).** Drop the `wpos` view and write the g line as `XZ g = XZ(K1(s->w)->pos) - s->p90;`
+    (or K3) on the all-removed + `sub1` body. All 14 pool sites become `addiu a2,sp,372`, the target's count
+    (`/tmp/claude-1000/h368/29/b/v003.cpp`). The score is only 92.12, below the committed 92.254, but it has 367
+    objdiff-aligned differing rows against the committed body's 416, so it is the better base to climb.
+  - Re-adding any of the four flag-arm block adders flips it back (16 x 2 subsets, with `sub1` or with KR1 inside
+    `operator-` itself).
+  - A single K3 / K1 on every `s->` / `a->` / `b->` receiver (~60 variants) is flat.
+  - Next: climb the flipped basin with levers that add no block inside the pool's span (pool-slot / home levers,
+    kits CDXLVIII / CDLII), against the else arm's `this`-a0 and home offsets.
+- **GAIN (later the same run): 92.254 -> 94.353 -> 94.426 -> 94.509 (6e7c11eec, 400bece38).** The KR1 pointer
+  locals are pool words: the frame grew 528 -> 544, and one else-arm pad Vec3 fewer restores 528 (+0.08). Check
+  the frame after adding any identity with a local. Then (8b2e00d5e, 94.561): `const Vec3 &d2 = KR1(XZ(s->w->pos)
+  - a->pos);` and `const Vec3 &f = KR1(s->p84 - s->p90);`, keeping one pad Vec3 for the frame. A singles + pairs
+  sweep of KR1 at 13 binding sites (x 3 pad counts) found this pair; a greedy re-sweep from it was flat. Then
+  (d88850c29, 94.564): a 200-draw random search over KR1 sites, K3 / K1 receivers and pad words, reduced to KR1 on
+  dir's initialiser and on `dir * dot` in the first `+=`, with no pad Vec3 left. Also flat: adjacent statement
+  swaps (11) and commuted float products / sums (17).
+  The blockers on the KR1-in-`operator-` body were two
+  more 1.000 address constants (vfp -60 / -484): the chain temps of `Vec3::operator*` (`dir * dot`, `e * dot`).
+  - Returning through the same identity, `Vec3 operator*(float s) const { return KR1(Vec3(x * s, y * s, z * s)); }`,
+    is worth +2.1 on the COMMITTED body. The block adders and the `wpos` view stay; KR1 in `operator-` is optional
+    there (-0.05).
+  - Then the second flag-arm `+=` receiver without K1 (+0.07).
+  - Flat or worse from there: KR1 in `perp` / `operator-`, KR1 on an `XZ(float, float)` argument, a named `r` in
+    `operator*`, dropping any older K3 / K1, and single K3 / K1 on every receiver (64).
+  - Lesson: when chain temps of a pooled return slot outrank a long LR, a dead block placed INSIDE the inline's
+    `return` (between the temporary and the copy into the return slot) lowers exactly those temps. A dead block in
+    the arguments lands before the temp and lowers only the long LR.
+
+## kit CDLV (agent-g 2026-11-13, run 369): the `-O0` pool-slot oracle and `-zdbug:5` colour order on post0b 4BAF4 / 48AEC / 42938 -- the 4BAF4 ctx / count / gfx colours are a priority-order problem, not a slot-sharing one; carrying the clip half-extents in OTHER variables lowers ctx's adjsave (4.5 -> 3.0) and gives the C0 centre the target's a2 <a name="kit-cdlv-agent-g-run369"></a>
+
+_agent-g run 369, base f20af9d80. Commit 2b7c378a0 (4BAF4 NM 99.515 -> 99.539, same length 1692 B). About 2000
+variants. Scratch: `/tmp/claude-1000/g369/s/` -- `o0c.py` / `o0p.py` (4BAF4 -O0 oracle: count register and
+gfx:count register pair per append), `o48.py` (48AEC arm-1 max pool register), `lr.py` (zdbug:5 reader: per LR
+var id, frame home, colour, adjsave, forbidden set), `run48.sh` (48AEC fuzzy + spill homes)._
+
+**1. Reading the `-O0` oracle on 4BAF4.** `NCC -S -O0` puts each edg pool temp in `$16..$23` in slot order, so a
+`lw $G, 12($C); lw $N, 4($G)` pair names the gfx / count slot of every append. Committed body: the first ctx packet
+(`addO`) is `23:19`, every expression packet (0xEE / TEXRECT / B4 / B3) `20:19`, the two `addF` packets use named
+(non-pool) temps. So the first packet's count IS the expression packets' count LR (one pool slot = one LR, var M-152,
+adjsave 8.0, colour v1). Target: ctx packets gfx a0 / count a2, expression packets gfx a1 / count v1, every receiver
+and the spilled ctx a3.
+- Spellings that give the three ctx packets ONE shared slot pair disjoint from `20:19` exist
+  (`&me2^a(this)->gfx->buf[me2^b(this)->gfx->n++]`, a = 1..3: `22:21`, `23:22`, `23:21`), but every one of them adds
+  pool homes and shifts the t-register colours of the whole body (self t3 -> t4, iz t5 -> ra): 97.3-97.8.
+- `aO0` (`&this->gfx->buf[this->gfx->n++]`) for all three gives `19:18`: the counts share one LR (adjsave 4.0,
+  coloured BEFORE ctx once ctx is at 3.0, see 2.) but take a0, because the gfx slot `$19` is the expression count
+  LR (v1) and nothing forbids a0: 99.34-99.37.
+
+**2. zdbug:5 colour order (`lr.py`).** ctx (var M-100) had adjsave 4.5 and was coloured with forbidden {v0, v1, a0,
+a1} -> a2; the C0 centre CSE temp (adjsave 1.5) then took a3 -- the target has them the other way round. Reading
+the half-extents of the first three clip tests through `d` / `r` / `d` (only the fourth keeps ctx) shortens ctx's
+LR: adjsave 3.0, and the centre now takes a2 like the target (99.515 -> 99.539, 161-cell c / d / r grid). ctx is
+still coloured a2 at forbidden {1..4}: in the target an a2 LR that interferes with ctx must be coloured first (the
+ctx-packet count, a2 in all three packets), which needs a count LR with adjsave > ctx's AND a0 / a1 forbidden for it.
+- Flat or worse on the 99.539 body: `if (1) {}` / `if (1) { stmt; }` wraps at 52 statement boundaries (200,
+  empty ifs are byte-identical), receiver-first pooled ctx packets `F4B(..)->addX(0x06000000, (d = .., call(..)))`
+  (96: else-arm ctx takes a3 but spills to a fresh pool home sp+104, target 140; all three: +4 bytes), static
+  accessors (`Ctx4B::sA(ctx, hi, lo)`, `put4B(Ctx4B::sD(ctx), ..)`, `sC(ctx->gfx)`: 174), a block-local `int e` for
+  the half-extents (+8 frame), w / h as carriers with their loads moved after the clip (97.5), and 200 joint draws of
+  receiver depth x clip carrier x append method.
+- zdbug:5 on the 99.539 body: the else / final `addF` counts (named `n`, adjsave 3.0, a1) interfere only with the
+  ctx-packet gfx temp (one LR over all three packets, a0), the expression count (v1), ctx and constants -- nothing
+  holds a1 near them, so even coloured first they take a1, not the target's a2. One function-scope `int n` for all
+  three counts (explicit `n = ctx->gfx->n; ctx->gfx->n = n + 1; put4B(&ctx->gfx->buf[n], ..)`) drops the addF
+  parameter words (frame 0xF0 -> 0xE8) and moves ctx to t0: 96.4-98.8.
+
+**3. 48AEC arm 1: the two extra words are pool HOMES between `c` (vfp-96) and `ld()`'s `g` (ours vfp-116, target
+vfp-108).** zdbug:5 lists them as four sequential `vreg` homes (vars 1107 / 1043 / 979 / 915). The `-O0` oracle shows
+the arm-1 statement using `$16..$22` (cp this / src / c, ld this / m, count, dl), but every earlier region already
+reaches `$23`, so the homes are not "new slots". Measured: static `cp`, `this->` / `me(this)->` ld receivers, ld2 /
+load / named-count / named-dl `ld` bodies, `(void *)mt`, `me(mt)` (+1 word, 96.78), `cp(c)` with mt inside (+3 words,
+-16 bytes), mt through an inline `mtp()`: the g home moves only with code-changing spellings. A named count in `ld`
+(`Gfx *g; int n = dl->count++; g = &dl->buf[n];`) puts g at sp+244 = the target's offset but only because the frame
+grows to 0x168 (vfp-relative unchanged).
+
+**5. 48AEC loops: the kit-CDLII per-site accessor transfers (98.037 -> 98.297, commit 1d0d394b3).** `Elem *curM()
+{ return (*me(this)->a)[idx]; }` on the first loop's ctx6C test (n8A back through `cur()`, was `ref()`) and on the
+second loop's ctx6C test: 98.085 then 98.297, same length. Flat after that (600 draws): 14 accessor spellings
+(`curD` / `curK` / `curMM` / `curI` / `curR` / `curC` / `refM`, static `satD` / `sat`, `K3(&it)->cur()`) on all seven
+element reads, receiver wraps on setup / dlcallQ / prim / dlcall, `AIter it(&arr)` / `AIter(&arr)` / `me(&arr)->iter()`
+/ `mkI(&arr)`, `K3` / `me` on the three `next()`s. The three inlined-ctor `this` copies (`or t1,s0` / `or t1,v0` after
+the operator-new guard; ours a2) are ONE colour in all three arms (a pool LR): `me()` inside IBase / AIter / iter()
+and IBase member-order variants either leave it at a2 or cost 1 point.
+
+**4. 42938 per-append spellings.** Five scissor-block appends x {nC, next, nD, nA, nB, `nP` (`&me(this)->dl->buf[..]`),
+`nQ` (`dl->buf + dl->count++`), static `Ctx::sN(G.o->ctx)`} (200 incl. all-same rows): nothing above 98.856.
