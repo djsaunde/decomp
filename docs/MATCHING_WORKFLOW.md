@@ -303,6 +303,7 @@ explicit shared blocks (goto a common label), not regeneration.
 - [Standalone NCC probe loop and NM-only donor size (agent-g run 119): compile a .cpp draft with NCC straight into scratch and diff it against expected/ (relocs stripped, stack offsets optionally masked) -- ~1 s per variant, no tree build; an NM-only REPLACE_FUNC_BODY donor may differ in word count from the target (24BC: 152 vs 150) and still splices into the NON_MATCHING object, which grows/shrinks the NM .o only](#ncc-standalone-probe-loop-run119)
 - [Single-unit expected/ refresh after a .s edit (2026-11-04, coordinator): scripts/refresh-expected-baseline.py currently dies on src/match_imports (cfe syntax error) after a `make clean`; rebuild ONE unit's pure-INCLUDE_ASM baseline instead and check that only the target function's score moves](#single-unit-expected-refresh)
 - [Uninitialised-local exception (2026-10-27, coordinator + user): empty tests on uninitialised locals stay BANNED unless the target shows the same function reading an uninitialised local elsewhere; the source must cite that evidence in a comment (first use: titproc_uso_func_000005DC, s5v read at 0x5C(sp))](#uninitialised-local-exception)
+- [Zero-length aggregates as code-free levers (2026-11-13): compiler-accepted `char c[0]` struct copies allowed when they emit no code and no ISO form works (first use: 396FC .alias placement)](#zero-length-aggregate-lever)
 - [MIPSpro 7.2.1 donor recipe (agent-h run 355): per-function `*_mp72_*.cpp` donors through tools/ncc721.sh (period EDG 2.29 edgcpfe + IDO 7.1 back end, installed by tools/fetch-mipspro721.sh) for the 4-label jump-table family only; layout-only `<func>_lay` functions put the table at the target's in-place %lo; placeholder re-emits the RoData; score drafts with `objdiff-cli diff -c functionRelocDiffs=none`](#mipspro721-donor-recipe) -- _game_uso B3C EXACT; titproc 116C NM 99.514 -> 99.586; gl 76F0 NM 99.0 -> 99.0035; 8CD8 / 1ADC not improved (why inside); 116C case-3 colour lead + the as1 `la` hoist it triggers._
 
 
@@ -13489,6 +13490,15 @@ before it. That is a faithful decode of the original's bug, not a matching lever
 with the comment citing the never-written load(s). First candidate: kernel func_80001ADC (`lw t4,0x28(sp)` at
 0x80001B30 / `lw t2,0x34(sp)` at 0x80001B34 read hival / hiptr; the only stores to those homes are at the loop exit,
 0x80001CCC / 0x80001CD0).
+
+## Zero-length aggregates as code-free levers (2026-11-13, coordinator) <a name="zero-length-aggregate-lever"></a>
+
+A compiler-accepted zero-length aggregate (`struct { char c[0]; }`, which IDO cfe accepts with Warning 654; precedent:
+`u8 padD8[0];` in `context_game_libs_post.h`) may be used as a code-free lever, e.g. a zero-byte struct copy whose only
+effect is on uopt live ranges / ugen `.alias` placement, provided the final bytes show it emits no code. It is a
+compiler extension, not ISO C, so keep it to cases where no ISO construct works and comment the reason above it.
+First use: post0b gl_func_000396FC (two zero-byte copies from `&D_00000000` at the end of case 114 give the `.alias`
+that makes the default block unreachable for as1 xbb; kit CDLVI). Revertable if the user rules otherwise.
 
 ## scripts/spelling-grid.py: explicit spelling-grid search (2026-10-27) <a name="spelling-grid-search"></a>
 
