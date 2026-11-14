@@ -6,6 +6,7 @@ _10 entries. Auto-generated from per-memo notes; content may be rough on first p
 
 ## Index
 
+- [Instrumented uopt colouring trace (run 414)](#instrumented-uopt-colouring-trace-run414) — _Diagnosis-only uopt. It prints each LR's priority num / den, the colouring queue, the forbidden set at pick time and every register's cost. Built from c334's uopt_i.c with h414/t/patch.py and gcc -O0 (about 10 s). Run: h414/t/tr.sh. Gave 8CD8 97.289 (kit CDXCVII)._
 - [Toolchain forensics VII: every public as1 build against mgrproc 1824 (run 393)](#toolchain-forensics-run393) — _All negative, nothing wired. Every as1 build that survives publicly was run on the whole mgrproc -O2 object (16 builds: IDO 4.0.1 / 4.1 / 5.2 / 5.3 MR / 5.3 patches SG0000260 and SG0001118 / 6.0 / 6.2 / the IRIX 6.3-6.4 kernel-config as1 / 7.1 / MIPSpro 7.2 / 7.2.1 / 7.2.1 back-end patches SG0002992 and SG0003317 / 7.3 / 7.4.4). Sources are discmaster CD images (DF / IDF / IDO CDs, 1995-98 patch CDs, Supportfolio; about 1260 idbs scanned), six archive.org EFS patch images read with the new `tools/forensics/scripts/efs.py` (652 idbs), and archive.org's `sgi-irix-patches` set (6.2 / 6.5 tardists streamed to their idbs, `tdscan2.py`). URLs and sha256s are listed. Every build from 5.2 on pulls 1824's `li at,1`, keeps 3240's pull and leaves all 42 functions identical. IDO 4.1 drops 3240's pull, and 4.0.1 cannot read the binasm. The 7.2.1 as1 runs once its root has 7.4.4's `lib/rld`, both `libc.so.1` and `usr/lib/libexc.so`. Not found publicly: IDO 5.0 / 5.1 / 7.0 or any IDO 7.1 as1 patch._
 - [Toolchain forensics VI: TU-scoped as1 settings (run 360)](#toolchain-forensics-run360) — _Refuted for all three caps, nothing wired. 396FC: in its evidenced TU (37E98..39C8C), `-Wb,-Olimit,23` also changes the exact donors 39094 / 38DC0 / 393B8, and `-noxbb` changes about 25 functions. as1 `-Olimit N` skips xbb only in procedures with more than N blocks, those three are bigger than 396FC (24), and their targets contain xbb moves. 39094's table (+0x1A40) sits between 396FC's `0.01f` (+0x1A10) and 396FC's table (+0x1A64), so no sub-boundary can separate them. The 5.3 / 7.1 drivers pass `-Olimit` to uopt and as1 together. 65EE4: no boundary evidence (its sym1520 BSS record is shared from 64DEC to 69B94), and `-Olimit 12` with 110 options peaks at 71.23. 1824: the four target hoists that `-noxbb` undoes are xbb moves inside 1824 itself, so no TU boundary can separate them._
 - [Toolchain forensics V: opt levels, driver options and TU boundaries (run 358)](#toolchain-forensics-run358) — _Every uopt `-Wo` / ugen `-Wc` (which does reach ugen) / as1 `-Wb` option, plus -O1 / -O3 / -g* / -mips1 / Olimit grids, was run on E2D0, E68, 1824, 396FC and 65EE4. Nothing moves a cap toward the target with evidence. 396FC's default-head steal is one as1 xbb move (`-Wb,-xbbdbg 3`): `-Wb,-noxbb` or as1 `-Olimit <= 23` makes it 153/153. But uopt needs `-Olimit >= 25`, so no driver `-Olimit` gives both, and the 7.1 and 7.2.1 drivers pass identical back-end flags (7.2.1 `-show` works on `.B` / `.O` / `.G` input, past FlexLM). All caps are TU-context-independent. -O3 traps uopt on bootup. game_libs RoData 16-byte pads mark TU boundaries at +0x1A10 and +0x1A90. The TU between them (37E98..39C8C) starts with a file-scope `0.01f` that only 396FC uses. That is a C const array (cfe puts const scalars in .data) or a 7.2.1-edg C++ const, and NCC 7.1 is ruled out (the TU has tables)._
@@ -2567,3 +2568,48 @@ identical mgrproc object with 1824's pull. The only as1 without the pull (IDO 4.
 object, and IDO 4.0.1 cannot read this binasm at all. The pull gate is a command-line option (kit CDLXXV) and no
 option removes 1824's pull alone. So a missing as1 is ruled out across everything SGI shipped that survives
 publicly. The only remaining doubt is an unreleased / internal SGI or Nintendo build that left no public trace.
+
+## Instrumented uopt colouring trace (agent-h run 414, 2026-11-14) <a name="instrumented-uopt-colouring-trace-run414"></a>
+
+**Diagnosis only. Never point a build at this uopt.** It prints, for every live range uopt's `globalcolor`
+colours:
+- the priority's numerator and denominator;
+- the order of the colouring queue;
+- the forbidden set at the moment the LR is picked;
+- each register's cost, or `forbidden`.
+The backend is shared by IDO 7.1 NCC / cc and the MIPSpro 7.2.1 donors (`tools/ncc721.sh`), so it serves both.
+The kit that uses it is IDO_CODEGEN kit CDXCVII.
+
+**Build (about 10 s).**
+1. Start from agent-c's probe source `/tmp/claude-1000/c334/u/uopt_i.c`. It is the static-recomp `uopt.c` (from
+   `tools/ido-static-recomp-dump/build/7.1/uopt.c`) with kit CDXXVI's `ADJ` / `COL` printfs. Copy it, with
+   `elf.h header.h helpers.h libc_impl.h` from the same directory, into a fresh scratch dir.
+2. Run `/tmp/claude-1000/h414/t/patch.py uopt_i.c uopt_h.c`. It adds one `static int g_units, g_bv;` and
+   fprintf(stderr) probes at these labels:
+   - `L467874` in `compute_save`: unit count + `bvectcard`;
+   - `L4678fc`: a `SAVE lr bp num units bv den pri` line;
+   - after `s5 = MEM_U32(t2 + 4);` in `globalcolor` (the LR just chosen, line > 150000): `PICK idx lr bp pri
+     units fb`, where fb = the forbidden bitset words lr+40 / lr+44, MSB-first, bit i = register i;
+   - `L469a20` / `L469b5c`: `R<i> forbidden`;
+   - `L469a84` / `L469c54`: `R<i> cost=` for the caller-saved / callee-saved scans.
+   The existing `COL ... col=` line closes each pick.
+3. `gcc -c -std=c11 -O0 -fno-strict-aliasing -I. -w -o uopt_h.o uopt_h.c`, then
+   `gcc -o uopt_h uopt_h.o $D/version_info.o $D/libc_impl_71.o -lm` with
+   `D=/home/danjs/code/decomp/tools/ido-static-recomp-dump/build/7.1`. That libc has the ecvt patch, so
+   `-zdbug:5` works.
+4. Copy `c334/u/out/*` (the dump drivers) to `out/`, then replace `out/uopt` with `uopt_h`.
+5. Check: `.text` must be byte-identical to the normal toolchain's (it was for 8CD8).
+
+**Run.** `/tmp/claude-1000/h414/t/dbg.sh X.cpp X.o 2> X.trc` is agent-h's `tools/ncc721.sh` with `HERE` fixed and
+uopt replaced by the instrumented one plus `${ZDBUG:--zdbug:5}`. Run it from a scratch dir: `uoptlist` lands in
+the CWD. For C or NCC files, put the same uopt into a copy of the dump `cc` / `NCC` out dir.
+`t/tr.sh X.cpp [names]` runs it in `X.dir/`, builds the LR-name table with `h384/t/lre.py uoptlist FN`, and prints
+`t/ord.py`'s table: pick #, bitpos, name (`K-156` / `M-324` / `P4` / `e1189`), pri, num, den, units, bv, chosen
+colour, forbidden set at pick, and per-register costs.
+
+**Reading it.** Kit CDXCVII section 1 gives the rules:
+- strict `>` priority queue (ties go to the earlier LR index);
+- den = (n - 2) / 4 + 2 with n = units + live-through blocks;
+- strict `<` register cost (ties go to the first register in scan order).
+A "wrong register" with equal costs is decided by which interfering LR is picked first. Find the earlier pick
+that holds the register and is in the LR's forbidden set, then move priorities.

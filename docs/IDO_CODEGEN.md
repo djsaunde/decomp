@@ -14843,6 +14843,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CDXCIII (agent-g 2026-11-14, run 407): **post0b 48AEC NM 98.297 -> 98.455. s0 is uopt colour 14 (not ugen); the target's three s0 values (arm-1 mt, arm-1 ld count, else c2) are ONE variable, so put the arm-1 count on the else c2's pool word with kit CDXC's leading dummies (`lE3(m)` -> `nq3((int)m, (int)m, (int)m, dl->count)`, only k = 3 works) and mt / count / c2 all take s0 with c spilled to its home; target homes c / arm-1 g, frame 0x160. Open: else g vfp-132 vs -124, mtx() colours, loop ctor**](#kit-cdxciii-agent-g-run407) -- _48AEC NM 880794c61 (2076 B); ~1700 variants; scratch /tmp/claude-1000/g407/ (cl.py s0/home classifier)._
 - [kit CDXCIV (agent-h 2026-11-14, run 410): **mgrproc 1824 negative proof, complete as1 xbb pull-decline list (driver / per-instruction / path-liveness / accept gates, read from as1.c, traced with an instrumented as1). 0x10030ddc is the `.set reorder` flag, not an option. NEW zero-code `.s`-level blocker: the xbb CANDIDATE CAP (11 dominated candidates). 9 empty `label` + `.alias` blocks at case 0's head make the head byte-exact. But each needs its own label, and ugen emits only labels that branches or jump tables reference, so C cannot build it. `.set volatile` / `nomove` around the compare also work, but ugen's volatile region is always one memory instruction**](#kit-cdxciv-agent-h-run410) -- _no gain; ~60 oracle + C probes; scratch /tmp/claude-1000/h410/ (as1/patch.py instrumented as1, as1/asmi.sh)._ **Verdict superseded by kit CDXCV (1824 exact).**
 - [kit CDXCV (agent-h 2026-11-14, run 412): **mgrproc 1824 EXACT. as1 deletes a branch-to-next (and its dead `li at,K`) but keeps the label as a block boundary. `if (sel == K) *(Z0 *)(char *)(sel + 0x10) = *(Z0 *)(char *)(sel + 0x20);` makes ugen print exactly `bne $2,K,$L; $L:`, so ten guards = ten code-free empty blocks that trip the xbb candidate cap. Each guard eats 2 ugen temps (ring of 10: use multiples of 5). The extra BBs raise s0's callee-saved first-use cost, fixed by a code-free `if (s0) {}` after the last calls. The jtbl displacement is RoData placement: a const char array of the 0x588 credit-string bytes puts the table at +0x5B8**](#kit-cdxcv-agent-h-run412) -- _EXACT 9d50fab47 (568 B, no pins); recipe for other legal-pull-left-alone residuals in section 4._
+- [kit CDXCVII (agent-h 2026-11-14, run 414): **game_uso 8CD8 NM 96.683 -> 97.289. An instrumented uopt (colouring queue, priority num / den, forbidden set and per-register cost at each pick) shows the pool / return slot (24 / 26) losing a2 on a REGISTER TIE (strict `<`, first in scan order) to seven 1.0 LRs picked earlier: the wpos view word and the `this` constants of the plain-return chain temps. Priority den = (n - 2) / 4 + 2 over units + live-through blocks, so four code-free `if (1) {}` in a separate XZ(float, float, int) ctor (subp1 / subp2 / perp only) and four after the wpos binding take them to 0.75 while the slot stays 0.774: pool a2, chain temps a3, s a1. Condition: pri(competitors) < pri(slot) < pri(s)**](#kit-cdxcvii-agent-h-run414) -- _8CD8 NM dde89a125 (2832 B); ~300 variants; scratch /tmp/claude-1000/h414/ (u/out/uopt instrumented, t/tr.sh, t/ord.py)._
 - [kit CDXCVI (agent-c 2026-11-14, run 411): **game_uso 8CD8 NM 96.275 -> 96.683, frame 528 = target. Read the target through uopt M-offsets (M = frame - sp: the pool is K-156 in both frames) and the 14 per-site ctor-`this` registers, not the fuzzy score. Dir's conversion `this` shared a pool word with d2's conversion `v` (target a0 vs v1), so the word had to split: a 2-dummy `XZ(b->pos)` under `subp1` did it, with h as plain `subp2`. Dummy type (int / pointer) is byte-identical. Wrapper dummies don't move the inner conversion's words. Left: the XZ(wpos) / perp shared `this` word, pool a3**](#kit-cdxcvi-agent-c-run411) -- _8CD8 NM 30e431481 (2832 B); ~4000 variants; scratch /tmp/claude-1000/c411/ (lr721.sh, feat.py, lay.py, climb2/3.py)._
 - [kit CDXXXVIII (agent-c 2026-11-11, run 346): **NCC homes follow edg ALLOCATION order (function-scope named locals hoisted to the top even when declared late; then pooled temps; a by-value V3 temp at its first use; then late block-scoped locals): post0b 4FD00's every target sp offset (frame 136, V3 temp sp+20) = block-scoped p1 / p2 + `void add()` for the SV adds (-2 pool words) + two volatile pad words in the late block, but that basin's `move v0,zero` lands inside the second sum (98.13 < 98.645); the real residual is that the SECOND wrapper expansion binds its parameters through temps so its `+=` references get a fresh pool word (t0) -- a dead `int d` parameter fed an address (`wb(b, f2, s, (int)&s)`) + void adds makes its three references share one word and, with the block / pad recipe, leaves ONLY that word's colour (t0 vs v0) and its knock-ons (98.606, `c346/78/s/v11.cpp`); with the second sum's first read at accessor depth 0 s.set's reference goes back onto the first sum's word (v0) and only the two adds stay on t0: 98.685, committed; a BB split anywhere between the two sums costs ~20 points (984 B), so the temp cannot be allocated between them; dead top-of-function pool blocks move the temp with identical code up to 7 words; 4B620 / 42938: every agent-g alternative body's residual set is a superset of the committed core (42938's scissor-head fix costs 7 ctx-reload lines)**](#kit-cdxxxviii-agent-c-run346) -- _post0b 4FD00 NM 98.645 -> 98.685 (c9fb1c206, same length); ~4300 variants; tools c346/20/res.py (per-variant mismatch-line sets), c346/83/gen.py (sum / sum2 climb), c346/30/sub.py, c346/35/hc.py, c346/39/gen.py._
 - [kit CDXXXVII (agent-g 2026-11-11, run 345): **post0b 3B9C0's `addiu t9,sp,184` is a ugen-HELD lda: a `0 * (int)(X)` fold is a register zero only when the same text occurs twice (CSE before folding), which gives kit CDVIII's phantom with no new block (`(char *)&p + 0 * (int)(self->tris)`, paired with the ib line's self_al->tris fold); a carrier merges with its inner-loop web (adjsave 115 > fv 103.3, fv loses a3) until one counted fv use in the ok line; then every uopt colour of the qa / qb block is the target's (35 lines / 98.62 vs committed 34 / 99.32) but the t6..t9 FIFO model says ugen itself materialises the target's lda (held in t9 through qb, or emitted after qa's `sll` with no ib load temp) -- every source puts lda in a coloured const LR, folds it into `l.s 184(..)`, PRE-hoists / spills the cvt, or (assignment inside qa's address) gets linearised before the load; 48AEC: NCC `-O2 -g3` + an .mdebug reader (`mdeb.py`) lists every named home vfp-relative (gaps = unnamed edg temps); the target = i / j / k block-scoped + cmd in a nested block (cmd at vfp-96, same code) with only 2 temp words before load()'s g where pushQ costs 8; frame 352 is reachable but only by dropping lower-arm homes (best 97.60 < 97.73)**](#kit-cdxxxvii-agent-g-run345) -- _no gain; ~5800 variants; tools g345/t/v2.py, v3.py, dump.sh, slots.py, hs.py, mdeb.py (NCC `-g3` .mdebug home reader), g345/4/fifo.py._
@@ -67414,3 +67415,62 @@ reached frame 528 = target.
 - d2's `v` home is sp+400 (target sp+416), so four words are still allocated in a different order before it.
 - In C++, kit CDXCV's zero-byte-copy guard has no direct form here: EDG rejects `char z[0]`, and copying an empty
   struct emits code. Code-free `if (x == K) {}` tests in the climb moved nothing.
+
+## kit CDXCVII (agent-h 2026-11-14, run 414): game_uso 8CD8 NM 96.683 -> 97.289 -- an instrumented uopt prints the colouring queue with each LR's priority numerator / denominator, the forbidden set at pick time and every register's cost; the pool a2 / a3 swap was the return slot losing a REGISTER TIE on a2 to 1.0 LRs, fixed by code-free `if (1) {}` block splits that raise only those LRs' block count <a name="kit-cdxcvii-agent-h-run414"></a>
+
+_agent-h run 414. Commit dde89a125 on top of agent-c's run-411 body (main 4e7d3d2fe, re-committed unchanged as 41ea55d0e):
+96.683 -> 97.289, 2832 B, frame 528. The same lever on the older run-409 body gave 96.275 -> 96.866 (2828 B, superseded).
+About 300 variants. Scratch `/tmp/claude-1000/h414/`: `u/out/uopt` (instrumented uopt, build recipe in TOOLING_DECOMP
+"Instrumented uopt colouring trace"), `t/dbg.sh` (agent-h `tools/ncc721.sh` with that uopt and `-zdbug:5`),
+`t/tr.sh X.cpp [names]` (trace joined with `h384/t/lre.py` names), `t/ord.py` (colouring-order table), `t/nd.py`
+(diff ignoring sp offsets / branch targets), `t/gen.py` (line-edit variant generator), `t/fz.py` (scorer)._
+
+**1. How uopt `globalcolor` orders and picks (read from the recompiled code, confirmed by the trace).**
+- Priority (`compute_save`, float at lr+48) = `num / den`. `num` = sum over the LR's live units of
+  (uses + defs) x block loop weight, minus a move cost per unit that needs a reload / store.
+- `den` is quantised: n = units + live-through blocks (`bvectcard` of lr+12); den = n if n < 3, else
+  (n - 2) / 4 + 2 (integer division). So 4 extra blocks cost a long LR 1 in the denominator, and a short LR
+  (n 6-9, den 3) drops to den 4 at n = 10.
+- Queue: with a call in the function every LR is "constrained" (kit CDLXX). The loop repeatedly takes the
+  highest priority with a STRICT `>`, so on equal priority the earlier LR index (about bitpos order) wins.
+- Colour: scan caller-saved then callee-saved registers, skip forbidden ones (lr+40 bitset), cost each with
+  `cupcosts`, keep the lowest with a STRICT `<`. On equal cost the first register in scan order wins
+  (v0 v1 a0 a1 a2 a3 t0 ..). Short temps cost the same in every caller-saved register, so "who gets a2" is
+  decided purely by which interfering LR is picked first.
+
+**2. 8CD8's exact condition.** The pool / return slot (`K-164` on the run-411 body, sp+372 as in the target; it was
+`K-156` / sp+388 on the frame-544 body) has 15 units over a ~100-block span: 24 / 26 = 0.923. Seven LRs that
+interfere with it were picked first at 1.0 (num 3 / den 3, n = 6-7) and took a2 on the tie:
+- the `wpos` view word (`M-324`);
+- the `this` address constants of the six plain-return (non-KR1) chain temps: subp1 at dir / d2 / f / g,
+  subp2 at h, and perp.
+The target's colours (slot a2, every chain temp a3, s a1) need
+`pri(wpos, plain chain temps) < pri(slot) < pri(s = P4)`. If the slot rises above s it takes a1 and s goes to
+s0 (the 2712-B basin of kit CDXCII). The separating property is the BLOCK COUNT. Save, interference and coalescing
+do not separate them: the competitors have 4 uses each and only their n decides.
+
+**3. The source change.**
+- A separate ctor `XZ(float a, float c, int) : Vec3(a, 0.0f, c) { if (1) {} x4 }`, used only by
+  subp1 / subp2 / perp (`XZ(.., .., 0)`).
+- Four `if (1) {}` right after the `wpos` binding.
+- Effect: those LRs go to n 10-11 (3 / 4 = 0.75). The slot only goes to n 119 (24 / 31 = 0.774), because
+  the KR1 sites are untouched.
+- The trace then shows the slot a2, every chain temp a3 (KR1 ones 0.667, plain ones 0.75) and s a1.
+- Budget: each competitor needs n >= 10, and the slot must keep den <= 31 (n <= 121) to stay above 0.75. At a
+  tie, the index order decides, and the wpos word and one chain temp come before the slot.
+- Three splits per ctor are not enough (they merge into fewer uopt blocks). Splits in the ctor bodies every site
+  uses move nothing, because the `this` span ends before the body.
+- Byte-identical: `if (&ref) {}` tests (they add blocks, not slot uses) and `x = x + 0 * (int)&ref` folds
+  (a const-ref binds a fresh temp, not the slot; float folds also cost code).
+
+**4. Still open: pool-word roles, not colour order.**
+- The target's d2 and g conversion `v` share a word (sp+416). A direct `XZ(K1(s)->w->pos)` at g joins them, but
+  g's conversion `this` then joins the dir / d2 / f `this` word. That word reaches 4.67 > e1189's 4.5, takes v1,
+  and the v word falls to a1 / a2 with s in s0 (2712 B).
+- Putting four splits into a g-only `Vec3(float, float, float, int)` ctor (`XZ(const Vec3 &, int)`) drops the
+  `this` word to 4.0, so `this` = a0 (target) with s in a1. But the shared v word then sits below the
+  return-site `this` word M-168 (3.5, v1) and gets a2: 93.56. In the target the return-site v is another word
+  (sp+420).
+- Return-site respellings (8): 2712-2824 B.
+- FP swaps: the target's subp-site `a` is f12 and `c` f0, and its operator* dot is f0 with z*s f12; ours are
+  f0 / f2 and f12 / f0. Respelling the ctor bodies loses 20-160 B.
