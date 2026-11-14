@@ -11,6 +11,15 @@ git -C "$D" fetch -q
 if [ "$(git -C "$D" rev-parse origin/main)" != "$(git -C "$D" merge-base HEAD origin/main)" ]; then
   echo "!! origin/main moved since the gate; re-run land-agent.sh"; exit 1
 fi
+if [ -e "$(git -C "$D" rev-parse --git-path CHERRY_PICK_HEAD)" ]; then
+  echo "!! cherry-pick in progress in agent-d (land-agent.sh did not finish); not resetting agent-$L"; exit 1
+fi
+A="$ROOT/projects/1080-agent-$L"
+AH="$(git -C "$A" rev-parse HEAD)"
+CHANGED="$(git -C "$A" diff --name-only "$(git -C "$A" merge-base "$AH" origin/main)" "$AH" -- src asm episodes Makefile)"
+if [ -n "$CHANGED" ] && ! git -C "$D" diff --quiet HEAD "$AH" -- $CHANGED; then
+  echo "!! agent-$L's changed files differ from agent-d HEAD (landing incomplete?); not resetting:"; echo "$CHANGED"; exit 1
+fi
 git -C "$D" add report.json
 if git -C "$D" diff --cached --quiet; then
   echo "report.json unchanged: pushing the landed commits without a report commit"
