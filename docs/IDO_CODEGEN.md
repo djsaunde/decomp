@@ -14840,6 +14840,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CDXC (agent-c 2026-11-14, run 405): **post0b 4BAF4 EXACT (99.894 -> 100). The else / final 0x06 counts and the B4 y-MIN merge (a1 / v1 / a1 vs a2) are ONE variable with the FIRST packet's count: only that bb-20 block (next to the a1 gfx word) can forbid a1. EDG hands out by-value inline-parameter pool words in creation order, and k unused NON-constant leading parameters (`nQ4((int)r, (int)r, (int)r, (int)r, gfx->n)`) put the count on the k-th free word. The same position at the first / else / final packets gives one LR on bb 20 / 27 / 59-61 / 65, coloured a2. Constant dummies take no word**](#kit-cdxc-agent-c-run405) -- _4BAF4 exact (agent-c 2e355e88c); ~600 variants; scratch /tmp/claude-1000/c405/ (fz.py, lr.sh, 8/ 12/ g.py grids)._
 - [kit CDXCI (agent-h 2026-11-14, run 408): **bootup E2D0 EXACT. Zero-code FP temp-ring rotations DO exist: two code-free tests on the SAME compound expression of memory-resident values (`if (E != lim) {} if (E != dot) {}`) make ugen evaluate E's sub-terms into ring temps that as1 deletes as dead. The tree shape sets the pop / free order (choose it with a FIFO simulation). Comparing against defined variables, not constants, leaves the uopt colours alone. Detect with hidden pops = instrumented-ugen pops minus ring writes in the object. The E68 view lever gives no hidden pops. An unpinned import in a promoted body makes ld segfault in .mdebug**](#kit-cdxci-agent-h-run408) -- _E2D0 99.542 -> 100 (2c6150f52); ~650 variants; scratch /tmp/claude-1000/h408/ (t/hid.py, t/sim.py, t/tail.py, t/ts.py, t/g1..g12.py)._
 - [kit CDXCII (agent-c 2026-11-14, run 409): **game_uso 8CD8 NM 94.564 -> 96.275. Under MIPSpro 7.2.1 an UNUSED dummy inline parameter takes no pool word, so it changes nothing; a KEPT one (`z0 = z0;`) does take a word, so kit CDXC's position lever works there too. `operator-` through KR1 drops every per-site chain temp to 0.667. XZ(const Vec3 &) overloads with 1-3 kept dummies, plus sub / subp dummies at the operator- sites, give the sp+468 / sp+132 conversion temps the target's v1. The pool still loses a2 to `wpos` and f's chain temp. Every spelling that lowers those moves the dir / d2 ctor-`this` word to a1 and s to s0 (2712 B)**](#kit-cdxcii-agent-c-run409) -- _8CD8 NM 324242927 (2828 B, frame 544); ~1500 variants; scratch /tmp/claude-1000/c409/ (g3.py climber, fr.py, pool.py)._
+- [kit CDXCIII (agent-g 2026-11-14, run 407): **post0b 48AEC NM 98.297 -> 98.455. s0 is uopt colour 14 (not ugen); the target's three s0 values (arm-1 mt, arm-1 ld count, else c2) are ONE variable, so put the arm-1 count on the else c2's pool word with kit CDXC's leading dummies (`lE3(m)` -> `nq3((int)m, (int)m, (int)m, dl->count)`, only k = 3 works) and mt / count / c2 all take s0 with c spilled to its home; target homes c / arm-1 g, frame 0x160. Open: else g vfp-132 vs -124, mtx() colours, loop ctor**](#kit-cdxciii-agent-g-run407) -- _48AEC NM 880794c61 (2076 B); ~1700 variants; scratch /tmp/claude-1000/g407/ (cl.py s0/home classifier)._
+- [kit CDXCIV (agent-h 2026-11-14, run 410): **mgrproc 1824 negative proof, complete as1 xbb pull-decline list (driver / per-instruction / path-liveness / accept gates, read from as1.c, traced with an instrumented as1). 0x10030ddc is the `.set reorder` flag, not an option. NEW zero-code `.s`-level blocker: the xbb CANDIDATE CAP (11 dominated candidates). 9 empty `label` + `.alias` blocks at case 0's head make the head byte-exact. But each needs its own label, and ugen emits only labels that branches or jump tables reference, so C cannot build it. `.set volatile` / `nomove` around the compare also work, but ugen's volatile region is always one memory instruction**](#kit-cdxciv-agent-h-run410) -- _no gain; ~60 oracle + C probes; scratch /tmp/claude-1000/h410/ (as1/patch.py instrumented as1, as1/asmi.sh)._
 - [kit CDXXXVIII (agent-c 2026-11-11, run 346): **NCC homes follow edg ALLOCATION order (function-scope named locals hoisted to the top even when declared late; then pooled temps; a by-value V3 temp at its first use; then late block-scoped locals): post0b 4FD00's every target sp offset (frame 136, V3 temp sp+20) = block-scoped p1 / p2 + `void add()` for the SV adds (-2 pool words) + two volatile pad words in the late block, but that basin's `move v0,zero` lands inside the second sum (98.13 < 98.645); the real residual is that the SECOND wrapper expansion binds its parameters through temps so its `+=` references get a fresh pool word (t0) -- a dead `int d` parameter fed an address (`wb(b, f2, s, (int)&s)`) + void adds makes its three references share one word and, with the block / pad recipe, leaves ONLY that word's colour (t0 vs v0) and its knock-ons (98.606, `c346/78/s/v11.cpp`); with the second sum's first read at accessor depth 0 s.set's reference goes back onto the first sum's word (v0) and only the two adds stay on t0: 98.685, committed; a BB split anywhere between the two sums costs ~20 points (984 B), so the temp cannot be allocated between them; dead top-of-function pool blocks move the temp with identical code up to 7 words; 4B620 / 42938: every agent-g alternative body's residual set is a superset of the committed core (42938's scissor-head fix costs 7 ctx-reload lines)**](#kit-cdxxxviii-agent-c-run346) -- _post0b 4FD00 NM 98.645 -> 98.685 (c9fb1c206, same length); ~4300 variants; tools c346/20/res.py (per-variant mismatch-line sets), c346/83/gen.py (sum / sum2 climb), c346/30/sub.py, c346/35/hc.py, c346/39/gen.py._
 - [kit CDXXXVII (agent-g 2026-11-11, run 345): **post0b 3B9C0's `addiu t9,sp,184` is a ugen-HELD lda: a `0 * (int)(X)` fold is a register zero only when the same text occurs twice (CSE before folding), which gives kit CDVIII's phantom with no new block (`(char *)&p + 0 * (int)(self->tris)`, paired with the ib line's self_al->tris fold); a carrier merges with its inner-loop web (adjsave 115 > fv 103.3, fv loses a3) until one counted fv use in the ok line; then every uopt colour of the qa / qb block is the target's (35 lines / 98.62 vs committed 34 / 99.32) but the t6..t9 FIFO model says ugen itself materialises the target's lda (held in t9 through qb, or emitted after qa's `sll` with no ib load temp) -- every source puts lda in a coloured const LR, folds it into `l.s 184(..)`, PRE-hoists / spills the cvt, or (assignment inside qa's address) gets linearised before the load; 48AEC: NCC `-O2 -g3` + an .mdebug reader (`mdeb.py`) lists every named home vfp-relative (gaps = unnamed edg temps); the target = i / j / k block-scoped + cmd in a nested block (cmd at vfp-96, same code) with only 2 temp words before load()'s g where pushQ costs 8; frame 352 is reachable but only by dropping lower-arm homes (best 97.60 < 97.73)**](#kit-cdxxxvii-agent-g-run345) -- _no gain; ~5800 variants; tools g345/t/v2.py, v3.py, dump.sh, slots.py, hs.py, mdeb.py (NCC `-g3` .mdebug home reader), g345/4/fifo.py._
 - [kit CDXXXVI (agent-c 2026-11-11, run 344): **edg inline-temp frame words, measured on a mini harness: an inline's parameters cost words only when its body expands a temp-needing inline (a parameter read more than once); a second top-level call of a wrapper with ONE such nested call is free, with two or more (set + add, set + o.set, add + add, any parameter types) the second call costs +2 words (+4 for `SV &operator+=`; set + add then saturates, the committed sum() keeps growing), regardless of wrapper nesting, braces, splits or commas between the calls; top-level statements always pool. post0b 4FD00's target frame = "second face sum free": a hand-written second sum gives param 20 / frame 136 and every sp offset of the target, but that basin's code tops out at 91.63 / 1004 B with the frame kept (dead mid.z store kept or &mid / 12 not hoisted, vertex pointers not v0); 36694 dump: zero LR adjsave 1.67 coloured after E (3.0) and px / py / pz (2.5), a named zero is constant-propagated and only adds a home; E68 distinct MGR loads, carriers and test grids flat**](#kit-cdxxxvi-agent-c-run344) -- _no gain; ~2600 variants; tools c344/sig.py, lay.py, 15 (mini harness), 53/cl.py._
@@ -67216,3 +67218,100 @@ In the target the d2 site is `this` a0 / chain v1. 100-variant sweeps of the h /
 on that body found no 2828-B escape. The next step is to take M-132's h-site role (bb 110-115) off that word without
 re-raising the h chain temp. The 7.2.1 frame (544 vs 528) comes from the KR1 / dummy words; every 528-frame variant
 scores 91-93.8.
+
+## kit CDXCIII (agent-g 2026-11-14, run 407): post0b 48AEC NM 98.297 -> 98.368 -> 98.397 -> 98.455 -- the target's three s0 values (arm-1 `mt` address, arm-1 ld count, else-arm c2) are ONE uopt variable: put the arm-1 count on the else c2's edg pool word with kit CDXC's leading dummies, and mt / count / c2 all land in s0 with c spilled to its home <a name="kit-cdxciii-agent-g-run407"></a>
+
+_agent-g run 407, base 354d2f59c. Commits d53b4ad02 (98.297 -> 98.368), 394d8ed72 (-> 98.397) and 880794c61 (-> 98.455), same length
+(2076 B), NM donor only. About 1700 variants in 30 sweeps. Scratch `/tmp/claude-1000/g407/` (`cl.py RES LIST`:
+fuzzy + `s0mt` = arm-1 `lui s0` for mt, `s0c2` = else-arm `addu s0` for c2, + every `sw r,2NN(sp)` spill home;
+scorer / LR tools from `g404/t/`)._
+
+**1. s0 here IS uopt colour 14, not ugen.** In this function's `-Wo,-zdbug:6` listing the `assigned (constrained)`
+colours are 1 v0, 2 v1, 3 a0, 4 a1, 5 a2, 6 a3, 7 t0 ... and **14 = s0** (`g404/t/lr.py` prints it as "t7"; fix
+its table). Kit CDLXXXVIII's "ugen-local s0" reading was wrong: the low-adjsave LRs (adj 1-1.5) that cross a call
+take s0 when it is free, in colouring order, and one s0 LR blocks the next. So on p_087 (target homes, 96.06) c's
+word (adj 1.5) took s0 first and mt's CSE temp got "-ve save" (rematerialised); on the committed body mt's
+temp got s0 first and c fell to a1 + split (the target's `sw a1,256(sp)` / `lw a0,256(sp)`).
+
+**2. The target's s0 is one variable.** The target holds mt in s0 across the first call, then the arm-1 ld count
+in s0 (`lw s0,4(v0)`, no call crossed), then the else c2 in s0. A non-call-crossing count only gets s0 if its LR is
+the same variable as a call-crossing one: the count shares a pool word with the else arm's c2. Recipe: arm 1 as
+`{ Mtx *c; c = me(gctx)->mtx(); gctx->cS(mt, c); if (c) {} gctx->lE3(c); }` with
+`cS(src, c) { func(src, c); }` and `lE3(Mtx *m) { Gfx *g = nq3((int)m, (int)m, (int)m, dl->count); ... }`,
+`nq3(int, int, int, int n) { dl->count = n + 1; return &dl->buf[n]; }`. Only k = 3 dummies gives both
+`s0mt` and `s0c2` (k = 0-2, 4, 5 lose one or both); cS's own params cost no word (simple-variable / constant
+arguments are substituted: dummies on cS change nothing), so the copy call can be split off freely.
+
+**3. Homes then follow.** That arm 1 keeps c at vfp-96 and the packet g at vfp-108 (= target 256 / 244), frame
+0x160 once the else arm is `func(A, c2 = me(me(gctx))->mtx()); me(me(gctx))->ld2(c2)` (with the old
+`me(gctx)->mtx()` the frame is 0x168). Lifts on top: `if (c) {}` before lE3() (98.252 -> 98.329), `if (dl) {}` at
+the top of ld2() (-> 98.368), one unused leading dummy on ld2 (`ld2((int)c2, c2)`, -> 98.397); `if (mh->count) {}` in mtx() TOGETHER with
+`if (GS->ctx) {}` at the top of arm 1 (-> 98.426; either alone loses); then the else slot back through
+`me(gctx)->mtx()` (-> 98.455, frame stays 0x160 on this body).
+
+**4. Still open.** The else packet g is at vfp-132 (target -124: the else arm uses two pool words too many in
+every else spelling tried: ld2 / ld / pE..pH / eN0-6 / ldK0-6, receivers 0-2), the mtx() mh / count colours
+(a2 / t0 vs the target's v1 / v0 in both arms; by-value `mq`k / `mk`k count parameters k 0-4 lose), and the loop
+ctor (a2 vs t1; IBase ctor statement orders, `AIter it(&arr)` / `AIter(&arr)` all tie or lose). Negative: code-free
+`if (X) {}` tests on mh / count / dl / GS in mtx() and both arms beyond the two kept ones (flat), dummies on
+dlcall / dlcallQ / lE3's m (flat or lower).
+
+## kit CDXCIV (agent-h 2026-11-14, run 410): mgrproc 1824 -- the complete as1 xbb pull-decline condition list, read from `as1.c` and checked with an instrumented as1; NEW code-free blocker found at the `.s` level (the xbb CANDIDATE CAP: 9 empty `label` + `.alias` blocks at case 0's head give the target head byte-for-byte), but each empty block needs its own label and ugen only emits labels that real branches / jump tables reference, so 1824 stays C-unreachable; corrects kit CDLXXV's "only per-block blocker is `$at` liveness" <a name="kit-cdxciv-agent-h-run410"></a>
+
+_agent-h run 410, base 849a7f84a. No source change, no exact. Scratch `/tmp/claude-1000/h410/`: `as1/patch.py` builds
+`as1/as1i` (the dump `as1.c` with stderr tracing in `func_42a9f0` / `func_42a028` / `func_4299a4`; ~4 s gcc -O0, links
+against the dump build's `version_info.o` + `libc_impl_71.o`), `as1/asmi.sh in.s out.o` (as0 + traced as1, trace in
+`out.o.tr`: `CUR bb` / `try cand` / `dominated, count=N` / `rej ... reason=R r2=Q`); `03/` = `.s` oracle probes (`E*.s`
+= the cap chain), `04/` = C probes (`cs.sh x.c` = cc -S + cc -c + score)._
+
+**1. The xbb decision, condition by condition (`func_42a9f0` driver, `func_42a028` per-instruction scan,
+`func_429dbc` opcode eligibility, `func_4299a4` path / liveness test, `func_429030` cycle test).** B = current block
+(1824: bb5 `lw t6; addiu t7; sw t7; lw v0; beqz v0`), C = candidate (bb23 `li at,1; beq v0,at`), I = `li at,1`.
+- Per invocation: xbb on (`-noxbb` off), as1 `-Olimit` >= block count, window constant G (.data 0x1001b8c0 = 1).
+- B is processed only if (B1) stalls (+76) > 0, (B2) +68 bit 13 set = `.set reorder` in force at block close
+  (0x10030ddc is the REORDER flag: `f_parseset` case 0 sets it, `.set noreorder` clears it -- not an option switch as
+  kit CDLXXV read it), (B3) +68 bit 6 clear = no jump / call in B (opcode class 0xC0 / 0x100, set in `func_41ff80`),
+  (B4) B's +78 < 291.
+- Candidates = later blocks in (weight, id) order: (C1) w(C) - w(B) < 3G+3 = 6 else STOP; (C2) C dominated by B else
+  skip (not counted); (C3) C +68 bit 5 clear (set by an earlier xbb move, or a type-25 pseudo) else skip; (C4) at most
+  11 dominated candidates are tried (`count > 10` stops; 100 when the function has more than one loop region);
+  (C5) C has bit 13 (reorder); (C6) C is not on a cycle that avoids B.
+- I must satisfy: (I1) +34 movable (cleared by `f_mark_unmovable` for div / mul / 3-reg macro expansions and inside
+  `.set nomove`: traced reject reason 2), +33 clear (set inside `.set volatile`: reason 3), dest not $sp; (I2) opcode eligible (ALU / immediate ops,
+  shifts; loads only if they cannot trap; no stores, branches, jumps, mult / div, syscall / break); (I3) no
+  dependence on an earlier unmoved C instruction, store / load order, cfc1 / ctc1; (I4) reloc kind 0..3;
+  (I5) along the path set (B plus blocks between B and C): no block with a call (bit 6), no bit 5 except B, no bit 7
+  for a load; I's defs not live-in at any off-path successor (1824: bb6, `$at`); no def / use conflict with B's
+  branch and delay slot.
+- Accept: new(B) + new(C) < old(B) + old(C) and new(B) <= old(B) (1824: 6+2 < 6+3).
+- Order matters: an earlier accepted candidate that removes B's stall ends the scan.
+
+**2. 1824's trace (instrumented as1).** bb5's candidates: bb33 (epilogue, w1, count 0; `lw s0` / `lw ra` fail I5 --
+the path set holds the jal blocks), bb6 (case 0 head, w4, count 1; `lw t8` fails I2, may trap), bb23 (w4, count 2) ->
+I passes -> moved. Every condition above was checked against what C can change:
+- Code-determined (any change costs words): B1 stalls, B3, B4, C1 weights (bb23 = bb5 + 3, its only predecessor),
+  C2 / C6 (a second or cyclic edge into bb23 needs a branch; an UNREACHABLE `b` into a labelled bb23 does stop the
+  pull, `.s` oracle, but as1 keeps the `b`: +2 words), I2 / I3 / I4, I5 liveness (no ugen / as0 sequence leaves `$at`
+  live-in; kit CDLIX), accept rule.
+- Directive-determined: `.set volatile` or `.set nomove` wrapped around `beq $2, 1, $41` gives the target head
+  byte-for-byte (oracle). But ugen's volatile region always holds exactly ONE memory instruction (199 / 199 regions in
+  the bootup / gui / post0b / mgrproc `cc -S` corpus, kit CDLXXV `52/`), and ugen never emits `nomove` / `noreorder`.
+  `.lab` is never emitted by ugen (and an oracle `.lab` in bb23 does not set bit 5).
+- **The candidate cap (C4) is a real zero-code blocker.** `.s` oracle: `$32:` followed by N x (`.alias $2,$sp` +
+  an UNREFERENCED label) before case 0's `lw $24`. Each pair is an empty block, dominated by bb5, weight 4, numbered
+  6..6+N-1 (before bb23). N <= 8: bb23 is still tried (count <= 10), pulled. N = 9 or 10: bb23 comes up at count 11,
+  the scan stops, and the function equals the target word-for-word (only the in-tree jump-table displacement differs,
+  which is the TU layout, kit CCLX). The beqz delay slot is filled from bb5 (`sw t7`), so empty blocks at its TARGET
+  cost nothing; the same chain at the epilogue label instead breaks the `b; lw ra` target-copy fills (+nops).
+- Why C cannot build that chain: as1 starts a block at a label only if the current block already holds an entry; the
+  only entries C reaches are instructions and `.alias` / `.noalias` (kit CDLVI zero-byte copies; `.loc`, `.livereg`,
+  `.set` pairs are not entries -- oracle chains with them stay 35 blocks). The labels, though, must come from ugen, and
+  ugen emits a label only when a branch or jump table references it: `goto L; L:`, `do {} while (0)`, `if (1) {}`,
+  `for (;;) { ... break; }`, `switch (0)`, `switch (x) { case 1: default: }`, `while (0) { L: }` around zero-byte
+  copies at case 0's head all print no label (`04/g_*.s`, `04/h_*.s`). The only branch into case 0's head is the
+  beqz (one label); the epilogue chain is excluded above. So C4 needs 9 new referenced labels = 9 new branches.
+  The zero-byte copies also move the inner dispatch temp (t8 -> t2: 53 %), so even a single alias LR costs here.
+- Verdict for the patch question: every decline condition is either code-bearing in C, an as1 option, or a directive
+  ugen never emits at that spot; the only code-free as1-level blocker (C4) needs labels C cannot produce without
+  branches. 1824 is C-unreachable under IDO 7.1 cfe / uopt / ugen / as1 as far as this list goes; the list is complete
+  for `func_42a9f0`'s gates.
