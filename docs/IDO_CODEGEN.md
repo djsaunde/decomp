@@ -14843,6 +14843,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CDXCIII (agent-g 2026-11-14, run 407): **post0b 48AEC NM 98.297 -> 98.455. s0 is uopt colour 14 (not ugen); the target's three s0 values (arm-1 mt, arm-1 ld count, else c2) are ONE variable, so put the arm-1 count on the else c2's pool word with kit CDXC's leading dummies (`lE3(m)` -> `nq3((int)m, (int)m, (int)m, dl->count)`, only k = 3 works) and mt / count / c2 all take s0 with c spilled to its home; target homes c / arm-1 g, frame 0x160. Open: else g vfp-132 vs -124, mtx() colours, loop ctor**](#kit-cdxciii-agent-g-run407) -- _48AEC NM 880794c61 (2076 B); ~1700 variants; scratch /tmp/claude-1000/g407/ (cl.py s0/home classifier)._
 - [kit CDXCIV (agent-h 2026-11-14, run 410): **mgrproc 1824 negative proof, complete as1 xbb pull-decline list (driver / per-instruction / path-liveness / accept gates, read from as1.c, traced with an instrumented as1). 0x10030ddc is the `.set reorder` flag, not an option. NEW zero-code `.s`-level blocker: the xbb CANDIDATE CAP (11 dominated candidates). 9 empty `label` + `.alias` blocks at case 0's head make the head byte-exact. But each needs its own label, and ugen emits only labels that branches or jump tables reference, so C cannot build it. `.set volatile` / `nomove` around the compare also work, but ugen's volatile region is always one memory instruction**](#kit-cdxciv-agent-h-run410) -- _no gain; ~60 oracle + C probes; scratch /tmp/claude-1000/h410/ (as1/patch.py instrumented as1, as1/asmi.sh)._ **Verdict superseded by kit CDXCV (1824 exact).**
 - [kit CDXCV (agent-h 2026-11-14, run 412): **mgrproc 1824 EXACT. as1 deletes a branch-to-next (and its dead `li at,K`) but keeps the label as a block boundary. `if (sel == K) *(Z0 *)(char *)(sel + 0x10) = *(Z0 *)(char *)(sel + 0x20);` makes ugen print exactly `bne $2,K,$L; $L:`, so ten guards = ten code-free empty blocks that trip the xbb candidate cap. Each guard eats 2 ugen temps (ring of 10: use multiples of 5). The extra BBs raise s0's callee-saved first-use cost, fixed by a code-free `if (s0) {}` after the last calls. The jtbl displacement is RoData placement: a const char array of the 0x588 credit-string bytes puts the table at +0x5B8**](#kit-cdxcv-agent-h-run412) -- _EXACT 9d50fab47 (568 B, no pins); recipe for other legal-pull-left-alone residuals in section 4._
+- [kit CDXCVI (agent-c 2026-11-14, run 411): **game_uso 8CD8 NM 96.275 -> 96.683, frame 528 = target. Read the target through uopt M-offsets (M = frame - sp: the pool is K-156 in both frames) and the 14 per-site ctor-`this` registers, not the fuzzy score. Dir's conversion `this` shared a pool word with d2's conversion `v` (target a0 vs v1), so the word had to split: a 2-dummy `XZ(b->pos)` under `subp1` did it, with h as plain `subp2`. Dummy type (int / pointer) is byte-identical. Wrapper dummies don't move the inner conversion's words. Left: the XZ(wpos) / perp shared `this` word, pool a3**](#kit-cdxcvi-agent-c-run411) -- _8CD8 NM 30e431481 (2832 B); ~4000 variants; scratch /tmp/claude-1000/c411/ (lr721.sh, feat.py, lay.py, climb2/3.py)._
 - [kit CDXXXVIII (agent-c 2026-11-11, run 346): **NCC homes follow edg ALLOCATION order (function-scope named locals hoisted to the top even when declared late; then pooled temps; a by-value V3 temp at its first use; then late block-scoped locals): post0b 4FD00's every target sp offset (frame 136, V3 temp sp+20) = block-scoped p1 / p2 + `void add()` for the SV adds (-2 pool words) + two volatile pad words in the late block, but that basin's `move v0,zero` lands inside the second sum (98.13 < 98.645); the real residual is that the SECOND wrapper expansion binds its parameters through temps so its `+=` references get a fresh pool word (t0) -- a dead `int d` parameter fed an address (`wb(b, f2, s, (int)&s)`) + void adds makes its three references share one word and, with the block / pad recipe, leaves ONLY that word's colour (t0 vs v0) and its knock-ons (98.606, `c346/78/s/v11.cpp`); with the second sum's first read at accessor depth 0 s.set's reference goes back onto the first sum's word (v0) and only the two adds stay on t0: 98.685, committed; a BB split anywhere between the two sums costs ~20 points (984 B), so the temp cannot be allocated between them; dead top-of-function pool blocks move the temp with identical code up to 7 words; 4B620 / 42938: every agent-g alternative body's residual set is a superset of the committed core (42938's scissor-head fix costs 7 ctx-reload lines)**](#kit-cdxxxviii-agent-c-run346) -- _post0b 4FD00 NM 98.645 -> 98.685 (c9fb1c206, same length); ~4300 variants; tools c346/20/res.py (per-variant mismatch-line sets), c346/83/gen.py (sum / sum2 climb), c346/30/sub.py, c346/35/hc.py, c346/39/gen.py._
 - [kit CDXXXVII (agent-g 2026-11-11, run 345): **post0b 3B9C0's `addiu t9,sp,184` is a ugen-HELD lda: a `0 * (int)(X)` fold is a register zero only when the same text occurs twice (CSE before folding), which gives kit CDVIII's phantom with no new block (`(char *)&p + 0 * (int)(self->tris)`, paired with the ib line's self_al->tris fold); a carrier merges with its inner-loop web (adjsave 115 > fv 103.3, fv loses a3) until one counted fv use in the ok line; then every uopt colour of the qa / qb block is the target's (35 lines / 98.62 vs committed 34 / 99.32) but the t6..t9 FIFO model says ugen itself materialises the target's lda (held in t9 through qb, or emitted after qa's `sll` with no ib load temp) -- every source puts lda in a coloured const LR, folds it into `l.s 184(..)`, PRE-hoists / spills the cvt, or (assignment inside qa's address) gets linearised before the load; 48AEC: NCC `-O2 -g3` + an .mdebug reader (`mdeb.py`) lists every named home vfp-relative (gaps = unnamed edg temps); the target = i / j / k block-scoped + cmd in a nested block (cmd at vfp-96, same code) with only 2 temp words before load()'s g where pushQ costs 8; frame 352 is reachable but only by dropping lower-arm homes (best 97.60 < 97.73)**](#kit-cdxxxvii-agent-g-run345) -- _no gain; ~5800 variants; tools g345/t/v2.py, v3.py, dump.sh, slots.py, hs.py, mdeb.py (NCC `-g3` .mdebug home reader), g345/4/fifo.py._
 - [kit CDXXXVI (agent-c 2026-11-11, run 344): **edg inline-temp frame words, measured on a mini harness: an inline's parameters cost words only when its body expands a temp-needing inline (a parameter read more than once); a second top-level call of a wrapper with ONE such nested call is free, with two or more (set + add, set + o.set, add + add, any parameter types) the second call costs +2 words (+4 for `SV &operator+=`; set + add then saturates, the committed sum() keeps growing), regardless of wrapper nesting, braces, splits or commas between the calls; top-level statements always pool. post0b 4FD00's target frame = "second face sum free": a hand-written second sum gives param 20 / frame 136 and every sp offset of the target, but that basin's code tops out at 91.63 / 1004 B with the frame kept (dead mid.z store kept or &mid / 12 not hoisted, vertex pointers not v0); 36694 dump: zero LR adjsave 1.67 coloured after E (3.0) and px / py / pz (2.5), a named zero is constant-propagated and only adds a home; E68 distinct MGR loads, carriers and test grids flat**](#kit-cdxxxvi-agent-c-run344) -- _no gain; ~2600 variants; tools c344/sig.py, lay.py, 15 (mini harness), 53/cl.py._
@@ -67363,3 +67364,53 @@ dominated candidates in the window that sort before the pulled block (instrument
 *(Z0 *)(char *)(v + b);`, v already in a register, K distinct) at the head of a weight-(w+3) successor of that
 block whose incoming branch fills its delay slot from its own block; keep the guard count a multiple of 5; if a
 callee-saved LR flips to an a-register, extend it with a code-free test after the last calls.
+
+## kit CDXCVI (agent-c 2026-11-14, run 411): game_uso 8CD8 NM 96.275 -> 96.683 -- read the target's frame through uopt M-offsets (M = frame - sp) and per-site ctor-`this` registers instead of the fuzzy score: plain `subp2` at h, `subp1` over a 2-dummy `XZ(b->pos)` at dir and `subp1` at g bring the frame to the target's 528 and move dir's conversion `this` off the d2-conversion-`v` word (a0, as in the target) <a name="kit-cdxcvi-agent-c-run411"></a>
+
+_agent-c run 411, base c43944ed9. game_uso_func_00008CD8 NM 96.275 -> 96.683 (agent-c 30e431481), 2832 B (target 2836),
+frame 544 -> 528 (= target). About 4000 variants. Scratch `/tmp/claude-1000/c411/<n>/`: `lr721.sh` (tools/ncc721.sh front
+end + the `-zdbug:5` dump uopt from tools/ido-static-recomp-dump, then h384's `lre.py` -> `<src>.lr` LR table),
+`feat.py` (per variant: fuzzy, size, frame, pool register, s register, the 14 ctor-`this` registers vs the target's),
+`lay.py` (first-appearance sp-slot list of target vs variant, printed as M-offsets), `climb2.py` / `climb3.py` (random
+knob + K1 / K3 / alt-line / code-free-test climb; `MODE=k` scores the structural key instead of fuzzy), `alts.py`._
+
+**1. Reloc audit: nothing new.** Kit CDLXXX's audit stands (16 operator-new calls, 2 normalise calls, the jump-table
+RoData pair; no data symbol), so there is no 65EE4-style decode error for 8CD8.
+
+**2. Frame offsets as uopt M-offsets.** uopt names a stack variable `M-N`; with the frame F its slot is `sp + F - N`.
+The target's pool (sp+372, F=528) and the 7.2.1 donor's pool (sp+388, F=544) are both `K-156`, so the high region of
+the two frames already agreed and the 16 extra bytes were words allocated after it. The target's spill homes give
+roles too: the d2 conversion's `v` (`&s->w->pos`, spilled across `operator new`) and the else-arm g conversion's `v`
+share the target's home sp+416 (M-112), so in the original both conversions use the same EDG pool word for `v`. The
+donor's g goes through the `wpos` view (its own home), which is not the target's shape.
+
+**3. Ctor-`this` site vector.** Reading the register of each of the 14 `this == 0 ? operator new(12)` sites (the
+`or R,v0,zero` after `beqz v0`) gives a cheap structural check. Base 96.275 differed at two sites only: dir's
+`XZ(b->pos)` (v1, target a0) and the else-arm `XZ(wpos)` (v1, target a0). In the LR dump, dir's conversion `this`
+sat in one pool word (`M-128`) with the d2 conversion's `v` (target v1). No colouring order can give one word both
+a0 and v1, so the word had to split. A 2-dummy `XZ((int)a, (int)a, b->pos)` under `subp1` puts dir's `this` into the
+d2-conversion-`this` word (`M-132`, a0 at all three of its sites). Together with h as plain `subp2` (frame 536), this
+reached frame 528 = target.
+
+**4. Small facts.**
+- Dummy parameter type does not matter for int / unsigned / any pointer type: every one is byte-identical. Float or
+  double dummies change the code and score lower (92-94).
+- The dummies of a `sub` / `subp` wrapper around a conversion do not move the inner `XZ(...)` words. Only the
+  conversion's own dummies move them.
+- Returning a different class from the h / return `operator-` (a derived XH, or a plain Vec3) costs 8-14 points.
+- `perp` with kept dummies is byte-identical. `perp` through KR1 moves the pool to the target's sp+372 but costs 1.0.
+
+**5. Still open.**
+- The else-arm `XZ(wpos)` `this` shares `M-120` with perp's `this` (v1). The target has a0 / v1 there. No g form fixes
+  it: XZ / const-ref g, wrappers, 0-3 dummies, the `wpos` view vs a direct `s->w->pos` read (64 variants).
+- The pool is still a3. Six plain `subp` chain-temp constants and the `wpos` view (sv 1.0) take a2 before it.
+  Raising them all (every `subp` -> KR1 `sub`, the view dropped) still leaves three a2 LRs ahead of the pool:
+  - the d2 / g / return conversion-`v` word (`M-128`, pri 1.5). This spelling does give it the target's d2 / g
+    sharing, but here it gets a2 because v1 is forbidden.
+  - the p90 conversion temp `K-60`;
+  - the perp temp.
+  Also lowering p90 / p84 / perp through KR1 puts the pool in a2, but only at 2752 B with s in s0. All 64 + 48
+  combos tried; the pool's a2 is still tied to s's a1.
+- d2's `v` home is sp+400 (target sp+416), so four words are still allocated in a different order before it.
+- In C++, kit CDXCV's zero-byte-copy guard has no direct form here: EDG rejects `char z[0]`, and copying an empty
+  struct emits code. Code-free `if (x == K) {}` tests in the climb moved nothing.
