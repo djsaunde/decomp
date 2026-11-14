@@ -66572,7 +66572,8 @@ a folded `0 * X` for 12 X (99.308 or lower).
   `_n = c, c += 1`; `&buf[_n = c++]`; 124 combinations) compile identically or worse. 100+ `_n` folds break the body
   (96.64). `if (_n) {}` / `if (_n != K) {}` at every statement position (188) and `register` on `_n`, ult, k2, i,
   vidx, j, k / uls or m (byte-identical) are flat too. So are code-free tests of k2 / i, uls / ult and vs / ve
-at every statement position (`t/gpos.py`, about 190 each).
+at every statement position (`t/gpos.py`, about 190 each). Eleven more random `g5` / `g6` / `g7` batches at
+99.308 (seeds 3951..3983) never beat it.
 
 ## kit CDLXXX (agent-g 2026-11-14, run 394): the reloc audit (kit CDLXXVII's 65EE4 lever) on game_uso 8CD8, post0b 36694 and bootup E2D0 finds NO data-symbol decode error in any of them -- all three only touch memory through pointer arguments, so the lever does not apply; plus E2D0 / 36694 / 8CD8 negatives <a name="kit-cdlxxx-agent-g-run394"></a>
 
