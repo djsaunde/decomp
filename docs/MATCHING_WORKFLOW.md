@@ -305,6 +305,7 @@ explicit shared blocks (goto a common label), not regeneration.
 - [Uninitialised-local exception (2026-10-27, coordinator + user): empty tests on uninitialised locals stay BANNED unless the target shows the same function reading an uninitialised local elsewhere; the source must cite that evidence in a comment (first use: titproc_uso_func_000005DC, s5v read at 0x5C(sp))](#uninitialised-local-exception)
 - [Zero-length aggregates as code-free levers (2026-11-13): compiler-accepted `char c[0]` struct copies allowed when they emit no code and no ISO form works (first use: 396FC .alias placement)](#zero-length-aggregate-lever)
 - [MIPSpro 7.2.1 donor recipe (agent-h run 355): per-function `*_mp72_*.cpp` donors through tools/ncc721.sh (period EDG 2.29 edgcpfe + IDO 7.1 back end, installed by tools/fetch-mipspro721.sh) for the 4-label jump-table family only; layout-only `<func>_lay` functions put the table at the target's in-place %lo; placeholder re-emits the RoData; score drafts with `objdiff-cli diff -c functionRelocDiffs=none`](#mipspro721-donor-recipe) -- _game_uso B3C EXACT; titproc 116C NM 99.514 -> 99.586; gl 76F0 NM 99.0 -> 99.0035; 8CD8 / 1ADC not improved (why inside); 116C case-3 colour lead + the as1 `la` hoist it triggers._
+- [Reloc audit before a decode (agent-g runs 392 / 394): dump the function's USO TextRelocs (rel.py, MOD / SH env; expected/.o relocs for game_uso) and check every data symbol against the C: one struct vs several globals, array vs scalars, record size vs the next symbol, sibling usage; a mismatch is a legal decode fix that resets uopt CSE (65EE4 EXACT), no data HI16 / LO16 pair means nothing to fix there](#reloc-audit-before-decode)
 
 
 ---
@@ -13640,3 +13641,26 @@ the same load, plus t6/t7 ring swaps). Not improved under 7.2.1: game_uso 8CD8 (
 vs NCC 90.43; frame / temp-slot / colour divergence from the first block, needs a full retune), kernel 1ADC
 (92.54 vs cfe 95.66, and its hiptr is read uninitialised on the LO16-before-HI16 path, so it needs an
 initialised spelling first).
+
+## Reloc audit before a decode (agent-g runs 392 / 394, 2026-11-14) <a name="reloc-audit-before-decode"></a>
+
+Before grinding colouring on a near-miss, check that the decode reads the RIGHT symbols. post1b 65EE4 sat at 98 % with
+one record + nine views until the TextReloc dump showed three separate 0x40-byte BSS records (kit CDLXXVII); with
+the decode fixed it went EXACT on plain -O2.
+
+1. Dump every reloc of the function from the ROM. bootup.uso (bootup + game_libs) is module 0xD9FE28:
+   `MOD=0xD9FE28 SH=<shim> python /tmp/claude-1000/g394/1/rel.py baserom.z64 <start> <end>` (shim 0 for bootup,
+   0x1466C for game_libs; same script as `scripts/uso-reloc-symbolize.py` walk_dir / build_relocmap). Each line gives
+   the text offset, kind (1 = jal, 2 = LO16, 3 = HI16), the Sym index and its value. game_uso.uso (0x7CC8D8) has a
+   second header, so its section chain starts at +0x38: `START=0x38 MOD=0x7CC8D8 SH=0` (`V=1` prints the sections
+   found). For any other module, find the first `<type> <size> 0x1000xxxx` triple after the header and pass its
+   offset as START, or fall back to `mips-linux-gnu-objdump -r expected/src/<seg>/<unit>.c.o` filtered to the
+   function's address range (expected/ is built from the symbolised .s).
+2. Compare with what the C assumes, per data symbol: one struct vs several globals (distinct Sym indices = distinct
+   objects); array vs separate scalars; the record size against the NEXT data / BSS symbol (`rel.py ... near` lists
+   the symbols in a value range); which symbols the siblings use for the same field.
+3. A mismatch is a legal decode fix (separate externs pinned at the evidenced addresses, record types sized to the
+   symbol gap). Cite the Sym indices in the source comment. It changes uopt's address CSE and therefore the
+   colouring, so re-run the whole lever search on the new decode.
+4. No data HI16 / LO16 pair (only calls, a RoData constant, or no relocs at all) means there is nothing to fix at
+   this level: 8CD8, 36694 and E2D0 all came out this way (kit CDLXXX), and so did 4BAF4 / 48AEC (kit CDLXXVIII 5).

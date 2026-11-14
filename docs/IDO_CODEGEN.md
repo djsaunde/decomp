@@ -14826,7 +14826,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CDLXXVI (agent-g 2026-11-14, run 390): **post1b 65EE4 is uopt code, not the `-Olimit 1` fallback: in a non-leaf fallback function ugen puts EVERY vreg (comma temporaries, `register` locals) in a callee-saved register, so the comma's s0 is unavoidable there; single-call functions escape `-Olimit 1` (it counts blocks), which invalidates the old single-call micro-tests; the target's `lui a2; ori a2,a2` data constant is a uopt-coloured local `d` and its a1-first calls 2 / 3 are block-scoped temps coloured a1 (two commas share one cfe temp and go to s0); seven per-access record views, each used at most once per block, stop uopt's record-address CSE so every access gets its own `lui`; `if (1) {}` after the base store moves d's load below it**](#kit-cdlxxvi-agent-g-run390) -- _65EE4 NM 89.73 -> 98.15 (584 B), donor game_libs_o2_65EE4.c at plain -O2; 8CD8 return-slot priority negatives; ~330 variants; scratch /tmp/claude-1000/g390._
 - [kit CDLXXVII (agent-g 2026-11-14, run 392): **post1b 65EE4 EXACT: the USO reloc dump shows THREE 0x40-byte records (sym1520 / 1542 / 1544), not one record with views; `T *s = &record; if (s != 0) {}` (uopt folds the address test, the leftover block structure leaves the pointer uncoloured) re-materialises every `lui` with no aliases; one source line per region fixes as1's jal delay slots; as1 places the prologue by comparing body `.loc` lines with the pre-`.ent` line (greater / equal / smaller), so an edg `__sti__` (start = EOF line) can never get the C prologue; sti tell = a DataReloc link record to the export sym**](#kit-cdlxxvii-agent-g-run392) -- _65EE4 NM 98.15 -> EXACT (584 B), NM donor removed; scratch /tmp/claude-1000/g392._
 - [kit CDLXXVIII (agent-c 2026-11-14, run 391): **named-vs-inline grids (kit CDLXXIII's lesson) on post0b 4BAF4 / 48AEC / 36694 all lose or tie on the committed donors (stale, byte-identical: 4BAF4's first-packet `r`; 48AEC's `if (1) {}` after setup, the arm-1 `0 * (mt + mt)` fold, `I2()` on the draw receiver); 4BAF4's three display-list packets as ONE inline member `G->dlc(ptr)` (no named ctx) make the inline `this` pool word the target's a3 ctx at all three sites (one spill home, reloaded into the same register); x..h in an inner block from `x = pos.x;` plus no `cam` block local put that pool word at sp+140 above x like the target (every home equal, frame 240); that basin climbs to 99.468 (receiver-form singles + triples), below the donor's 99.586: the extent carrier d (pri 3.33) is coloured before the pool LR (3.20); 48AEC's ld() slot homes sit 8 low because cp() adds src / this / c pool words**](#kit-cdlxxviii-agent-c-run391) -- _negative, no commit; ~2300 variants; tools /tmp/claude-1000/c391/tools (sc.py, dd.py, gen.py, nreg.py)._
-- [kit CDLXXIX (agent-h 2026-11-14, run 393): **bootup E68: the priority-fold lever also works downward. The target colours ult (t1) and uls (t4) after the cnt-1 packet / copy LRs, so dropping the run-291 folded ult use (99.262 -> 99.295) and cutting the folds in the big code-free test to 1 uls + 5 j (from 20 + 3; a 156-cell grid) puts both where the target has them (99.302). Prefer the smallest fold count that gives the target's order. `vs` assigned before `ve` emits the two dead `or` copies in the target's order (99.308). The carrier's own variable must stay the first fold term (M80 first: 839 words). The vertex-2 `if (arg2) {}` is inert. Left: the MGR value LR t0, the NEXT count temp a1, k s3, and the ra / s0 pair**](#kit-cdlxxix-agent-h-run393) -- _E68 NM 99.262 -> 99.308 (agent-h 337444ab8, 8901e628d); ~1500 variants; scratch /tmp/claude-1000/h393 (t/gf.py, gf2.py, abl2.py, gpos.py). The as1 survey of this run is TOOLING_DECOMP forensics VII._
+- [kit CDLXXIX (agent-h 2026-11-14, run 393): **bootup E68: the priority-fold lever also works downward. The target colours ult (t1) and uls (t4) after the cnt-1 packet / copy LRs, so dropping the run-291 folded ult use (99.262 -> 99.295) and cutting the folds in the big code-free test to 1 uls + 5 j (from 20 + 3; a 156-cell grid) puts both where the target has them (99.302). Prefer the smallest fold count that gives the target's order. `vs` assigned before `ve` emits the two dead `or` copies in the target's order (99.308). The carrier's own variable must stay the first fold term (M80 first: 839 words). The vertex-2 `if (arg2) {}` is inert. `t/lrmap.py` maps the instrumented uopt's COL lines to variables (one extra fold term per variable). Left: the MGR value LR t0, the NEXT count temp a1, j s3 (j's fold count only gives t0 or ra), and the ra / s0 pair**](#kit-cdlxxix-agent-h-run393) -- _E68 NM 99.262 -> 99.308 (agent-h 337444ab8, 8901e628d); ~2100 variants; scratch /tmp/claude-1000/h393 (t/gf.py, gf2.py, abl2.py, gpos.py). The as1 survey of this run is TOOLING_DECOMP forensics VII._
+- [kit CDLXXX (agent-g 2026-11-14, run 394): **reloc audit of game_uso 8CD8, post0b 36694 and bootup E2D0: no data / BSS HI16-LO16 pair in any of them (E2D0 = 3 calls + the RoData f64 0.1; 36694 = 2 calls; 8CD8 = operator-new / normalise calls + its RoData jump table), every field is a pointer offset, so the 65EE4 record-split lever does not apply; the lever exists only when a function's TextRelocs carry data-symbol pairs. Negatives: E2D0 arg4 / 1.0 / clamp / declaration-order / held-pointer sweeps, 36694 pad locals (never take a frame word) and operator forms on the `p - (a = ...)` family, 8CD8 p84 / p90 as an array or nested struct (byte-identical)**](#kit-cdlxxx-agent-g-run394) -- _negative, no commit; ~1850 variants; scratch /tmp/claude-1000/g394 (1/rel.py with MOD / SH overrides, 2/fz.py, 4/fz.py)._
 - [kit CDXXXVIII (agent-c 2026-11-11, run 346): **NCC homes follow edg ALLOCATION order (function-scope named locals hoisted to the top even when declared late; then pooled temps; a by-value V3 temp at its first use; then late block-scoped locals): post0b 4FD00's every target sp offset (frame 136, V3 temp sp+20) = block-scoped p1 / p2 + `void add()` for the SV adds (-2 pool words) + two volatile pad words in the late block, but that basin's `move v0,zero` lands inside the second sum (98.13 < 98.645); the real residual is that the SECOND wrapper expansion binds its parameters through temps so its `+=` references get a fresh pool word (t0) -- a dead `int d` parameter fed an address (`wb(b, f2, s, (int)&s)`) + void adds makes its three references share one word and, with the block / pad recipe, leaves ONLY that word's colour (t0 vs v0) and its knock-ons (98.606, `c346/78/s/v11.cpp`); with the second sum's first read at accessor depth 0 s.set's reference goes back onto the first sum's word (v0) and only the two adds stay on t0: 98.685, committed; a BB split anywhere between the two sums costs ~20 points (984 B), so the temp cannot be allocated between them; dead top-of-function pool blocks move the temp with identical code up to 7 words; 4B620 / 42938: every agent-g alternative body's residual set is a superset of the committed core (42938's scissor-head fix costs 7 ctx-reload lines)**](#kit-cdxxxviii-agent-c-run346) -- _post0b 4FD00 NM 98.645 -> 98.685 (c9fb1c206, same length); ~4300 variants; tools c346/20/res.py (per-variant mismatch-line sets), c346/83/gen.py (sum / sum2 climb), c346/30/sub.py, c346/35/hc.py, c346/39/gen.py._
 - [kit CDXXXVII (agent-g 2026-11-11, run 345): **post0b 3B9C0's `addiu t9,sp,184` is a ugen-HELD lda: a `0 * (int)(X)` fold is a register zero only when the same text occurs twice (CSE before folding), which gives kit CDVIII's phantom with no new block (`(char *)&p + 0 * (int)(self->tris)`, paired with the ib line's self_al->tris fold); a carrier merges with its inner-loop web (adjsave 115 > fv 103.3, fv loses a3) until one counted fv use in the ok line; then every uopt colour of the qa / qb block is the target's (35 lines / 98.62 vs committed 34 / 99.32) but the t6..t9 FIFO model says ugen itself materialises the target's lda (held in t9 through qb, or emitted after qa's `sll` with no ib load temp) -- every source puts lda in a coloured const LR, folds it into `l.s 184(..)`, PRE-hoists / spills the cvt, or (assignment inside qa's address) gets linearised before the load; 48AEC: NCC `-O2 -g3` + an .mdebug reader (`mdeb.py`) lists every named home vfp-relative (gaps = unnamed edg temps); the target = i / j / k block-scoped + cmd in a nested block (cmd at vfp-96, same code) with only 2 temp words before load()'s g where pushQ costs 8; frame 352 is reachable but only by dropping lower-arm homes (best 97.60 < 97.73)**](#kit-cdxxxvii-agent-g-run345) -- _no gain; ~5800 variants; tools g345/t/v2.py, v3.py, dump.sh, slots.py, hs.py, mdeb.py (NCC `-g3` .mdebug home reader), g345/4/fifo.py._
 - [kit CDXXXVI (agent-c 2026-11-11, run 344): **edg inline-temp frame words, measured on a mini harness: an inline's parameters cost words only when its body expands a temp-needing inline (a parameter read more than once); a second top-level call of a wrapper with ONE such nested call is free, with two or more (set + add, set + o.set, add + add, any parameter types) the second call costs +2 words (+4 for `SV &operator+=`; set + add then saturates, the committed sum() keeps growing), regardless of wrapper nesting, braces, splits or commas between the calls; top-level statements always pool. post0b 4FD00's target frame = "second face sum free": a hand-written second sum gives param 20 / frame 136 and every sp offset of the target, but that basin's code tops out at 91.63 / 1004 B with the frame kept (dead mid.z store kept or &mid / 12 not hoisted, vertex pointers not v0); 36694 dump: zero LR adjsave 1.67 coloured after E (3.0) and px / py / pz (2.5), a named zero is constant-propagated and only adds a home; E68 distinct MGR loads, carriers and test grids flat**](#kit-cdxxxvi-agent-c-run344) -- _no gain; ~2600 variants; tools c344/sig.py, lay.py, 15 (mini harness), 53/cl.py._
@@ -66515,16 +66516,21 @@ temps in operator* / operator/ do not move them. Best 93.23, still below the 96.
 
 ## kit CDLXXIX (agent-h 2026-11-14, run 393): bootup E68 99.262 -> 99.308 by REMOVING a priority fold -- the target colours ult (t1) and uls (t4) late, so the old folded ult use and 19 of the 20 folded uls uses were raising the wrong LRs; vs assigned before ve puts the two dead `or` copies in the target's order; the position of the first fold term matters <a name="kit-cdlxxix-agent-h-run393"></a>
 
-_agent-h run 393, base 99a9c5065. bootup E68 NM 99.262 -> 99.308 (agent-h commits 337444ab8, 8901e628d), ~1500
-variants. Scratch `/tmp/claude-1000/h393/` (`t/gf.py`, `t/gf2.py`, `t/abl2.py`, `t/gpos.py`; scorer
+_agent-h run 393, base 99a9c5065. bootup E68 NM 99.262 -> 99.308 (agent-h commits 337444ab8, 8901e628d), ~2100
+variants. Scratch `/tmp/claude-1000/h393/` (`t/gf.py`, `t/gf2.py`, `t/abl2.py`, `t/gpos.py`, `t/lrmap.py`; scorer
 `/tmp/claude-1000/h384/t/r2.py`, aligned diff `/tmp/claude-1000/h389/t/e68d.py`, instrumented uopt
 `/tmp/claude-1000/c334/u/out/cc`). The as1 survey of the same run is TOOLING_DECOMP forensics VII._
 
 **1. Read the target's colouring order off the aligned diff, then lower what is coloured too early.** Kit CDLXXV
 raised m's priority with flat fold terms. The rest of the phase-2 residual is the opposite case. Target vs ours
-(99.262): ult t1 vs a1, uls t4 vs a2, k s3 vs t4, NEXT count temp a1 vs a0, the dead vs / ve copies a3 / t0 vs
-s3 / t3, MGR value LR t0 vs v1. So in the target ult and uls are coloured AFTER the cnt-1 packet / copy LRs (pri
-3000 to 4000 in the instrumented dump); ours had them at pri 4800+ because of folds added by the run-389 climb.
+(99.262): ult t1 vs a1, uls t4 vs a2, j s3 vs t4, NEXT count temp a1 vs a0, the dead vs / ve copies a3 / t0 vs
+s3 / t3, MGR value LR t0 vs v1. So in the target ult and uls are coloured late, and the folds the run-389 climb
+added on them were raising the wrong LRs.
+- **Which COL line is which variable** (`t/lrmap.py BASE OUTDIR vars`): compile BASE and BASE + one extra
+  `(int)(v)` term per variable with the instrumented uopt; the LR whose save rises by 1000 at the same cnt is v's.
+  At 99.308: m 8/102002 (v0), dl 3/33000 (v1), the NEXT count temp 3/27000 (a0), `_n` 5/24078 (a1), **j**
+  6/9100 (t0; the target's s3, not k as assumed above), uls 6/6600, k 8/2101, vidx 11/2421, ve 4/2000; ult's term
+  moves nothing (its home at 432(sp) is reloaded per use).
 - Drop the run-291 `ult += 32 + 0 * (int)(ult)` fold (plain `ult += 32`): ult goes to t0, 99.262 -> 99.295.
 - Then a fold-count grid on the big code-free test (uls 0..25 x j 0..5, 156 variants): **1 uls + 5 j** (was 20 uls
   + 3 j) gives ult t1 and uls t4 like the target: 99.302. 19..23 uls with 3..4 j tie at 99.295; everything else is
@@ -66550,5 +66556,79 @@ test variants (`!= K`, `ve != vs`, `ve + vs`, doubled); 70 adjacent-statement sw
 append-toggle (`g5`) and fold-combo (`g6`) batches.
 
 **Left (97 differing words):** the MGR value LR (target t0, ours v1, both phases), the NEXT count temp (target
-shares a1 with `_n`; ours a0), so the per-packet pointers rotate a0 / a2 in the target vs a2 / a3 here, k (target
-s3, ours t0) and the arr-pointer / ve-IV pair (target ra / s0, ours s0 / ra).
+shares a1 with `_n`; ours a0), so the per-packet pointers rotate a0 / a2 in the target vs a2 / a3 here, j (target
+s3, ours t0) and the arr-pointer / ve-IV pair (target ra / s0, ours s0 / ra). j's register is set by its five
+folded uses: 0..2 put j in ra (99.025), 3..4 give 99.117, 5..7 give t0 (99.308). A j-fold x ve / k / vidx fold
+grid (162) and `if (j) {}` at every statement position (with 5 and with 3 j folds, 188) are flat, so no fold
+count puts j between them in s3. Random code-free batches (`g7`) on the 3-fold and 0-fold j bases stay at their
+base scores (99.117 / 99.025). The k-targeted negatives above (`if (k) {}`, `k = 0` placement, `k++`) were
+aimed at the wrong LR. Also flat: a separate `_n2` for the NEXT sites (90.9..96.4), the CULL append spelled
+through a temp, `*(arr + k++)`, w1-first stores or `vs + 6` for ve (99.308 or lower), and the phase-3 MGR load with
+a folded `0 * X` for 12 X (99.308 or lower).
+- **The NEXT count temp is not a priority problem.** 30 folded `_n` uses lift `_n` (5/54078, pri 10816) above
+  the count temp (3/27000, pri 9000) in the colouring order. The code is byte-identical: `_n` still takes a1 (its
+  `best=2` preference) and the count temp still a0. So the target's shared a1 needs a different LR shape, not a
+  different order. Four more spellings of the NEXT post-increment per site (`_n = c, c++`; `_n = c, ++c`;
+  `_n = c, c += 1`; `&buf[_n = c++]`; 124 combinations) compile identically or worse. 100+ `_n` folds break the body
+  (96.64). `if (_n) {}` / `if (_n != K) {}` at every statement position (188) and `register` on `_n`, ult, k2, i,
+  vidx, j, k / uls or m (byte-identical) are flat too. So are code-free tests of k2 / i, uls / ult and vs / ve
+at every statement position (`t/gpos.py`, about 190 each).
+
+## kit CDLXXX (agent-g 2026-11-14, run 394): the reloc audit (kit CDLXXVII's 65EE4 lever) on game_uso 8CD8, post0b 36694 and bootup E2D0 finds NO data-symbol decode error in any of them -- all three only touch memory through pointer arguments, so the lever does not apply; plus E2D0 / 36694 / 8CD8 negatives <a name="kit-cdlxxx-agent-g-run394"></a>
+
+_agent-g run 394, base eb7727b27. No source change, no commit: 8CD8 94.564, 36694 96.079, E2D0 99.542. About 1850
+variants. Scratch `/tmp/claude-1000/g394/` (`1/rel.py` = g392's TextReloc dumper with `MOD=` / `SH=` env overrides;
+`2/fz.py` cfe -O2 compile + objdiff for E2D0; `4/fz.py` the same through tools/ncc721.sh for 8CD8)._
+
+**1. Audit results (method: docs/MATCHING_WORKFLOW.md "Reloc audit before a decode").**
+- **bootup E2D0** (`SH=0 rel.py baserom.z64 0xE2D0 0xE4DC`, module 0xD9FE28): five TextRelocs -- three calls (sym111
+  val 0x70238 = the f32(f32) sqrt alias, sym568 val 0x71028 = the Vec3 normalise import that game_uso 8CD8 and post0b
+  36694 also call, sym534 val 0x798BC = the final (obj, idx, &v) call) and one RoData HI16 / LO16 pair on sym1
+  (`ldc1 0x9A0` = f64 0.1). Everything else (0x3BC..0x3C4, 0x9F8, 0x9FC, arg2 / arg3 fields) is a pointer offset.
+  expected/.o carries the same five relocs. Nothing to split.
+- **post0b 36694** (game_libs shim 0x1466C): two calls (sym344 val 0x82880, sym568 0x71028), no data or RoData
+  reloc; expected/.o has none at all (the floats are `lui 0x3f80 / 0xbf80` immediates). Agrees with kit CDLXXVIII 5.
+- **game_uso 8CD8** (`START=0x38 MOD=0x7CC8D8 SH=0 rel.py baserom.z64 0x8CD8 0x97EC`): game_uso.uso's section
+  chain starts at +0x38, not +0x10 (a second 0x12345678 header at +0x28; without START the walker dies with
+  `KeyError: 'Sym'`); RoData 0x280, Data, Text 0x9D70 (Yay0), Sym, TextReloc 0x5F88, DataReloc, RoDataReloc. 8CD8 has
+  16 jals on sym57 (Vec3's class `operator new`, game_uso_func_055750, called from EDG's `this == 0` ctor
+  prologues), 2 on sym85 (normalise, 071028) and one HI16 / LO16 pair on sym2 (RoData, `lw 0x100(at)` = the phase
+  jump table, game_uso_D_807FFA20 in expected/). expected/.o agrees, and the 7.2.1 donor's reloc list is the same
+  calls in the same order plus its own .rodata table pair. `Self` / `Node` /
+  `W` are all reached through pointers (s, a, b, s->w), so no record-vs-globals question exists. Spelling p84 / p90
+  as `Vec3 pp[2]` or as a nested struct is byte-identical.
+- **Rule of thumb**: the 65EE4 lever only exists when the function's TextRelocs include HI16/LO16 pairs on data or
+  BSS symbols. A function whose relocs are calls + one RoData constant (or nothing) has no reloc-level decode to fix;
+  go straight to the colouring work.
+
+**2. E2D0 negatives (all <= 99.542, standalone cfe -O2).** Removing `if (arg4) {}` (98.21, 520 B: the arg4 load
+then fills the mtc1 shadow, the target keeps `lwc1 arg4; mtc1 1.0; nop`); the test moved to after lim / after the
+9F8 multiply / before the clamp / before the scale (5 positions x 6 test forms incl. `!= 0.0f`, `== 0.0f`,
+`0.0f < arg4`, `arg4 = arg4`); 5 spellings of the scale (`dot *= arg4 + 1.0f`, `dot = dot * (1.0f + arg4)`,
+`(1.0f + arg4) * dot`, ...); a named `k = 1.0f + arg4` at 4 positions x 3 declaration orders; a copy `k = arg4`
+at the top / before the 0.1 test / around lim; `one = 1.0f` at 6 positions; `*(volatile f32 *)&arg4` (91.43: the
+sum is no longer hoisted above the clamp) and other address-of views (98.21); 12 head forms of the arg3 / arg4
+tests (`arg3 && arg4`, nested, doubled, `arg4 + 1.0f`); all 120 declaration orders of d / lim / s / X / dot;
+lim / scale read through a held `f32 *` / a two-float struct / array index; 108 clamp spellings (operand
+orientation, `0.0f - lim`, else-if, ternaries). This agrees with kits CDLXX / CDLXXV (the post-call FP ring).
+
+**3. 36694 negatives.** On g392's `p - (a = n * dot)` family (93.25, upper frame exact, then-arm temps 8 high):
+unused pads in the then-arm and the outer scope (`int pad[2..4]`, `double`, an unused V3; 100 variants) never
+take a frame word, so they cannot supply the missing 8 bytes; operator* / operator- in plain, named-result and
+pointer-local forms (32) stay <= 93.25 (the pointer-local operator* is what CSEs the target's second n.y / n.z
+loads). The committed donor stays the best. On the committed donor, `if (l) {} if (l) {}` after the r stores makes
+l a coloured LR stored to its home AFTER the flip like the target (target colours: 0.0 f0, l f14, px f16, py f18,
+pz f2), but every colour rotates and it is a lower basin (95.02; a 450-variant random code-free-test climb on it
+stops at 95.50, and 2- / 3-insert random tests on the donor itself stay at 96.079). `if (px != 0.0f) {}`-style
+tests are NOT code-free under NCC (80-88).
+
+**4. 8CD8 negatives.** KR1 at each of the ten sites not yet wrapped (e's / g's initialisers, h, `e * dot`, perp(e),
+the return, both `(const Vec3 &)XZ(a->pos)` stores, the second flag-arm `+=`, inside the XZ(const Vec3 &) ctor),
+singles and all pairs (59 variants, best 94.563 < 94.564); dropping KR1 from dir / d2 / the first `+=` / f (94.39);
+pointer dead blocks (`Vec3 *t = this; if (0) { t = 0; }`) in set(), the Vec3 / XZ ctors (55-94.38, frame or length
+change), `if (0) { x = 0; }` in the XZ ctors (byte-identical).
+
+**5. E2D0 extra negatives.** A volatile read of 9F8 is not zero-code (`lw zero,2552(s0)` fills the mtc1 shadow,
+99.08); `(f32)(f64)x` and `-(-x)` on arg4 / 9F8 / lim all emit code (85-98.3); 200 random constant / plain tests of
+dot / lim / d / arg4 / v / arg3->x in the tail without the arg4 test (best = the committed placement); typing arg0
+as a struct with v3bc / k9f8 / k9fc members (param or cast) is byte-identical.
