@@ -6,6 +6,7 @@ _10 entries. Auto-generated from per-memo notes; content may be rough on first p
 
 ## Index
 
+- [Toolchain forensics VII: every public as1 build against mgrproc 1824 (run 393)](#toolchain-forensics-run393) — _All negative, nothing wired. Every as1 build that survives publicly was run on the whole mgrproc -O2 object (15 builds: IDO 4.0.1 / 4.1 / 5.2 / 5.3 MR / 5.3 patches SG0000260 and SG0001118 / 6.0 / 6.2 / the IRIX 6.3-6.4 kernel-config as1 / 7.1 / MIPSpro 7.2 / 7.2.1 / 7.2.1 patch SG0002992 / 7.3 / 7.4.4). Sources are discmaster CD images (DF / IDF / IDO CDs, 1995-98 patch CDs, Supportfolio; about 1260 idbs scanned), plus three archive.org EFS patch images read with the new `tools/forensics/scripts/efs.py` (414 idbs). URLs and sha256s are listed. Every build from 5.2 on pulls 1824's `li at,1`, keeps 3240's pull and leaves all 42 functions identical. IDO 4.1 drops 3240's pull, and 4.0.1 cannot read the binasm. The 7.2.1 as1 runs once its root has 7.4.4's `lib/rld`, both `libc.so.1` and `usr/lib/libexc.so`. Not found publicly: IDO 5.0 / 5.1 / 7.0 or any IDO 7.1 as1 patch._
 - [Toolchain forensics VI: TU-scoped as1 settings (run 360)](#toolchain-forensics-run360) — _Refuted for all three caps, nothing wired. 396FC: in its evidenced TU (37E98..39C8C), `-Wb,-Olimit,23` also changes the exact donors 39094 / 38DC0 / 393B8, and `-noxbb` changes about 25 functions. as1 `-Olimit N` skips xbb only in procedures with more than N blocks, those three are bigger than 396FC (24), and their targets contain xbb moves. 39094's table (+0x1A40) sits between 396FC's `0.01f` (+0x1A10) and 396FC's table (+0x1A64), so no sub-boundary can separate them. The 5.3 / 7.1 drivers pass `-Olimit` to uopt and as1 together. 65EE4: no boundary evidence (its sym1520 BSS record is shared from 64DEC to 69B94), and `-Olimit 12` with 110 options peaks at 71.23. 1824: the four target hoists that `-noxbb` undoes are xbb moves inside 1824 itself, so no TU boundary can separate them._
 - [Toolchain forensics V: opt levels, driver options and TU boundaries (run 358)](#toolchain-forensics-run358) — _Every uopt `-Wo` / ugen `-Wc` (which does reach ugen) / as1 `-Wb` option, plus -O1 / -O3 / -g* / -mips1 / Olimit grids, was run on E2D0, E68, 1824, 396FC and 65EE4. Nothing moves a cap toward the target with evidence. 396FC's default-head steal is one as1 xbb move (`-Wb,-xbbdbg 3`): `-Wb,-noxbb` or as1 `-Olimit <= 23` makes it 153/153. But uopt needs `-Olimit >= 25`, so no driver `-Olimit` gives both, and the 7.1 and 7.2.1 drivers pass identical back-end flags (7.2.1 `-show` works on `.B` / `.O` / `.G` input, past FlexLM). All caps are TU-context-independent. -O3 traps uopt on bootup. game_libs RoData 16-byte pads mark TU boundaries at +0x1A10 and +0x1A90. The TU between them (37E98..39C8C) starts with a file-scope `0.01f` that only 396FC uses. That is a C const array (cfe puts const scalars in .data) or a 7.2.1-edg C++ const, and NCC 7.1 is ruled out (the TU has tables)._
 - [Toolchain forensics IV: period toolchain sweep (run 356)](#toolchain-forensics-run356) — _The 12 non-exacts outside the 4-entry family were run under MIPSpro 7.2 / 7.2.1. None moved closer. **Correction to run 352:** its "7.2.1 back end breaks 107 donors" omitted `-r4300_mul -t5_ll_sc_bug`. With them, 7.2.1 uopt / ugen / as1 match 7.1 byte for byte on all 214 NCC donors (under both edg front ends). 7.2.1 cfe + back end also match 7.1 on every NM C unit (221 units, 3409 functions). Only the edgcpfe front end differs. The C++ near-misses (4B620 / 4FD00 / 42938 / 36694 / 48AEC) are NCC-built: edg 2.29 frames contradict the targets (176 / 136 / 88 = NCC), and stripping the levers ("plain") does not help. 4BAF4 / 3B9C0 compile identically under both front ends. The C caps (E68, E2D0, 396FC's steal across 10 switch shapes, 1824, 65EE4) are unchanged under every combination, including edg as C++._
@@ -2475,3 +2476,80 @@ boundary evidence is moot for this cap.
 **Conclusion:** for 396FC and 1824, the missing move is an as1 xbb decision *inside* a procedure whose
 neighbours (396FC) or own other blocks (1824) prove xbb was on. Only a C-level change in block numbering or
 movability (run 358's internals note) can fix them.
+
+## Toolchain forensics VII: every public as1 build against mgrproc 1824 (agent-h run 393, 2026-11-14) <a name="toolchain-forensics-run393"></a>
+
+Question (user rule): an OoT-style documented post-build patch for mgrproc 1824 is allowed only if a missing toolchain
+piece is 100% ruled out. 1824's residual is one as1 decision (the `li at,1` compare-head pull above `beqz v0; sw t7`,
+kit CDLXXV). So every as1 build that can be found publicly was run on the whole mgrproc -O2 object. **Result: all
+negative. Every as1 that can read this object pulls 1824's `li at,1`, keeps 3240's pull, and leaves all 42 functions
+reloc-masked identical to the 7.1 build. Nothing was wired.**
+
+**Method.** Input = the run-389 mgrproc object as binasm (`/tmp/claude-1000/h389/3/m.G` + symtab `m.T`, from
+`cc -K` on `mgrproc_uso.c` 0xAE0..end with the build flags). Each as1 is run with the 7.1 driver's line
+`as1 -t5_ll_sc_bug -elf -G 0 -p0 -r4300_mul -mips2 -EB -g0 -O2 m.G -o X.o -t m.T`, through
+`x_mipspro744/usr/bin/qemu-irix -L <root>`. Compare: `cmpobj.py X.o m.o` (per-function, reloc-masked), plus the
+1824 head (`lw t6; lw v0; li at,1; addiu t7; beqz v0`) and the 3240 head (`lw t7,188(a0); li at,1; lw v0; beqz`).
+Where the as1 is from another release (binasm version warning), the image's own uopt + ugen were also run on the 7.1
+ucode (`m.B`) and their `.G` fed to that as1 (`/tmp/claude-1000/h393/be.sh`). Scripts: `/tmp/claude-1000/h393/as1run.sh`,
+`be.sh`, `crawl.py` (discmaster idb crawler: lists every `.idb` that ships `usr/lib/as1|ugen|uopt|cfe`).
+
+**Running the 7.2.1 as1 (it could not run in run 389).** It needs IRIX `lib/rld`, `lib/libc.so.1`,
+`usr/lib/libc.so.1` and `usr/lib/libexc.so`. A symlink root with those four from `x_mipspro744` runs every 6.x / 7.x
+ELF as1 here (`/tmp/claude-1000/h393/r721`). Without `libexc.so` as1 exits 1 with no message (QEMU_STRACE shows the
+failed opens).
+
+**Sources** (all public, no login; raw file URL = `https://discmaster.textfiles.com/file/<coll>/<path>`).
+Downloads in `tools/forensics/dl_*`, extractions in `x_*` (untracked), via `scripts/idbx.py`. "pull" = `li at,1`
+hoisted above the branch (1824: the target does NOT pull; 3240: the target pulls).
+
+| as1 build (header stamp) | source | as1 sha256 | 1824 | 3240 | 42 fns vs 7.1 |
+|---|---|---|---|---|---|
+| IDO 4.0.1 (ECOFF v2.10) | 8989 `SGI IRIS Development Option 4.0.1.iso/dist/dev.idb` + `dev.cmplrs_sw` (`dl_ido401`; idb `4d929bb94d1e04bd...`, cmplrs_sw `3c8f0e274b26516a...`) | `8a8a37a6d6e5c435b3a6f10c106098267312805db010ad396a1e05581c2ac2b3` | cannot read this object: 7.1 and 4.1 binasm both give "Unsupported option in binasm file"; its own uopt / ugen abort on 7.1 ucode | - | - |
+| IDO 4.1 (ECOFF v3.12) | decomp.me ido4.1 (run 349) | `a178cc73b6274d6c...` | no pull (= target) | **no pull (target pulls)** | 21 differ (run 389: 22 / 45) |
+| IDO 5.2 (02/19/94) | LLONSIT ido5.2 (run 351) | `3c6e0cd1e9863fe7...` | pull | pull | identical (run 389) |
+| IDO 5.3 MR (11/03/94, `joist/5.3MR`) | 17621 `sgi.tar/ftp.sgi.com/sgi/IRIX5.3/iris-development-option-5.3.tardist/compiler_dev.{idb,sw}` (`dl_ido53mr`; sw `98a85a4e1610fe7b...`, idb `c14bb37ea02d27ac...`); the same as1 (idb sum 43513) is in 8943 IRIX 5.3 for Indy `compiler_eoe` | `9d43421b2281a82c48d71226abea390a6deac26e043bd5e16f951ef9bab4ebb6` | pull | pull | identical; MR uopt + ugen + as1 = run 389's 5.3 back end (4 exact functions change, 1824 keeps the pull) |
+| IDO 5.3 patch SG0000260 (01/19/95, `beam/patches/260`, pragma-pack fix) | 9038 `SGI IRIX Patches 1995 Dec.iso/5.3_patches/patchSG0000260/patchSG0000260.{idb,compiler_dev_sw}` (also on 9039 / 9040 / 9041 / 9074) (`dl_p260`; sw `77a16a70253d5b15...`, idb `8e1bc2201344b9d7...`) | `7f40d70f8533b51d34dae93eb5b61e57b3febc776c41941a0aad9dc6b81173b5` | pull | pull | identical |
+| IDO 5.3 patch SG0001118 (01/18/96, `girder/patches/1118`, has `-r4300_mul`) | decomp.me ido5.3_cfront `usr/lib/as1` (the "5.3" of runs 349 / 389) | `c5da7675f8d15f5e4f2400fad89778a586f10ec0996c637b9b87b7fe5c86310a` | pull | pull | identical (run 389) |
+| IDO 6.0 / IRIX 6.1 (06/28/95) | LLONSIT ido6.0 (run 351) | `8d27bc928a8aadb9...` | pull | pull | identical (run 389) |
+| IDO 6.2 (03/09/96, `vince/6.2-mar09`) | 9099 `IRIS_Development_Option_6.2_814-0478-001.iso/dist/compiler_dev.{idb,sw}` (`dl_ido62`; sw `efe52f54bceacadf...`, idb `f64a502108f116c6...`); the same as1 (sum 22327) is in IRIX 6.2 CD1 and IDF 1.2-for-6.2 `compiler_eoe` | `5e51911fcdf10faddd84a43460cdc1cbacc9e4efcc8b76f38982b47e98c9e7ad` | pull | pull | identical; also with 6.2 uopt + ugen |
+| IRIX 6.3 / 6.4 kernel-config as1 (11/12/96, `ficussg-nov05`) | 8998 `SGI IRIX 6.3 Development Foundation.iso/dist/dist6.3/compiler_eoe.{idb,sw}`, `usr/cpu/sysgen/root/usr/lib/as1` (`dl_irix63eoe`; sw `c3ef7bd6819c50ca...`, idb `62309ae07153c56c...`) | `d097c567e8fb979fd1b5acd21142b32c6b7096de1aae42db8352fc17783508f5` | pull | pull | identical |
+| IDO 7.1 | the build's `tools/ido-static-recomp/build/7.1` | - | pull | pull | reference |
+| MIPSpro 7.2 (08/28/97) | 8995 `SGI IRIX 6.2 Development Foundation.iso/dist/compiler_dev.{idb,sw}` (`dl_idf62_72`; sw `cf921dc8473a4690...`, idb `07e823e8b2767441...`); the same as1 (sum 59770) is on the 6.3 / 6.4 DF CDs | `d7d5f324fd52ae991ac649c76f070ae965f791849f81723c391eff9765533207` | pull | pull | identical; also with 7.2 uopt + ugen |
+| MIPSpro 7.2.1 (03/16/98) | 9002 IRIX 6.4 DF 1.1 (`dl_idf64_721`, run 352); the same as1 (sum 18482) is on 6.2 / 6.3 DF 1.1 and the 6.5 DF | `373c1beec3e6668b39bdf4a677e43124e1e3022533a9acf132d8d7fa5a3a7645` | pull | pull | identical (first successful run, with the 7.4.4 libs) |
+| MIPSpro 7.2.1 back-end patch SG0002992 (05/18/98) | 9044 `SGI MIPSpro 7.2.1 Compiler Patches 1998 June.iso/dist/patchSG0002992.{idb,compiler_dev_sw}` (`dl_p2992`; sw `c6eff4029fc4c1ea...`, idb `b3424cf538b228d1...`) | `07169bcfab3444d9873a3435161c3ba8dcd39cd35a3c45ffc7d4a9db779c872e` | pull | pull | identical |
+| MIPSpro 7.3 (04/21/99) | 8956 `IRIX Development Foundation 1.2 for IRIX 6.2.img/dist/compiler_dev.{idb,sw}` (`dl_idf12_73`; sw `8ea0ae9b25b35992...`, idb `1e5f98106ac2e674...`); the same as1 (sum 34719) is on IDF 1.2 for 6.3 / 6.4 and the ftp.sgi.com tardists | `3af8d5bcf999f552cb62c1939cfd0a504c9ea3b6b2aeaef5cc3e6bc53445c5fc` | pull | pull | identical; also with 7.3 uopt + ugen |
+| MIPSpro 7.4.4 (11/04/02) | decomp.me mipspro7.4.4 (run 351) | `4870efa27a147b76...` | pull | pull | identical (run 389) |
+
+Also run (not an as1): the MIPSpro 7.1 / 7.2 o32 ugen patch SG0002899 (8948 `IRIX 6.4 Recommended-Required Patches
+April 1998.img/dist/6.4_MIPSpro_7.1_Compilers/patchSG0002899.*`, "o32 -O2 code breaks in alloca"; ugen sha256
+`d41433783974ce99044af3988a8d424f09588a29bf58c9186b7218b2b1f9c629`). Its `.G` through the 7.2 as1 gives the
+identical object.
+
+**Coverage.** Scanned for `usr/lib/as1`: every `compiler_dev` / `compiler_eoe` idb on discmaster (15 + 16: IDO 5.3,
+IDO 6.2, IDF 6.2 / 6.3 / 6.4 / 6.5 and their 1.1 / 1.2 respins, the ftp.sgi.com tardists) and every patch idb on its
+SGI patch CDs (1995 Mar / Jun / Sep / Dec, IRIX Patch 5.1.1.2, Supportfolio 5.3 / 6.3 / 6.4 and 6.2, 6.4
+Recommended April 1998, MIPSpro 7.2.1 Patches June 1998, MIPSpro C 7.2, MIPSpro F77 6.2; about 1260 idbs, plus 414 more in the archive.org EFS images below). Distinct
+as1 builds tested: the fifteen above. The only as1 patches anywhere are SG0000260 (5.3) and SG0002992 (7.2.1), plus
+decomp.me's SG0001118. Other compiler patches seen (not as1, not run): 5.2 uopt SG0000070 / SG0000321, 5.2 cfe
+SG0000040 / SG0000418, 5.3 uopt SG0000322 / SG0000871 / SG0001260, 5.3 cfe SG0000484 / SG0001078. Not found anywhere
+public: IDO 5.0 / 5.1, IDO 7.0, any IDO 7.1 as1 patch, any 5.3 as1 patch after SG0001118. archive.org holds the same
+DF / IDF CDs (`SGIIRIX62DevelopmentFoundation` etc.) and one MIPSpro 7.3 all-compiler CD (7.3 per its RELEASE.info;
+the ISO could not be browsed); nothing older. Three archive.org patch CDs that discmaster lacks are SGI EFS images
+(volume header `0BE5A941`), so they were downloaded whole and read with a small EFS reader
+(`tools/forensics/scripts/efs.py IMG ls|get`, `efsscan.py IMG` lists every idb that ships as1 / ugen / uopt / cfe /
+as0):
+- `sgi_IRIX_6.4_Recommended-Required_Patches_July_1998` (`dl_irix64rr9807/rr9807.img`, sha256
+  `6e5ed0c346f52b32246f7650f984af5ddc2833e7c2b756b526c3d04b0dfc5e5c`): 124 idbs, the only back-end patch is the
+  ugen SG0002899 above (in its 7.1 and 7.2 dirs);
+- `sgi_IRIX_6.3_and_6.4_Recommended-Required_Patches_October_1997` (`dl_irix6364rr9710/rr9710.img`,
+  `879aa8b5826722e7e4d251dcb38eca90ab08042044507d41cd639dbe89b858d3`): 136 idbs, none;
+- `IRIX62/SupportFolio_IRIX_6.2_Patches_Apr_1997_812-0603-003.iso` (`dl_sf62_9704/sf62_9704.iso`,
+  `da469ab38aeb9e1fd2d6648ee2274c7e8f41dcc7595b0841b75448fe29e2a56a`): 154 idbs, none.
+The N64 dev kit on archive.org (`N64DevKitFull`) is the PC (KMC) kit and has no IDO.
+
+**Verdict.** From IDO 5.2 (02/94) to MIPSpro 7.4.4 (11/02), every as1 build, both as1 patches included, makes the
+identical mgrproc object with 1824's pull. The only as1 without the pull (IDO 4.1) contradicts 3240 in the same
+object, and IDO 4.0.1 cannot read this binasm at all. The pull gate is a command-line option (kit CDLXXV) and no
+option removes 1824's pull alone. So a missing as1 is ruled out across everything SGI shipped that survives
+publicly. The only remaining doubt is an unreleased / internal SGI or Nintendo build that left no public trace.
