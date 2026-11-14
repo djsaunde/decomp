@@ -14817,7 +14817,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CDLXVI (agent-h 2026-11-13, run 380): **post0b 4FD00 tail: zdbug:6 shows every LR coloured UNCONSTRAINED in bitpos (ucode first-appearance) order, so the bb-1 fold phantom (166) always takes $v1 before the operator* `o` word (178); a named `V3 *n` bound BEFORE three `&d1` folds wins $v1 (picture A with a bb-2 `&s` fold: M-100 t0 + n1 v1 = target), but uopt copy-propagates n2 (var-only RHS) unless it is kept by the e1418 nrm load; a fold on a FRESH dead load (`&(gn() + 0 * *(int *)&pad64[0])[f2]`) blocks the propagation with zero code -> whole tail = target (nrm t0, n1 = n2 = v1); only K-116 t1 (target t2, needs one more bb-1 occupant) remains, 99.024 scratch, not committed**](#kit-cdlxvi-agent-h-run380) -- _post0b 4FD00 committed state still 99.781; ~3900 variants; tools /tmp/claude-1000/h380/t (g1..g13.py, tab.py, want.py)._
 - [kit CDLXVIII (agent-g 2026-11-13, run 382): **post0b 4BAF4 / 48AEC / 3B9C0 one-variable lever traced with zdbug:6. 4BAF4: the ext4 / receiver / MAX pool word (125, a3) and the named ctx (100) interfere in bb17/18, so ctx takes t0. The target's a3 group is the NAMED ctx at the pre-call / 0xEE / B3 / final sites, but direct ctx there raises its adjsave 3.0 -> 4.5 (a1, 96.38). A whole-function ctx makes the clip block exact but shifts self / spr / iz (best 98.83), and `me(me(ctx))` on 0xEE gives ctx a3 everywhere with the pool at t1 (99.18). 48AEC: the a2 group is one pool word (M-104: arm-1 mtx count + ctor this + it.a); a named prim count joins it (flat). 3B9C0: the &p base must stay uncoloured, and every non-pp spelling colours the lda constant (97.96)**](#kit-cdlxviii-agent-g-run382) -- _negative, no commit; ~2400 variants; tools /tmp/claude-1000/g382/t, /tmp/claude-1000/g382/35 (gen.py / hc.py)._
 - [kit CDLXIX (agent-h 2026-11-13, run 383): **post0b 4FD00 EXACT: zdbug:5 `forbidden:` for K-116 showed t2 held by the `&s` constant (-68), a zero-code constant LR (uses: the sums' dead bb-0 pool store + the bb-2 `&s` fold) live THROUGH bb 1; dropping that fold only re-colours &mid / 12 (M-100 still spans bb 2), and folds of a GLOBAL symbol address interleaved with the &d1 folds (`&d1, &G, &d1, &G` after n) make a second bb-1 phantom on t1 (sp-relative addresses never do; `0 * x` == `x * 0`; bb 1 holds ~2 fold statements) -> K-116 t2 / &mid t3 / 12 t4 = target; G = pinned gl_func_00000000 (U symbol, no reloc)**](#kit-cdlxix-agent-h-run383) -- _post0b 4FD00 99.781 -> EXACT 100 (2932bdb63, 1004 B); ~700 variants; tools /tmp/claude-1000/h383/t (s.py, run.sh, run36.sh, dif.py, g5b.py, g6..g10.py). 36694 (negative, ~200): the residual is EDG return-temp slots; lead: `operator-(const V3 &, V3 b)` with `p - n * dot` in one expression gives the target's fresh sub return slot (704 B, ~90)._
-- [kit CDLXX (agent-h 2026-11-13, run 384): **phantom-LR lever on cfe C and 7.2.1 edg: in cfe `0 * (int)&G` is real code (a CSE'd zero, +1-6 words in E68); the cfe zero-code phantom is a code-free CONSTANT test `if (v != K) {}` (FP or int; needs a positive save, three-plus uses; int ones hoist to the loop preheader); a uopt-coloured FPR leaves ugen's FP temp ring for the WHOLE function, so E2D0's arg4 cannot be a uopt f16 (two `if (lim != 2.5f) {}` put K2.5 on f14 and arg4 on f16, but the pre-call half loses f16: 119 words off); E68's colouring order from the instrumented uopt (`c334/u/out/cc` COL rows) is loop-weighted, count 12000 / dl 11000 / _n 5016 / m 2750, so the target's m v0 needs a shorter m LR, not an interferer; 8CD8's fold phantoms are real but its pool interferes with every chain temp over all their blocks, so only priority order can fix a2 / a3**](#kit-cdlxx-agent-h-run384) -- _negative, no commit; ~2200 variants; tools /tmp/claude-1000/h384/t (r.py, r2.py, lre.py, kd.py, od.py, g1..g12.py)._
+- [kit CDLXX (agent-h 2026-11-13, run 384): **phantom-LR lever on cfe C and 7.2.1 edg: in cfe `0 * (int)&G` is real code (a CSE'd zero, +1-6 words in E68); the cfe zero-code phantom is a code-free CONSTANT test `if (v != K) {}` (FP or int; needs a positive save, three-plus uses; int ones hoist to the loop preheader); a uopt-coloured FPR leaves ugen's FP temp ring for the WHOLE function, so E2D0's arg4 cannot be a uopt f16 (two `if (lim != 2.5f) {}` put K2.5 on f14 and arg4 on f16, but the pre-call half loses f16: 119 words off); E68's colouring order from the instrumented uopt (`c334/u/out/cc` COL rows) is loop-weighted, count 12000 / dl 11000 / _n 5016 / m 2750, so the target's m v0 needs a shorter m LR, not an interferer; 8CD8's fold phantoms are real but its pool interferes with every chain temp over all their blocks, so only priority order can fix a2 / a3; ONE call anywhere in a function makes `isconstrained` true for every LR (max-priority colouring), a call-free function colours in bitpos order; an instrumented ugen (`h384/u/out/cc`, POP / FREE trace) confirms the FP temp ring is an exact FIFO with usage counts**](#kit-cdlxx-agent-h-run384) -- _negative, no commit; ~2200 variants; tools /tmp/claude-1000/h384/t (r.py, r2.py, lre.py, kd.py, od.py, g1..g12.py)._
 - [kit CDXXXVIII (agent-c 2026-11-11, run 346): **NCC homes follow edg ALLOCATION order (function-scope named locals hoisted to the top even when declared late; then pooled temps; a by-value V3 temp at its first use; then late block-scoped locals): post0b 4FD00's every target sp offset (frame 136, V3 temp sp+20) = block-scoped p1 / p2 + `void add()` for the SV adds (-2 pool words) + two volatile pad words in the late block, but that basin's `move v0,zero` lands inside the second sum (98.13 < 98.645); the real residual is that the SECOND wrapper expansion binds its parameters through temps so its `+=` references get a fresh pool word (t0) -- a dead `int d` parameter fed an address (`wb(b, f2, s, (int)&s)`) + void adds makes its three references share one word and, with the block / pad recipe, leaves ONLY that word's colour (t0 vs v0) and its knock-ons (98.606, `c346/78/s/v11.cpp`); with the second sum's first read at accessor depth 0 s.set's reference goes back onto the first sum's word (v0) and only the two adds stay on t0: 98.685, committed; a BB split anywhere between the two sums costs ~20 points (984 B), so the temp cannot be allocated between them; dead top-of-function pool blocks move the temp with identical code up to 7 words; 4B620 / 42938: every agent-g alternative body's residual set is a superset of the committed core (42938's scissor-head fix costs 7 ctx-reload lines)**](#kit-cdxxxviii-agent-c-run346) -- _post0b 4FD00 NM 98.645 -> 98.685 (c9fb1c206, same length); ~4300 variants; tools c346/20/res.py (per-variant mismatch-line sets), c346/83/gen.py (sum / sum2 climb), c346/30/sub.py, c346/35/hc.py, c346/39/gen.py._
 - [kit CDXXXVII (agent-g 2026-11-11, run 345): **post0b 3B9C0's `addiu t9,sp,184` is a ugen-HELD lda: a `0 * (int)(X)` fold is a register zero only when the same text occurs twice (CSE before folding), which gives kit CDVIII's phantom with no new block (`(char *)&p + 0 * (int)(self->tris)`, paired with the ib line's self_al->tris fold); a carrier merges with its inner-loop web (adjsave 115 > fv 103.3, fv loses a3) until one counted fv use in the ok line; then every uopt colour of the qa / qb block is the target's (35 lines / 98.62 vs committed 34 / 99.32) but the t6..t9 FIFO model says ugen itself materialises the target's lda (held in t9 through qb, or emitted after qa's `sll` with no ib load temp) -- every source puts lda in a coloured const LR, folds it into `l.s 184(..)`, PRE-hoists / spills the cvt, or (assignment inside qa's address) gets linearised before the load; 48AEC: NCC `-O2 -g3` + an .mdebug reader (`mdeb.py`) lists every named home vfp-relative (gaps = unnamed edg temps); the target = i / j / k block-scoped + cmd in a nested block (cmd at vfp-96, same code) with only 2 temp words before load()'s g where pushQ costs 8; frame 352 is reachable but only by dropping lower-arm homes (best 97.60 < 97.73)**](#kit-cdxxxvii-agent-g-run345) -- _no gain; ~5800 variants; tools g345/t/v2.py, v3.py, dump.sh, slots.py, hs.py, mdeb.py (NCC `-g3` .mdebug home reader), g345/4/fifo.py._
 - [kit CDXXXVI (agent-c 2026-11-11, run 344): **edg inline-temp frame words, measured on a mini harness: an inline's parameters cost words only when its body expands a temp-needing inline (a parameter read more than once); a second top-level call of a wrapper with ONE such nested call is free, with two or more (set + add, set + o.set, add + add, any parameter types) the second call costs +2 words (+4 for `SV &operator+=`; set + add then saturates, the committed sum() keeps growing), regardless of wrapper nesting, braces, splits or commas between the calls; top-level statements always pool. post0b 4FD00's target frame = "second face sum free": a hand-written second sum gives param 20 / frame 136 and every sp offset of the target, but that basin's code tops out at 91.63 / 1004 B with the frame kept (dead mid.z store kept or &mid / 12 not hoisted, vertex pointers not v0); 36694 dump: zero LR adjsave 1.67 coloured after E (3.0) and px / py / pz (2.5), a named zero is constant-propagated and only adds a home; E68 distinct MGR loads, carriers and test grids flat**](#kit-cdxxxvi-agent-c-run344) -- _no gain; ~2600 variants; tools c344/sig.py, lay.py, 15 (mini harness), 53/cl.py._
@@ -65808,3 +65808,76 @@ Scratch `/tmp/claude-1000/h384/`. Tools in `t/`:_
 - Why it cannot work: the pool word (-156 = sp+372, adjsave 0.889, a3) interferes with every chain temp (-172 = sp+356
   first, 1.000, a2) over ALL of their blocks. An a2 phantom at a chain-temp site therefore also forbids a2 for the pool.
   Only the priority order (pool before -172) can give the target's a2 / a3.
+
+**5. New tool: an instrumented ugen that traces the FP temp ring (diagnosis only).**
+- `/tmp/claude-1000/h384/u/out/cc` is the dump toolchain with `ugen` rebuilt from
+  `tools/ido-static-recomp-dump/build/7.1/ugen.c` plus four `fprintf(stderr, ...)` probes (`u/ugen_i.c`):
+  - `POP r` in `get_free_fp_reg` (normal path, label `L43bba0`);
+  - `POPSPILL r` (the free list is empty: the head of the used list is spilled);
+  - `FREEC r` on every `free_fp_reg` call;
+  - `FREE r` when the register is really appended to the free list (`L43c58c`).
+- Register numbers are 32 + FPR (36 = f4 ... 50 = f18). Rebuild in about 2 s with
+  `gcc -std=c11 -O0 -fno-strict-aliasing -I<dump root> -w -o ugen ugen_i.c build/7.1/version_info.o build/7.1/libc_impl_71.o -lm`.
+- It confirms the ring model exactly on E2D0 (a replay with assert passes over all 66 pops):
+  - `get_free_fp_reg` removes the HEAD of the free list;
+  - `free_fp_reg` decrements a usage count and appends to the TAIL only at zero (`FREEC` with no `FREE` = a temp
+    with a second use pending, e.g. the v[1].y load reused by the reflection);
+  - uopt colours (f0 / f2 / f12 / f14) only show as `FREEC`.
+- No-keep E2D0 (`32/b.c`, no `if (arg4) {}`): the queue at the 0x9F8 pop is [f16 f6 f18 f8 f4 f10]. After its free it
+  is [f6 f18 f8 f4 f10 f16], so 1.0 gets f6, arg4 f18 and the sum f8. The target's 1.0 f8 / arg4 f16 / sum f18 needs
+  [f8 f16 f18 ...]. From the forced queue, that means popping all six registers and freeing f8, f16, f18 in that order
+  before 1.0, with no code in between. So kit CDXXXIV's conclusion stands under the real allocator.
+
+**6. 8CD8: a dead early `operator-` does not move the pool word's bitpos (`33` / `34`, 80 variants).**
+- The idea was a pool tie that the pool wins by LR id. `if (0) { XZ t0 = s->p84 - s->p90; }` (or `(void)(...)`, or
+  `a->pos - b->pos`) at the top of the body, crossed with dropping any of the four block adders (the two flag-arm
+  `if (1) {}` and the two `K1(s)` receivers).
+- Result: the dead block's temporaries take NEW pool words (frame 528 -> 552) and the operator- return slot keeps its
+  place after the first chain temp in bitpos (`685|-28` after `684|-204`, adjsave 0.923, a3). Best 94.1862.
+- Dropping the adders alone is byte-identical in the current basin (pool 0.923, not the 1.000 tie of kit CDLIV's older
+  body).
+
+**7. Why some functions colour in bitpos order and others by priority: ONE CALL switches the whole function.**
+- `isconstrained` (uopt, `f_isconstrained` in agent-c's `c334/u/uopt_i.c`) returns 1 for EVERY LR unless a global flag
+  (`0x1001c4fc`) is set. When it is set, it compares `lr+36` with the class's register count.
+- The flag starts at 1 and is cleared during a basic-block scan (around `L45d350`) when a block's last statement is in
+  an opcode set (a bitset at `0x10010db4`) without bit 2 of its +26 halfword, or is opcode 0x10 (`Ucia`, indirect
+  call) with bit 1 of its +24 byte.
+- Measured: `int f(int *p, int n)` with a sum / product loop prints 13 `assigned (unconstrained)` and 0 constrained.
+  The same body plus one `h();` call prints 0 unconstrained and 12 constrained (`38/a.c`, `38/b.c`).
+- So a function with any call colours every LR in MAX-priority order (E2D0, E68, 8CD8). A call-free function colours
+  in plain bitpos order (4FD00, kits CCCXL / CDLXVI). Bitpos / first-appearance levers only work in call-free bodies.
+  In bodies with calls, only adjsave (refs x loop weight / span) moves the order.
+- E68 with all appends NEXTB (`27/allB.c`) has no count LR, but the order stays dl 11000 (v0), _n 6615.6 (v1), a0 temp
+  4000, `_g` temps 3000, m 2750.25 (a2). m's weighted save is about 22000 over a span factor of 8; dl's about 33000
+  over 3. Beating dl by adding uses would take about 66 more inner-loop m references.
+- A variant with three distinct dl expressions per site (`36/v000`: count read through `E68_DL_I`, write through
+  `m->dl`, buf through a u32 view) does put m in v0, but each site gains a dl reload (756 B, 86.18). In the target, dl
+  (v1) is one CSE'd value for the count read / write and the buf address is reloaded (t6), so the target keeps a dl LR.
+- Which statements clear the flag (same probe body, `38/c..w`):
+  - every call form tested does: an empty `void h(void) {}` defined earlier in the file, a static one, a function
+    pointer, a call whose result is used, a conditional call;
+  - none of these does: a 5-case `switch`, an early `return`, an int division, a `double` conversion, a float -> int
+    conversion (all 13 unconstrained).
+- E68 `if (m) {}` tests inside the j loop (150 subsets of 10 sites, `39`) LOWER m's priority. Each test adds a block to
+  m's span faster than it adds weighted refs: six tests give m 2545.6 (cnt 11) against 2750.25 (cnt 8). The best
+  results are byte-identical to the base.
+- Also flat (best = base): 8CD8 with 200 mixed single-statement inserts at 1-3 of 29 sites (`if (1) {}`, `K1(s);`,
+  `K3(s);`, s / a / b / flag folds of two globals; `40`) and 512-way KR1 / K1 / `if (1) {}` removal subsets (200
+  sampled, `35`). E68 with two more 200-variant climbs that add the NEXTX / NEXTY / NEXTZ / NEXTW per-site forms
+  (`cl2`), on top of three plain climbs (`cl`).
+- 8CD8 "lower only the first chain temp" probe (`42`, 112 variants). The idea: put a KR1 dead block inside the -172
+  chain temp's span BEFORE the pool's first reference, with `KR1(XZ(b->pos))` as the operator- operand in dir / e,
+  crossed with the adder-drop subsets. The extra KR1 takes new pool words (the pool moves to -164, still 0.923, a3) and
+  the first chain temp stays at 1.000. That suggests its uncapped adjsave is above 1. Best 94.4894.
+- E68 phase 3 (the 4x-unrolled G_DL loop) has its own residual. Target: remainder a3, row base t0, count a2, arr
+  pointer a1, dl a0, buf v1. Ours (count in `uls` = LR M-176, which also spans phase 2): remainder a2, base a3, count t4.
+  - A block-local `s32 cc` count (`43` / `44`) gives the target's remainder a3 / base t0. But cc is then coloured
+    FIRST of the four inner temps (count v1, buf a0, dl a1, ptr a2), where the target colours count last (a2): 98.4848,
+    or 98.5441 with `padq[1]` for the frame.
+  - Keeping cc live past the col loop (`if (cc) {}`) moves it across the VTX call into s0 (97.2-97.5).
+  - Counting through `_n`, k2, j, vidx, ult, row, x, y or k, or with `count++` / NEXTB / NEXT forms (14, `45`): best
+    98.7484, below the committed uls form.
+  - Splitting the phase-3 append into statements with `if (1) {}` between the count read, the count store and the
+    packet (cc or uls, `padq[2]` / `padq[1]`; 20, `46`) adds a word (760 B, <= 97.71). The committed comma form
+    stays best.
