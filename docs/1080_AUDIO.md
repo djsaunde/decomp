@@ -193,8 +193,15 @@ floor, upStep, downStep. +0x20 timer[3] (snd_UpdateTimers). +0x30 `SndCueQueue q
 wr, rd, timer, script, mode, limit, pending, cmd, cue). Spell the Sym-1448 sites `SND_CUEQ(gSndCueQueues)`
 (converted: TriggerChannel8CueIfIdle, the TriggerChannel8Cue NM body). Spell the Bss-base sites
 `SND_CUEQ_AT_BASE(D_00000000)` (converted: RequestCue2 / Cue2Prio / SetPlayer2ChannelIO queue[2]).
-Not converted: the two NCC donors (TickChannel8Fade, SetChannel8Mode; module-local static), InitCueQueues /
-RequestCue (the strength-reduced `a0 * 100` index; untested), UpdateTimers, SoundObjRequestCue (NM).
+Not converted: the two NCC donors (TickChannel8Fade, SetChannel8Mode; module-local static).
+**Run 499 (agent-c, f7dd3f3b2):** +0x20..0x28 are not timers but snd_UpdateTimers' ramp floats
+(rampBase / rampValue / rampStep, its D_2D37C_f358s.. aliases now spell `SND_CUEQ_AT_BASE(alias).rampX`);
+InitCueQueues and RequestCue converted (`(SndCueQueue *)&gl_ref_00000368 + a0` keeps the strength-reduced
+stride). SoundObjRequestCue stays: its NM body grows 3 words typed, the match_imports port has its own
+context types. Renamed (d7872181c): snd_soundObjSetPan_00000B2C (SoundObj +0x10, sent as (x + 1) * 63.5
+for kind 0). Not renamed: snd_soundObjSetByte1D_00000B14 (+0x1D: Update sends 0x40 when 1, else 8, on
+change, as channel IO 0x0500FF00 / 0x0502xx00; meaning unknown) and the 0x2Dxxx..0x31xxx suffixed
+snd_* names (not reached).
 
 ## Next
 

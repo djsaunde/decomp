@@ -671,3 +671,63 @@ Next:
   (+0x170 / 0x174), FallingSnow, ShpNode_func_00008FA8, U64BGWall_ctor, EnvSettings_ctor.
 - NameEntry overlay structs (0x10C, mgr 0x174) and the Tim / Trk / Arc menu processes (not reached this run).
 - titproc: MainLogo / KeyMessage fields, GameDemoProcess_onQuitButton's menu object (+0x7C).
+
+### Run 499 (agent-c): uso-imports.py, SelectWin fields, genproc conversions
+
+Commits on agent-c (base 4b1c38048), each gated PASS (3288/3288, ROM identical; every touched .o
+identical by objdump -d -r -z in the matching and NON_MATCHING builds): b98c196e8 (tool
+`scripts/uso-imports.py`), 3af837898 (hand edit: select.h + genproc conversions), f7dd3f3b2 (hand
+edit: audio cue queues, 1080_AUDIO.md), d7872181c (**pure rename**: input_setRacePadsActive,
+snd_soundObjSetPan_00000B2C).
+
+- **scripts/uso-imports.py** (static, no emulator): `list` (module ids, Info / header / Text ROM),
+  `sites <module> [--type jal|hi|lo|word] [--imports] [--from M]`, `imports <module>`,
+  `callers <regex>`. Kind-1 Sym imports are resolved through the exporter's Sym table; both ends are
+  named from the build (tenshoe.map load addresses for uncompressed Text, the Yay0 block objects for
+  mgrproc / timproc / trkproc / genproc / game). Needs a full make. Version-6 module headers
+  (n64proc, gamegfx, character / data USOs) are not parsed.
+- **SelectWin fields:** transCountdown 0x3FC / transCountdownInit 0x404, zoomTimer 0x400 (state5's
+  auto-accept countdown), fadeProc 0x418 (Process_fadeOut by commitSelection), fadeTarget 0x484,
+  fovInit 0x494, stageLock 0x4B8 (board-stage accept; the other window's state7 reads it).
+  Macro `SELITEM(p)`.
+- **Census** (`*(T *)(p + 0xNN)`, h492 regex): timproc_uso_b5.c 532 -> 430; FW() sites 367 -> 333
+  (b5.c) and 98 -> 72 (_4118.c donor). Converter: /tmp/claude-1000/c499/py/conv2.py (agent-h's, plus
+  FW() matching, an EXCL offset set, and `*FIELD = x` treated as a store through the field).
+- Reverted (bytes changed): SelectWin_canScrollNext (t-regs), state8 (branch layout), the
+  SelectWin_update donor (f16 / f18). setSplit's base is not a SelectionMgr (its ctor-like body
+  stores the "MetalGuy" / "Panda" strings): not converted.
+
+Next (H1):
+- SelectWin 0x420..0x47C: SelectWin_init writes ~24 floats there (two camera / light blocks?);
+  0x408, 0x4D0, Parms reads (+0xD4 / 0xEC / 0x104). unk410 = ctor arg 8 (the object whose +4 is the
+  scene).
+- SelItem +0x25C / 0x260 / 0x264 / 0x294: inside the SelItem::Parms records (Parms at +0x2C,
+  records at +0x254 / +0x278 per SelectWin_display); the order copied into `view` differs per class.
+- The remaining genproc raw sites are mostly scene / light / VR-box builders (gen_createLights,
+  gen_createVRBox, gen_buildRoom), the list createItem bodies and BoardItem_drawStats.
+
+### Run 501 (agent-h): bootup environment objects, InputMgr.gameMode, PointsPopup
+
+Commits on agent-h (base db4f056b6; hand edits, no renames; gate PASS 3288/3288, ROM identical, every
+touched .o identical in the matching and NON_MATCHING builds): 0b34f0d64 (envobj.h + conversions),
+c0c8b013c (PointsPopup in game_libs.c).
+
+- **include/game/envobj.h** (new): U64BGWall (0x4C), EnvSettings (0x44: clipNear / clipFar go to the gfx
+  near / far +0xAC / +0xB0 when flags & 2; EnvSettings_load sets far 800 for game modes 6 / 11), FogItem
+  (0x90: ColourItem pos, "fin" 200 / "rng" 300 parms, `inside`), SnowItem (0x74), FallingSnow (0x134, built
+  into the snow template's +0x40; enabled 0x48), Tv1Tmpl (model 0x40, 3-state scroll / state / timer,
+  displayCount), SnowBCollider (0x178, PHYSICS layout), ShpNode (DNode: pos / orient saved to lastPos /
+  lastOrient, life 0x3D4). Cast macros ENVSET / FOGITEM / SNOWBCOL / SHPNODE.
+- **InputMgr +0x3C = gameMode** (input.h): game_init stores its arg 2 there and game_createMap /
+  EnvSettings_load read Sym 272 +0x3C; game_init's `scene` is the InputMgr (writes 0x3C, reads 0x134).
+- Vtable aliases fixed: MapProp_ctor = MNode_vtbl then MapProp_vtbl; EnvSettings_ctor = EnvSettings_vtbl
+  (the run-496 merge re-apply had put EnvSettings_vtbl on MapProp_ctor).
+- game_libs.c GlSlot3B1C dropped: PointsGadget_allocSlot_00003B1C uses PointsPopup.
+- Census before -> after: bootup_uso.c 246 -> 181 (others unchanged).
+- Gotcha: converting FogTmpl_create's (NM C) parm stores grows the NON_MATCHING bootup_uso.c.o .text tail by
+  8 bytes with every function identical; left raw.
+
+Next (not reached): GameFlow / SnowBoard app / Process / PauseMenu / QuitProcess / Fader, HUD gadget parms,
+the -O0 island objects; TreeTmpl / Tree (0xC8, +0x88 sub, +0xA0 copy of +0x5C); NameEntry overlays (0x10C,
+mgr 0x174) and Tim / Trk / Arc menu processes; game_libs.c / game_libs_tail.c raw sites; titproc MainLogo /
+KeyMessage; SnowBCollider_onContact's dead old decode (#ifdef BOOTUP_8BD4_OLD_DECODE).

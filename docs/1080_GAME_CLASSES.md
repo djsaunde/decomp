@@ -24,6 +24,7 @@
 - [16. Run 485: camera donors on fields, CamPath semantics, gates, anims.bin](#16-run-485-camera-donors-on-fields-campath-semantics-gates-animsbin)
 - [17. Run 488: RiderAnim states named, anims.bin decoded, AnimPlayer base](#17-run-488-rideranim-states-named-animsbin-decoded-animplayer-base)
 - [18. Run 494: RiderAnim helpers, TrickEntry, checkpoint.uso](#18-run-494-rideranim-helpers-trickentry-checkpointuso)
+- [19. Run 494b: game_uso.c raw offsets, sun.h, spin fields](#19-run-494b-gameusoc-raw-offsets-sunh-spin-fields)
 
 ---
 
@@ -766,3 +767,46 @@ model load reads, then re-scan for that encoding.
 (readTrickInput E5C8 NM body, stateTrickWindup / Hold, the 0x110 / 0x114 / 0x118 / 0x124..0x130 spin fields)
 on rideranim.h; name 0x110 (crash-recover flag) / 0x114 (trick phase: set 2 by stateTrickEnd); the SnowBoarder /
 SnowAI / camera / course `_func_` names.
+
+## 19. Run 494b: game_uso.c raw offsets, sun.h, spin fields
+
+agent-g run 494b (branch agent-g on 8ee4c61a9). Hand edits d8799a9f7 and 1b158be15; pure rename 453152058 (5
+names). All gated (PASS, 3288/3288, ROM identical); `objdump -d -r` plus .data / .rodata of every game_uso and
+bootup_uso object, in both the matching and the NON_MATCHING build, was identical to the pre-run baseline after each
+batch. Scratch: /tmp/claude-1000/g497/ (chk.sh = rebuild game_uso.c.o in both trees and diff against base/;
+region.py = census split into compiled / NM / dead code).
+
+**Census** (h492 census.py on game_uso.c): 715 -> 405. By region: compiled code outside NM wraps 192 -> 111,
+NON_MATCHING bodies 189 -> 43, dead history (#if 0 / OLD_DECODE: cam_updateView cfe body 133, SnowAI 8CD8 / 7C1C /
+steer old decodes, LensFlare BB8C old cfe) 251 unchanged. Most of the remaining compiled sites are comments and the
+SnowAI_ctor / Parms-ctor marshalling bodies (parm-node stores through `s0 + K` alloc cursors).
+
+**include/game/sun.h (new).** Sun (0x178): CamMNode base, sprite 0xC4 (Sprite: scaleX / scaleY = scl * fade,
+unkC0 = mat), fade 0xC8, visibility 0xCC, screenX / screenY 0xD0 / 0xD4, depthImage 0xD8, visCallback 0xDC
+(MemberCallback: vptr, obj, PMF), SunParms 0xEC (rot 0x104, ele 0x11C, scl 0x134, mat 0x14C int, col 0x164 four
+floats). Correction to section 12: the tag order is rot, ele (Data 0xD5C / 0xD60), so rot is value 0x104 and ele is
+0x11C. LensFlare (0x278): sprite 0xB4, LensFlareElem elems[10] 0xB8 (0x24: pos, color[4], size, image, flags (bit 0
+= squared fade), minDot), sun 0x220 (create arg 2), LensFlareParms 0x224 (fin 0x23C, dlv 0x254, dfm 0x26C), numElems
+0x274.
+
+**RiderAnim fields:** spinAnim 0xB0, slowCrash 0x110, trickPhase 0x114 (1 trick, 2 ended / init, 0 riding),
+jumpRepress 0x118, unk11C (f32, 1.0), lastStickDir 0x124, spinFrames 0x126, spinSteps 0x128, spinKind 0x12C (0 none,
+1 / 2 = 180 / 360 one way, 3 / 4 the other, 5 / 6 stick flick up / down), backHits 0x130. **RiderInput.stickDir
+0x7C** (pad_update: direction code 1..8 from the held direction bits 0x2000 up / 0x4000 right / 0x8000 down /
+0x10000 left). **SnowAI** savedMax / savedNts / savedDts / savedNbf 0x4C8..0x4D4.
+
+**Byte-safety notes.** rider->flags is u32: in RiderAnim_checkGroundSpin the u32 AND web became a different CSE
+expression from the original int one (fixed with an (s32) cast). RiderAnim_checkJump read rider both as int and as a
+pointer; a partial conversion changed regalloc, converting the whole function restored it. In SnowAI_scaleRiderMax a
+member read of savedMax swapped the two lwc1, so that read stays char-based. SnowChaseActorCam_update's cfe body is
+replaced by the 1DDC donor splice in both trees, so its conversion is compile-checked only.
+
+**Renames:** SnowBoarder_mirrorFlip_0000E124, SnowBoarder_createColliders_0000CCE0 (8 jal SnowBCollider_ctor),
+SnowAI_getRider_000097EC, RiderCam_update_00004948 / RiderCam_command_00004914.
+
+**Next:** the remaining weak names (SnowAI 6FA8 / 7C1C / 8CD8 / 9B88 / A0E8, SnowBoarder DDCC / DF04 / E014 (three
+SnowBRec3 slots from an imported table by mirror flag), E740 (a 2D u16 unswizzle, maybe not SnowBoarder),
+SnowBoarder_func_0000CAE8 (also used as a data placeholder in bootup_uso_tail4.c / TimeGadgetParms_ctor: rename by
+hand), the game_libs cam_func_0003xxxx); RiderAnim 0xD0..0xE0 (a third PMF at 0xD0, 0xD8 flag, 0xDC = 1 from init);
+the SnowAI_ctor / Parms ctors through parm-node casts; the node-list interpreter (ProcNodeList 0x55264) for the rider
+body-part registry slots (not started this run).

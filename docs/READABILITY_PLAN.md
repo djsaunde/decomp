@@ -557,6 +557,53 @@ The interior field symbols D_800195D4..D_800195E0 stay `D_` (separate reloc symb
     button table), 610 / 725 (GameFlow flags), the parm tag tables, and the Data-base string sites
     per function.
 
+#### 9.1.8 Run 498: section-base strings, string aliases, wave 4; census
+
+- **Audio hand conversions** (e1b824feb): AudioHeap_AllocPersistentSampleCacheEntry and AudioLoad_StartAsyncLoad
+  were single-object (Sym 1255) behind a `D` local / overlay macro; AudioHeap_InitMainPools touches three objects
+  and keeps three locals `ctx / heap / sizes` (one direct spelling lets IDO CSE gAudioHeap with gAudioHeapInitSizes
+  and breaks the match). New: `gAudioHeap` (Bss+0x4B0 Sym 1283, 0x34100 B), `gAudioHeapInitSizes` (Data+0x1CDD0
+  Sym 1284; +4 heapSize, +8 initPoolSize, +0xC permanentPoolSize).
+- **Section-base spelling** (tool 8ee801ffc, sites 2c8497e6f): gl_data.h now has `GL_RODATA(K)`, `GL_BSS(K)` and
+  `GL_DATA_STR(K, "text")` / `GL_RODATA_STR(K, "text")`. The literal is documentation (the macro drops it), and
+  `check` compares it with the ROM bytes at K, so the source reads
+  `osSyncPrintf(GL_DATA_STR(0x1E2C0, "read not aligned %d %x"), ...)`. `spell-base FILE.. --exclude RE --write`
+  respells plain `(char *)&D_00000000 + K` sites (proof rule as convert: every D_00000000 LO16 with that K is the same
+  section-base Sym; sites next to an operator that binds tighter than `+` are skipped). 312 sites: 221 + 6 strings
+  (debug / assert / error strings, file paths, hostio labels, class names, SnowBoarder_ctor's 41 parm tags), 41
+  GL_DATA, 19 GL_RODATA (float pools), 25 GL_BSS.
+  - **Owners:** run `spell-base` on your own functions. Left: bootup_uso.c and game_libs_tail.c (agent-h), Audio* / snd_*
+    (agent-c), the post0b gfx / anim / shape / window / light / CollShape functions (agent-b): 147 sites
+    (`spell-base` without `--exclude` lists them).
+- **String per-site aliases** (pure rename 74f858e80, check ff56e8dde): 184 aliases whose every site is one
+  section-base K at a string start are now `sStr_<words>_<K>`, `sFmt_<words>_<K>` (printf formats, specifiers
+  dropped) or `sTag_<tag>_<K>` (parm tags). `check` verifies K and, for sTag_, the exact text.
+- **Parm tag pools** (Data, 4-byte slots, each tag referenced individually; there are no tag *arrays*):
+  SnowBoarder_ctor 0x8748..0x8800 (41 tags: ied ifr ded dfr efr nbf nel dbf del res flx sta | hpf snf dsf icf ...
+  tch), TimeGadget::Parms 0xCAC0 / 0xCB74, CoolGadget::Parms 0xCC3C (rms xps yps lbx lby l2x l2y),
+  CourseGadget::Parms 0xCC70 (17), Colour::Parms 0xCF90 (32: <colour>P / <colour>E pairs + ctt cnm ccl clg),
+  DNode::Parms 0x223D0 (15: imp spd spl spw gvt suc vsc usc tsc cog unc dsc csc rad cts), item_registerTemplates
+  0x7E4C (item type tags t01 l01 lig gol st0 en1 en2 cam). Each is read as a word
+  (`*(s32 *)GL_DATA_STR(0x8748, "ied")`) and passed to the parm-entry ctor `(entry, list, tag, n)` (+0xC vtable,
+  +0x10 default). RoData+0x560 (hel hem bal ba2 chk gtr gtl cfr snw fog sn2 fo2 sn3 fo3) and the IP/IM bit-name
+  runs have no bootup.uso site. SnowAI and the camera parms are not in bootup.uso (game_uso, agent-g).
+- **Wave 4 names** (8a883369d, aliases renamed in e36860039): gCourseColl (451), gTriEdgeNext (1708, s16 {1,2,0}),
+  gMorphPolyShade (1925), gProcNodeList_41700 (557), gConsoleNode_3EF04 (805), gNodeDbgOut_3C140 (1675).
+  Not renamed: import_8001FFF0 (game_createMap's Sym 451 store) is also a timproc_uso_b5 symbol; bu_90cc_fz is in
+  bootup_uso.c; D_3B2EC_c / D_3B6A0_tbl / D_3BE1C_c / D_3B9C0_c (gTriEdgeNext) and D_4AFB4_s / gl_d_49dbc_t2
+  (gMorphPolyShade) are agent-b's.
+- **Census after run 498** (scratch /tmp/claude-1000/a498/py/progress.py; direct GL_* uses and string aliases count
+  as spelled):
+
+  | site kind | sites | named object | spelled with a name | raw on a named object |
+  |---|---|---|---|---|
+  | direct object relocs | 2753 | 2093 (76%) | 1595 (58%) | 498 (187 plain, 204 per-site alias, 107 donor splice) |
+  | section-base relocs | 1809 | n/a | 496 (27%, was 24) | |
+
+- **Next:** owners run `spell-base` / `convert`; rename the string aliases in bootup_uso.c (agent-h: 137 candidates,
+  /tmp/claude-1000/a498/acand.txt); RoData float pools as named constants where a function reads several; hand
+  conversions of the multi-object functions (DNode_solveContacts, SnowBoarder_*, MapProp_ctor / cam_create).
+
 ## 10. Worktree setup gotcha (Part 0)
 
 The fresh worktrees had **no `tools/ido-static-recomp` and no `baserom.z64` symlinks** (the
