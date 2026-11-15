@@ -18,6 +18,7 @@
 - [10. Run 456: proc API, TrickTable, RiderAnim, SnowAI path following](#10-run-456-proc-api-tricktable-rideranim-snowai-path-following)
 - [11. Run 461: SnowAI states, RiderAnim PMF state machine, SnowBoarder::Parms](#11-run-461-snowai-states-rideranim-pmf-state-machine-snowboarderparms)
 - [12. Run 465: naming coverage sweep, game.uso camera, Sun / LensFlare, ground handling](#12-run-465-naming-coverage-sweep-gameuso-camera-sun--lensflare-ground-handling)
+- [13. Run 470: DNode physics base, SnowBoarder orientation, input fields](#13-run-470-dnode-physics-base-snowboarder-orientation-input-fields)
 
 ---
 
@@ -435,3 +436,42 @@ contactNormal / contactDepth sums that SnowBCollider_onContact accumulates; `gro
 the axr / ayr / azr parms) and the three game_libs physics steps; convert the updateDyn / procColl NM bodies to
 the new fields; RiderAnim states: agent-b run 463 named the game_libs player (AnimPlayer_start 635D8,
 AnimPlayer_startIfChanged 6366C) on its branch, but the anim ids they pass still need an anims.bin index -> name map.
+
+## 13. Run 470: DNode physics base, SnowBoarder orientation, input fields
+
+agent-g run 470 (branch agent-g on 19f8e0b6f). Pure rename batch: 0d55dfaff (22 names). Hand edits: 89d8cdfa6
+(snowboarder.h + updateDyn / procColl reference bodies), 3cfd6de6b (input.h conversions). Every commit gated (PASS,
+ROM identical). The physics overview for port authors is docs/1080_PHYSICS.md.
+
+**DNode (game_libs, area E code; names agreed with agent-b).** SnowBoarder's first 0x3D4 bytes are the game_libs
+DNode ("DNode::Parms" at +0x108, tags imp spd spl spw gvt suc vsc usc tsc cog unc dsc csc rad cts at bootup Data
+0x223D0; game_libs Data offsets are bootup Data offsets). DNode_update = QNode_update, DNode_solveContacts,
+DNode_applyAccums_00065448, DNode_integrate_00064DEC (was integrateRot), DNode_resetAccums_00065148. Two 0x34-byte
+force accumulators (SnowBAccum: weight, pointSum, force, torque, origin): impulseAcc +0x294 feeds angVel 0x2FC (quat)
+and vel 0x318, moveAcc +0x2C8 feeds orient 0xCC and pos 0xB4 directly; DNode_addImpulseAt_00065250 /
+DNode_addMoveAt_000652D8 add a force at a world point (relative to worldCog 0x324); DNodeAccum_apply_00064388 /
+reset_00064170 / addForce_000641DC are the accumulator methods. The comments in game_libs_post1b.c that call gl
+0x62F64 "AnimPlayer_update" for DNode_init / 65250 / 652D8 are stale (dis.py resolves them to 65148 / 65B40 / 641DC);
+left for area E.
+
+**SnowBoarder_updateOrient (B75C).** See docs/1080_PHYSICS.md section 3. New snowboarder.h fields: edge / edgeSteer /
+edgeSlope (0x970..0x978, the old `spin` Vec3), localUp 0xA04, shake 0xA5C, spinHold 0xA6C, airSpin 0xA70, unkA18 (air
+trick rotation gate), the DNode part, and procColl's contact block (prevPos, impactScale, penetration, impactVel,
+lastContactNormal, noGroundFrames, airFrames, groundNormal, groundPlaneD, onGround, groundGentle, groundColor, bump*).
+0x808 is a sound object (`sound`), 0x850 a light (procColl eases unk91C and passes it to light_setF124_000550A0).
+The NCC donor of B75C (bootup_uso_ncc_B75C.cpp) is still raw offsets: it compiles without -I, would need the header
+by relative path and a non-C++ guard on the asserts (as done for input.h).
+
+**Bootup open functions, all named:** boot_staticInit_00006204, map_addEntry_00007204, MemberCallback_invoke_00007BF4,
+SnowBoarder_yawPiOver_0000E270, GameFlow_releaseFiles_00012110, settings_stepSequence_000122C4, settings_get8_000127CC /
+settings_set8_00012818, TimeGadgetParms_set104_00014004 (class from neighbours only), gadget_decodeStringE4_00014010 /
+gadget_decodeStringB4_00014598, gadget_slideStep_000144F4. Only the 26 reloc-base `func_` names remain in bootup.
+
+**Input (agent-h include/game/input.h).** input_checkPressed / Held / Released (NCC donor, includes the header by
+relative path), input_addPad, replay_addInput, input_setActivePad / clearActivePad now use InputMgr / InputPad. input.h's
+assert typedefs are under `#ifndef __cplusplus` (edg rejects them).
+
+**Next:** RiderAnim states by anim id; the SnowBChild class (+0x3EC) methods; SnowBCollider_onContact (NCC 8BD4) and
+SnowBCollider_func_0000E2D0 (edge-grip response) on fields; 0x8B8 / 0x8DC / 0x9E8..0x9F4 / 0xA40 / 0xA44 (display);
+the B75C / C234 NCC donors on fields; groundFlags bits 1 and 0x400.
+

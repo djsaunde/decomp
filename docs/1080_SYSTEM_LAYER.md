@@ -306,3 +306,10 @@ with the address kept (`Backup_func_`, `RaceTracker_func_`, `gfx_func_`, `coll_f
 **Next.** Read the result sprites (ids 0x60000-0x6000B) to name results 2-5; the Backup record helpers
 (0x9978-0xB958) need the BackupCourse/Arcade/Ghost structs; the `*_func_<addr>` range names in post0b
 0x42000-0x4C000 (gfx) and 0x39EE4-0x3CF94 (coll) are the next refinement targets.
+
+## 11. Run 469 (agent-c): race structs
+
+include/gdl/race.h now types RaceProcess (0x6A8, the section 10 vtable as `RaceProcessVt`), RaceTracker
+(0xB8; the HUD object, so `Hud` = `RaceTracker`), RaceEntry (0x60) and TimRace (0x730). The session object
+at RaceProcess +0x528 / RaceTracker +0x4C is the record session from Backup_openSession. Field list,
+conversions and what is left: 1080_MODES.md "Run 469".

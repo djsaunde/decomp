@@ -1,6 +1,7 @@
 # 1080 Snowboarding: the USO module format and the kernel loader
 
 > agent-a run 442, 2026-11-15, 1080 branch agent-a (commits a3d9ef8a0, 1157dafde, bddb039a8).
+> Updated by agent-a run 467 (commits 055f71ba0, 4c7809507): no kernel placeholders remain. See section 12.
 > Sources: the kernel loader in `src/kernel/kernel_000*.c` (names below are the run-442 names),
 > the kernel string/section tables in `src/kernel/kernel_026.c`, `include/uso.h`,
 > `scripts/uso-sym-oracle.py` (a working parser) and ROM dumps. Where a field is inferred
@@ -18,6 +19,7 @@
 - [9. Loader flow](#9-loader-flow)
 - [10. Function map](#10-function-map)
 - [11. Open questions](#11-open-questions)
+- [12. Kernel naming: k_ aliases and the libultra/rmon map](#12-kernel-naming-k_-aliases-and-the-libultrarmon-map)
 
 ---
 
@@ -34,6 +36,8 @@ The kernel is numbered (linked, `func_8000XXXX`) from 0x80000000 but runs at **l
 - `scripts/rename-symbol.py` therefore renames only the definition side of a kernel symbol, and keeps
   call/address references spelled as the old name, pinned as an absolute alias in
   `undefined_syms_auto.txt`. See the tool's docstring.
+- So once a plain SDK name is in use as such an alias pin (`__ull_div = 0x80002E78`), the real
+  definition cannot take it. It gets the `k_` prefix instead (`k___ull_div`); see section 12.
 
 ## 2. ROM filesystem: devices and files
 
@@ -238,7 +242,8 @@ See N64_FORENSICS.md, "game_libs JAL targets", and READABILITY_PLAN section 9 ru
 
 | link addr | name | role |
 |---|---|---|
-| 0x800000B0 | func_800000B0 | uso_alloc (bump allocator; not yet renamed, it also has a match_imports copy) |
+| 0x80000000 / 0x60 | kernel_entrypoint / kernel_boot | entry stub (clear BSS, sp, jump to runtime 0x80000460) / uso_init + uso_load(boot USO) + uso_callEntry |
+| 0x800000B0 | uso_alloc | bump allocator (gUsoCtx slots +48/+52) |
 | 0x80000118 | uso_syncCache | D-cache writeback, I/D-cache invalidate |
 | 0x80000168 | uso_strcmp | 0 when equal |
 | 0x800001DC / 0x20C / 0x260 | uso_strcpy / uso_findSlash / uso_splitPath | path helpers |
@@ -246,20 +251,25 @@ See N64_FORENSICS.md, "game_libs JAL targets", and READABILITY_PLAN section 9 ru
 | 0x80000474 / 0x480 / 0x4B8 | fs_setDeviceTable / fs_initFile / fs_openDevice | devices |
 | 0x8000058C / 0x598 / 0x5DC / 0x688 | fs_close / uso_bcopy / fs_read / fs_skip | |
 | 0x80000698 / 0x734 | uso_file_open / uso_skip_to_end | Info record / skip to End |
+| 0x800007C4 | uso_returnOne_800007C4 | returns 1, no caller found |
 | 0x800007D4 / 0x85C | uso_printModules / uso_printSlots | debug |
 | 0x800008F0 / 0x9EC | uso_unload / uso_load | |
 | 0x80000C88 / 0xD2C / 0xE58 / 0xE8C | uso_callEntry / uso_getModuleName / uso_printVersion / uso_addrToModule | |
 | 0x800010B4 / 0x10E8 / 0x1184 | uso_getContext / uso_printMemStats / uso_clearMemStats | |
+| 0x800010C0 / 0x10CC | uso_nop_800010C0 / uso_nullPrintf | gUsoCtx stubs: slot +144 / slots +132,+136,+140 (varargs no-op) |
 | 0x800011D0 / 0x12AC / 0x12BC | uso_find_file / uso_getErrno / fs_openFile | |
 | 0x80001348 / 0x1414 / 0x1460 / 0x1470 / 0x1494 | uso_findDataSection / fs_readChecked / fs_tell / fs_seek / fs_closeFile | |
+| 0x8000149C | uso_returnZeroF_8000149C | returns 0.0f, gUsoCtx slot +148 |
 | 0x800014A8 / 0x1594 | uso_scanRom / uso_init | |
+| 0x800017B4 | uso_nop_800017B4 | no caller found |
 | 0x800017BC / 0x18B0 | uso_allocSlot / uso_initSlot | |
 | 0x800018F0 / 0x1ADC | uso_unrelocate / uso_relocate | |
 | 0x80001CF4 / 0x1DD0 | uso_relocateSections / uso_unrelocateSections | |
 | 0x80001EC8 | uso_loadSections | |
-| 0x800021A4 | func_800021A4 | uso_bindLocalSyms (not yet renamed, match_imports copy) |
+| 0x800021A4 | uso_bindLocalSyms | local Sym entries: type 2/4 add the segment base, 3 marks; sets bit 8 |
 | 0x80002250 / 0x235C | uso_bindImports / uso_unbindImports | |
-| 0x800023E0 | func_800023E0 | Yay0 decoder + osSetIntMask (handwritten .s) |
+| 0x800023E0 | uso_decodeYay0 | Yay0 decoder; osSetIntMask (0x80002488) is an interior label (handwritten .s) |
+| 0x800029A0 | kernel_nop_800029A0 | no-op at the end of kernel_000 |
 
 ## 11. Open questions
 
@@ -267,3 +277,70 @@ See N64_FORENSICS.md, "game_libs JAL targets", and READABILITY_PLAN section 9 ru
 - EntrySym / BinaryDataSection / DiskInfo payloads.
 - The Sym hash (word1 low half, word3).
 - `D_80012C70[]` per-device state beyond the heap range.
+
+## 12. Kernel naming: k_ aliases and the libultra/rmon map
+
+(agent-a run 467.) Every kernel function now has a real name. Rules:
+
+- **`k_<SDK name>`**: the kernel definition of an SDK function whose plain name is already
+  used as a +0x400 runtime call alias (section 1). Those aliases stand for the function
+  0x400 *below* their value, so the plain name at call sites is the right one; only the
+  definition is prefixed. There are 12 of them:
+  - `k___ull_rshift`, `k___ull_rem`, `k___ull_div`, `k___ll_lshift`, `k___ll_rem`,
+    `k___ll_div`, `k___ll_mul`, `k___ull_divremi`, `k___ll_mod`, `k___ll_rshift`
+    (libc/ll.c, 0x80002A10-0x80002CA4; game_libs has its own `gl___*` copies);
+  - `k___osResetGlobalIntMask` (0x80006250);
+  - `k___rmonSendHeader` (0x80006F60).
+
+  Rule: before using a plain SDK name for a kernel definition, grep it in
+  `undefined_syms_auto.txt`.
+- **SDK file-statics** get a file prefix, so that names stay unique ROM-wide: `rmon_`
+  (NotImplemented, strcpy, SetTempBreakpoint, ClearTempBreakpoint, IsJump, LoadStoreSU/VU,
+  SetUpForRCPop, CleanupFromRCPop), `kdebug_` (kdebugserver.c string_to_u32, send_packet,
+  clear_IP6, send) and `pimgr_ramromMain`. Statics that already start with `rmon` keep
+  their own names (rmonMain, rmonSendBreakMessage, rmonFindFaultedThreads, rmonGetRcpRegister).
+- **Handwritten splat pieces**: `__osProbeTLB_part2`, `exceptasm_rdbFront` (0x80002E78: the
+  tail of the preamble, a 2nd vector stub and the rdb/KMC front end), and
+  `exceptasm_rdbStore_part2` / `_part3`.
+
+**rmon is linked** (the debug libultra). Its source is `references/ultralib/src/rmon`
+(decompals/ultralib, cloned 2026-11-15). The rmoncmds.c `dispatchTable` is kernel data
+at link **0x8000A0A0** (54 runtime pointers; subtract 0x400). It fixes these names:
+
+| idx | name | link | idx | name | link |
+|---|---|---|---|---|---|
+| 0 | __rmonLoadProgram | 0x80006C58 | 14 | __rmonGetGRegisters | 0x80008E98 |
+| 1 | __rmonListProcesses | 0x80006BD8 | 15 | __rmonSetGRegisters | 0x80008FF4 |
+| 2 | __rmonGetExeName | 0x80006C64 | 16 | __rmonGetFRegisters | 0x80009148 (real start 0x80009144) |
+| 3 | __rmonListThreads | 0x80007564 | 17 | __rmonSetFRegisters | 0x800091FC |
+| 4 | __rmonThreadStatus | 0x8000798C | 18 | __rmonReadMem | 0x80006790 |
+| 6 | __rmonStopThread | 0x800079F4 | 19 | __rmonWriteMem | 0x8000698C |
+| 7 | __rmonRunThread | 0x80007B3C | 20 | __rmonSetBreak | 0x80008264 |
+| 10 | __rmonSetFault | 0x80007EA0 | 21 | __rmonClearBreak | 0x80008430 |
+| 12 | __rmonGetRegionCount | 0x80006D0C | 22 | __rmonListBreak | 0x80008424 |
+| 13 | __rmonGetRegions | 0x80006D7C | 30 | __rmonSetComm | 0x80007FE8 |
+| 49-52 | __rmonGet/SetSRegs, __rmonGet/SetVRegs | 0x80009314 / 9474 / 9584 / 969C | other | rmon_NotImplemented | 0x800065B0 |
+
+The rest of rmon follows the ultralib file order. Link address ranges:
+- rmonsio 0x800050C0-0x800052B4 (SendFault, IOflush, IOputw, IOhandler);
+- rmoncmds 0x800065B0 (+ __rmonExecute 0x800065BC);
+- rmonmem 0x80006650-0x80006F5C;
+- rmonmain 0x80006F60-0x80007354 (SendHeader, SendReply, SendData, rmonMain);
+- rmontask 0x80007360-0x80007DCC (__rmonMaskIdleThreadInts at 0x80007360: an earlier run had
+  named it `__rmonSendHeader`, the call-site meaning);
+- rmonmisc 0x80007EA0-0x8000802C;
+- rmonrcp.s 0x80008030 (RCPrunning) and 0x80008054 (__rmonIdleRCP; StepRCP 0x80008098 and
+  RunRCP 0x800080AC are interior labels);
+- rmonbrk 0x800080D0-0x80008BAC;
+- rmonregs 0x80008C30-0x80009824.
+
+rdb / host I/O:
+- `__osRdbSend` 0x800062F0;
+- `osInitRdb` 0x800045C0;
+- kdebugserver.c 0x800047B0-0x80004AB4;
+- `osReadHost` 0x80004B10.
+
+Other libultra:
+- `osPiRawReadIo` 0x800029B0 (2.0I name; ultralib spells it `__osPiRawReadIo`);
+- `__osLeoResume` 0x800044CC (leointerrupt.c static).
+

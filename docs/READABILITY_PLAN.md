@@ -92,10 +92,10 @@ char scan). **[guess]** marks hypotheses to verify with call graphs.
 |---|---|---|
 | 0x80000000-0x800000AC | entry / boot stub | kernel_000_entry |
 | 0x800000B0-0x800029A0 | **USO loader + ROM filesystem** (kernel_000*.c): file open/seek (uso_file_open, uso_skip_to_end), uso_find_file (0x9C-byte FS entries), the module slot table D_800130A0[135] x 0x9C, D_80012D60[] live modules, the reloc applier (func_800018F0 = 12-byte reloc record scan) | [known] + kernel_026 strings "USO: loading %s", "USO: unloading %s", "unkown reloc type %x", "USO: UnCompress %d to %d", "cross referenced symbol section not loaded", "USO Version: %s" = "3.1" |
-| 0x800029B0-0x80002CA4 | small helpers (kernel_045/056) | [guess] |
+| 0x800029B0-0x80002CA4 | osPiRawReadIo (0x800029B0) + libc/ll.c 64-bit helpers `k___ull_rshift`..`k___ll_rshift` (kernel_045/056) | [known] (run 467) |
 | 0x80002CD0-0x800044CC | libultra core: exception preamble/handler (0x80002E70, 0x800031F0), thread queue (__osEnqueueThread, __osPopThread, __osDispatchThread), osInitialize @0x80002530 | [known] (comments) |
 | 0x800044CC-0x8000A110 | libultra: Leo/disk (osLeoDiskInit 0x80004E50), PI/EPI DMA, osCreateThread 0x80005B10, osCreateMesgQueue 0x800053D0, osRecvMesg/osSendMesg, __osDevMgrMain 0x80005C50, cache ops, TLB, osStartThread 0x8000A110 | [known] |
-| 0x80008424-0x80009850 | **rmon** (libultra remote debugger: __rmonSendHeader, register dumps, disassembler switch fns 0x8000858C/0x80001EC8) | [known] |
+| 0x800050C0-0x80009824 (interleaved with libultra) | **rmon** (debug libultra remote monitor; ultralib src/rmon, `references/ultralib`). The rmoncmds dispatchTable is at link 0x8000A0A0. Full map: USO_FORMAT.md section 12. Also rdb/kdebugserver/osReadHost (0x800045C0-0x80004BDC) and __osRdbSend 0x800062F0 | [known] (run 467: 0 kernel placeholders left) |
 | 0x80009E60-0x80009FD0 | kernel_026: USO loader tables + printf strings (data) | [known] |
 
 ### game_libs = the Text section of bootup.uso (ROM 0xDE50D8; USO section offset = splat + 0x1466C)
@@ -181,6 +181,7 @@ plain libultra (`__osSetFpcCsr`, `osPfsInitPak`) and the OoT audio vocabulary in
 | code | convention | examples |
 |---|---|---|
 | libultra / libc / gu / libgcc | exact SDK name | `osSendMesg`, `__osPfsGetStatus`, `guMtxF2L`, `memcpy`, `__ull_div` |
+| kernel definition whose plain SDK name is taken by a +0x400 runtime call-alias pin (`__ull_div = 0x80002E78` in undefined_syms_auto.txt) | `k_` prefix on the definition only: `k___ull_div`, `k___osResetGlobalIntMask`, `k___rmonSendHeader`. Call sites keep the plain name, which is correct there (USO_FORMAT.md sections 1 and 12) | |
 | **duplicate** libultra copies (kernel and game_libs each statically link one) | kernel keeps the plain name (precedent: kernel `__osSetFpcCsr`); the game_libs copy gets the **`gl_` prefix** (`gl_osSendMesg`). The tool refuses a plain name that already exists, so check the kernel list (section 2) first | kernel `osCreateThread` (0x80005B10); game_libs `gl_osCreateMesgQueue` |
 | OoT-derived audio driver | OoT decomp names verbatim (`AudioSynth_ProcessNote`, `AudioLoad_...`, `gAudioCtx`) | |
 | 1080 / libgdl C code | `<subsys>_<verbObject>` lowerCamel: `uso_` (loader), `fs_` (ROM filesystem), `heap_`, `dma_`, `gfx_`, `snd_`, `pad_`, `cam_`, `phys_`, `coll_`, `anim_`, `math_`, `gui_`, `replay_`, `save_`, `game_`, `<mode>_` (`h2h_`, `arc_`, `tim_`, `trk_`, `tit_`, `edd_`, `mgr_`) | `uso_findFile` (existing `uso_find_file` may stay), `heap_alloc`, `gfx_startFrame` |

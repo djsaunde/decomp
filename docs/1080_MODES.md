@@ -103,6 +103,49 @@ input_* bodies (agent-g's files) can take `InputMgr *` (input_checkPressed/Held/
 bootup_uso_ncc_11E00.cpp, input_addPad / replay_addInput in o0_11C70.c, input_setActivePad /
 input_clearActivePad in o0_1207C.c).
 
+**Run 471 (agent-h, branch agent-h on 19f8e0b6f).** eeead0f35 (56 names, pure rename), b67b6884a
+(38 names, pure rename), 99f0e46c8 (hand edit: input.h + conversions). Gate PASS each.
+- **Race overrides = base slot names.** Every Tim/Trk/ARC/MGR/H2HRaceProcess and GameDemoProcess override
+  is now `<Class>_<base slot name>` (agent-a's RaceProcess table, 1080_SYSTEM_LAYER.md s10), no address
+  suffix. Replaced role guesses: setupRace / raceOver / checkRecord -> onRaceOver (20), onFinish ->
+  onEndTimerDone (21), runPauseRow / checkFade -> onPauseSelect (25), quit -> onQuitButton (26),
+  drawOverlay -> drawIntro (29), drawHud -> drawResultExtra (30), release -> onCountdownStart (17),
+  startHud / isHudBusy / mgr onResult -> endTimerEnabled (18), setMenuState -> onTimeoutExit (22),
+  showMessage / newReplay -> onTimeout (23), unreachable -> onAltEndTimerDone (24), Trk showHud ->
+  onPause (16), Trk startHud / arc onResult -> onLeave (27). The mgr vfuncs became onEndRaceAlt,
+  drawHud, updateSub0-3, onMessageBounce. **agent-c's TimRace / TrkRace (timproc_b1 / b3) were renamed
+  in the same batch** (with TrkDataManager slot 8 = loadData and the Tim/Trk pause / menu change rows
+  below), so H1's role names for those slots are superseded.
+- **Change-stage rows.** `app_launchGenProc(app, players, 7, k)`: 7 goes to SelectWin->stageMask (0x3C0),
+  k to SelectWin->stageBit (0x3C8), the stage the select screen opens on (1 character, 2 board,
+  4 course). The procMain jump tables give the states: h2h 1-4 = 1/1/2/4, arc 0-2 = 1/1/2, tim / trk
+  0-3 = 1/1/2/4. So the old exit rows are `*ChangeCharacter / *ChangeBoard / *ChangeCourse`
+  (h2h_pauseChange*, ARCMenuProcess_rowChange*, Tim/TrkRace_pauseChange*, Tim/TrkMenu_rowChange*).
+- **h2h results.** `h2h_winByFinish(race, p)` (wins[p]++; result 0 if p is 0, else 3) runs when one
+  rider's finish flag is set (both at once = endResult2, a draw, winner -1). `h2h_winByRetire(race,
+  p)` (wins[p]++; result 5 if p is 0, else 4) runs when the other rider's meter (gadget +200) is <= 0,
+  and from the pause row `h2h_pauseForfeit` (p = pausing player 0x6B4 ^ 1). After the race,
+  onRaceOver runs `h2h_startReplay` (RaceProcess_restart, both pads pad_startPlay(replayData[p],
+  replayLen[p]), timeout (u16)(min len + 0xF)) behind the post-race menu; onTimeout loops it.
+  `mgr_startReplay` is its 1-player twin; `mgr_pauseRetire` ends the race with result 4 (endResult4_6F90).
+- **Helpers named:** arc_drawResultScore (slots 30 / 31 share it), Arc/MgrNameEntry_drawBlinkBanner,
+  arc_drawMenuBackground (5x7 tiles), mgr_drawResults, mgr_drawSpriteStack, mgr_switchToView2 (moves
+  window flags 8|4 from +0x51C to +0x520), mgr_restartForEnding, mgr_DataManager_display, edd_procMain
+  (empty), edd_EditorsProcess_handleInput, tit_open/closeSession, n64 / edd nops.
+- **include/game/input.h**: InputMgr +0x138 dataMgr, +0x148 backup, +0x14C session, +0x168
+  replayData[2], +0x170 replayLen[2], +0x190 fader (asserted). `INPUT_MGR(sym)` views a shared
+  placeholder (`extern char D_00000000`, import_00020098, import_80020228) as InputMgr with the same
+  symbol and offset. 43 sites converted in h2h / tit / mgr / arc after checking each function's
+  relocation targets bootup Bss 0xF8; tit_nextDemo's `backup + 4` and GameDemoProcess_ctor's chained
+  dataMgr store were left raw.
+
+**Next (H2).** Placeholders left: only the Arc/Mgr/Tim/Trk NameEntry slots 17 / 18 (nameent.uso
+overrides; need nameent's base roles, module 33 has no code segment). Once agent-c's include/gdl/race.h
+lands: retype `dataMgr` (RaceTracker / DataManager) and move the race overrides onto RaceProcess fields
+(0x4E0 phase, 0x4F4 timeout, 0x4F8 result, 0x6A8 DataManager, 0x6B4 pausing player, 0x6B8 winner).
+InputMgr +0x134 (Bss 0x22C, a game object: +0xC4 / +0xCC per-player, +0x108 active window) and +0x154
+(unlock ptr) still raw. tim / trk Fader uses (agent-c's TUs) can take INPUT_MGR too.
+
 ## H1. timproc (time attack), trkproc (trick mode), genproc (select screens) (agent-c run 459)
 
 agent-c run 459, branch agent-c on 8239918e8. Pure rename commits 60938d18f (timproc + trkproc, 119 names)
@@ -198,7 +241,8 @@ genproc is the shared "pick character / board / course / level" step. Its classe
 ### Next
 
 - The race-object base (game_libs 0x6900, vtbl slots 12-33) is area D's. Naming its slots would turn
-  the `TimRace_*` role names into confirmed overrides.
+  the `TimRace_*` role names into confirmed overrides. (Done: agent-a run 462 named the base, agent-h
+  run 471 renamed the TimRace / TrkRace overrides to the base slot names; see H2 run 471.)
 - The gl 8AE4 / 8E48 / 9100 launchers (area D o0_8AE4) take (this, 1, 7, flags). Confirm that 8AE4 loads genproc.
 - The genproc import list of bootup is in 1080_GAME_CLASSES.md section 8 (BGBox_ctor, U64BGWall_ctor,
   2060, 2C94, 34E8, B1B4, B49C).
@@ -248,3 +292,55 @@ Board 0x20), and 18 / 19 are Character animation changes.
 - Slots 13 / 14 / 17-19 / 24; SelectWin_func_8D90 / 894C / 8C44 / 8D38 (save-flag bit scan) / 38B0 / 396C / 3A28.
 - Area 3 of run 464 was not reached: the 25 non-audio placeholders in game_libs_post.c and about 20
   kernel placeholders (kernel_056 / kernel_000, rmon).
+
+### Run 469 (agent-c): include/gdl/race.h, race data model
+
+Commits on agent-c (base 19f8e0b6f), all hand edits, each gated PASS (3288/3288, objects identical):
+4902c9a23 (race.h + hud.h), 0e3ef6fc4 (game_libs.c RaceProcess conversions), 5291c3b6d (game_libs_tail.c
+RaceTracker conversions), 4611aed41 (TimRace + timproc / trkproc conversions). No renames.
+
+**include/gdl/race.h** (offsets and sizes asserted):
+- `RaceProcess` 0x6A8 (size = where TimRace's own fields start). Node head (name 0x0C = the init arg
+  "TIMRace Process", children 0x10), `vt` 0x28 (`RaceProcessVt`: slot N fn at vtbl + 0xC + 8N, `RACEVT_*`
+  indices for 14 / 15 / 28 / 29 / 32 / 37), parms 0x50 (loadData), colour[6] 0x68..0x11C (sprite colour
+  pairs), then the race state: subState 0x4D8, raceState 0x4DC (`RACE_STATE_*`), phase 0x4E0
+  (`RACE_PHASE_*`), timer 0x4E4, countStep 0x4E8, flags 0x4F0 (`RACEF_*`), timeout 0x4F4, result 0x4F8
+  (`RACE_RESULT_*`), leave 0x500, leftOnce 0x510, endCounter 0x518, replayCam / savedCam 0x51C / 0x520,
+  session 0x528, scaleX/Y 0x534/0x538, countAlpha 0x540, msgAlpha / msgX / msgY / msgVel / msgFloor
+  0x544-0x554, spriteSet 0x568, handler 0x56C, sprites[12] 0x588 (RaceSprite 0x18; slot order = ids
+  0x60000, 3, 4, 5, 1, 2, 6, 7, B, 8, 9, A).
+- `TimRace` 0x730 (tim and trk identical): race, dataManager 0x6A8, finalTime 0x6AC, recordRank 0x6B0,
+  labels[5] 0x6B4, recordFade 0x72C.
+- `RaceTracker` 0xB8 (RaceTracker_ctor alloc; vtable Data+0xD678). **It is the HUD object**: `Hud` in
+  include/gdl/hud.h is now `typedef RaceTracker Hud`, because RaceTracker_update dispatches the hud gadget
+  slots 0x70 / 0x78 / 0x8C / 0x98 with their value pointers. Fields: active 0x2C, elapsed 0x30 (ms),
+  timeLimit 0x34 (600000), course floats 0x38-0x40, entries 0x44, numEntries 0x48, session 0x4C, the gadget
+  slots 0x54-0x9C, score 0xA0, bonus 0xA4, hudFlags 0xB4 (`RTF_*`; bit meanings are from the gated users).
+- `RaceEntry` 0x60 (8 per tracker): rider 0x00 (the key of the find function), flags 0x04 (bit 0 active),
+  progress 0x0C, time 0x14, pendingPoints / pending 0x1C / 0x24, pct 0x30, finished 0x34, rank[3] 0x38,
+  gate 0x4C, gateA / gateB 0x54 / 0x58. `RACE_ENTRY_AT(t, off)` covers the loops that step a byte offset.
+- **The race session** is one object seen from two sides: RaceProcess.session (0x528) and
+  RaceTracker.session (0x4C). Its +0 is the course record table (0x30 bytes per course, indexed by the game
+  global +0x64; records are compared on bytes 5-7 in TimRace_checkRecord), and +0x14 holds the mode bits
+  (bit 0 / 1 / 2 select which rank lists hud_loadRecords fills). It comes from `*_openSession`
+  (Backup_openSession). Its own struct belongs with the Backup records (BackupCourse etc.), not yet typed.
+
+**Converted:** 16 RaceProcess_* bodies (all but handleInput / drawResult, which are splices, and the empty
+stubs), 21 RaceTracker / hud bodies, and 9 + 1 Tim / Trk bodies. Virtual calls are written
+`vt->slot[RACEVT_X].fn((char *)self + vt->slot[RACEVT_X].delta)` and compile to the same lh / lw / jalr t9.
+Typed `entries[i]` indexing compiled identically wherever it was tried (CA30, DB80 family, CE38).
+
+**Left raw:** the NON_MATCHING bodies (RaceTracker_update with its private CBF0_Self, findGates, D288), the
+int ** / int-param bodies (DDE0 family, D418, E118, handleMsg), TrkRace_checkRecord (`saved = a0` alias),
+both runPauseRow (`self[(0x48/4)^0]`), the Tim / Trk ctors (inlined Node -> Process -> RaceProcess chain),
+and the arc / mgr / h2h race processes.
+
+### Next (run 469)
+
+- arc / mgr / h2h race processes: they use the same RaceProcess base; each needs its derived struct (sizes from
+  their ctors) and the same conversions.
+- RaceTracker vtable slots (10 handleMsg path 0x58, 11 = vslot11_0000D318, 12 / 13 the E044 / E050 stubs,
+  0x68 / 0x70 slots called by E05C / E118) and the DataManager subclasses (0xE0).
+- The genproc items (per-class SelItem model structs, slots 13 / 14 / 17-19 / 24, SelectWin state
+  conversions) and the game_libs_post.c non-audio placeholders (134 placeholder-named definitions still
+  match `(gl|game_libs)_func_`, most of them audio) were not reached this run.
