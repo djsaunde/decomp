@@ -4,6 +4,8 @@
 > bd5d39c26 [rename, 6]). The lower half of post0b (0x34458-0x4C000) is agent-a's area E1.
 > agent-b run 454 (commits 8e1fc49b3 heap.h folded into mem.h, 6155f05d1/142fbf08c DLContext, b83fbfcac/fe3aca6ab
 > RcpMgr/RcpTask + libultra/os_task.h, 3a4aff57a/6a4f5b06a BasePolyShape, 4dafc55ab tool, 7aca920fd [rename, 3], 116f79f43 [rename, 6]).
+> agent-b run 458 (commits dc8e4f437 [rename, 62: vtable methods, RcpTask, reader templates], 1293c072a [rename, 37:
+> libultra/libc tail], b844a9296 include/libultra os_pi.h / os_timer.h / os_cont.h + 5 donor migrations).
 > Method: docs/1080_SYSTEM_LAYER.md section 1 (string xrefs through the bootup.uso reloc tables), plus the
 > matched bodies' own decode comments, GBI command words and class-name strings.
 
@@ -24,6 +26,14 @@
   sit 8 bytes before a merged symbol (memtrack_end, the 4DD0C pad). They are not separate C symbols.
 - Very few game_libs vtables are visible through bootup DataReloc (only 3 words point into this range),
   so most `in:0` functions are virtual methods whose class has to come from the ctor that stores the vtable.
+- **Vtable decoding (run 458).** The game_libs vtables live in the bootup.uso data section (DataReloc words
+  resolved through the decompressed Sym section; agent-a's /tmp/claude-1000/a453/vt.py). Copy of the decoder
+  with names taken from `mips-linux-gnu-nm build/tenshoe.elf` (game_libs symbol value = segment offset):
+  /tmp/claude-1000/b458/vt.py + vtdump.py. Cfront layout: the ctor stores vtable address V at Node +0x28;
+  slot k is {s16 delta at V+8+8k, fn at V+0xC+8k} (a call through slot k reads +0x18/+0x1C for k = 2).
+  Node slots: 0 hostioParms, 1 0x38598 (list iterator), 2 display, 3 update, 4 handleMsg, 5 broadcastMsg,
+  6 doCommand, 7-9 the 0x38B6C/74/7C empty stubs; 10+ are class-specific (named `<Class>_vfnN_<addr>`).
+  Words at 0x20630/0x20638 are Cfront pointer-to-member triples (parm callbacks), not vtables.
 
 ## 2. Map
 
@@ -31,7 +41,7 @@
 |---|---|---|
 | 0x4C190-0x4C928 | ScreenWindow (built by the GfxLib init at 0x445AC as "ScreenWindow"), node picking | ScreenWindow_ctor / _allocBuffers, gfx_pickNode |
 | 0x4CCB4, 0x4E600-0x4EE44 | Window class: name "win", parm group "Window" | Window_ctor, _hostioParms, _display, _update (pure-virtual stub), _setupView, _updateAspect |
-| 0x4D05C-0x4DCD4 | RcpMgr ("RCP Mgr"): RSP/RDP task queue, gfx + audio tasks | RcpMgr_ctor, _update, _service, _startTask, _initTask, _queueTask, _insertTask, _removeTask |
+| 0x4D05C-0x4DCD4 | RcpMgr ("RCP Mgr"): RSP/RDP task queue, gfx + audio tasks | RcpMgr_ctor, _update, _service, _startTask, _initTask, _queueTask, _insertTask, _removeTask; RcpTask_ctor/_init/_setData/_setUcode*/_setOutputFifo_*, vFP1_call |
 | 0x4DDF8-0x4DEF0 | DisplayMgr ("dispmgr") | DisplayMgr_ctor, _add |
 | 0x4F2DC | screen point -> world ray | gfx_screenRaycast |
 | 0x4F9E4-0x54144 | BasePolyShape: shape command stream, materials, normals, subdivision; ZoneShape | BasePolyShape_* (ctor, parse, parseCmd, parseMats, genNormals, genNormalsFast, ...), ZoneShape_build |
@@ -80,14 +90,26 @@ RcpMgr_startTask).
 
 - rename-symbol.py now accepts a {host, match_imports/<OTHER>.c} pair when every match_imports definition of OLD is
   textually identical to the host definition (comments stripped, whitespace collapsed); otherwise still refused.
-- `gl_func_0004D05C` / `0004D224` / `0004D2A0` call sys_fatal with "vFP1" / "fastQ" / "NoC": unsupported-microcode
-  stubs of the RcpTask ucode setters (0x4D16C, 0x4D188, 0x4D1C0, 0x4D1F4, 0x4D254, 0x4D2D0, 0x4D304 pick
-  ucode/ucode_data/output FIFO). Which microcode each picks needs the D_4D16C_a.. symbol targets; not named.
-- `<Class>_hostioParms` in 0x4C000-0x62F08: every beginGroup caller is now named (Window, BaseMat, BaseLight,
-  LightTarget, CMod; 0x5FF10 is the MemTracker printer). The remaining in:0 virtual methods have no beginGroup
-  call; their classes need the vtable words (Cfront vptr at Node +0x28, stored by each ctor).
-- Unnamed: the Quad4/int "reader template" families (0x4DD64/4DDA0, 0x4E4E8/4E524, 0x515C0/515FC, 0x55A7C/55AB8,
-  0x61DE0/61E1C/61F18; agent-a's Parms member-type read methods), 0x546BC (CMod method, calls 0x47B28),
-  0x5AB84/0x5AD54 ctors, 0x4C5E4 (`Obj::run` NCC donor).
-- Area-B leftovers still open: strchr / _Genld / _Ldtob / viMgrMain hand edits, duplicate PI raw I/O naming,
-  remaining libultra headers (os_task.h added this run).
+- RcpTask ucode setters (run 458): identified from the ucode_data blocks in bootup .data (the relocs
+  resolve to D+0x11990.. / text func_023300..): 0x4D254 F3DEX 1.23, 0x4D338 F3DEX.NoN, 0x4D2D0 F3DLP.Rej,
+  0x4D304 F3DLX.Rej; 0x4D16C / 0x4D188 / 0x4D1C0 / 0x4D1F4 are SGI "RSP SW Version: 2.0H" ucodes (Fast3D
+  family; which one each is still open, so they keep address suffixes). Only 0x4D254 / 0x4D2D0 are called
+  (RcpMgr_initTask). 0x4D224 / 0x4D2A0 are the "fastQ" / "NoC" unsupported-ucode stubs; 0x4D05C ("vFP1") is
+  the base slot of a 2-entry functor vtable 0x1FC24 (derived 0x1FC3C slot = 0x4D084, calls fn(arg, this)).
+- Area-B libultra tail (run 458): identified 37 more from libreultra source shape (see renames.tsv); all use
+  the `gl_` prefix. 0x6CCD4 / 0x747F4 are the SI raw accessors (they call gl___osSiDeviceBusy and are
+  osInitialize's PIF accessors), not PI; the PI pair is 0x6BA7C / 0x7307C. Motor: source order
+  osMotorStop (0x6CDB4), osMotorStart (0x6CF54) is assumed for the word-identical twins; swap if the
+  _MotorStopData / _MotorStartData relocs say otherwise.
+- New libultra headers: os_pi.h (OSPiHandle, OSIoMesg, OSDevMgr, __OSTranxInfo), os_timer.h, os_cont.h
+  (OSContStatus, OSContPad, OSPfs). Still private copies to migrate: OSPiHandle in ido53_6C2A4 / 730CC /
+  6F088 / 7369C, OSIoMesg in o1_6D964 / ido53_74EF4, OSPfs in post2b.c / ido53_718C0, OSMesgQueue in
+  ido53_6F218 / 74EF4. Those donors carry their own base typedefs (u32, s32) and some use `void *` or
+  unprototyped fn-pointer fields, so migrate one at a time and gate each.
+- Unnamed in 0x4C000-0x62F08: 0x4CFB8 (BaseMat vtable 0x1FBEC slot 0, empty), 0x51E98 (PMF parm callback
+  of BaseMat), 0x551E0 / 0x5165C (CMod secondary-vtable slots), 0x4F85C / 0x4FBA4 (Mat factories: 0x4F85C builds
+  from a ScreenWindow's frame buffer +0xF4 and size +0xB8/+0xBC; 0x4FBA4 clones and runs the GDL_MC command list),
+  0x4DF90 (vtable 0x20400 helper), 0x521F8 (Node class sharing BasePolyShape_doCommand), 0x5AB84 / 0x5AD54 ctors,
+  the 4-entry device-style vtable 0x21DA0 next to ConsoleMgr's (0x61ADC / 0x61AF0 / 0x61B04 / 0x61B10 return -1: read/write/... stubs).
+- Area-B still unnamed: 0x6F144 / 0x6F160 (empty varargs print stubs), 0x6FAD4, 0x70FA0, 0x74894 / 0x75254 (int
+  readers), 0x62E80 class (vtable 0x21F58: slots 3 0x62F64, 4 0x62F58, 10 0x63704), 0x690A8-0x69CC4 libgdl code.

@@ -15,6 +15,7 @@
 - [8. Cross-USO import resolution](#8-cross-uso-import-resolution)
 - [9. Run 452: snowai.h, SnowBoarder physics fields, SnowAI methods](#9-run-452-snowaih-snowboarder-physics-fields-snowai-methods)
 - [10. Run 456: proc API, TrickTable, RiderAnim, SnowAI path following](#10-run-456-proc-api-tricktable-rideranim-snowai-path-following)
+- [11. Run 461: SnowAI states, RiderAnim PMF state machine, SnowBoarder::Parms](#11-run-461-snowai-states-rideranim-pmf-state-machine-snowboarderparms)
 
 ---
 
@@ -332,3 +333,48 @@ to the eight ms parms, and the ctor takes it as arg 2. Rename `state` once a sec
 table of stick (x, y) at Data 0x638); RiderAnim fields (0xB4 rider, 0xC0 / 0xC8 anim ids, 0x100 combo, 0x13C
 parms) into a header; SnowBoarder 0x758 / 0x848 / 0xA10 / 0xA1C from RiderAnim_selectAnim; the rest of the
 game_uso RiderAnim helpers (D74C, D7F4, D8A8, D8EC, EDCC, EDD4) and the 0xE000+ classes.
+
+## 11. Run 461: SnowAI states, RiderAnim PMF state machine, SnowBoarder::Parms
+
+agent-g run 461 (branch agent-g on 8239918e8). Pure rename batches: 3c2e2c3eb (17 names), 1ec395bf6 (56).
+Hand edits: 6ef639515 (snowboarder.h + new include/game/rideranim.h), 9474d27f2 (field conversions).
+Every commit gated (PASS, ROM identical). Scratch tools in /tmp/claude-1000/g461/: `dptr.py` (every game.uso
+Data word that relocates to Text), `gimp.py` / `gimp2.py` (which module, and which bootup call site, imports
+each game.uso function: import Sym entries with `info >> 4 == 46`, resolved through game.uso's Sym index).
+
+**SnowAI states.** aiState 0 SnowAI_steer, 1 SnowAI_finishRun (6A30), 2 SnowAI_timeoutRun (6CF0), 3
+SnowAI_recoverStuck (71E0); every step ends in SnowAI_applyStickInput (7538). Entry points: SnowAI_enterFinish
+(71A4; steer calls it when the current node has flag 0x400, i.e. SnowAI_isAtFinish), SnowAI_enterRecover
+(7424; after 75 frames below speed 30), and the three hooks bootup's SnowBoarder_handleMsg (old
+SnowBoarder_checkRaceEnd = vtbl slot 4, the Node_handleMsg override) calls on rider->ai: SnowAI_onWin (msg
+1000), SnowAI_onLose (1001; not for CPU riders), SnowAI_onTimeout (1003). The other msgs: 20 = bumped by an
+object (pos / vel push, hitFlags |= 0x1F0, wobble), 9, 6, 1002 / 1004, 1005..1007 = ending ("en1" / "en2"
+marker by controller). SnowAI_scaleRiderParms / restoreRiderParms / scaleRiderMax (7448 / 74D8 / 751C)
+save the rider's max / nts / dts / nbf parm values in SnowAI 0x4C8..0x4D4 and scale them by dd2 / dd3 / dd4
+while the 0x4C4 countdown runs (the dp / dd0 / dd1 parms gate it): the catch-up boost.
+
+**RiderAnim is a PMF state machine.** The "anim id pairs" at +0xC0 / +0xC8 are Cfront pointers to member
+functions: Data 0xDB0..0xF60 is a table of {0x0000FFFF, method} (delta 0, index -1 = non-virtual) and 0xDC8 is
+the null PMF. Renamed: setState_0000D5F8 (old setAnim), setNextState_0000D5BC, clearNextState_0000D5DC, and
+the 53 table-only functions to RiderAnim_state_<addr> (kind known; individual states not named yet: their
+calls to the game_libs anim player 0x6366C / 0x635D8 give the anim numbers ORed into animSet).
+Other RiderAnim facts: parms at 0x13C are 32 parms by tag; dm1..dm4 (ints) are the damage per hit kind that
+RiderAnim_applyDamage_0000EDD4 subtracts from rider->health (0xA14, the match-race damage meter;
+game_setupVsCpu gives the CPU rider 10000000); st1..st3 / sl1 / sl2 with limits stm / slm drive rider +0x960
+in game_uso ECEC by hitKind (0x10C, set by EDCC). RiderAnim_clearRiderSpin_00011868 zeroes rider->spin.
+
+**SnowBoarder layout (snowboarder.h).** SnowBoarder::Parms is embedded at +0x540 (0x2C0, 29 float parms in
+ctor order hpf snf dsf icf tfc edf bdf ure mro mpi mdr axr ayr azr tlt wfr sfr dts nts trt twt min max jmp
+djp ufs bdm cdm tch). The old dragXZ (0x6C0) is parms.wfr.value and baseMaxSpeed (0x768) is parms.max.value.
+The 0x154-byte child at +0x3EC (vtbl 0x8108) has its own "Parms" at +0x2C (= rider 0x418): ied ifr ded dfr
+efr nbf nel dbf del res flx sta (not typed yet; nbf = rider 0x498). New fields: ai 0x804, anim 0x840,
+controller 0x848 (0 pad, 2 CPU; 1 unproven), **character 0x8C4 confirmed** (game_createPlayers passes index + 1
+as ctor arg 2; 1..8 select ms1..ms8), spin 0x970 (Vec3), hitFlags 0xA10 (u16), health 0xA14, unkA1C (lateral
+wobble: msg 20 adds the bump along the side axis 0x3BC), raceResult 0xA54. 0x758 is the `max` parm, 0x848 the
+controller; 0xA10 / 0xA1C are what RiderAnim_selectAnim tests for the stumble anims.
+
+**Next:** name the RiderAnim states from their anim numbers (map anims.bin indices); type the +0x3EC child
+and its Parms; SnowBoarder_updateDyn (BF8C) and its callees for orientation / board angles / ground contact
+(0x938 is probably the ground-contact flag: B520's drag, the SnowAI run-out tail and RiderAnim D74C gate on it; unproven; 0x3BC / 0x3C8 are the side /
+forward axes); the game_uso 0xA000+ classes (AC78 / 11A94 template creates, AD10..ADE0 parm-type readers,
+B274..BFDC = LensFlare / Sun methods via Data 0xC50..0xD34) and bootup's remaining placeholders.

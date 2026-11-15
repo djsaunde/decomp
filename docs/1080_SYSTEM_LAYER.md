@@ -14,6 +14,7 @@
 - [6. Next](#6-next)
 - [7. Area E1 (post0b 0x34458-0x4C000 + post.c DMA), run 448](#7-area-e1-post0b-0x34458-0x4c000--postc-dma-run-448)
 - [8. Run 453: vtables, hostio kinds, readers, CollShape, Gadget](#8-run-453-vtables-hostio-kinds-readers-collshape-gadget)
+- [9. Run 457: gadget structs, vtable-only classes, ItemType subclasses, GfxLib DDM](#9-run-457-gadget-structs-vtable-only-classes-itemtype-subclasses-gfxlib-ddm)
 
 ## 1. String-xref method
 
@@ -194,3 +195,55 @@ through Node. New `include/gdl/gadget.h` (Gadget 0x13C), used by Time/SpeedGadge
    (D+0xD508, its update 0xCBF0 sets the race HUD gadgets' values), 0x4A670 (PolyShape-derived, probably MorphPoly).
 3. ItemType subclasses (vt D+0x1EFC0, D+0x1F050, D+0x1F228 = 0x3D7F8; ColourParms derives from the last).
 4. The rest of the 0x42000-0x4C000 graphics block (0x42938 "Hold"/"X %d", 0x44918, 0x44CE8 GDL_MAX_DDM).
+
+## 9. Run 457: gadget structs, vtable-only classes, ItemType subclasses, GfxLib DDM
+
+> agent-a run 457, branch agent-a: d6a3cc917 (hand edit: gadget structs), 0422f0feb and 128432fa4
+> (pure renames, 44 + 5 names). Gate PASS each time. Scripts in /tmp/claude-1000/a457/ (the a453 set,
+> plus `gbi.py`: GBI opcodes from `lui` immediates in a raw-word .s; `dstr.py`: Data strings in a range).
+
+**Gadget structs** (`include/gdl/gadget.h`). Gadget (0x13C) now covers Time, BestTime, BestScore,
+PointsGadget (0xD5C) and Speed, plus their release/set methods. New: `BoardsGadget` (0x140, count +0x10C,
+one sprite +0x110; `BoardsGadget_setCount` = 0x1354) and `CountDownGadget` (0xD4 on a 0xC4 base: colour
++0x94, two text buffers +0xB4/+0xBC, blink counter +0xC4; the 0xB94 NM body uses it). Not converted:
+PointsGadget_ctor_00000ED0 (0xD4, colour at +0x64: a third layout), CoolGadget (0x198, NCC donor) and
+CourseGadget (0x2FC). The base sub-object `+0x28` stores go through `((Node *)sub)->vptr`.
+
+**Vtable-only Node classes** (no class string; names from behaviour):
+
+| class | ctor | vtable | what |
+|---|---|---|---|
+| CamFollow | 0x36B9C (0x3C) | D+0x1E878 | target at +0x38; update orbits the parent camera round the target, d-pad bits 1/2/4/8 |
+| Spinner | (none in game_libs) | D+0x1E818 | `Spinner_hostioParms` publishes "Speed" (+0x2C); update = math_mtxRotateEuler(parent mtx, (0, speed, 0)) |
+| SeekNode | 0x378D0 (0x34) | D+0x1E938 | update = math_mtxAddTranslation(parent mtx, (target - parent) * rate) |
+| RaceTracker | 0xC784 (0xB8) | D+0xD508 | 8 rider records x 0x60 at +0x44, elapsed +0x30, limit +0x34 (0x927C0 ms = 10 min); slot 10 reset, findGates ("chk"/"gtl"/"gtr"), update = course progress % then the Speed/Time/Points/Cool gadget values |
+| MorphPoly | 0x4A670 | D+0x1F850 | PolyShape subclass: init, display, shade (slot 11), morph (0x4A84C), checkVtx |
+| App | 0x41524 (0x80) | D+0x1F4CC | `App_ctor` |
+
+Unnamed with the same shape: 0x37348 and 0x37540 (vt D+0x1E758 / D+0x1E7B8, no ctor in game_libs;
+analog-stick input record at +0x2C drives the parent's matrix, debug fly controllers).
+
+**ItemType subclasses.** The ItemType base vtable is D+0x1EED8. Slot 10 is newItem, slot 11 buildItems
+(newItem once per list entry, chaining the results) and slot 14 getItem(n). Slots 7, 12, 13 and 15 are not
+named yet.
+- D+0x1F228 `ColourItemType` (ctor 0x3D7F8, 0x58): RGBA quad at +0x48 (default 1,0,0,1). Its display calls
+  gfx_setPrimColour(+0x48). Its items are `ColourItem` (0x3D5BC, 0x3C): msg 7 sets the position +0x30, and
+  load reads three ints.
+- D+0x1EFC0 `SNodeItemType`: newItem builds an SNode, chained through +0x84.
+- D+0x1F050: newItem = MNode_ctor (an MNode item type; no ctor in game_libs, so not named).
+- The brief's "ColourParms derives from 0x3D7F8" is **not verified**. ColourParms_ctor (0x4244) never
+  references D+0x1F228.
+
+**GfxLib (0x42000-0x4C000).** `GfxLib_reset` (0x44918; called by GfxLib_init and the soft-reset path) clears the
+50 DDM slots (+0x2AC) and waits for the RCP (`gfx_waitRcpIdle`). DDM = the gfxlib.c "GDL_MAX_DDM" (50) pool:
+gfx_addDdm / initDdm / callDdm / getDdm. Also gfx_waitRetrace (frame counter at state +0x24),
+gfx_setPrimColour / setEnvColour / setBlendColour (0xFA/0xFB/0xF9 packets from an RGBA float quad), gfx_fillRect,
+gfx_drawText (font renderer), dbg_screenOverlay_00042938 ("Hold"/"X %d"/"Y %d", called from outside game_libs).
+
+**Next.**
+1. ItemType slots 7/12/13/15 (0x3D2C8 is shared by every ItemType, and slot 8 is load, so slot 7 is probably save; check
+   against Node_Save's caller), and the 0x1F050 MNode item type.
+2. 0x37348 / 0x37540 input-driven controllers. 0x41F90 reads a 68-byte record from a file into obj+60.
+3. The rest of the 0x42000-0x4C000 placeholders (`gbi.py` lists GBI opcodes per function): 0x43654/0x43BEC
+   (TRI2), 0x469A8 (FULLSYNC + RcpMgr_queueTask = the frame task submit), 0x45178 (guMtxF2L).
+4. 426 placeholders are left in 0x0-0xEBC8 + 0x34458-0x4C000. Most are untouched-string-free helpers.
