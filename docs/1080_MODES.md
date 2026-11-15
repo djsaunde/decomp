@@ -867,6 +867,51 @@ the name-entry ctors' typed-chain lever, TrickPointsGadget_reset / PointsGadget_
 points-list object: 8 PointsPopup slots at +0x2C, colour ints 0x8C..0x98), the RaceProcess_* raw sites in
 game_libs.c, Fader_ctor / buildTexture Node / vtable sites, gadget_decodeStringB4_00014598.
 
+### Run 519 (agent-h): TrickPointsGadget, WhiteFader, VT_SLOT, menu / name-entry chains, flipDigits
+
+Commits on agent-h (base e105ff4dc), each gated PASS (3288/3288, ROM identical; every touched .o identical
+by objdump -d -r -z in the matching and NON_MATCHING builds, except the renamed symbols): 99ceb2d7e
+(TrickPointsGadget + game_libs.c conversions), 83aa5fcd8 (Fader / GdlVtEnt + VT_SLOT), 4a5c7db39 (menu
+update / handleInput, ArcNameEntry_update, name-entry ctors), 0dfb42519 (**pure rename**, 2 names),
+8a3d4ca4c (WhiteFader, titproc GameDemoProcess), 051454e15 (comments). All others are hand edits.
+
+- **TrickPointsGadget** (gdl/gadget.h, 0x168 = RaceTracker.pointsList; PointsGadget_ctor_00003138): slots[8]
+  PointsPopup at 0x2C; font 0x50 (ctor arg 3), popupArg / popupArg2 0x54 / 0x58 (the PointsPopup.arg of the
+  3B1C / 3DB8 pop-ups); a 4-entry message ring: text[4] 0x5C, points[4] 0x6C (-1 = text only), head 0x7C,
+  tail 0x80, count 0x84, scroll 0x88 (+16 per push, -2 per frame), age[4] 0x8C (reset 0xFF, counts to
+  0x80), alpha[4] 0x9C, x[4] 0xAC (160), y[4] 0xBC; colour / pointsColour (GadgetRGBA 0xCC / 0xDC:
+  255,102,80 and 102,255,80), allIdle 0xEC, sprite0..4 0xF0..0x150. allocSlot_00003B1C / 3DB8 dropped
+  their private GlOwn / GlSlot views. Byte gotcha: TrickPointsGadget_push's `head == tail` (written
+  tail == head the bne operands swap).
+- **GameFlow** (game/input.h): unk7C (RaceProcess_leave: 1 -> win seq variant 2). RaceProcess_leave uses
+  nextFlowMode / course / dataMgr and RaceTracker entries[0].time.
+- **BoardsGadget.parms** is a TimeGadgetParms (icons at xps + 4i, yps - 4i).
+- **GdlVtEnt moved to gdl/node.h** + `VT_SLOT(vt, n)` (slot n of a `char *` / s32 vtable: fn at vt + 0xC + 8n,
+  delta at vt + 8 + 8n). Used by Fader_buildTexture (slot 11, the GfxLib palette) and titproc
+  GameDemoProcess (slot 10 on the menus / logo; slot 11 on import_0001FFF8). Same bytes.
+- **WhiteFader** (game/modeproc.h, 0x40; tit_ / h2h_WhiteFader_ctor): colour[4] 0x2C, alpha 0x3C.
+- **Menu rows**: Tim / TrkMenu_update and ARCMenuProcess_handleInput keep their IXA / permuter levers; the
+  row is read through the menu shifted by cursor rows (`GUIMENU(slot)->rows[0].arg / enabled`).
+  `&menu->rows[cursor]` costs an extra addiu there; in titproc onQuitButton (base = obj + 0x90) the plain
+  `rows[cursor].arg` is byte-identical.
+- **Name-entry typed-chain lever = the real field chain**: `((TimRace *)MODENAMEENT(arg0)->race)->recordRank`
+  (ArcRace for arc) replaces Tim16F8_A / Tim1660_A / Arc199C_A; same bytes.
+- **NM bodies and CALL()**: name-placeholder-calls.py check fails on CALL() in a NON_MATCHING reference
+  body whose matching build is INCLUDE_ASM (the .s jals carry no names: "not among the ROM callees").
+  Name those callees in comments (ArcNameEntry_update_00001B04 does).
+- **gadget_decodeStringB4 / E4 -> PointsPopup_flipDigits_00014598 / Gadget_flipDigits_00014010**: c -> 0x69 - c
+  except 'a', 'b', ' ' = nine's complement of the digit string in text (0xB4 / 0xE4). No static caller in
+  any module (uso-imports.py callers / sites).
+- Census (h492 regex) before -> after: game_libs.c 64 -> 26, titproc_uso.c 17 -> 5, bootup_uso_tail4.c
+  38 -> 33, h2hproc_uso.c 15 -> 14. Untouched: bootup_uso.c 156, timproc b1 61 / b3 71, mgrproc 39,
+  arcproc_tail1 38, game_libs_tail.c 30.
+
+Next: the RaceProcess_restartCameras / restartWithTimeout `state + 0xC4` chain (game object players =
+SnowBoarder, +0x800 input; InputPad +0x34 unnamed; the shared q temp is a lever); CoolGadget_display's
+`m[0] + xps` and CountDownGadget's (float)alpha stay raw (fp colouring); PointsGadget_update donor
+(game_libs_o2_3430.c FW forms -> TPOINTS / POPUP); bootup_uso.c SnowBoarder_update (14) and the Tmpl
+helpers; mgrproc MGRRaceProcess_drawIntro (9) / mgr_DataManager_update (7); h2h_createPauseMenu (4).
+
 ### Run 509 (agent-h): CoolGadget, GuiRow users, name entry, menu processes, title logos, PointsPopup
 
 Commits on agent-h (base 6336bd167), each gated PASS (3288/3288, ROM identical; every touched .o identical
