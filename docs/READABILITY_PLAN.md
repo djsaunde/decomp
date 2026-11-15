@@ -740,8 +740,8 @@ totals: agent-c 15, agent-b 155, agent-h 72, unassigned 2; all 244
     build caught it. Plan after a clean build.
   - Left by design: NON_MATCHING reference bodies (no jal in the build), REPLACE_FUNC_BODY donor bodies
     (bytes differ), functions with macro-generated calls (SnowAI_ctor: 4 sites vs 86 jals), jals into a
-    split function (`gl_osSetIntMask+0x8`, `gl_osWritebackDCache*+0x4`), unnamed `Text+0x0` callees,
-    NCC .cpp files (no verify path yet), and n64proc / boarderN (uso-imports cannot parse that module layout).
+    split function (`gl_osSetIntMask+0x8`, `gl_osWritebackDCache*+0x4`), unnamed `Text+0x0` callees.
+    (NCC .cpp files and n64proc / boarderN were also left in run 508; both resolved in run 510, below.)
 - **Applied (agent-a run 508)** (named / left):
 
   | file | named | left |
@@ -770,6 +770,107 @@ totals: agent-c 15, agent-b 155, agent-h 72, unassigned 2; all 244
   GL_DATA_STR spellings. Tested: reverting math_printBounds' GL_DATA_STR(0x21B6C) fails with the exact
   spell-base command. After spelling sites (or for a deliberate raw site), shrink the list with
   `check --update-ratchet`.
+
+- **Run 510 (agent-a): tool fixes** (commits cf0a112b8, 4a64ad800, cbbe3573e; tool-only):
+  - **Yay0 block targets.** Every subcommand first runs `make RUN_CC_CHECK=0 -j8 build/assets/*_yay0.bin`
+    (the six block images that carry the compressed modules' names: game, genproc, mgrproc, timproc,
+    trkproc, map5_data). It is a no-op when they are current. If the make fails, or the products are
+    missing under `--no-build` (given before the subcommand), the tool exits and names the missing files.
+    It no longer says "module not resolvable" when the cause is a missing block.
+  - **uso-imports: Data-first module layout.** The magic word is followed directly by section
+    records. Code modules start with a Bss record (type 8, size only, no payload), which is why
+    "header word 1" read 8. n64proc, boarder1-5, gamegfx and the data USOs start with Data (6) or
+    RoData (7) and have no Bss. Parsing from magic+4 resolves them: n64proc, boarder1-5 and
+    map5_data now get Text and function names. 73 import targets ROM-wide that printed as
+    `heli:sym121?` now resolve (heli / balloon / fire / checkpoint objects). No previously
+    resolved site changed. n64proc's c segment starts 4 bytes before its Text payload: the
+    Text record's flag word 0x10006F00 is the "beq zero,zero" trampoline of
+    n64proc_uso_func_00000000. So that function sits at Text-0x4.
+  - **`src/map4_data_uso_b2` is map5_data.uso's Text** (ROM 0x71C6E4; Info 0x71B23E). It is mapped to
+    map5_data.
+  - **C++ (.cpp) donors.**
+    - The verify copy is built with the object's own Makefile recipe (`MakeVars.recipe`: an explicit
+      rule, else the pattern rule with the shortest stem). That covers NCC or tools/ncc721.sh plus
+      any `objcopy --redefine-sym` renames, `$$` included.
+    - Relative `#include`s are made absolute.
+    - The npc_uc_N declarations are wrapped in `extern "C"`, and a K&R `()` becomes `(...)`.
+    - Compiler-generated jals (operator new, constructors, `__vec_new`) have no source call, so
+      the call-count == reloc-count rule is skipped for .cpp. Each named site is still pinned by
+      its own npc_uc_N reloc in a byte-identical object.
+    - `check` on a .cpp aggregates per file, because inline / member source blocks are not object
+      functions. It also accepts any placeholder reloc, since a recipe can rename func_00000000
+      to gl_func_00000000 (game_libs_ncc_48AEC).
+    - Tested: a wrong name in game_libs_ncc_41820.cpp fails `check`.
+  - **ROM guard (all files).** A function is used only when the real object's words without a
+    reloc equal the module Text at that name. This refused two unspliced donor copies that share
+    a host name, game_libs_o2_34548.c's dbg_printfSink and a RcpMgr_removeTask. The pre-guard
+    tool would have named their sites from the wrong code.
+  - Placeholder-named DATA (`extern ViContext71304 *gl_func_00000000_vinext711;`) is no longer
+    taken as a call site. It broke the verify compile of o1_71144 / o1_71304 / post2.
+  - The declaration cache is keyed by text, not `id()`: plan threads reused ids, which gave
+    nondeterministic cfe errors.
+  - `check --strict` on all 2023 run-508 names: 0 mismatches. selftest OK.
+- **Applied, run 510** (commits 93e7c596a, 499057cb8; pure tool output; gate PASS, 3288/3288,
+  `check` 2908 named / 0 mismatches):
+
+  | files | named | left |
+  |---|---|---|
+  | game_libs other *.c (o0 / o1 / o2 / ido53 / mid / head / post1c / post2 / post2b*) | 383 | 136 |
+  | game_libs NCC *.cpp donors | 445 | 11 |
+  | gui_uso *.cpp | 13 | 1 |
+  | n64proc_uso.c | 23 | 0 |
+  | boarder1-5_uso.c | 4 / 4 / 4 / 4 / 3 | 1 / 1 / 1 / 1 / 2 |
+  | map4_data_uso_b2.c (map5_data) | 2 | 1 |
+
+  Not applied:
+  - the 18 audio-driver files in game_libs 0x1C9E4-0x2D374 (o2_2119C .. o2_2C7A4, ncc_28A68).
+    These are agent-c's audio area. 30 sites are provable; agent-c can name them with `plan --write`.
+  - the owners' files.
+
+  The boarderN self-calls are left, because the callee is a real function named
+  `boarderN_uso_func_00000000`. That is a rename candidate (it reads an int through fs_gdlReadFile).
+- **Census of placeholder CALL coverage, ROM-wide (run 510, after these commits).** Counted over
+  every src .c / .cpp, as raw placeholder call sites plus `CALL()` sites: **2908 named, 3714 left**.
+
+  | area | named | left | main reasons left |
+  |---|---|---|---|
+  | game_libs post0b / post1b (agent-b) | 1256 | 402 | 314 no jal (NON_MATCHING bodies), 73 donor-splice bytes, 14 jal into split fn |
+  | bootup_uso .c (agent-h) | 0 | 1000 | **806 provable**, 115 no jal, 58 macro / extra jals, 17 donor bytes |
+  | game_libs other .c | 790 | 136 | 42 no jal, 37 donor bytes, the rest jals into split fns (`__osDisableInt+4`, `__osExceptionPreamble+N`, bzero, osGetCount, osSetIntMask) |
+  | game_libs.c / tail (agent-h) | 0 | 751 | **717 provable**, 31 no jal, 3 donor bytes |
+  | game_libs other .cpp | 445 | 11 | 7 no jal, 2 one site with 2 callees (inline used twice), 1 split fn, 1 unspliced copy |
+  | bootup_uso .cpp (agent-h) | 0 | 286 | 151 bootup_uso_ncc_90CC_nm.cpp (reference donor, never built), **117 provable**, 15 unspliced copies |
+  | timproc_uso_b3 / trkproc (agent-h) | 0 | 246 | **240 provable** |
+  | game_uso (agent-g) | 233 | 10 | 6 donor bytes, 4 SnowAI_ctor macro sites |
+  | timproc_uso_b1 / timproc (agent-h) | 0 | 233 | **227 provable** |
+  | arcproc_uso .c / .cpp (agent-h) | 0 | 225 | **195 provable**, 19 no jal, 9 donor bytes |
+  | h2hproc_uso .c / .cpp (agent-h) | 0 | 185 | **124 provable**, 44 no jal, 16 unspliced .cpp copies |
+  | timproc_uso_b5 / genproc .c / .cpp (agent-c) | 84 | 8 | **5 provable (.cpp)**, 3 no jal |
+  | mgrproc_uso (agent-h) | 0 | 71 | **55 provable**, 15 no jal |
+  | titproc_uso (agent-h) | 0 | 71 | **71 provable** |
+  | game_libs audio driver (agent-c) | 0 | 30 | **30 provable** |
+  | gui_uso .c / .cpp | 36 | 8 | 4 no jal, 4 unnamed Text+N |
+  | match_imports | 0 | 28 | not mapped: native relink units (`*.c.o.linked.elf`), not module objects |
+  | eddproc_uso | 20 | 6 | 5 unnamed Text+N, 1 donor bytes |
+  | n64proc / boarders / map5_data | 44 | 7 | 4 self-named callee, 2 donor bytes, 1 unnamed |
+
+  Left, by reason:
+  - 2587 provable, waiting on their owners (agent-h 2552; agent-c 35);
+  - 596 no jal in the build (NON_MATCHING reference bodies);
+  - 157 donor-splice bytes differ;
+  - 151 never-built reference donor (90CC_nm.cpp);
+  - 62 macro-generated or extra jals in C;
+  - 63 jals into a split function;
+  - 33 unspliced donor copies;
+  - 28 match_imports (unmapped);
+  - 8 functions not in the real object;
+  - 21 unnamed `Text+N` callees;
+  - 4 self-named;
+  - 2 ambiguous;
+  - 2 module-60 imports (no such module in the ROM).
+
+  Of these, 2587 are mechanical; about 700 need a body or a split fix first. The census script is
+  /tmp/claude-1000/a510/census.py: plan_file over every src file, with no writes.
 
 ## 10. Worktree setup gotcha (Part 0)
 

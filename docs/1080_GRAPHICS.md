@@ -537,3 +537,40 @@ swap commutative operand order (IDO_CODEGEN.md#field-conversion-commutative-oper
 Next: DNode (post1b, 0x3D4; DNode_init / resetXform / resetAccums are ~80 sites; its ctor parm tags name
 the fields), BallRotator (cam_func_00036074 = BallRotator_reset), PolyShape_display, CollShape, the
 HostIO objects, Window unk fields (+0x84 / +0x98 lanes, +0x100), ItemType +0x34..+0x40.
+
+## 14. Run 511 (agent-b): DNode, PhysQNode, Friction (include/gdl/dnode.h)
+
+New header include/gdl/dnode.h (game_libs post1b 0x63884-0x65E64):
+- **DNode** (0x3D4): the QNode base flattened (mnode 0x00, vqs 0xB4 = position / scale / orientation quat,
+  cvqs 0xDC = the vqs copy taken at the end of each integrate, which the run 470 names call lastPos /
+  lastOrient), DNodeParms parms 0x108 (the 15 "DNode::Parms" tags imp spd spl spw gvt suc vsc usc tsc
+  cog unc dsc csc rad cts with their ctor defaults), surfImp / surfSpd / surfVsc, the two DNodeAccum
+  force accumulators impulseAcc 0x294 / moveAcc 0x2C8, angVel (quat), velDir, vel, worldCog, velDelta,
+  lastVel, speed, friction 0x360, attached 0x39C (list DNode_updateAttached walks), axes 0x3B0 (3x3 rows
+  from cvqs.quat, DNode_quatToMtx_00065B40; SnowBoarder calls them up / side / dir).
+- **GdlParmV3** (0x20 Vec3 parm, type Data 0x221F0); float parms use GdlParmF from gdl/gadget.h.
+- **PhysQNode** (0x124): owner DNode 0x108, body-space probeA / probeB. PhysQNode_pushProbes_00063964
+  rotates them into world space and pushes the owner up by their depth below y = 0.
+- **Friction** (0x170): coef ("Friction", 0..2) 0x150, limit ("Friction Limit", 0..10) 0x154,
+  contactPoint 0x120, offsetLen 0x164, owner 0x16C. Friction_vfn11_00063F34 reflects +0x114 about the
+  contact normal and pushes the owner by it scaled with clamp(((coef * owner->friction + k) * K)^2).
+Call graph fixes from the bootup TextRelocs (scripts/uso-imports.py sites bootup): DNode_init calls
+DNode_resetAccums_00065148 then DNode_quatToMtx_00065B40, and addImpulseAt / addMoveAt call
+DNodeAccum_addForce_000641DC with the force passed through in $a2. Older comments named all of these
+AnimPlayer_update; they are now XCALL-named. Renames: DNode_getSuc (was DNode_getF198_00065E3C),
+PhysQNode_pushProbes_00063964.
+
+Converted: every DNode_* body in post1b, DNodeAccum_addForce / apply (NM), PhysQNode_ctor, Friction_*.
+Raw sites in post1b: 240 -> 113 (post0b 705, post1b2 8). Each step had an identical post1b .o
+objdump -dr, and the gate passed.
+
+**For agent-g:** include "gdl/dnode.h" in include/game/snowboarder.h and type SnowBoarder's first 0x3D4
+bytes as `DNode dnode;` (or keep the SnowB* mirrors and add asserts against DNode offsets). The names
+match run 470 except: lastPos / lastOrient are cvqs.trans / cvqs.quat; pos / orient are vqs.trans /
+vqs.quat; up / side / dir are axes[0..2]; startPos 0x3A4 is unk3A4 in DNode. envobj.h ShpNode
+(`char dnode[0xB4]`) can use it too.
+
+Next: post1b pad_* (pad thread object, ~25 sites: pad_reset_000673FC, pad_startPlay_00067A10, pad_init /
+initMotors / set*), ImageFile_init / BinFile_set / list_allocNode / DynArr, skin leftovers; then the run 500
+list (BallRotator, PolyShape_display, CollShape, HostIO objects, Window +0x84 / +0x98 / +0x100,
+ItemType +0x34..+0x40, PolyShape_func_00043584).

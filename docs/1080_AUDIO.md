@@ -672,3 +672,22 @@ their game meaning.
 | 31D70 | game_libs_func_00031D70 | snd_Init_31D70 | stores three config words then calls AudioLoad_Init; called from bootup SnowBoard_func_0000E800 (run 455) |
 | 31DA4 | gl_func_00031DA4 | snd_AudioUpdate_31DA4 | return AudioThread_Update(); called from RcpMgr_service (run 455) |
 | 31DD8 | gl_func_00031DD8 | snd_FrameUpdate_31DD8 | snd_UpdateTimers_2D374(); called from app_run (run 455) |
+
+### Run 513 (agent-c): SoundObj channel glue names
+
+Commit a6d00146b (**pure rename**, gate PASS, 3 renamed). Callers from `scripts/uso-imports.py callers`:
+- snd_Player0ChannelIOPreset_2F8A0 -> **snd_soundObjChannelsOn**: only snd_SoundObjInit(kind) calls it.
+  It sets io port 0 = 1 on the kind's channels (1 + 3 / 5 + 7 / 5).
+- snd_Player0ChannelIOPreset_2F934 -> **snd_soundObjChannelsOff**: snd_SoundObjReset, snd_HandleSeqEvent_30AF4
+  and snd_HandleSeqEnd call it with the kind. It puts the same io ports back to -1 / 0.
+- snd_SetPlayer0ChannelPanIO_2F638 -> **snd_soundObjSendPlay**: only snd_SoundObjPlay calls it. It sends
+  the pan, the volume io and the note (sel + base) to the kind's channel.
+- **Held back:** snd_HandleEvent_2FB74 -> snd_dispatchEvent (the event switch that snd_sendEvent and
+  snd_PostEvent forward to). Its RoData pool macro `kRo_snd_HandleEvent_2FB74` (include/gdl/gl_data.h)
+  embeds the function name. rename-symbol.py does not rename `kRo_<OLD>` pools, so `uso-data-sites.py
+  check` fails after the rename. Fix the tool (treat `kRo_OLD` / `kRo_OLD_<K>` as derived names), then rename.
+- The remaining suffixed glue (SetPlayer0ChannelParams_2F9D4 / IO12_2FA90 / ResetPlayer0ChannelIO1_2FB10,
+  all called only by snd_SoundObjUpdate; SetPlayer1Channel15IO_2D910; SetPlayer2ChannelIO_3190C;
+  Channel0IO_30504 / Channel8IO1_30564 / Channel8Pan_305CC) has no game-code caller that names its
+  purpose; the io-port meanings would need the sequence scripts.
+- Step 6 (audio struct conversions in game_libs_post.c) was not reached this run.

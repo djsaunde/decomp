@@ -26,6 +26,8 @@
 - [18. Run 494: RiderAnim helpers, TrickEntry, checkpoint.uso](#18-run-494-rideranim-helpers-trickentry-checkpointuso)
 - [19. Run 494b: game_uso.c raw offsets, sun.h, spin fields](#19-run-494b-gameusoc-raw-offsets-sunh-spin-fields)
 - [20. Run 502: SnowAI aim, DDM setters, the rider node list](#20-run-502-snowai-aim-ddm-setters-the-rider-node-list)
+- [21. Run 506: game_uso cleanup, open meanings, readability status](#21-run-506-game_uso-cleanup-open-meanings-readability-status)
+- [22. Run 512: last placeholder calls, parm builders, field names](#22-run-512-last-placeholder-calls-parm-builders-field-names)
 
 ---
 
@@ -952,3 +954,68 @@ three copies of the `head + 0x14` list-append idiom; 37 sites in NON_MATCHING bo
 **Next:** retarget the placeholder calls in game_uso.c to their real callees where the call is not a lever (the
 report is name-blind; check each per .o); prune the 19 stale NM comments; a ParmNode struct for the
 SnowChaseActor / camKey / ItemType parm builders; name SnowAI.unk80 / unk4C4 and RiderAnim.unk104 / unk11C / unk120.
+
+## 22. Run 512: last placeholder calls, parm builders, field names
+
+agent-g run 512 (branch agent-g on 856a0476b). Commits, all hand edits (no rename-symbol batches): 6dbfc6b94
+(snowboarder.h unk844 -> top, unk864 -> boardNode, for agent-h; user SnowBoarder_mirrorFlip_0000E124), a8c098bdb
+(game_uso placeholder calls, parm-builder fields, stale comments), 8db7533d2 (SnowAI / RiderAnim field names, 591C
+rider fields). Gate PASS before each (3288/3288, ROM identical; name check 2023 -> 2033 named calls, 0 mismatches).
+Scratch: /tmp/claude-1000/g512/ (chk.sh, dump.sh; py/jals.py prints a function's placeholder jals and their ROM
+callees through name-placeholder-calls.py's Rom class).
+
+**The 10 calls the tool left are named.**
+- cam_readParms_00001644 (the verify compile differs from the real object, so the tool refused it): the six jals are
+  camPath_new_00000608 / camPath_init_00000634 / camPath_read_00000724 and mem_new(40 = sizeof(CamList)) /
+  camList_init_000007E0 / camList_read_000007EC. Each jal's a0 setup (zero, v0, the paths[i] reload; 40, v0, lists[i])
+  ties it to one source site.
+- SnowAI_ctor (4 sites, 86 jals): mem_new(0x4E0), Node_ctor, mem_new(0x3E0), mem_new(8). The INIT_ITER macro's two
+  calls are named too (mem_new, Parms_addParm): the 82 macro jals are 41 x that pair in the ROM TextRelocs.
+  `name-placeholder-calls.py check` masks #define bodies, so these two names are not machine-checked (said in the
+  macro's comment).
+
+**Parm builders.** SnowChaseActorCamParms_ctor / SnowChaseActorParms_ctor now store through the existing camera.h
+CamParm / CamVec3Parm (vptr, value, unk14 / unk1C) and the *Parms name / unk04 heads; SnowAI_ctor's head through
+SnowAIParms. No new ParmNode type was needed: CamParm / CamVec3Parm are the per-area parm node (same layout as
+SnowBParm / SnowAIParm / CourseParm / SelParmF). SnowChaseActorLookParms_ctor is documented as cfront's inlined
+ctor chain; its `arg0 == -8` is the null test of the member address `this + 8`. Not done: camKey_init_000003F8
+onto CamKey, game_ItemType_create x3 (the head + 0x14 list append; XCALL(game_uso_func_051C28, ColourItem_ctor)
+would name its absolute-placeholder calls).
+
+**Stale comments pruned** (NM status / INSN_PATCH history on functions that are exact): math_dot4,
+SnowChaseActor{Cam,Look,}Parms_ctor, SnowChaseActor_update, SnowAI_isRivalInPath (its "ground-contact" structural
+decode was also wrong), SnowAI_scanNodes, the tail of SnowAI_ctor, RiderAnim checkJump / applyDamage /
+stateSwitchStance / stateTrickEnd / stateTrickWindup / stateCrashRecover / startCrashSlide / startOllie / stateHopRise /
+stateHopAir / stateFinish / stateStartIntro / hitFeedback. Still there: SnowAI_ctor's ~390-line archeology block
+(game_uso.c above `extern char D_44F4_iterA_t`); it is flagged "historical" at its top but still says the default
+build is INCLUDE_ASM. It needs a scripted delete (too long for Edit).
+
+**Field names.**
+- SnowAI 0x80 **atFinish**: SnowAI_isAtFinish's result, stored by onWin / onLose; no reader in game_uso C.
+- SnowAI 0x4C4 **scaleTimer**: SnowAI_steer's rider-parms boost: 0 normal; dp < metric -> scaleRiderParms, 0x10000
+  (armed); armed and metric < dd0 -> scaleRiderMax and dd1 frames of countdown; 0 / steer flag 8 / enterFinish ->
+  restoreRiderParms.
+- RiderAnim 0x104 **loadedAnim**: RiderAnim_update calls 0x76E78(player.mgr, player.anim) when anim != 0 and latches
+  anim here (-1 from init).
+- RiderAnim 0x11C **hitScale**: selectAnim scales the rider's 0xA1C..0xA24 hit vector by it; lnc parm in
+  stateCushionIn, 1.0 from init / after a hit / stateCushionEnd.
+- RiderAnim 0x120 **endTrickFlag**: set by endTrick, cleared by update when rider->pos.z < D+0x1F4; while set,
+  update ORs 3 into the word at (import_80020098 + 0x138) + 0xB4 (what that object is, not known).
+- game_uso_591C.c: rider->rival and rider->useDParms on fields. **rider->speed (4 sites) stays raw**: the field form
+  moves FP registers (a struct member and `*(float *)(p + K)` are not the same expression to IDO here).
+
+**DNode.** agent-b's include/gdl/dnode.h landed on main (e084d70f9) mid-run, after this run's base. Not switched
+yet, for three reasons. (1) agent-g's tree cannot build it: dnode.h needs main's gadget.h (GdlParmF), and that gadget.h
+renames PointsPopup fields whose users are also only on main; taking either means merging main. (2) The change can't be
+made with compatibility macros: DNode stores vectors as `f32[3]` / AnimPose, and the users read SnowBVec3 members
+(`rider->pos.z`, `vel.x`, `dir.y`), so the member type changes too. Field-name macros such as `#define pos ...` would also
+hit every other struct with a `pos` field. (3) About 200 sites need conversion (in the 23 files that include
+snowboarder.h / snowai.h / rideranim.h / camera.h: pos 65, vel 47, up 19, dir 17, side 14, angVel 9, orient 8, lastPos
+6, ...). Each changed .o needs a byte check, because a member access and an array index are not always the same
+expression to IDO (see the speed sites above). Plan: run from a base that has dnode.h, then
+`SnowBoarder { DNode dnode; ... }`, with users moved to `dnode.vqs.trans[i]` / `dnode.vqs.quat` / `dnode.cvqs.*` /
+`dnode.axes[0..2]` / `dnode.unk3A4`. Do it per file, checking each .o.
+
+**Next:** the SnowAI_ctor archeology delete; camKey_init onto CamKey; ItemType_create x3 (struct + XCALL names);
+snowboarder.h's DNode base onto gdl/dnode.h; the 0x76E78 callee name (anim data manager load) and what
+import_80020098 + 0x138 is.

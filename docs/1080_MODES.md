@@ -833,6 +833,48 @@ Tim / Trk / Arc menu processes; titproc MainLogo / KeyMessage; mgrproc_uso_o0_19
 `{pad[0x154]; u16 *v}` settings view; the TimeGadgetParms_setPosF / setPos / gadget_slideStep object
 (float xps / yps at 0x44 / 0x5C, 0x88 / 0x8C, speed 0xA8, string 0xB4).
 
+### Run 509 (agent-h): CoolGadget, GuiRow users, name entry, menu processes, title logos, PointsPopup
+
+Commits on agent-h (base 6336bd167), each gated PASS (3288/3288, ROM identical; every touched .o identical
+by objdump -d -r -z + data in the matching and NON_MATCHING builds, except where a reloc symbol name was
+renamed on purpose): 2676464ac (CoolGadget), 94c673bb6 (gui_addRow / addRowSub on GuiRow), 59c62af87
+(nameentry.h / modemenu.h), 53086561a (KeyMessage / MainLogo), 0d22975e7 (PointsPopup float Parms, Data
+0xCACC tag symbol, mgr settings view), f8cbf138e (**pure rename**, 7 names). All others are hand edits.
+
+- **CoolGadget** (gdl/gadget.h, 0x198; game_libs.c): Node + TimeGadgetParms, seg / cur / target /
+  labelAlpha / total (0xC4..0xD4), colour 0xD8 (the unlit bar), GadgetRGBA lowColour / midColour /
+  pulseLo / pulseHi (0xE8..0x118: seg < 4 / 4..11 / >= 12 pulses red .. yellow), phase / step, label1 /
+  label2, bar / cap / label1 / label2 sprites. Renamed CoolGadget_setLabels / setLabelPos.
+- **GuiRow**: gui_addRow_00010AB0 / gui_addRowSub_00010B6C use GuiMenu rows[numRows] (the -O0 member-array
+  form is the lever and survives).
+- **include/game/nameentry.h**: NameEntry (0xD4, nameent.uso export 69: entry 0x50, phase 0x60 = the slot
+  17 / 18 / 19 selector, frame 0x68), ModeNameEntry (Tim / Trk / Arc 0x10C: race, pos[3][2], banner,
+  alpha 0x108), MgrNameEntry (0x174: five sprites, alpha 0x168, panelY 0x170).
+- **include/game/modemenu.h**: MenuProcess (0x54, "ARCMenu Process"; menu 0x48 = a GuiMenu whose
+  rows[cursor].arg is the row callback; state 0x50) and TimMenu (0x6C, "TIMMenu Process": choice 0x58,
+  blink 0x5C, promptY 0x68 of the save-ghost prompt). The race processes' unk048 is a GuiMenu too
+  (RaceProcess init stores spriteSet into its +0x30 = GuiMenu.unk30; race.h is not mine, left).
+- **KeyMessage / MainLogo** (modeproc.h): KeyMessage 0x3C (alpha 65..250, fading, x / y); MainLogo 0x74
+  (alpha, hold, phase, colour, pos, part1 / part2 offsets, main logo pos).
+- **PointsPopup +0x2C is a FloatPosParms** (0x38, the float "TimeGadget::Parms", ctor renamed
+  FloatPosParms_ctor): x / y are parms.xps / yps.value; scaleX / scaleY 0x88 / 0x8C, accelY 0xAC. The
+  bootup helpers are PointsPopup_setPosScale / setScale / slideStep (all callers pass popups).
+- **Data 0xCACC tags**: `sTimeGadgetParmsTags_CACC` ([0..2] lby / l2x / l2y, [3] = 0xCAD8 the float Parms
+  name), pinned 0xCACC like sFloatParmsTags_CAE8; the Text function is now SnowBoarder_toggleNudge (health
+  1000000, toggles SNOWB_FLAG_NUDGE).
+- mgr_initMatchRace's import_800201EC view (NCC donor .cpp) reads GameFlow options->seqStep.
+- **Byte gotchas** (same rule as run 507): member addend pairs load in the opposite order, so sums are
+  written `phase + step`, `pulseLo + ...`, `xps + lbx`, `posX + part1X`. CoolGadget_display's two
+  `m[0] + xps` sums stay raw: every member spelling swaps their registers.
+- Census (h492 regex) before -> after: game_libs.c 159 -> 84, timproc_uso_b1.c 108 -> 61, timproc_uso_b3.c
+  117 -> 71, arcproc_uso_tail1.c 61 -> 38, mgrproc_uso.c 50 -> 39, titproc_uso.c 22 -> 17, bootup_uso total
+  266 -> 251 (tail4 46 -> 38, o0_10AB0 7 -> 0).
+
+Next: the NM update / handleInput bodies with array-index levers (TimMenu_update, ARCMenuProcess_handleInput,
+ArcNameEntry_update); TimNameEntry / Arc ctors' typed-chain levers (`Tim16F8_A`: race +0x6B0); game_libs.c's
+remaining 84 sites; RaceProcess.unk048 -> a GuiMenu (agent-c's race.h); Fader_ctor / buildTexture Node /
+vtable sites; gadget_decodeStringB4_00014598 (PointsPopup text cipher; no static callers found).
+
 ### Run 503 (agent-c): genproc Parms records, GenRoom, gen_imp_ imports
 
 Commits on agent-c (base c519196e2). Each was gated PASS (3288/3288, ROM identical), and every genproc
@@ -892,4 +934,38 @@ Next (H1):
 - The SelItemsMgr_ctor / *List_createItem bodies (largest raw blocks).
 - gen_createScene {room, cam, cam2}.
 - CourseItem_update's model offsets (lever-sensitive int-cast forms).
+- Names for the 0x1CDD0 heap-size block's first word.
+
+### Run 513 (agent-c): donor context names, SelItemsMgr / SelItemList / GenScene
+
+Commits on agent-c (base 856a0476b). Every one was gated PASS (3288/3288, ROM identical), and every
+genproc / donor .o was identical by objdump -d -r -z in the matching and NON_MATCHING builds:
+- 8cb77668c (hand edit, field rename only): context_timproc_uso_b5.h's `B5TimingScreen` / Panels / Row /
+  Entry / Vtable and `TimB5EntryFields` take the select.h names (SelectWin out / cheatChar / curItem /
+  chosenItem / itemsMgr / colors / font / scene / idleTimer / transition, the flattened parm values ysp /
+  lfw / cc0..cc4 / cc7; SelItemsMgr lists; SelItemList items / count; SelItem vt / enabled / id / flags;
+  vtable slots 11 focus / 15 setChosen; SelItemEx xp0 / yp0 / cfv / am0..am4 / node / model / barCount).
+  CharacterItem_drawStats keeps its raw yp0 read: `a0->yp0` changes the bytes.
+- f05e0b820 (hand edit): select.h SelItemsMgr (0x60): vptr, the three CommonInfo words 0x2C..0x34
+  (0x30 = the node DispItems hangs under), dispItems 0x38, commonInfo 0x50, tesuri[3] 0x54 (the three
+  "Tesuri Item"s; [2] only when game mode != 2). SelItemList gets the same head + dispItems 0x38.
+  SelItem.listIndex 0x2AC (LevelList_createItem stores the list count; LevelItem_drawStats lights that
+  slot). Converted: SelItemsMgr_ctor's self / tesuri accesses, Course / LevelList_createItem (item and
+  model fields, list dispItems / count), LevelItem_drawStats.
+- aee0ed8be (hand edit): `GenScene` {room, cam, cam2} (gen_createScene; = SelectionMgr.sceneSet; cam /
+  cam2 are the SelectWin scenes). gen_createScene and SelectionMgr_ctor converted (NODE() attach idiom,
+  numPlayers / sceneSet / wins). gen_createScene builds "MainGame" with "bg" / "fg".
+- 16d3a74ae (hand edit): CourseItem_update on SelCourseModel through CMODEL(); the arm-local int-cast
+  re-def `(float *)((int)CMODEL(a0) + 0x128)` stays (it is the lever).
+- Node names come from the genproc Data block (Yay0 at ROM 0x5BCEB6, decompressed 0x1790 bytes):
+  0x1334 "MainGame", 0x1340 "bg", 0x1344 "fg", 0x1350 "SelItemsMgr", 0x1364 "Common Info", 0x1378
+  "DispItems", 0x138C / 0x147C / 0x1518 "Tesuri Item", 0x1428 / 0x1440 / 0x1454 / 0x1468 the four lists.
+- Census (c503 PAT + FW patterns, incl. donors): 2132 -> 2062. timproc_uso_b5.c 823 -> 792, 8FC8 83 -> 79,
+  D884 47 -> 31, DF14 49 -> 33, CEB4 3 -> 0.
+
+Next (H1):
+- SelectionMgr_ctor's split layout (0x3C..0x54, set per stageBit then SelectionMgr_setSplit_00001DB0).
+- The S70 list ctors (NEWS70 in 8FC8) onto SelItemList; the QNode model heads (0xB4 pos, 0xDC..0xE4,
+  0x108 lighttarget kid) as a shared SelModel base.
+- The match_imports Character / BoardList_createItem donors onto the context names.
 - Names for the 0x1CDD0 heap-size block's first word.
