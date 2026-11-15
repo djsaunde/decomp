@@ -775,6 +775,63 @@ Next: the GUI menu object (gui_initRows / centerRows / addRow / getCurrentRow / 
 of 0x28); Fader (tail4: +0x40..0x74) and the TimeGadget / BestGadget parm block (+0x44..0x108); the
 settings record as a struct; then the name-entry overlays (0x10C / mgr 0x174), Tim / Trk / Arc menu
 processes, game_libs.c's 173 sites, titproc MainLogo / KeyMessage, and the remaining dead blocks above.
+(The dead blocks were removed on main by the coordinator: 92c2495d9, 0a9c39978.)
+
+### Run 507 (agent-h): gadget Parms, Fader, settings record, GUI menu, SnowBoarder_reset
+
+Commits on agent-h (base 0a9c39978), each gated PASS (3288/3288, ROM identical; every touched .o identical
+by objdump -d -r -z in the matching and NON_MATCHING builds): 535bf6de6 (gadget.h + fader.h), c9677f156
+(settings record), e6964a2f3 (Data 0xCAE8 tag symbol), 2329ae344 (**pure rename**
+SnowBoarder_func_0000CAE8 -> SnowBoarder_reset), 605dd337f (guimenu.h). All others are hand edits.
+
+- **Parms objects** (gdl/gadget.h). A "<Class>::Parms" object is an 8-byte head (+0 its name string) and
+  N `GdlParm`s of 0x18 (+0xC type vtable: Data 0xC764 int, 0xC83C float; +0x10 value), each built with a
+  4-byte tag from the Data section ("xps", "yps", "lbx", ...: the words right after the Parms name).
+  The tags are the HostIO names of the values. `TimeGadgetParms` (0x98, Data 0xCAAC; ctor
+  TimeGadget_ctor_00013D40, which is the Parms ctor despite its name): xps / yps (text position), lbx / lby
+  and l2x / l2y (offsets of the two label sprites). `CountDownParms` (0x68, Data 0xCB60; game_libs.c
+  TimeGadgetParms_ctor): xps / yps / shx / shy. CoolGadgetParms_ctor builds the same six tags as
+  TimeGadget (Data 0xCC38). TimeGadgetParms_ctor_0001438C is a third "TimeGadget::Parms" (Data 0xCAD8)
+  with two float parms.
+- **Gadget** (0x13C): parms 0x2C, colour 0xC4, alpha 0xD8 (text + label2), labelAlpha 0xDC (label1),
+  font 0xE0 (ctor arg; draws text), text[0x20] 0xE4, label1 0x104 / label2 0x108 (= &sprite1 / &sprite0,
+  set by TimeGadgetParms_set104_00014004 in every ctor). The draw order is in TimeGadget_display_000140C4.
+  CountDownGadget: parms, alpha 0xA8; arg1 / arg2 are the two fonts (secs at xps, cs at xps + shx).
+- **Fader** (include/game/fader.h, 0x78): the 32x32 fire-grid screen fade. key 0x40 (a repeated
+  Fader_start key is ignored), state 0x44, progress 0x48 (1.0 = done), texture 0x4C (u16 32x32),
+  screenIdx 0x54 (per-cell framebuffer index), grid 0x58 (f32 cells), cols / rows / cells, mode 0x68.
+- **Settings record** = the Backup options chunk (gdl/backup.h BackupOptions, agent-c's header: only the
+  unused head fields were renamed / retyped u16): unlocks 0x0, seqStep 0x2, flags 0x4 (& 3 sound mode,
+  bit 2, bit 3 language menu), unk6[8] (settings_get8), newMark[3] 0xE (Backup_sessionSetNewNames passes
+  &newMark[mode]), levels[3] 0x12 (settings_vol*). GameFlow's field is now `char *options` (was
+  `unlocks`), viewed with `SETTINGS(p)`.
+- **GuiMenu** (include/game/guimenu.h, 0x304 = PauseMenu_create's alloc): arg 0x2C, alpha 0x34, timer
+  0x38, colour 0x3C, x / y / rowHeight 0x6C..0x74, numRows 0x78, cursor 0x7C, locked 0x80, rows[16] of
+  GuiRow {label, enabled, id, arg, sub[0x18]} at 0x84.
+- **SnowBoarder_func_0000CAE8 -> SnowBoarder_reset.** The Text symbol was also a data placeholder
+  (Data 0xCAEC / 0xCAF0 = the "xps" / "yps" tags, used by TimeGadgetParms_ctor_0001438C's .s, NM body
+  and match_import). Those now use `sFloatParmsTags_CAE8` (pinned 0xCAE8; the bindings .json key, origins
+  .ld and expected tail4 .o symbol follow), then the function was renamed with the tool. The same
+  pattern remains for `func_0000CACC` (a real function, and the Data 0xCACC..0xCAD8 tags / "TimeGadget::
+  Parms" name in TimeGadget_ctor_00013D40 / 1438C).
+- **Byte gotchas** (all reverted to raw, with a comment where it matters):
+  - `(float)GADGET(s0)->alpha` changes fp register colouring in the gadget display functions.
+    `(float)*(int *)(s0 + 0xD8)` stays.
+  - A member addend pair loads in the opposite order from the raw pair. Write it `xps + lbx`; the raw
+    form was `lbx + xps`. The same holds for the -O0 product in gui_centerRows.
+  - The PARM() stores in TimeGadget_ctor_00013D40 change its branch layout.
+  - PARMF() in the NM TimeGadgetParms_ctor_0001438C grows the NON_MATCHING .text tail by 8 bytes.
+- Census (h492 regex) before -> after: bootup_uso total 376 -> 266 (tail4 134 -> 46, o0_1034C 19 -> 0),
+  game_libs.c 173 -> 159, titproc_uso.c 22 (+ the two settings sites), game_libs_tail.c 30 (its settings
+  sites were `&D_00000000 + 0x154` forms, outside the regex).
+
+Next: CoolGadget (0x198, 79 sites in CoolGadget_ctor / display: TimeGadgetParms at 0x2C, seg 0xC4,
+cur / target 0xC8 / 0xCC, alpha 0xD0, total 0xD4, colour 0xD8, Vec4 colours 0xE8 / 0xF8 / 0x108 / 0x118,
+phase / step 0x128 / 0x12C, label1 / label2 0x130 / 0x134, sprites 0x138 / 0x150 / 0x168 / 0x180); gui_addRow / addRowSub
+onto GuiRow; the Fader_ctor / buildTexture Node / vtable sites; name-entry overlays (0x10C / mgr 0x174);
+Tim / Trk / Arc menu processes; titproc MainLogo / KeyMessage; mgrproc_uso_o0_19C.c's private
+`{pad[0x154]; u16 *v}` settings view; the TimeGadgetParms_setPosF / setPos / gadget_slideStep object
+(float xps / yps at 0x44 / 0x5C, 0x88 / 0x8C, speed 0xA8, string 0xB4).
 
 ### Run 503 (agent-c): genproc Parms records, GenRoom, gen_imp_ imports
 

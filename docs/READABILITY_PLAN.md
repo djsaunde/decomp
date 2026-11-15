@@ -717,6 +717,60 @@ totals: agent-c 15, agent-b 155, agent-h 72, unassigned 2; all 244
   - Hand-convert the multi-object functions (DNode_solveContacts, SnowBoarder_*, MapProp_ctor / cam_create).
   - Name the 704 sites on unnamed direct objects; `census --direct` lists them.
 
+#### 9.1.10 Run 508: named placeholder calls (`CALL(X)`), gate step 5, plain-site ratchet
+
+- **Tool** `scripts/name-placeholder-calls.py` + `include/uso_call.h`. A placeholder call
+  `gl_func_00000000(a)` becomes `CALL(fs_gdlReadFile)(a)`; `CALL(f)` / `FCALL(f)` / `GCALL(f)` /
+  `XCALL(tok, f)` expand to `gl_func_00000000` / `func_00000000` / `game_uso_func_00000000` / `tok`
+  (the exact original token, so the bytes cannot change). The callee is the target of the module's
+  TextReloc R_MIPS_26 at that jal, resolved with agent-c's uso-imports.py (imports go to the exporter's
+  Sym; self-relocations to the module's own function).
+  - **Ordering proof (never source order).** A verify copy of the file spells call site #N as its own
+    symbol `npc_uc_N` (declared like the placeholder's nearest preceding declaration; file-scope
+    `static` dropped so IDO emits ELF function symbols). It is compiled through the build's
+    asm-processor + cc pipeline, with CC / CFLAGS / OPT_FLAGS / CC_ONLY_FLAGS / MIPSISET taken from the
+    Makefile target variables. A function is used only when its verify bytes equal the real
+    `build/.../X.c.o` function, and every placeholder jal in it is covered (call count == reloc count).
+    Site N's reloc offsets then give the ROM callee. About 1-2 s per file.
+  - `plan FILE.. [--write] [-v]`; `check [FILE..]`: a fast multiset of CALL names per (function, token),
+    which must be contained in the ROM callees of the real .o's jals; `check --strict`: re-derives every
+    site by the verify compile; `selftest`.
+  - **Gotcha:** names come from the build. An incremental make left `game_uso_block1_yay0.lnk.o` with a
+    pre-rename name (SnowAI_func_00006FA8, now SnowAI_pickFinishBranch); `check` on the gate's clean
+    build caught it. Plan after a clean build.
+  - Left by design: NON_MATCHING reference bodies (no jal in the build), REPLACE_FUNC_BODY donor bodies
+    (bytes differ), functions with macro-generated calls (SnowAI_ctor: 4 sites vs 86 jals), jals into a
+    split function (`gl_osSetIntMask+0x8`, `gl_osWritebackDCache*+0x4`), unnamed `Text+0x0` callees,
+    NCC .cpp files (no verify path yet), and n64proc / boarderN (uso-imports cannot parse that module layout).
+- **Applied (agent-a run 508)** (named / left):
+
+  | file | named | left |
+  |---|---|---|
+  | game_uso.c | 233 | 11 |
+  | game_libs_post0b.c | 1014 | 303 (283 NON_MATCHING) |
+  | game_libs_post1b.c | 235 | 86 (48 donor, 31 NM) |
+  | game_libs_post1b2.c / 1b2c.c | 5 / 2 | 0 / 13 |
+  | game_libs_post.c | 407 | 51 (42 NM) |
+  | timproc_uso_b5.c | 84 | 3 |
+  | gui_uso.c | 23 | 7 |
+  | eddproc_uso.c | 20 | 6 |
+  | n64proc_uso.c, boarder1-5_uso.c | 0 | 23, 5 each (module not resolvable) |
+  | kernel | - | no placeholder calls |
+
+  Total 2023 named. Still to do (dry-run counts): agent-h's files (bootup_uso, titproc, game_libs.c,
+  game_libs_tail.c, arc / mgr / h2h / tim / trk), 2423 provable; the other game_libs files (o2_* / mid /
+  post2b / ido53 ...), 412 provable.
+  Run `python3 scripts/name-placeholder-calls.py plan FILE --write`, then the gate.
+- **Gate step 5** (readability-gate.sh): runs `name-placeholder-calls.py check` and `uso-data-sites.py
+  --no-build check`. Both tools now re-exec under /home/danjs/code/decomp/.venv when crunch64 /
+  pyelftools are missing; the gate's build-venv python lacks crunch64.
+- **Plain-site ratchet** (uso-data-sites.py `check`): `scripts/uso-data-sites.plain-base.txt` lists the
+  162 provable plain `(char *)&D_00000000 + K` sites still unspelled. A provable plain site that is NOT
+  listed fails `check`. This is the regression the run 504 landing hit, when a merge dropped four post0b
+  GL_DATA_STR spellings. Tested: reverting math_printBounds' GL_DATA_STR(0x21B6C) fails with the exact
+  spell-base command. After spelling sites (or for a deliberate raw site), shrink the list with
+  `check --update-ratchet`.
+
 ## 10. Worktree setup gotcha (Part 0)
 
 The fresh worktrees had **no `tools/ido-static-recomp` and no `baserom.z64` symlinks** (the
