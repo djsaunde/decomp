@@ -8,6 +8,8 @@
 > libultra/libc tail], b844a9296 include/libultra os_pi.h / os_timer.h / os_cont.h + 5 donor migrations).
 > agent-b run 463 (commits 973cf1d60 [rename, 130: AnimPlayer + post1b], be8429244 [rename, 164: post0b 0x4C000+],
 > cd0bf1205 [rename, 30: pad / boot / str leftovers]). Scope now also covers game_libs_post1b.c (0x62F64-0x69CC4).
+> agent-b run 468 (on 19f8e0b6f: e8c40fbf9 [rename, 50: the last game_libs placeholders], 8fbf9b82b [rename, 17:
+> heap temp wrappers, agent-a's coll_/gfx_ position names], then 9 header-move commits b6f67ecbf..35a9a6469).
 > Method: docs/1080_SYSTEM_LAYER.md section 1 (string xrefs through the bootup.uso reloc tables), plus the
 > matched bodies' own decode comments, GBI command words and class-name strings.
 
@@ -36,6 +38,15 @@
   Node slots: 0 hostioParms, 1 0x38598 (list iterator), 2 display, 3 update, 4 handleMsg, 5 broadcastMsg,
   6 doCommand, 7-9 the 0x38B6C/74/7C empty stubs; 10+ are class-specific (named `<Class>_vfnN_<addr>`).
   Words at 0x20630/0x20638 are Cfront pointer-to-member triples (parm callbacks), not vtables.
+
+- **jal relocs against bootup Sym 3 (run 468).** Sym 3 is the Text section base (tag 0x54, value 0; the
+  emu-symdump calls it `func_000008`, which older xrefs printed as `bu_000008`). The target is the jal
+  immediate (`(w & 0x3FFFFFF) << 2`) minus 0x1466C for game_libs. The C spells these as `gl_ref_<bootup off>`.
+  Fixed in /tmp/claude-1000/b468/xref.py. Cross-USO callers of a game_libs function: h471's `xmod.py`
+  (copy with paths fixed: /tmp/claude-1000/b468/xm/, output xmod.json maps callee name -> external callers).
+- **Parm read / write slots.** A 0x2C-0x30 function that calls a per-TU `fs_gdlReadInt` (the tag) and then
+  `fs_gdlRead{Int,Float,Quad,Vec3}(this + 0x10)` is a hostio parm read slot: `hostio_read<T>Parm_<addr>`
+  (same pattern as boot_/game_/edd_read<T>Parm in the other modules).
 
 ## 2. Map
 
@@ -96,6 +107,23 @@ Next struct candidates: MemTracker; TextWin / ConsoleMgr; the RcpTask unk58-unk7
 RcpMgr_startTask).
 
 ## 4. Held back and next
+
+- Run 468: **no game_libs placeholders are left** (gl_func_ / game_libs_func_ except the `*_00000000*` sentinels).
+  New in 0x27000-0x34400 (outside the old area): AudioThread_CheckSpecChange / ClearSpecChangeQueue / Noop1Cmd /
+  Noop1CmdZeroed / WaitForAudioTask / GetLayerSamplesLeft (OoT thread.c order; 275B0 / 275BC set / clear an imported
+  word, no OoT twin); MCamera (MNode-derived "camera", vtable D+0x1E0E8: ctor 32E18, hostioParms 33338, doCommand
+  332B4, updateLookAt 33094 slot 11, vfn12 333A4); sys_assertFail, sys_fatalHaltLoop, dbg_threadName /
+  dbg_threadStateName. libultra: gl_osSyncPrintf 6F144 / gl_rmonPrintf 6F160 (syncprintf.c order; the audio
+  driver's RelocateFont calls the second), gl_osSpTaskYielded, gl_osPiGetCmdQueue, gl___osGetCurrFaultedThread,
+  gl___osViGetCurrentContext. Still weak: RaceProcess_callGlobalSlot11_00008674 (the global is an import),
+  sys_timeInFrames_00033444, gl_xldtob_stub_00073E6C, str_stubReturn0_00067D80.
+- Run 468 header moves, all done: OSPiHandle (6C2A4, 730CC, 7369C, 6F088), OSIoMesg / OSDevMgr (o1_6D964, ido53_74EF4,
+  which also takes OSMesgQueue / OSThread), OSMesgQueue (6F218), OSPfs (post2b.c, ido53_718C0). Still TU-local:
+  `__OSViContext` (74EF4), the pfs internals `__OSInode` / `__OSDir` / `__OSInodeCache` (post2b.c, 718C0), PgsRls.
+  Candidates for new shared headers: os_vi.h (__OSViContext) and a pfs-internal header.
+- Weak-name backlog (milestone 2): about 370 `<subsys>_func_<addr>` names remain in game_libs (gfx 60, Backup 61,
+  RaceTracker 29, sys 27, coll 13, app 15, ...). Run 468 did coll_ (8 of 21) and two gfx_; the rest need per-function
+  reading. xmod.json shows few external callers for post0b names, so the evidence is mostly the bodies and vtables.
 
 - rename-symbol.py now accepts a {host, match_imports/<OTHER>.c} pair when every match_imports definition of OLD is
   textually identical to the host definition (comments stripped, whitespace collapsed); otherwise still refused.

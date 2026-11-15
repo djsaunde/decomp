@@ -146,6 +146,43 @@ lands: retype `dataMgr` (RaceTracker / DataManager) and move the race overrides 
 InputMgr +0x134 (Bss 0x22C, a game object: +0xC4 / +0xCC per-player, +0x108 active window) and +0x154
 (unlock ptr) still raw. tim / trk Fader uses (agent-c's TUs) can take INPUT_MGR too.
 
+**Run 473 (agent-h, branch agent-h on a9f6f0192).** Four hand-edit commits, no renames, gate PASS each
+(3288/3288, objects identical): 0f51980b5 (include/game/modeproc.h + race.h DataManager + input.h + h2hproc
+conversions), dbdba757e (arcproc), 0b1091cd5 (mgrproc), 6c9f345e6 (titproc).
+- **include/game/modeproc.h** (sizes = the ctors' outer alloc; offsets asserted):
+  `ArcRace` 0x780 (courseList 0x6A8 = `ArcCourseList` 0x38 {retries, idx, count, courses[5], times[5], total},
+  dataMgr 0x6AC, finalTime / recordRank 0x6B0 / 0x6B4, retry 0x6B8, sprites[8] 0x6BC, resultFade 0x77C);
+  `MgrRace` 0x7F0 (courseList 0x6A8, dataMgr 0x6AC, sprites[10] 0x6B0, retriesX/Y 0x7A8/0x7AC, retries 0x7C8,
+  lastResult 0x7D0, exitStep 0x7D4, nameEntryMode 0x7D8, creditLine / creditScroll / endingPhase / endingTimer /
+  endingFrame 0x7DC-0x7EC); `H2HRace` 0x6BC (wins 0x6A8 = s32[2] ctor arg 3, postMenu 0x6AC, dataMgr 0x6B0,
+  pausePlayer 0x6B4, winner 0x6B8); `Arc/Mgr/H2HDataManager` 0xD8 / 0xE0 / 0xF0; `GameDemoProcess` 0x6C8
+  (dataMgr 0x6AC, keyMessage 0x6B0, mainLogo 0x6B4, langMenu 0x6B8, whiteFader 0x6BC, menu 0x6C0, menuState
+  0x6C4) and `TitleDemoProcess` 0x78 (a plain Process with the same overlays at 0x50-0x64).
+  **Correction to the run 471 note:** the DataManager is at 0x6AC in arc / mgr / GameDemo and 0x6B0 in h2h;
+  0x6A8 is the course list (arc / mgr) or the win tally (h2h), not the DataManager (tim / trk: 0x6A8 is).
+- **DataManager** = `typedef RaceTracker DataManager` in race.h: "DataManager" is the node name of the
+  RaceTracker class itself, and the mode subclasses share nothing past 0xB8 (arc / mgr: 0xB8 course list,
+  0xBC owner; tim / h2h: 0xB8 owner). It is an addition at the end of race.h (no existing line changed), for agent-c to merge with the Backup session structs.
+- **InputMgr**: +0x134 `game` (boot Bss 0x22C; +0xC4 / +0xCC players, their +0x800 the pad; +0x108 / +0x10C
+  camera windows), +0x154 `unlocks` (+0 u16 unlock bits, +4 u16 option bits, +0x12..0x14 u8 settings),
+  `dataMgr` typed `struct RaceTracker *`.
+- **Converted:** h2h winBy*, onPause, pauseForfeit, onEndTimerDone, onRaceOver, onTimeout; arc loadSprites /
+  releaseSprites, onCountdownStart, end-timer pair, onPause / resumePlayers, onEndTimerDone / onAltEndTimerDone,
+  onRaceOver, onLeave; mgr loadSprites / releaseSprites, endTimerEnabled, onTimeout, onRaceOver, onQuitButton,
+  startEnding, startReplay; GameDemoProcess buildMenu, onTimeoutExit, onQuitButton, handleInput.
+  **Byte traps found:** the course-list `p->count == p->idx + 1` test swaps t6 / t7 against `p[2] == p[1] + 1`
+  (kept the int array in arc / mgr loadSprites); mgr onRaceOver case 4 needs `list[list[1] + 4]` (an s32 field
+  cast to char * flips the addu operands).
+- **Left raw:** all the race ctors (alloc-cascade levers; they hold the only derived-class vtable calls, so
+  the typed `vt->slot[]` form was not applied here), mgr onEndTimerDone / updateSub2 (int-array and BB-count
+  levers), h2h onPauseSelect / setupCameras, the DataManager init / update bodies, the .cpp TUs (their own
+  local structs), and the per-offset `import_800201xx` users (mgr_switchToView2, mgr_restartForEnding).
+
+**Next (H2).** Convert the DataManager init / reset / update bodies onto Arc/Mgr/H2HDataManager (+ RaceTracker
+base fields). Retype courseList as `ArcCourseList *` where no test depends on the array form. Name MgrRace
+0x7A0 / 0x7A4 / 0x7B8 (drawHud floats) and GameDemoProcess 0x6A8. The NameEntry slots 17 / 18 still need
+nameent's base roles.
+
 ## H1. timproc (time attack), trkproc (trick mode), genproc (select screens) (agent-c run 459)
 
 agent-c run 459, branch agent-c on 8239918e8. Pure rename commits 60938d18f (timproc + trkproc, 119 names)
@@ -344,3 +381,51 @@ and the arc / mgr / h2h race processes.
 - The genproc items (per-class SelItem model structs, slots 13 / 14 / 17-19 / 24, SelectWin state
   conversions) and the game_libs_post.c non-audio placeholders (134 placeholder-named definitions still
   match `(gl|game_libs)_func_`, most of them audio) were not reached this run.
+
+### Run 474 (agent-c): backup.h, genproc slots and item models
+
+Commits on agent-c (base a9f6f0192), each gated PASS (3288/3288, ROM identical): b9207cb69 (hand edit:
+include/gdl/backup.h + Backup / session conversions), ca5180a9b (**pure rename**, 27 genproc slot names),
+6a1079b0a (hand edit: select.h item models + 35 item virtual conversions).
+
+**include/gdl/backup.h** (offsets and sizes asserted):
+- `BACKUP_SRAM_*`: every chunk offset, its checksum and the mirror pair (1080_SYSTEM_LAYER.md section 4);
+  `BACKUP_CHUNK_KEY` 0xDEADBBAD, `BACKUP_HEADER_KEY` 0xD1265205.
+- Records: `BackupTimeEntry` (8: flags with `BACKUP_ENTRY_VALID` 0x80, extra, name[3] as letter - 'a',
+  time[3] = min / sec / hundredths), `BackupScoreEntry` (8: flags, name[3], s32 score),
+  `BackupCourseRecord` (0x30: times[3] then scores[3]), `BackupCourse` (8 courses, 0x180),
+  `BackupArcadeEntry` (0x20: flags word, count, name[3], stages[5], score), `BackupArcade` (3 entries),
+  `BackupOptions` (0x18), `BackupGhost` (0x10: bits = mode 0-1 / course 10-13 / three more fields, count,
+  data, unkC), `Backup` (8).
+- `BackupSession` (0x18) = the record session: course / arcade / ghost (Backup_readCourse / readArcade /
+  readGhost), unkC, backup (openSession arg 1), modes. `BACKUP_MODE_TIME` 1 (tim_openSession), `TRICK` 2
+  (trk), `ARCADE` 4. openSession keeps the saved ghost only if its mode and course match.
+  RaceProcess.session / RaceTracker.session are now `BackupSession *`.
+- Converted: openSession / closeSession, the session-level B208..B710 family, read / write / check of every
+  chunk (macros + sizeof, the 384 / 96-byte copies are now BackupCourse / BackupArcade), the entry
+  accessors (9978..9D00), the ghost bitfield accessors (A878..A96C, A990, AA7C), hud_loadRecords,
+  RaceProcess_restartCameras / restartWithTimeout, TimRace / TrkRace mode tests.
+- Kept as int reads (load-bearing): `FW(m, 0x0)` in hud_loadRecords and `*(int *)s2->race.session` in the
+  Tim / Trk checkRecord (a `(s32)m->course` cast renumbers the multu temps); `~0x80` cannot replace the
+  `&= 0x7F` clears (andi 0xFF7F). Left raw: the record-list helpers with loop levers (99DC / 9B60 / 9C5C /
+  9D24 / 9DB8 / 9EBC / A00C..A540 / A670 / A7B4 / AAEC..AD9C, resetOptionsData) - they still take char * /
+  int *; their record types are documented in backup.h.
+
+**genproc slots** (fn word at vtbl + 0xC + 8N): 13 `onStageLeave` (accept, state 7), 14 `onStageReturn`
+(cancel to state 6 / state8 scroll), 17 `toggleVariant` (L / R toggles the flags bit), 18 `playPickAnim`
+(state4 accept into zoom state 5), 19 `playAcceptAnim` (after confirm unless cancelled), 24 `drawSubLabel`
+(SelectWin draw, states 6 / 7, previous-stage item id or 5 / 6 / 7).
+
+**select.h item models:** `SelCharModel`, `SelBoardModel`, `SelCourseModel`, `SelTesuriModel`,
+`SelLevelModel` (common idea: view[4] copied by update, alpha, highlight faded by updateHighlight, focused
+forces the highlight, chosen; Board / Course add `lit`), and `SelCharacterItem` ... `SelLevelItem` =
+SelItemEx with the typed model.
+
+### Next (run 474)
+
+- SelectWin state / display functions (state0..10, updateHighlight family, the 0x6394 draw): convert onto
+  SelectWin / the typed items one at a time; they are lever-heavy (`FW` chains, `if (1)` blocks).
+- The item updateHighlight / update bodies onto the model structs (levers: `if (1) { v = ... + 0x130 }`).
+- The Backup record-list helpers onto BackupTimeEntry / ScoreEntry / ArcadeEntry (check each; loop shapes
+  are levers). InputMgr.session could become `BackupSession *` (titproc assigns it from an int).
+- SoundObj conversions (run-464 leftovers) were not reached.

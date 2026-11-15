@@ -335,6 +335,58 @@ copies in game_libs donors); the game_uso main object (0x4E0) and its 0x3E0 chil
 SnowBoarder object; the audio context (OoT `AudioContext` analogue); the libgdl Gfx/DL context
 (the gui_uso GfxCtx idiom `ctx->0xC` = DL cursor).
 
+### 9.1 USO section-base accesses (`&D_00000000 + K`) — plan (agent-a run 472)
+
+**What a site is.** Every game_libs data reference is spelled off the zero placeholder
+(`(char *)&D_00000000 + K`), because the ROM holds pre-relocation words. The bootup.uso
+TextReloc at that instruction names one Sym entry, and the Sym **tag byte** says what K means
+(decoded run 472; `[tag, value, hash]`, tag bits 16-23 = section type << 4 | kind):
+
+| tag byte | Sym is | value | K in the source is | HI16 sites (objects) |
+|---|---|---|---|---|
+| 0x82 | named Bss object | its Bss offset | the **field offset** inside it | 1950 (111) |
+| 0x62 | named Data object | its Data offset | field offset | 778 (247) |
+| 0x64 | Data section base (sym 2) | 0 | the **Data offset** | 1255 |
+| 0x74 | RoData section base (sym 1) | 0 | the RoData offset | 387 |
+| 0x84 | Bss section base (sym 4) | 0 | the Bss offset | 159 |
+| 0x52 / 0x54 | Text object / base | | function pointers | 49 |
+| 0x?1, 0x03 | imports / absolute | | | ~70 |
+
+Consequences: (1) there are four address spaces, so equal K in two sites can be two objects;
+(2) for named objects (~2700 accesses, 358 objects) the object's address is **not in the
+code at all**, only in the reloc table; (3) **a single `GameLibsData` struct overlaid at
+D_00000000 cannot work.** Rule 4e (keep the D_00000000 symbol and K) still holds.
+
+**Approach: per-object accessor macros** (`include/gdl/gl_data.h`):
+```c
+#define GL_DATA(off) ((char *)&D_00000000 + (off))   /* Data-base site (Sym 2) */
+#define gDmaSlots ((DmaSlot *)&D_00000000)           /* Bss object +0x3A240 (Sym 1504) */
+#define sDmaOutOfSlots GL_DATA(0x1E31C)              /* "Out of DMA slots" */
+```
+- The expansion is the expression the matched body already used, so the preprocessed source
+  is unchanged except for parentheses: byte-safe by construction, and the gate confirms it.
+  Array indexing on a typed accessor (`&gDmaSlots[id]` for `(char *)&D_00000000 + id * 0x44`)
+  also matched in the prototype, but treat it as rule 4a: gate each one.
+- The macro **name** carries the evidence: section, offset, Sym index in its comment. Names for
+  Data-base strings come from the bytes (`sDma...`, `s` = string); objects get `g<Name>`.
+- Macros live in the subsystem header that owns the type (dma.h for DmaSlot), and
+  gl_data.h holds the convention + `GL_DATA` / later `GL_RODATA` / `GL_BSS`. D_00000000 stays
+  declared per TU (int / char / void *); the macros only take its address.
+- Per-site *struct* overlay is still right **inside one object** (DmaSlot fields, HUD gadget
+  vtable slots): the accessor gives the base, the struct gives the fields.
+
+**Tooling still to build** (next step): `scripts/uso-data-sites.py` that walks bootup.uso's
+Sym/TextReloc (parser: `scripts/uso-sym-oracle.py`; text offset = game_libs VRAM + 0x1466C)
+and emits, per function, each `&D_00000000` site as (section, Sym index, object offset, K).
+Uses: (a) a **checker** that every accessor macro use sits on instructions relocated against
+the Sym its comment claims (catches a K=0x10 Data string mislabelled as a Bss field);
+(b) a census to rank objects by access count, for naming waves; (c) a draft macro table
+(`gl_bss_3A240` style placeholders, renamed as areas identify them). Data objects referenced by
+DataReloc (vtables, string tables) can be named the same way.
+
+**Prototype (commit 628bc635c on agent-a):** `gDmaSlots` + the five dma_* strings, used by
+dma_startRead / startWrite / wait / read / write / allocSlot (game_libs_post.c). Gate PASS.
+
 ## 10. Worktree setup gotcha (Part 0)
 
 The fresh worktrees had **no `tools/ido-static-recomp` and no `baserom.z64` symlinks** (the

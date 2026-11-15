@@ -85,6 +85,8 @@ mirror copy and restores the primary from it.
 | 0x1F8 | options | 24 | 0x210 | 0x7FC8 / 0x7FE0 |
 | 0x218 | ghost header (n at +4), data n*4 at 0x230 | 16 | 0x228 | 0x7FE8 / 0x7FF8 |
 
+Structs and `BACKUP_SRAM_*` macros: include/gdl/backup.h (agent-c run 474; 1080_MODES.md "Run 474").
+
 ## 5. Structs
 
 `include/gdl/hud.h`: `Hud` (0xA0) has the child list at +0x10, the sprite sets +0x58..+0x68, and the gadget

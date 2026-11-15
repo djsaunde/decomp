@@ -2,6 +2,7 @@
 
 > agent-a run 442, 2026-11-15, 1080 branch agent-a (commits a3d9ef8a0, 1157dafde, bddb039a8).
 > Updated by agent-a run 467 (commits 055f71ba0, 4c7809507): no kernel placeholders remain. See section 12.
+> Updated by agent-a run 472: kernel globals named (sections 8, 12), Sym tag census (section 6).
 > Sources: the kernel loader in `src/kernel/kernel_000*.c` (names below are the run-442 names),
 > the kernel string/section tables in `src/kernel/kernel_026.c`, `include/uso.h`,
 > `scripts/uso-sym-oracle.py` (a working parser) and ROM dumps. Where a field is inferred
@@ -163,6 +164,14 @@ Then its section records follow, up to End (type 11). "USO Version: %s" prints "
 - `uso_unbindImports(mod, id)` clears the resolved bit of every import from `id` when `id` unloads.
 - The low half of word 1 and the rest of word3 look like hash/ID data. That is the unsolved "Sym hash"
   (READABILITY_PLAN section 11).
+- **Census of bootup.uso (agent-a run 472).** Kind 4 is a section's *base* symbol (value 0):
+  sym 1 = RoData (tag 0x74), sym 2 = Data (0x64), sym 3 = Text (0x54), sym 4 = Bss (0x84).
+  Kind 2 is a named object: 0x52 Text (1891), 0x62 Data (453), 0x72 RoData (2), 0x82 Bss (138),
+  value = offset in its section. Kind 1 tags 0x?1 are imports from module ?. game_libs' HI16
+  TextRelocs: 1950 to Bss objects, 778 to Data objects, 1255 / 387 / 159 to the Data / RoData /
+  Bss bases. This is what `&D_00000000 + K` means in the source (READABILITY_PLAN 9.1):
+  K is a section offset for base syms, a field offset for objects. Example: the DMA slot
+  table is Bss object sym 1504 at Bss+0x3A240; its error strings are Data-base K = 0x1E2C0...
 
 ## 7. Reloc entries
 
@@ -208,6 +217,23 @@ Then its section records follow, up to End (type 11). "USO Version: %s" prints "
 | gUsoErrno | D_80013004 | last error (`uso_getErrno`) |
 | gUsoEntryModule / gUsoEntryIndex | D_80012C68 / D_80012C64 | entry symbol for `uso_callEntry` (reset to -1 by uso_load) |
 | gFsDeviceTable | D_8000A2E0 | device table |
+| gFsDevices / k_gFsDevices | D_8000A260 / D_80009E60 | the device table itself: runtime alias used by kernel_boot (sets mainuso's +0x10 to RAM end) / its link-address definition in kernel_026.c |
+| gFsDeviceHeaps | D_80012C70 | per-device heap range, 0xC stride (`fs_openDevice` returns `&[i]`) |
+| gFsRomReadStatus | D_80013000 | PI status saved by `fs_romRead` |
+| gUsoEntryResult / gUsoAllocHook / gUsoReadHook / gUsoPrintfHook | D_80012BE4 / BF4 / C40 / C44 | gUsoCtx +0x24 / +0x34 (uso_alloc) / +0x80 (fs_romRead) / +0x84 (uso_nullPrintf), referenced as their own symbols |
+| gUsoModuleSlotsPtr | D_8001309C | set to &gUsoModuleSlots by uso_init |
+| gBootUsoPath | D_8000A59C | "mainuso/bootup.uso" |
+| gKernelBssStart | D_8000ABC0 | entry.s clears 0x153E0 bytes from here |
+
+Interior addresses still spelled as `D_` on purpose (they are separate reloc symbols in the
+target, inside a named object): D_80012D34/38/3C (gUsoSectionBytes+4..), D_80012D64/68/6C and
+D_80012F7C (gUsoModules+4.. / end), D_80013112 (slot 0 name), D_80013138..D_80013274 (dead
+externs inside gUsoModuleSlots), D_800182E4 (slot array end), D_8000A3D4 (osClockRate low word),
+D_8000A454..D_8000A468 (__osPiDevMgr fields), D_8001B654..D_8001B660 (CartRomHandle fields),
+D_800195D4..D_800195E0 (LeoDiskHandle fields). The function-address constants in uso_init
+(D_80000BD4, D_80000CF0, ...) and exceptasm (D_80003270 preamble, D_80003FE0
+__osCleanupThread, D_800055F0, D_80005AEC, D_80006060 thread entries) are +0x400 runtime
+addresses of kernel code, not data.
 
 ## 9. Loader flow
 
@@ -343,4 +369,32 @@ rdb / host I/O:
 Other libultra:
 - `osPiRawReadIo` 0x800029B0 (2.0I name; ultralib spells it `__osPiRawReadIo`);
 - `__osLeoResume` 0x800044CC (leointerrupt.c static).
+
+**Kernel data (agent-a run 472).** Kernel data references are spelled with their runtime
+address, so data renames are full renames: `rename-symbol.py` now applies the definition-only
++0x400 rule to code symbols only (defined in an executable section), and folds an OLD into an
+existing same-address SDK pin ("alias merge", used for `__osPiTable`). The libultra/rmon data
+follows ultralib's definition order (runtime addresses):
+
+| range | names |
+|---|---|
+| 0x80000300.. | osTvType, osRomBase (0x308), osResetType (0x30C), osMemSize (0x318), osAppNMIBuffer (0x31C) |
+| 0x8000A3D0 initialize.c | osClockRate (u64), osViClock, __osShutdown, __OSGlobalIntMask (0x3E0) |
+| 0x8000A3F0 exceptasm.s | __osHwIntTable, __osRdb_DbgRead_Ct (0x404), __osRdb_Mesg, __os_Kdebug_Pkt |
+| 0x8000A410 thread.c | __osThreadTail, __osRunQueue (0x418), __osActiveQueue, __osRunningThread (0x420), __osFaultedThread |
+| 0x8000A430.. | kdebug_numChars, readHostInitialized (0x440) |
+| 0x8000A450 pimgr.c / piacs.c | __osPiDevMgr, __osPiTable (0x46C), __osCurrentHandle (0x470), __osPiAccessQueueEnabled (0x480) |
+| 0x8000A490.. | __osRdb_IP6_Empty, rmon_dispatchTable (0x4A0), __rmonActive (0x580), __osRcpImTable (0x680), __osIntTable (0x700), gKmcExcCodeTable (0x744) |
+| bss | leoDiskStack 0x80018300, __osThreadSave 0x80019320, kdebug_buffer, readHostMesgQueue/Buf, rmon_IOmq/IOmsgs, pimgr_* (piThread, piThreadStack, ramromThread, ramromThreadStack, getRamromQ/Buf, freeRamromQ/Buf, piEventQueue/Buf), piacs_piAccessBuf, rmon_* (somethingToDo, inbuffer, cmdinptr, cmdoutptr, state, inPointer, rmonIOThread, rmonMsgs, rmonIOStack, rmonPiMsgs, rmonPiMQ, breakpoints, altBreak(+_oldInstruction), RCPbreakpoints, RCPpc, oldIMEMvalue, DMEMbuffer) |
+
+Not renamed: D_80019644 (`__osDiskHandle`) and D_800195D0 (`LeoDiskHandle`). The osLeoDiskInit
+donor (kernel_ido53_4E50.c) *defines* both names in its own .bss, so the alias merge refuses them.
+Retiring that donor's TU definitions is the way to free them.
+
+**rmon packets:** `include/libultra/rmon.h` has KKHeader and the request/event structs from
+ultralib dbgproto.h, with asserts. __rmonExecute, __rmonListProcesses, __rmonSetComm,
+__rmonThreadStatus, __rmonStopThread, k___rmonSendHeader and __rmonSendReply use them. Other
+rmon handlers still carry private packet typedefs (kernel_018_b/f/g, 022_e/f/g, 029, 030, 033,
+054*): convert them the same way. Watch field widths: `KKThreadStatus.why` is s16, and the word
+at +0x10 that StopThread tests is `status.flags`.
 
