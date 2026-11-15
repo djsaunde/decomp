@@ -833,6 +833,40 @@ Tim / Trk / Arc menu processes; titproc MainLogo / KeyMessage; mgrproc_uso_o0_19
 `{pad[0x154]; u16 *v}` settings view; the TimeGadgetParms_setPosF / setPos / gadget_slideStep object
 (float xps / yps at 0x44 / 0x5C, 0x88 / 0x8C, speed 0xA8, string 0xB4).
 
+### Run 514 (agent-h): named placeholder calls in agent-h's files, RaceProcess.menu, CourseGadget
+
+Commits on agent-h (base a87a00fff), each gated PASS (3288/3288, ROM identical): 268d6034c (806
+bootup_uso CALLs), eee892767 (717 game_libs.c / game_libs_tail.c), 0b0b15f82 (900 arc / mgr / h2h / tim /
+trk / titproc), e9c939ed3 (hand: ATTACH6808 takes the callee), 7eea7d412 (63 game_createMap), 9ed305d18
+(hand: RaceProcess.unk048 -> GuiMenu *menu), c6e37156b (hand: CourseGadget). The CALL commits are
+name-placeholder-calls.py output only (titproc_uso.c's include moved by hand, see below); no renames.tsv
+lines this run.
+
+- **Placeholder calls**: 2486 named (bootup_uso 869 incl. game_createMap 63, game_libs.c 388, game_libs_tail.c
+  329, arcproc 183, h2hproc 124, mgrproc 55, timproc_b1 227, timproc_b3 240, titproc 71). Left 275: 224
+  "no jal" (NON_MATCHING reference bodies), 38 in donor-splice / recipe bodies (bootup ItemType_create /
+  TreeTmpl_create / ColourItem_create / edgeGrip, the arc / tim / trk / h2h open / closeSession o0 bodies),
+  13 callees with no symbol name (nameent sym24 / sym30, mod60 sym120 / 122 / 179 / 180, heli sym121, fire
+  sym47: exporters uso-imports cannot name). .cpp donors are not handled by the tool.
+- **Tool gotchas**: (1) `add_include` puts `#include "uso_call.h"` after the LAST #include in the first 20000
+  chars; in titproc_uso.c that was inside the mid-file `#ifdef NON_MATCHING #include "titproc_uso_5DC.c"`
+  block, so the matching build failed (cfe: gui_spriteInit undefined). Moved by hand; the tool should take
+  the first include block. (2) A placeholder call inside a function-like macro body is not a site, so its
+  expansions leave the function's jals uncovered and the whole function is refused (game_createMap: 58 sites
+  vs 65 jals). Fix: pass the placeholder as a macro argument (`ATTACH6808(func_00000000, list, x)`), then each
+  expansion is its own site (all 7 = list_append).
+- **RaceProcess.menu** (race.h 0x48, `struct GuiMenu *`): PauseMenu_create(0) in every mode's race init; its
+  unk30 gets spriteSet; h2h's gui_setY moves it.
+- **CourseGadget** (gdl/gadget.h, 0x2FC) + CourseGadgetParms (0x194, 16 tags) + GdlParmRGBA (0x24 colour
+  parm): pct[2] / marker[2][2] / originX, originZ, extent are fed from RaceEntry[0 / 1] and the RaceTracker
+  course frame. Byte gotcha again: `xps + mx0` / `yps + my0` (field order swaps the loads).
+  game_libs.c census 84 -> 64.
+
+Next: the NM update / handleInput bodies (TimMenu_update, ARCMenuProcess_handleInput, ArcNameEntry_update),
+the name-entry ctors' typed-chain lever, TrickPointsGadget_reset / PointsGadget_ctor_00003138 (the 0x168
+points-list object: 8 PointsPopup slots at +0x2C, colour ints 0x8C..0x98), the RaceProcess_* raw sites in
+game_libs.c, Fader_ctor / buildTexture Node / vtable sites, gadget_decodeStringB4_00014598.
+
 ### Run 509 (agent-h): CoolGadget, GuiRow users, name entry, menu processes, title logos, PointsPopup
 
 Commits on agent-h (base 6336bd167), each gated PASS (3288/3288, ROM identical; every touched .o identical
