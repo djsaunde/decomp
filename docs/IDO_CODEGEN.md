@@ -214,6 +214,7 @@ lambda Auto-generated from per-memo notes; content may be rough on first pass â€
 - [Oversized frame on a big m2c graft (0x2D8 vs 0x178) = too many DECLARED locals: every declared local takes a slot (rule in #loop-promoted-constant-web-absorbs-outside-mul-258c0), and a spilled named local uses ITS OWN slot, so collapse the m2c var_N families into the variable whose slot the target spills to, then fill the target's slot gaps in declaration order (bootup func_000090CC 94.23 -> 95.26 NM, 2026-10-16 agent-c)](#m2c-graft-frame-collapse-90cc)
 - [`if (v == K) goto L;` comes out INVERTED (`bne` + L's body inline) when L is one call-free basic block; an empty `if (1) {}` (or any call) inside L keeps the `beq` and the out-of-line body. Unsorted beq chains over sparse values with out-of-line bodies are a source-order if-goto chain, not a switch (bootup func_0000D900 57.1 -> 87.0, func_000090CC dispatch, 2026-10-16 agent-c)](#if1-keeps-goto-target-out-of-line-d900)
 - [A small constant used across a call (`li s0,2` before `bne a3,s0` / `beql s0,t7` / `sh s0,..`) is a uopt constant candidate; it only gets s0 when no named variable wants s0 there. A local reused for an unrelated value after the calls (m2c `var_t1` reuse) drags itself into s0 (func_000090CC, 2026-10-16 agent-c)](#const-candidate-vs-reused-local-90cc)
+- [Struct conversion trap: a field read spelled `p->f` twice is one CSE expression; `*(s16 *)(p + 0)` and `p->f` are not. Converting both reads of AnimData_load's exit check swapped the beql operands; keep the second read raw (agent-b run 486)](#struct-field-vs-raw-deref-cse-61f8c)
 
 ## Quick reference by sub-topic
 
@@ -68918,3 +68919,16 @@ receiver: `dZ1(this, it.cur()->ctx6C, it.cur()->n8A, A = GS->ctx)` with
 <= 99.855); `(void)it.cur();` pre-statements (they split the block, 2068 B); static member `dcT(c, n, s)` (no z,
 loop-region word lost); A assigned before the ctx6C test (98.5); base `GS->ctx->dcQ` with A assigned anywhere
 else (the A LR goes light and gctx takes s0, 97).
+
+## Struct conversion trap: `p->f` vs a raw `*(T *)(p + K)` read are different CSE expressions (agent-b 2026-11-15, run 486) <a name="struct-field-vs-raw-deref-cse-61f8c"></a>
+
+AnimData_load (donor game_libs_o2_61F8C.c, -O2) ends with
+`if (*(s16 *)(self + 0) != 0 && mgr->numNodes != *(s16 *)(self + 0))`. Converting **both** s16 reads to
+`self->numNodes` changed one word: the `beql t3, v0` became `beql v0, t3`. Converting only the first read
+(and keeping the second as `*(s16 *)((char *)self + 0)`) is byte-identical. The two spellings lower to
+different expression trees, so uopt CSEs two `self->numNodes` reads into one value (whose register
+then sits on the other side of the compare), but treats the raw read as a separate load.
+Rule for field conversions: when a function reads the same field twice and only one of the reads was
+spelled differently in the matched source, keep that spelling. Also: an incremental `make` did not
+rebuild the REPLACE_FUNC_BODY host after the donor changed and reported ROM OK; only the gate's clean
+build caught it. Always run the gate after a donor edit.

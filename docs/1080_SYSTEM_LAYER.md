@@ -16,6 +16,7 @@
 - [8. Run 453: vtables, hostio kinds, readers, CollShape, Gadget](#8-run-453-vtables-hostio-kinds-readers-collshape-gadget)
 - [9. Run 457: gadget structs, vtable-only classes, ItemType subclasses, GfxLib DDM](#9-run-457-gadget-structs-vtable-only-classes-itemtype-subclasses-gfxlib-ddm)
 - [10. Run 462: RaceProcess base, app_launchGenProc, full-range sweep](#10-run-462-raceprocess-base-app_launchgenproc-full-range-sweep)
+- [12. Run 482: named-object wave (vtables, libultra globals, per-site aliases)](#12-run-482-named-object-wave-vtables-libultra-globals-per-site-aliases)
 
 ## 1. String-xref method
 
@@ -105,10 +106,11 @@ name regex.
   `CountNewCourses` / `ListNewCourses`, which drive the name-entry screen; `sessionSetNewNames` (the
   initials entered there, per BACKUP_MODE); `sessionClearNew`; `sessionResetCourseTimes` /
   `CourseScores` / `Arcade` / `Ghost` (reset + write back).
-- Ghost: `ghost{Get,Set}{Mode, Bits2, Flag5, Bits6, Course}`, `ghostIsMode`, `ghostMatches`
-  (openSession), `ghostSetHeader`. app_createGame copies Bits2 / Flag5 / Bits6 to game global
-  +0x181..0x183, probably the ghost rider's character / variant / board. Bits2 is 3 bits and Bits6 is 4
-  bits, as in the entry flags; unconfirmed.
+- Ghost: `ghost{Get,Set}{Mode, Rider, BoardFlag, Board, Course}` (run 484; were Bits2 / Flag5 / Bits6),
+  `ghostIsMode`, `ghostMatches` (openSession), `ghostSetHeader` (replay_saveGhost: mode, course, rider,
+  flags, board from InputMgr +0x178..0x17B). titproc's vs-ghost states copy rider / flag / board back to
+  InputMgr ghostRider / ghostFlags / ghostBoard (+0x181..0x183) for game_setupVsGhost. BoardFlag keeps only
+  0x20 of the flags word (BoardItem's toggleVariant bit). See 1080_MODES.md run 484.
 - `Backup_cacheGhostBits` (C49C, end of the ctor) stores the saved ghost's bits in Backup.ghostBits.
   `Backup_wordsEqual` (B958) has no bootup caller.
 - The renamed `Backup_writeCourseData_0000A768` / `writeArcadeData_0000AB70` are now `courseClearNew` /
@@ -342,3 +344,56 @@ include/gdl/race.h now types RaceProcess (0x6A8, the section 10 vtable as `RaceP
 (0xB8; the HUD object, so `Hud` = `RaceTracker`), RaceEntry (0x60) and TimRace (0x730). The session object
 at RaceProcess +0x528 / RaceTracker +0x4C is the record session from Backup_openSession. Field list,
 conversions and what is left: 1080_MODES.md "Run 469".
+
+## 12. Run 483 (agent-h): ROM-wide weak-name sweep (non-gfx / non-camera share)
+
+> agent-h run 483, branch agent-h: 935e97fc9, 0cb60a154, 03dd9b0ef (pure renames, 34 + 80 + 41 = 155
+> names) and 3a6a8d7cf (race.h hand edit). Gate PASS each. Weak `<prefix>_func_<addr>` names left
+> ROM-wide: 104 (gfx / post0b graphics classes = agent-b, cam / RiderAnim / SnowBoarder / SnowAI =
+> agent-g). Scripts in /tmp/claude-1000/h483/: `x.py` + `q.py NAME...` (USO-reloc calls/strings and
+> callers per function, all modules; `dis.py` now also maps `game_libs_func_` originals), `vt.py NAME`
+> (DataReloc vtable neighbours), `vtab.py MOD START N` (vtable dump; START = vtable + 8), `info.py`.
+
+- **App vtable** (game_libs D+0x1F4CC): 10 App_main, 11 App_Reset, 12 `App_restart` (calls 13 then 15),
+  13 `App_softReset` ("SoftReset %d"), 14 vslot14, 15 App_InitInstance, 17 `app_staticInit_000412E8`.
+- **SnowBoard** is the game's App subclass in bootup (vtable Data+0x8BA8): `SnowBoard_ctor` (boot_main;
+  audio USO file info, snd_Init), slots 12-15 `SnowBoard_restart / softReset / vslot14 (Fader_start) /
+  InitInstance` ("SnowBoard", rom/version.bin, rom/anims.bin, GameFlow_create, `GameFlow_startMode`).
+- **Process** (bootup Data+0xC3A0): slot 2 `Process_display` (gui_beginFrame, slot 13 draw, Node_display),
+  10 Process_start, 11 `Process_exit` (GameFlow next = GameFlow_restart), 12 `Process_onQuit`
+  (QuitProcess: calls slot 11), 13 pure virtual. PauseMenu overrides 2/3/10/11.
+- **Node display mask**: Node_display draws a child only if `child+0x20 & Node_getDisplayMask()`
+  (Bss+0x3C0F8, set per view by Window_display / SnowBoarder_display); new nodes take +0x20 from
+  `Node_getNewNodeMask` (Data 0x1EBD4). So node.h's "handle" (+0x20) is the display-layer mask.
+- game_libs_tail 0xE410-0xE490: doFlags bit helpers (`Node_enableAll/disableAll/resumeUpdate/pauseUpdate/
+  showDisplay/hideDisplay_<addr>`); pause = clear bit 8, pauseContinue = set it.
+- Heap: Bss+0x3C160 current heap (`app_setCurrentHeap`), Bss+0x3C770 main heap (`app_freeAllOfType`,
+  `memtrack_heapUsed` -> `Mem_getUsed` = Heap.used << 4), Bss+0x3C790 heap-mode flag (`app_set/getHeapMode`).
+- RaceEntry (race.h): +0x08 posX, +0x10 speed, +0x28 health; RaceTracker +0x0C = Node name.
+
+**Next.** Gadget setters kept with addresses (`CourseGadget_setFloat2/Vec3/Vec4`, `CoolGadget_setPair/Quad`,
+`CountDownGadget_setPair`) need the display bodies read to name their fields; `app_shiftAddLookup_00042400`
+table (Data 0x1FAD4) contents; ItemType slot 12 (`ItemMgr_queryType` calls it with the gate name args).
+
+## 12. Run 482: named-object wave (vtables, libultra globals, per-site aliases)
+
+agent-a run 482, commits 8ec093782, 18a6cb9f1 (tool), 5131c2d09 (pure rename, 245), 77fde57ec, cf8c92bbf.
+Details and conventions: READABILITY_PLAN 9.1.5.
+
+- **71 vtable aliases** in include/gdl/gl_data.h (`<Class>_vtbl`, Data-offset suffix when the class is
+  uncertain), 49 vptr stores converted. The vptr is at this+0x28 for Node classes; a ctor that stores two
+  or three vtables runs its inlined base ctors first (store order = `sites` order).
+  Class chain found: QuitProcess : Process_vtbl_C3A0 (abstract, `__pure_virtual_called` slot) : Process.
+- **Sym 860 is not a RaceProcess vtable.** Syms 858/859/860 (Data+0xC758/C75C/C760) are three float fades
+  (RaceProcess_reset zeroes them; RaceProcess_handleInput ramps them). The per-site aliases there are
+  crossed: `D_76F0_fadeB` is relocated against 859 at T+0x1C278 and against 860 at T+0x1C3BC, so the
+  names fadeA/B/C do not map one-to-one to the Syms. Left unrenamed.
+- **Sym 256** (Data+0x7290, 784 bytes) is a table of 0x1C-byte rows indexed by player/mode in
+  game_setupSolo (`&D_00000000 + a1 * 0x1C`), followed by anonymous data reached via the Data base. Not named.
+- **Sym 274** (Data+0x776C) is a 0x20-byte record (MemberCallback_invoke_00007BF4 at +0x10) used by
+  item_registerTemplates / game_createMap, followed by an anonymous Tv1Tmpl-family vtable. Not named.
+- game_libs libultra globals: gl___osRunQueue / ActiveQueue / RunningThread, gl___OSGlobalIntMask,
+  gl_osClockRate, gl_osViClock, gl___osPiDevMgr / PiTable, gl___osTimerList / CurrentTime / TimerCounter,
+  gl___osViCurr / ViNext / ViDevMgr, gl___osContPifRam / ContLastCmd / MaxControllers / PfsPifRam,
+  gl_DriveRomHandle / CartRomHandle / LeoDiskHandle; gFsStream0/1/2.
+

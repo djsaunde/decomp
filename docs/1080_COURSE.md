@@ -130,11 +130,16 @@ at game.uso Data 0x548: `mrk`, `mk1`..`mk9`, `mkl`, `mkr` (indices 0..11, `MARKE
 ## 7. Race gates and progress
 
 `RaceTracker_findGates` (game_libs) looks up, for each rider, the nearest item of type `chk` (the next gate,
-`RaceEntry.gate`) and the nearest `gtl` and `gtr`. When both fork gates exist, `gateA` / `gateB` hold them
-nearest first, ordered by `RaceGate.progress` (+0x64) relative to the rider. A gate's +0x84 is the next gate. The
-rider's progress (`RaceEntry.progress` / `pct`) is a course coordinate measured from the MapProp's start z to
-the goal z (RaceTracker courseStart / courseLength). The gate item class itself (instance layout beyond +0x64 /
-+0x84) is not typed yet.
+`RaceEntry.gate`) and the nearest `gtl` and `gtr`, around the rider's lastPos (SnowBoarder +0xDC). The **course
+coordinate is world z**: RaceTracker courseZ / courseLength are the MapProp start.z / goal.z - start.z,
+`RaceEntry.progress` is on that axis, and a gate's +0x64 (`RaceGate.z`) is its z. When both fork gates exist,
+`gateA` / `gateB` hold them nearest first, ordered by `gate->z - rider->lastPos.z` (the rider +0xE4 that findGates
+subtracts is lastPos.z). A gate's +0x84 is the next gate. `RaceTracker_passCheckpoints` moves entries[0].gate to
+gate->next once gate->z <= entries[0].progress, then runs a gate test (gate, rider pos, entry) whose non-zero
+result goes to the tracker's vtable. Note that findGates looks the `chk` gate up with entries[0]'s rider and
+stores it in entries[0].gate on every pass (its lookup and that store use no entry offset), so checkpoints are
+tracked for the first rider only; the fork pair is per entry. The gate item class itself (instance layout beyond
++0x64 / +0x84, which item base it derives from) is not typed yet.
 
 ## 8. Props: MapProp, Mountain, BGBox, U64BGWall
 
@@ -151,8 +156,14 @@ the goal z (RaceTracker courseStart / courseLength). The gate item class itself 
 
 ## 9. Open questions
 
-- settings +0x68 (the ENV_LT2 / EQ2 / EQ3 selector) and the SUN op's two ints are not proven.
-- `RaceGate`: the gate item class and the rider +0xE4 that findGates subtracts.
+- settings +0x68 (the ENV_LT2 / EQ2 / EQ3 selector) and the SUN op's two ints are not proven. Run 485: the SUN op
+  handler reads neither int (createMap only builds the Sun / LensFlare / lights); the env files carry their own
+  "sun" record (tags rot / ele / scl / mat / col ...; onemake03_env.bin: rot -32.4, ele -17.3, scl 2.0), so the
+  op's (-91, -41) are not those angles either: unused data as far as the matched code goes. The only C reader of
+  settings +0x68 (absolute 0x80020164) is createMap; no writer was found in C (a scan of every
+  `import_800xxxxx + off` form), so it is written from asm or an unconverted alias.
+- `RaceGate`: the gate item instance class (its base and the bytes below +0x64; +0x64 is z, so the position is
+  probably a Vec3 at +0x5C).
 - The ItemMgr / item file binary format (ItemMgr_Load, ItemType_load) belongs to game_libs (area E); only the
   ColourItem position read (three ints) is described here.
 - WorldRegistry 0x98..0x104 (world +0x98 is what RaceTracker reads; probably the MapProp, not stored by

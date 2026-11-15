@@ -3,7 +3,9 @@
 > agent-b run 476, 2026-11-15, 1080 branch agent-b (f00df5e00 [rename, 52 gfx_], 9a27aa26d [headers],
 > 54299fbde [DLMark / Window conversions], f15861371 [rename, 1]). Run 481: 8b26df4ee [conversions,
 > material.h MAT_FMT_*], ef315c9e8 [rename, 4]; sections 6.1 / 6.2 / 7.1 (texture formats, material
-> and shape command streams) are new. Code: game_libs
+> and shape command streams) are new. Run 486: b55b99e94 [include/gdl/anim.h], 911bbf50e [rename, 18],
+> e2fd6a234 [anim conversions], e5f211c67 [include/gdl/skin.h], 534001550 [gGfxLib, 43 sites];
+> sections 11 / 12 (animation and skinning formats) are new. Code: game_libs
 > `src/game_libs/game_libs_post0b.c` 0x41F90-0x5A9D0 plus NCC donors `game_libs_ncc_*.cpp`.
 > Headers: `include/gdl/{dlctx,rcp,window,polyshape,material,light,sprite,node}.h`.
 > Addresses are game_libs segment offsets (`nm build/tenshoe.elf` value). Related: docs/1080_ENGINE_CORE.md
@@ -20,6 +22,8 @@
 - [8. Lights, fog, hilites](#8-lights-fog-hilites)
 - [9. What a port must replace](#9-what-a-port-must-replace)
 - [10. Open items](#10-open-items)
+- [11. Skeletal animation (animate.cpp)](#11-skeletal-animation-animatecpp)
+- [12. Skinning (skin.cpp)](#12-skinning-skincpp)
 
 ## 1. Frame flow
 
@@ -60,6 +64,10 @@ gfx_setVideoMode (0x44B78) picks the VI mode ("video mode not supported").
 
 One data object in the bootup.uso data section, reached as `&D_00000000 + K` (a USO base
 placeholder; do not retype it as a struct in matched code, see READABILITY_PLAN section 9 rule 4e).
+Source spelling since run 486: `gGfxLib` (include/gdl/gl_data.h: Bss+0x3C168, Sym 154, 0x5D8 bytes), so
+`(char *)&gGfxLib + 0x254`. 43 game_libs sites are converted; the 19 bootup_uso sites
+(EnvSettings_display, SnowBoarder_func_0000DDCC / DF04 / E014, TreeTmpl_display, Fader_checkDone) are
+left to the bootup owner, and per-site aliases (`gGfxLib_2c94_ctx`, ...) keep their own symbols.
 Known fields:
 
 | off | meaning | evidence |
@@ -322,8 +330,13 @@ FogParms (0x18: colour f32[4], min, max; "FogParms" / "Min" / "Max"): FogParms_s
   0x46B44 (gfx_vcall thunk; no game_libs caller), 0x47AB4 / 0x47AD8 (gfx +0x1F8 bytes, = vec * 127;
   no game_libs caller and no game_libs reader of +0x1F8), 0x47F68 (gfx +0x188 = mode, +0x1E0 =
   mode == 0; Window_display calls it with 0 then 1; nothing in game_libs reads either word),
-  0x4E138 ((gfx +0x14 & 3) == 0, gfx_end); gfx_setSizePairA/B; the five gfx_emptyStub_. The
-  "no caller" ones are exported to other USOs: look in bootup_uso / game_uso for their callers.
+  0x4E138 (*a0 = (gSysLib +0x14 & 3) == 0: every 4th frame; gSysLib +0x14 is the frame counter
+  SkinMgr_update also stamps; called by gfx_end); gfx_setSizePairA/B; the five gfx_emptyStub_.
+  Run 486 caller search, all negative: no cross-USO caller resolves (h460 mods.pkl / xmod.py, rerun
+  with current names: only 7 gfx_ names have resolved external callers, none of these), and no
+  bootup.uso DataReloc word points at any of them (vt.py scan; sanity: AnimPlayer_update at 0x21F7C
+  is found). Their callers are unresolved imports (Sym hashes, READABILITY_PLAN section 11), so the
+  names have to come from the bodies.
 - Converted in run 481: Window_setupView, ScreenWindow_allocBuffers, LightTarget_ctor (now
   shape_cmdLightTarget, the GDL command that creates the node), BaseMat_init, MorphPoly_init, the
   Sprite_ctor cfe reference body. The ScreenWindow_display NCC donor keeps a local view (its member
@@ -332,7 +345,123 @@ FogParms (0x18: colour f32[4], min, max; "FogParms" / "Min" / "Max"): FogParms_s
 - Window / ScreenWindow fields 0x100-0x144 and 0x174-0x1C0: still mostly unnamed. Known since
   run 481: ScreenWindow_display passes &Window+0xDC, +0x104 bit 2, +0xC0 / +0xC4 and the frame-buffer
   size to the clear call; +0x1B0 is its last argument; +0x1C0 = bgDL[fbIndex].
-- Anim / skin data formats (AnimPlayer, SkinMgr): not decoded yet.
+- Anim / skin data formats: decoded in run 486 (sections 11 and 12, include/gdl/anim.h, skin.h).
+  Not converted yet: anim_blendPose's NCC donor (its Blend / Pose types could become Animator /
+  AnimPose), AnimFrameCache_releaseAll / initSlots / allocSlot (index arithmetic loops), the NM
+  bodies of SkinAnim_bind / skinVerts / SkinMgr_update / skin_cmdSkinMgr, SkinMgr_reset, SkinAnim_ctor.
+- Not started in run 486: the Window +0x100-0x144 / ScreenWindow +0x174-0x1C0 fields, BaseLight_ctor,
+  the Sprite_ctor donor member names (item 2 of the run brief).
 - The texture-format 0x608 (accepted by the size code, rejected by the loader) may be dead data.
 - A typed model of the GfxLib global (section 2) for documentation; matched code must keep the
   `D_00000000 + K` form.
+
+## 11. Skeletal animation (animate.cpp)
+
+Header: `include/gdl/anim.h`. Code: game_libs 0x61E58-0x63704 (post0b + post1b; AnimData_load is the
+IDO -O2 donor game_libs_o2_61F8C.c, anim_blendPose the NCC donor game_libs_ncc_62A2C.cpp).
+
+**Objects.**
+```
+AnimDataMgr (0x48, "AnimDataMgr")  one per skeleton type: the anim file + a frame cache
+  groups[numGroups]  AnimGroup (0xC)  {AnimData *anims; count; mgr}
+    anims[count]     AnimData (0x20)  one anim: numNodes, numFrames, keys, frame data
+  cache              AnimFrameCache {slots, count}: AnimFrameSlot (0x14) {pose, frame, anim, inUse, pending}
+AnimPlayer (0xB0, "<Node>")         plays one anim on one skeleton (game.uso RiderAnim derives from it)
+  animators          list of Animator (0x130, "anim"): one per animated node, nodeIndex +0x10C
+```
+
+**Anim ids.** `(group << 16) | index` (anim_formatId prints " %d:%d"). AnimDataMgr_lookup checks
+group < numGroups ("Missing AnimGroup %d"), index < count ("Missing Anim %d:%d") and numFrames != 0
+("Empty Anim %d:%d"). game.uso's RiderAnim keeps the group in `animSet` (0x10000 regular stance,
+0x50000 switch stance) and ORs the anim number in; e.g. `startIfChanged(rider, 0x30001, 6, 6, 0x100, 20)`
+plays group 3 anim 1, keys 6..6, blending in over 20 updates.
+
+**File format** (AnimDataMgr_loadFile, the Node_Load path; ints read through the gSysLib stream):
+```
+int version; int numGroups;
+per group:  int count;
+  per anim: { int cmd; int val; } ... until cmd == 0
+     1  keys:       val AnimKey {s32 frame; f32 rate} (8 bytes each)
+     2  numNodes    (must equal AnimDataMgr.numNodes, "AMgr: bad num Nodes")
+     3  frame data: val bytes = numFrames * numNodes * 14; loaded (mem_newAligned 8) or left in the
+                    file with its offset recorded (fileOffset) for streaming
+     4  skip val bytes
+     5  numFrames
+```
+Big-endian like everything else; a port byte-swaps on load.
+
+**Frames.** A frame is numNodes `AnimNodeKey` records, 14 bytes: `s16 trans[3]` (model units, unscaled),
+`s16 quat[4]` (x y z w, times 1/32767: RoData 0x2094 = 0x38000100). anim_unpackKey turns one record
+into an `AnimPose` {f32 trans[3]; f32 scale[3]; f32 quat[4]} (scale untouched; 1.0 from Animator_ctor).
+Frame f starts at byte f * numNodes * 14.
+
+**Frame cache.** AnimDataMgr_ctor(this, file, numNodes, numSlots) allocates numSlots poses of
+numNodes * 14 bytes. AnimDataMgr_getSlot(cache, anim, frame) returns the slot already holding
+(anim, frame) (AnimFrameCache_find) or claims a free one (allocSlot: first with inUse == 0) and fills it
+with AnimData_readFrames: a memcpy from resident data (returns -1), or fs_setHandle + fs_gdlSeekFile
+(fileOffset + frame * stride) + fs_gdlReadFileAsync (returns the read handle, kept in `pending`).
+AnimFrameCache_getPose waits on a pending read (AnimData_waitFrames) and returns the pose. Every
+AnimDataMgr update (and message 9) clears inUse on all slots, so slots live for one frame unless re-hit.
+A port can load every frame at startup and drop the cache.
+
+**AnimPlayer** (vtable Data 0x21F58: slot 3 update, 4 handleMsg, 10 onKey). API:
+| call | does |
+|---|---|
+| start(p, anim, startKey, endKey, flags, blendFrames) | time = keys[startKey].frame; eventKey = blendEvent = -1000; blendCount = 0 |
+| startIfChanged(same args) | start unless anim, startKey and endKey equal the current request |
+| setBlend(p, animNeg, animPos, weight, flags, blendFrames) | weighted mode (flags \| 0x80) |
+| setUpdateInterval(p, n) | fetch/apply poses every n updates |
+| setKey(p, anim, key, frame, f) / getKeyFrame / getKeyTime | key table access ("BadKeyFrame" / "BadKeyTime") |
+
+Update (slot 3) = AnimPlayer_advance then AnimPlayer_applyPose:
+1. flags == 0 or anim == 0: nothing.
+2. Weighted (0x80): anim = weight < 0 ? animNeg : animPos; time = frame(key 0) + |weight| *
+   (frame(key 1) - frame(key 0)). Used for continuous poses (leaning, crouch amount).
+3. Otherwise time += keys[endKey].rate (or -= when the end frame is below the start frame). When time
+   crosses keys[eventKey].frame, onKey fires. At the end: time = end frame; with LOOP (2) either restart at
+   the start key or, with PINGPONG (4), swap startKey / endKey.
+4. frame0 = (int)time, frame1 = frame0 + 1 (clamped to numFrames - 1), frac = time - frame0.
+5. Blend-in (0x100): blendCount++, blendWeight = blendCount / blendFrames, blendLeft = remaining; at the
+   end the flag clears and, if blendEvent == -1, onKey fires.
+6. Every updateInterval updates: slot0 / slot1 = getSlot(frame0 / frame1); applyPose fetches both poses
+   and, per Animator, calls anim_blendPose(animator, pose0 + nodeIndex, pose1 + nodeIndex, frac,
+   blendLeft, blendWeight).
+
+anim_blendPose: x = lerp/slerp(frame0 record, frame1 record, frac) (math_quatSlerp for the rotation, linear
+for the translation). blendLeft != 0: dst = cur blended toward x by blendWeight; else dst = x. Then
+cur = dst only when blendLeft < 2, so during a blend-in `cur` stays frozen at the pose the blend started
+from (a cross-fade from the old pose to the new anim). dst.scale.x = 1.0, and the target node is notified
+through its vtable slot 9 (presumably to rebuild its matrix from dst). onKey (slot 10) is empty in the base; RiderAnim uses eventKey
+(its `stateArg`) and blendEvent -1 to step its state machine.
+
+## 12. Skinning (skin.cpp)
+
+Header: `include/gdl/skin.h`. Code: game_libs 0x68C14-0x69C58 (post1b). Three shape-file node commands
+build it (the ProcNodeList dispatcher, nodelist_*):
+- **SkinMgr** (skin_cmdSkinMgr): args slot (< 4, "num < MAX_SKIN_MGRS"), bone table (0 = "Bad Skin
+  Weights"); SkinMgr_ctor, registered in a 4-entry global table by slot.
+- **SkinShape** (skin_cmdSkinShape): args slot, shape name; builds a "SkinShape" BasePolyShape and a
+  MorphPoly over it under the current MNode, then SkinMgr_init(mgr, currentMNode, morphPoly) and
+  MorphPoly_init. "no skinmgr" if the slot is empty.
+- **SkinAnim** (skin_cmdSkinAnim): args slot, bone index; entry = mgr->boneTable[index] (8 bytes
+  {s16 count; SkinWeight *weights}); SkinMgr_addAnim(mgr, SkinAnim_ctor(0, count, weights, currentMNode)).
+
+SkinWeight = {s16 vert; s16 weight (percent)}. SkinMgr_init copies the shape's verts (s16[3], shape
++0x60, nVerts +0x40) to bindVerts, sets every main-bone weight to 100, inverts the main bone's matrix
+(MNode +0x70) into invBone and gives the shape pointers to both (+0xA8 / +0xAC). SkinMgr_reset runs
+SkinAnim_bind for every SkinAnim: subtract its weights from the main weights, and store each of its
+vertices in its own bone's space (bind vert through the main bone matrix, then through the inverse
+of the SkinAnim bone's matrix).
+
+SkinMgr_update, once per frame (gSysLib +0x14 frame counter vs lastFrame):
+```
+for v: out[v] = weights[v] ? R(mainBone) * bindVerts[v] * weights[v] / 100 : 0
+if jitter: out[v] += random in [-jitter/2, jitter/2) per axis; jitter = 0
+for each SkinAnim a, i < a->count with w = a->weights[i].weight > 0:
+    p = R(a->bone) * a->bindVerts[i] + (a->bone pos - mainBone pos)      (pos = MNode +0xA0)
+    out[vert] = (w == 100) ? p : out[vert] + p * w / 100
+MorphPoly_setVerts(shape, out)
+```
+R is the 3x3 part of the world matrix. A port can do the same on the CPU, or upload bind poses and bone
+matrices and skin on the GPU (weights are per vertex per bone, at most the main bone plus the SkinAnims
+that list the vertex).

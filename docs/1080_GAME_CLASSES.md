@@ -21,6 +21,7 @@
 - [13. Run 470: DNode physics base, SnowBoarder orientation, input fields](#13-run-470-dnode-physics-base-snowboarder-orientation-input-fields)
 - [14. Run 475: physics donors on fields, camera.h](#14-run-475-physics-donors-on-fields-camerah)
 - [15. Run 480: course.h (world / course data model), CourseCam](#15-run-480-courseh-world--course-data-model-coursecam)
+- [16. Run 485: camera donors on fields, CamPath semantics, gates, anims.bin](#16-run-485-camera-donors-on-fields-campath-semantics-gates-animsbin)
 
 ---
 
@@ -533,3 +534,33 @@ The port-author overview is docs/1080_COURSE.md.
 **Next:** CamDirector_update and the 31C0 cam_create donor on camera.h; the B3C donor on CourseCam fields (EDG
 2.29 front end: verify per field); the gate item class (chk / gtl / gtr instance layout) and the rider +0xE4;
 RiderAnim states by anim id (agent-b's AnimPlayer names); agent-a's gl_data.h accessors for the course data sites.
+
+## 16. Run 485: camera donors on fields, CamPath semantics, gates, anims.bin
+
+agent-g run 485 (branch agent-g on db64f9963). Hand edits c6f65fa53 (CamDirector_update, cam_create donor classes
+renamed + Makefile objcopy names, RiderInput rawX / rawY / pressed, SnowBoarder.camSource 0x874, chase-component
+ctor arg 4 = parmsFile), d3913335e (B3C MIPSpro donor on CourseCam / CamPath / CamKey fields, CamPath helpers
+typed, CourseCam.pad = RiderInput *), b69b691d3 (RaceGate.z, the rider +0xE4 = lastPos.z; course doc section 7).
+Pure rename 21ff8f4ba: camPath_isRelative_00000674 -> camPath_hasSpline_00000674. All gated (PASS, ROM identical).
+Camera details: docs/1080_CAMERA.md sections 2 / 2a; gates: docs/1080_COURSE.md section 7.
+
+**anims.bin (for the RiderAnim state names, not done yet).** rom/anims.bin is ROM 0x923BBA: an Info record
+(file id 0x56, "anims.bin") then one 0x2660EC-byte data record. Inside, every animation has a header followed by
+its name and a "<n>-0.dsc" source file name, e.g. boarder_bump_l_break, boarder_normalposition, boarder_turn_normal_b66,
+boarder_brake_b / _f, boarder_landing_s, boarder_crashing_f_1rot / 2rot, boarder_bump_r / _l (+ _break),
+boarder_pre_jump_A(Z), open_norm_fk_F02, new_hop07, 01_15_180..1080_air_open / _blind, 01_16_1260 / 1440_air_*,
+normal_front_flip3, normal_back_flip3, knee_cushion06, boarder_yoroke_a02 / b02 / c01 (stumbles), landing_a02,
+the grabs (method_7, mute_grab_6, tail_grab5_1, indy5, stalefish_6, nose_grab_6, lien_6, melonchollie_8_1,
+tweaked4_1, indynb_6, stiffy_6, shifty_6, normal_Jtear_air, normal_BS_handplant, normal_McTWIST,
+normal_alley_McTWIST, One_foot2, fakie_mystery, panda_trick_X03), the character select poses (select_KIMATI_05,
+DION, AKARI, RICKY, ROB), then a fakie set (boarder_fk_*, 360_fk_fk_360_B01 / F01, swith_stanceFN, knee_cushion05,
+boarder_yoroke_fk*, landing_fk02), crash / DEAD sets (crash_f_1rot_DEAD5, DEAD2_crash_bside / fside_1rot,
+new3_bump_r_break_d, new4_bump_l_break_d), and start_a, turn_slow_b / f, boarder_goal_w3 / l2 / n_r5, goal_spin,
+boarder_time_up6, ending_WIN_480d, ending_LOSE_475b, start_A..E_type02, HP_OM_goal_WIN5_2. Two kinds of entries
+(header words ..00000004 00000020 = a pose / blend entry whose name's first byte is 0, and ..00040000 = a keyed
+anim). The RiderAnim anim ids are 0x1xxxx / 0x2xxxx (0x10011, 0x10025, 0x10028 / 29, 0x10068, 0x10094, 0x100B8 /
+C0 / D8 / F0 / F8, 0x20002..0x20008), so the low half is not a plain entry index into this list (0x100F8 > 170
+entries): the id -> entry map needs the AnimPlayer loader (game_libs 62E80.. / 635D8) decoded first.
+
+**Next:** decode the anims.bin entry header (AnimPlayer load path) to map anim ids to names, then name the 53
+RiderAnim_state_<addr> by the anims they start; the gate item instance class; the rider body at camSource.

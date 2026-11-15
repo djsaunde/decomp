@@ -458,6 +458,31 @@ splice renames the .bss relocs to `osLeoDiskInit_bss` (pinned 0x800195D0; __osDi
 Kernel D_800195D0 / D_80019644 are now LeoDiskHandle / __osDiskHandle (pure rename 3d9282421).
 The interior field symbols D_800195D4..D_800195E0 stay `D_` (separate reloc symbols in the target).
 
+#### 9.1.5 Run 482: vtables, libultra globals, per-site alias renames
+
+- **Vtables** (gl_data.h "vtables" block): 71 aliases `<Class>_vtbl` / `<Class>_vtbl_<DataOff>`, each
+  comment = Sym, display slot, storing ctors. 49 vptr stores converted (`convert` + hand conversion of the
+  two/three-vtable ctors: BestTime/BestScoreGadget_ctor, QuitProcess_func_0000FC28/FD4C, PauseMenu_create
+  in the bootup_uso_ncc_FC28.cpp donor). Graphics / camera / course / audio ctors were left to their owners
+  (aliases exist: e.g. `convert MCamera_vtbl`, `DisplayMgr_vtbl`, `CamDirector_vtbl`, `WorldRegistry_vtbl`;
+  MCamera_ctor / BaseLight_ctor / Fader_ctor store two and need hand conversion).
+- **NCC .cpp donors** build without `-I include`: include gl_data.h as `"../../include/gdl/gl_data.h"`.
+  `convert` inserts `"gdl/gl_data.h"`, so fix the path by hand in a .cpp.
+- **Per-site zero alias renames** (pure rename 5131c2d09, 245 names): rename-symbol.py now accepts
+  `D_00000000_<suffix>` when undefined_syms pins it to 0x0 (other `*00000000*` names still refused).
+  NEW = `<object alias>_<old suffix>`; selected only when every LO16 site of the alias names one direct
+  Sym that has a gl_data.h name (scratch selector: /tmp/claude-1000/a482/py/aliases.py). Aliases that
+  cover two Syms (D_76F0_fadeB: 859 and 860) or only via-base sites were left alone.
+- **Local gAudioCtx macros**: the 12 `(*(T *)&D_00000000)` forms now read `&gAudioContext`
+  (25 uses verified against Sym 1255); the per-site forms point at the renamed `gAudioContext_<off>` aliases.
+- **gGfxLib**: agent-b converted 43 sites on its branch (534001550, run 486); not repeated here.
+- Not vtables despite the request: Sym 860 (a float fade, with 858/859), Sym 256 (0x1C-byte row table),
+  Sym 274 (0x20-byte callback record + anonymous vtable). See 1080_SYSTEM_LAYER.md section 12.
+- Next: `check` should follow header aliases inside macro bodies (`&gAudioContext`) so retargeted
+  overlays are checked automatically; Bss census rows still unnamed: 1448 (snd cue queues, agent-c),
+  289/290 (BasePolyShape, agent-b), 550 (Node doCommand buffer), 326 (Backup/GameFlow), 1558 (app_loadUso),
+  2422 (boot stacks).
+
 ## 10. Worktree setup gotcha (Part 0)
 
 The fresh worktrees had **no `tools/ido-static-recomp` and no `baserom.z64` symlinks** (the

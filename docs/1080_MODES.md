@@ -520,3 +520,50 @@ callee offset):
 - Kept weak: `SelCharAnim_vfunc10_0000ABB4`; AnimPlayer slot 10 (`AnimPlayer_vfn10_00063704`, empty) is
   unnamed.
 - The ghost Bits2 / Flag5 / Bits6 meanings: read the game global +0x181..0x183 users (game_uso).
+
+### Run 484 (agent-c): SelectWin field conversions, item models, ghost fields
+
+Commits on agent-c (base db64f9963), each gated PASS (3288/3288, ROM identical): 0a680ee86 (hand edit:
+select.h `SELWIN` + SelectWin state / display conversions), 64952d446 (hand edit: item updateHighlight /
+update onto the Sel*Item / Sel*Model structs), d8d943852 (hand edit: SoundObj, see 1080_AUDIO.md),
+305390099 (**pure rename**, 6 ghost accessors), 691970d5b (hand edit: input.h / backup.h ghost and
+player-select fields).
+
+**state6 bisected.** The only field whose struct-member form renumbers the t-registers is `eventFlags`
+(0x4D4), wherever it is an `|` operand (`elem | eventFlags`, `(id + 1) | eventFlags`): the member load
+takes its temp later (t8 instead of t6). Swapping the operands, an `(int)` cast or turning the pad before it
+into a word did not help. The same holds in state0 / 3 / 4 / 7 / 8 / 9, so eventFlags stays
+`FW(w, 0x4D4)`; every other scalar field converted with identical bytes.
+- `SELWIN(p)` (select.h) = `((SelectWin *)(p))`. The state functions keep their `char *` parameter,
+  because their `arg0 + stage * 4` cluster offsets and `(&D_...)[stage]` spellings are matching levers.
+- Converted (field by field, each object-identical): state0..10, display, init, startGame,
+  commitSelection, moveCursorPrev, canScrollPrev / Next, next / prevStageBit (stage, stageBit, state,
+  player, numPlayers, busy, blink, frame, fade, unk484, camPos, scene, cheat*, unk4BC / 4C0 / 4A0 ...).
+  Left raw: eventFlags, the curItem cluster offsets, pointer fields other than `scene` (itemsMgr / owner
+  are read as `char *` / `int`), and the bodies that index with `((int *)a0)[N]` / Row structs
+  (skipDisabled, findItem).
+- Items: the five updateHighlight bodies take their typed item (`it->base.enabled`, `it->model`,
+  `st->focused`, `st->highlight`; the `if (1) { v = (float *)((char *)v + K); }` lever stays), and the five
+  update bodies store `p->view[0..3]` through the typed model. The item-side +0x25C / 0x260 / 0x264 /
+  0x294 floats they copy are still unnamed.
+
+**Ghost fields (InputMgr, include/game/input.h).** The game global the select screens write is the
+InputMgr: SelectionMgr_ctor passes SelectWin_init the out pointers +0x68 level, +0x4C rider, +0x50 flags,
++0x54 board, +0x64 course (player 2: +0x58 / 0x5C / 0x60). replay_beginRecord* copies course / rider /
+flags / board into the bytes +0x178..0x17B, replay_saveGhost passes them to Backup_ghostSetHeader, and the
+BackupGhost bits are 2-4 rider, 5 the board flag (0x20, BoardItem's toggleVariant bit), 6-9 board. titproc's
+vs-ghost states copy them back (Backup_ghostGetRider / BoardFlag / Board = titproc callees 0x1EF10 /
+0x1EF44 / 0x1EF94) into +0x181..0x183, which game_setupVsGhost uses for the ghost rider exactly as
++0x4C / 0x50 / 0x54 for the player. Accessors renamed; InputMgr fields added (playerFlags, playerBoard,
+rider2 / flags2 / board2, rec*, ghostRider / ghostFlags / ghostBoard).
+
+### Next (run 484)
+
+- titproc `*(char *)(d + 0x181..0x183)` writes and its `titproc_uso_func_01EF10 / 44 / 94 / C8`
+  placeholders (= Backup_ghostGetRider / BoardFlag / Board / Course) belong to the titproc owner; the
+  bootup replay_* (o0 files) and game_setupVsGhost / game_setupReplay can take the InputMgr fields
+  (check each: the -O0 files and the CFG array spellings are levers).
+- SelectWin: name unk3F8 / 400 / 404 / 484 / 488 / 4BC / 4C0 from their users (unk484 = 1.0 / 0.0 at the
+  stage transitions, unk400 = 0x37 in state4); type itemsMgr / owner accesses where the reads are
+  `char *`; SelItem +0x25C..0x294.
+- SelectWin_update in timproc_uso_b5_o2_5FC0.c (separate TU) is unconverted.

@@ -185,10 +185,13 @@ below uses the old names; renames.tsv has the chains.
    the view's fields agree.
 3. SoundObj is in include/audio.h since run 464 (SoundObj 0x64 + bootup SndHandle {obj, unk04,
    eventArg}). Converted so far: snd_SoundObjInit / Reset / SetScaleIdx15 / 31 / SetFlag1A / Disable /
-   Start / Stop and the 12 bootup wrappers (now `SndHandle_*_<addr>`). Still raw: TriggerEvent
-   (NM), EventIndex (reads the 0x31 low byte of eventType), Update_2E354, UpdateChannel_2F288,
-   Play_2F578, SetAngle_2F720, bootup snd_updatePlayer (all lever-heavy; convert one at a time). The
-   match_imports context header keeps `char *` prototypes; those TUs do not include audio.h.
+   Start / Stop and the 12 bootup wrappers (now `SndHandle_*_<addr>`). Run 484 (commit d8d943852):
+   snd_SoundObjPlay (exact body, identical bytes) and the NON_MATCHING bodies of TriggerEvent_2E0C4,
+   UpdateChannel_2F288, snd_SoundObjUpdate (131 accesses) and bootup snd_updatePlayer (SndHandle *)
+   are typed; SoundObj 0x22 = `surface` (cue key with kind), 0x2A / 0x2B split out. Left: the
+   s16-as-u16 0x1A and s8-as-u8 0x63 reads in Update; EventIndex and SetAngle are splice placeholders
+   (their real bodies are the donors game_libs_o2_2E290.c / game_libs_ncc_2F720.cpp, which do not
+   include audio.h); the match_imports donors keep their GlState2E0C4 / `char *` views.
 4. Rename-tool note: a function whose REPLACE_FUNC_BODY donor lives in
    src/match_imports/<NAME>.c is "defined in several segments"; run 446's
    wrapper (/tmp/claude-1000/c446/rn.py) tolerates exactly that case when the

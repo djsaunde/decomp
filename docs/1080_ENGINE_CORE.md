@@ -127,6 +127,15 @@ RcpMgr_startTask).
   gfx_setCpuDraw (0x46788, gfx +0x28C), LightTarget_ctor -> shape_cmdLightTarget (0x51448, a GDL shape
   command, sibling of shape_cmdShape). docs/1080_GRAPHICS.md now has the texture-format table (6.1), the
   GDL_MC material commands (6.2) and the shape command stream (7.1).
+- Run 486 (agent-b): include/gdl/anim.h (AnimPlayer 0xB0, AnimData 0x20, AnimGroup, AnimDataMgr 0x48,
+  AnimFrameSlot / AnimFrameCache, Animator 0x130, AnimPose, AnimKey, AnimNodeKey, ANIM_* flags) and
+  include/gdl/skin.h (SkinMgr 0x98, SkinAnim 0xA8, SkinWeight, SkinBone); 18 names (AnimData_init /
+  readFrames / waitFrames, AnimGroup_init / load, AnimFrameCache_releaseAll / find / getPose,
+  AnimDataMgr_releaseFrames / loadFile, AnimPlayer_onKey, skin_cmdSkinMgr / SkinAnim / SkinShape,
+  SkinAnim_ctor / bind / skinVerts, SkinMgr_addAnim); 25 functions converted (AnimPlayer_*, the
+  AnimData / frame cache family, AnimData_load donor, SkinMgr_ctor / init); gGfxLib on 43 game_libs
+  sites. Formats: docs/1080_GRAPHICS.md sections 11 / 12. Map rows 0x61E58 / 0x62E10 / 0x68C14 still
+  use the pre-486 names in places; the renames.tsv ledger maps them.
 
 - Run 468: **no game_libs placeholders are left** (gl_func_ / game_libs_func_ except the `*_00000000*` sentinels).
   New in 0x27000-0x34400 (outside the old area): AudioThread_CheckSpecChange / ClearSpecChangeQueue / Noop1Cmd /
