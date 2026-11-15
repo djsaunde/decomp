@@ -103,6 +103,14 @@ input_* bodies (agent-g's files) can take `InputMgr *` (input_checkPressed/Held/
 bootup_uso_ncc_11E00.cpp, input_addPad / replay_addInput in o0_11C70.c, input_setActivePad /
 input_clearActivePad in o0_1207C.c).
 
+**Run 487 (agent-h, branch agent-h on 9dcd5ce48).** e695bbe88 (hand edit: README "Readability status" ->
+docs/1080_PORTING_GUIDE.md, the new top-level guide), 51d91f5cc (hand edit: race.h `RACEPROC(p)` /
+`TIMRACE(p)` cast macros, 103 timproc / trkproc accesses onto RaceProcess / TimRace fields; objects identical).
+Gate PASS each. Next: the same macros in arcproc_uso_tail1.c (ArcRace ctor: +0x6A8 courseList / +0x6AC dataMgr),
+mgrproc / h2hproc race ctors, and a TimDataManager struct (0xE0: race 0xB8, session 0x4C, colour 0xC0..0xCC,
+alpha 0xD0) for TimDataManager_init / update; the `&D_00000000 + K` InputMgr reads in titproc / h2hproc are
+import relocs and stay.
+
 **Run 471 (agent-h, branch agent-h on 19f8e0b6f).** eeead0f35 (56 names, pure rename), b67b6884a
 (38 names, pure rename), 99f0e46c8 (hand edit: input.h + conversions). Gate PASS each.
 - **Race overrides = base slot names.** Every Tim/Trk/ARC/MGR/H2HRaceProcess and GameDemoProcess override
