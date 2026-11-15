@@ -912,6 +912,59 @@ SnowBoarder, +0x800 input; InputPad +0x34 unnamed; the shared q temp is a lever)
 (game_libs_o2_3430.c FW forms -> TPOINTS / POPUP); bootup_uso.c SnowBoarder_update (14) and the Tmpl
 helpers; mgrproc MGRRaceProcess_drawIntro (9) / mgr_DataManager_update (7); h2h_createPauseMenu (4).
 
+### Run 524 (agent-h): Parms ctor fields, WorldRegistry map / players, restart chain, PointsGadget_update donor
+
+Commits on agent-h (base 57b2ad9b3), each gated PASS (3288/3288, ROM identical, 5457 named calls / 0
+mismatches; every touched .o identical by objdump -d -r -z in the matching and NON_MATCHING builds):
+736a7dfc9 (game_libs.c + gadget.h + PointsGadget_update donor), 41814745d (bootup_uso.c / game_libs_tail.c /
+mgrproc), 0a9018c36 (timproc b1 / b3 stand-ins). All hand edits; no renames, no renames.tsv lines.
+
+- **GdlParms** (gdl/gadget.h): the 8-byte head of every "<Class>::Parms" (name string, 0) + `PARMS()`;
+  `PARMRGBA()` for the 0x24 colour parm. The four game_libs.c Parms ctors (TimeGadget / CoolGadget /
+  CourseGadget / ColourParms) write PARMS / PARM / PARMRGBA fields (182 sites). ColourParms_ctor's
+  remaining 60 are the `*(s32 *)((char *)&sTag_xxx_CFxx + 0xCFxx)` / kRo_ tag reads (data spelling, agent-a).
+- **WorldRegistry.unk98 is the MapProp** game_createMap returns (game_init: unk98 = createMap(game,
+  getCourse(game, a1), a2); the NM game_init body mis-reads it as the timer value). `WORLD_MAP(w)` (local
+  macro in bootup_uso.c and game_libs_tail.c, #ifndef-guarded): game_setup* pass start[0] / start[2]
+  (st0 x / z, +-500 for the 2-rider modes); RaceTracker_reset: courseStart = start[0], courseZ = start[2],
+  courseLength = goal[2] - courseZ. **Ask agent-g** to type course.h `char *unk98` as `struct MapProp *map`
+  and move WORLD_MAP there (or drop it).
+- **restartCameras / restartWithTimeout** (and mgr_startReplay_00001AD0): state = GameFlow.game as
+  WorldRegistry; q = players[0 / 1].rider; the pad = SNOWB(q)->input as a PadCtl (pad_reset gets
+  pad->port, 0x34); pad_startRecord(pad, replayData[0], recordCap, &replayLen[0]); startPlay(pad,
+  replayData[0], replayLen[0]). The shared `int *q` (q = v0, state = v1) is kept: q holds the rider
+  pointers and the ghost.
+- **RaceProcess_createReplayCam**: players[0].rider / input, windows[0] (savedCam; replayCam replaces it),
+  Window.camera (0x70), fgRoot, bgRoot; savedCam doFlags &= ~8 (DoUpdate) and ~4 (DoDisplay).
+- GameFlow fields in game_libs.c: dataMgr->hudFlags (endResult* / finishCourse / timeUp), nextFlowMode == 2
+  (endRace / endRaceQuiet / drawGui, RaceTracker_sendWinResult), course (CourseGadget_ctor).
+- VT_SLOT users: PointsGadget_display_000038F4 (slot 2 on each pop-up), RaceProcess_callGlobalSlot11
+  (gSnowBoard slot 11), RaceTracker_sendEndingMsg (gSnowBoard slot 5, msg 0x3ED), send*Result (rider
+  slot 4), SnowBoarder_update (slots 4 / 3).
+- **PointsGadget_update donor** (game_libs_o2_3430.c): TPOINTS / POPUP fields; the fade-out adds the
+  pop-up's value to dataMgr->entries->unk18 (player 1's score). **Byte gotcha**: with struct fields
+  `x = d + x` loads d first; the FW / FF form loaded x first. Write `velY = velY + accelY`, `xps = xps +
+  velX`, `yps = yps + velY` (same add.s operand order, same load order).
+- MCamera.fov (cam_create results: 85 replay, 55 split screen), SNOWB(r)->camera, WorldRegistry
+  windows[idx] / players[idx] (game_addWindow / addPlayer keep their same-line levers), RaceEntry[0 / 1]
+  in mgr_DataManager_update (float fields passed as int: `*(int *)&e[1].pct`), CoolGadget seg / cur.
+- tim_main / trk_main in-TU stand-ins (bytes from the -O0 donors): GAMEFLOW(d) procState / nextProcState /
+  thenProcState / course / replayLen[0] / recCourse.
+
+Census (scripts/readability-census.py, cast + accessor) before -> after: game_libs.c 325 -> 95,
+game_libs_o2_3430.c 110 -> 0, game_libs_tail.c 59 -> 36, bootup_uso.c 184 -> 143, mgrproc_uso.c 53 -> 41,
+timproc_uso_b1.c 80 -> 52, timproc_uso_b3.c 99 -> 71. Segments (casts / accessor uses): bootup_uso 712 /
+149 -> 671 / 149, game_libs 1821 / 1530 -> 1662 / 1326, mgrproc 100 -> 88, timproc b1 88 -> 60, b3 107 -> 79;
+all 4984 / 2619 -> 4716 / 2415. Untouched: arcproc_tail1 42, bootup_uso_tail4 24, h2hproc 71.
+
+Next: TrkDataManager_update's 14 `*(char **)(arg0 + 0xB8)` (a Tim / Trk DataManager struct with race at
+0xB8 in modeproc.h, like H2HDataManager); the game_setup* `+ 0x1B8` window link (game_create3DWindow
+result: confirm the type first); Tree_handleMsg (SNode.pos -> Tree +0xA0 saved pos: needs a Tree struct in
+envobj.h, agent-g); Snower / Fog / EnvSettings / BGBox gGfxLib +0x254 / +0x130 (needs a GfxLib struct,
+GRAPHICS section 2); arcproc_tail1, h2hproc (h2h_createPauseMenu), bootup_uso_tail4; mgrproc's
+import_800200D8 / 800200DC / 80020100 sites are GameFlow seen through per-offset import symbols (needs
+the import-alias tool, not hand edits).
+
 ### Run 509 (agent-h): CoolGadget, GuiRow users, name entry, menu processes, title logos, PointsPopup
 
 Commits on agent-h (base 6336bd167), each gated PASS (3288/3288, ROM identical; every touched .o identical
