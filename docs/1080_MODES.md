@@ -1124,3 +1124,59 @@ Not done this run (next):
   focused / chosen at class-specific offsets, so only the 0x10C QNode head is common).
 - The match_imports Character / BoardList_createItem donors onto the context names.
 - timproc_uso_b5.c's remaining raw sites (the SelectWin_update / state bodies, SELWIN() users).
+
+### Run 525 (agent-c): SelModel base, Window view, the split-screen and createItem donors
+
+Two hand-edit commits on agent-c (base 0c969f011), each gated PASS (3288/3288, ROM identical,
+placeholder check 0 mismatches). Every rebuilt object, in both trees, is identical to a fresh
+pre-run build: sections and relocations match, and so does `objdump -d -r`. The rebuilt objects
+are every select.h includer, ncc_1DB0 / ncc_1F14, all ten context_timproc_uso_b5.h users and
+their linked / stripped objects, and o2_5FC0.
+- f59d12716: **select.h**
+  - **`SelModel` (0x10C)** = QNode (0x104) + unk104 + `inner` (0x108). It is the head of all five
+    Sel*Model types. Every createItem builds the model with QNode_ctor(model, name, 0, 0, 0). It
+    then allocates a 0x16C child QNode (QNode_ctor; +0x108 / 0x10C / 0x110 get one RoData
+    constant, +0x124 = 1.0), stores it at +0x108, MNode_addChild's it, and sets
+    inner->vqs.trans. SelectWin_ctor passes the three Tesuri models' `inner` to the 0.5f setup
+    calls.
+  - SelCharModel gains unk124 / unk128 / unk134 (createItem's initial values).
+  - **C++ (edg) and select.h:**
+    - The NCC donors include it by relative path (`../../include/game/select.h`).
+    - As agent-g did in snowboarder.h, the SELECT_ASSERT block is `#ifndef __cplusplus`. edg
+      rejects the `&((T *)0)->f` form (error 3153 / 3267); the C builds still check the offsets.
+    - In C the header includes gdl/mnode.h + gdl/window.h. In C++ it gets an opaque
+      `char qnode[0x104]` head and a Window mirror (aspect / width / height / originX / originY /
+      vpW / vpH / vpX / vpY).
+  - **`SELWIN_VIEW(w)`** = `*(Window **)(w->scene + 0xC)`, the window's screen Window
+    (scene +0xC +0x70 = the camera, fov at +0x14C).
+  - **The two-player split is vertical.** Of the run-522 fields, `split` and `SelectWin.centerX`
+    are pixel heights, not x positions. setSplit writes wins[0] height = vpH = split
+    (originY = vpY = 0), and wins[1] height = vpH = 0xF0 - split at originY = vpY = split. The
+    aspect blend is 1.333 + 1.3333 * t, so 0xF0 = the 240-line screen. `centerX` is therefore a
+    misnomer (rename candidate: viewH). It was left as is this run.
+  - **Donors converted:**
+    - ncc_1DB0 (setSplit) and ncc_1F14 (SelectionMgr_update) use SelectionMgr / SelectWin /
+      Window members only (census 60 / 284 casts -> 0).
+    - match_imports CharacterList_createItem / BoardList_createItem use SelItemList,
+      SelCharacterItem, SelChar / BoardModel and SelItem. The board model's 0xDC..0xE4 are
+      head.qnode.cvqs.trans.
+    - context_timproc_uso_b5.h includes select.h and drops TimB5UiOwner / TimB5UiPanel.
+- 3ca2ac228: **SelectWin_update donor (o2_5FC0) and state0..9**
+  - Now members: owner, itemsMgr->tesuri[0..2], the other window's stageBit / stageLock,
+    SELITEM id / flags, owner->busy, the otherWin / canCommit / finish arguments, and
+    itemsMgr->lists[2]->count.
+  - **Byte traps (kept raw, commented):**
+    - In SelectWin_update, the item's zoom-fov reads (`sp2C + 0x14C` = parms.cf2.value,
+      `+ 0x134` = parms.cfv.value) stay raw: as members, the two mul.s swap their operands.
+    - In state8, `FW(e, 0x4B4)` (the other window's busy) and `FW(owner, 0x48)` (zoomWin) stay
+      raw: as members, both swap their lw registers.
+- **Census** (`scripts/readability-census.py`, raw `*(T *)(p+K)` / accessor uses):
+  - Segments: timproc_uso_b5 880 / 502 -> 530 / 472, match_imports 498 -> 467.
+  - Files: timproc_uso_b5.c 368 + 191 -> 362 + 172; ncc_1F14 284 -> 0; ncc_1DB0 60 -> 0.
+
+Next (H1):
+- Rename `SelectWin.centerX` -> `viewH` (and SelectionMgr.split's comment) as a field edit.
+- The scene's +0x10 camera node (camPos copies from +0x60..0x68 = MNode mtx[3]) and
+  SELWIN_VIEW()->camera fov reads in state3 / state4 / beginTransition.
+- The board item's extra word at 0x2C4 (BoardList_createItem clears it; SEL_ITEM_CLASS is 0x2C4).
+- The vtable slot calls (`FW(FW(e, 0x28), 0x8C)` etc.) through a typed SelItem vtable.

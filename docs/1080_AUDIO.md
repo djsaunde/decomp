@@ -772,3 +772,28 @@ check 0 mismatches); every rebuilt .o identical to the pre-run build (sections +
   (24378) still has its own Ctx view (MesgQueue / pool padding) to fold onto AudioContext; the
   remaining game_libs_post.c audio raw sites (368) are mostly AudioSynth_* command builders and
   the NON_MATCHING bodies; ncc_28A68 (6) and o2_23914 (7).
+
+### Run 525 (agent-c): AudioTask, AudioLoad_Init on AudioContext, s8 sampleBankId
+
+26d402122 on agent-c (hand edit; gate PASS 3288/3288, placeholder check 0 mismatches). Every
+audio.h includer is identical to a fresh pre-run build, in both trees where built: sections and
+relocations match, and so does `objdump -d -r`. The includers are game_libs_post.c, bootup_uso.c
+and the 10 o2 donors.
+- **include/audio.h:**
+  - `AudioTask` (0x50, OoT): OSTask_t task (libultra/os_task.h) + taskQueue / unk_44 / unk_48.
+  - AudioContext: curTask is `AudioTask *` and rspTask[2] is `AudioTask`. 0x2138 is
+    `maxTempoTvTypeFactors` (f32) and 0x213C is `refreshRate` (50 PAL / 60); both are asserted.
+- **AudioLoad_Init (24378):** the local gl_24378_Ctx / Pool / MesgQueue view is deleted, and the
+  body runs on `(*(AudioContext *)&gAudioContext)`. The two dataSize words are
+  rspTask[0/1].task.data_size; 0x1644 / 0x1648 are cartHandle / driveHandle. Only the
+  heap-init-sizes view (gl_24378_HeapInitSizes) is left.
+- **s8 sampleBankId (run-522 "untested" item): it works.** SampleCacheEntry.sampleBankId is now
+  s8, as in OoT. No matched reader used the u8 (AllocTemporary / PersistentSampleCacheEntry never
+  read the field). AudioHeap_DiscardSampleCacheEntry (221D8) and AudioHeap_DiscardSampleCaches
+  (22464) take `SampleCacheEntry *` directly, and their s8 entry views are deleted.
+- **Census:** game_libs segment raw 1760 -> 1758; game_libs_post.c 387 -> 385 by
+  readability-census.py. The run-518 census2 metric was not rerun.
+- **Next:** the AudioSynth_* command builders in game_libs_post.c (most of the remaining ~368
+  census2 sites), ncc_28A68 (6) and o2_23914 (7). None were attempted this run (time).
+  o2_26214 still keeps its own gl_26214_Ctx / AudioTask / OSTask_t view, which can now fold onto
+  AudioContext.rspTask / AudioTask.
