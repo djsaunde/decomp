@@ -4,6 +4,8 @@
 
 _10 entries. Auto-generated from per-memo notes; content may be rough on first pass — light editing welcome._
 
+> **2026-11-15 wrap-up:** the `tools/forensics/` downloads were deleted, and the helper scripts that used to be under `tools/forensics/scripts/` are now tracked in `scripts/forensics/`. To re-run one, restore its toolchain from the URLs and sha256s listed below (see `scripts/forensics/README.md`).
+
 ## Index
 
 - [Instrumented uopt colouring trace (run 414)](#instrumented-uopt-colouring-trace-run414) — _Diagnosis-only uopt. It prints each LR's priority num / den, the colouring queue, the forbidden set at pick time and every register's cost. Built from c334's uopt_i.c with h414/t/patch.py and gcc -O0 (about 10 s). Run: h414/t/tr.sh. Gave 8CD8 97.289 (kit CDXCVII)._
