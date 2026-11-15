@@ -1,0 +1,364 @@
+# 1080 Snowboarding: readability plan (naming, structs, USO docs)
+
+> Survey + infrastructure step, agent-a run 441, 2026-11-15, on 1080 main e67286745.
+> Status at survey time: 3288/3288 functions at 100%, ROM byte-identical, CI green.
+> The goal now is readability. Every change must leave the ROM byte-identical and
+> every function at 100%. Tools: `scripts/rename-symbol.py`, `scripts/readability-gate.sh`
+> (1080 repo, agent-a commits 4ffc71577 / db320327d / 3d277d0df).
+
+## Index
+- [1. Inventory](#1-inventory)
+- [2. Subsystem map](#2-subsystem-map)
+- [3. Proposed parallel work areas](#3-proposed-parallel-work-areas)
+- [4. Naming conventions](#4-naming-conventions)
+- [5. Rename mechanics: what a rename touches](#5-rename-mechanics-what-a-rename-touches)
+- [6. Do names reach the ROM? (no)](#6-do-names-reach-the-rom-no)
+- [7. rename-symbol.py](#7-rename-symbolpy)
+- [8. readability-gate.sh](#8-readability-gatesh)
+- [9. The struct path (prototype + gotchas)](#9-the-struct-path-prototype--gotchas)
+- [10. Worktree setup gotcha (Part 0)](#10-worktree-setup-gotcha-part-0)
+- [11. Open research items](#11-open-research-items)
+
+---
+
+## 1. Inventory
+
+Functions come from report.json (objdiff names = the expected/ object symbol names).
+"Placeholder" means `func_X`, `gl_func_X`, `game_libs_func_X` or `<seg>_func_X`.
+
+| unit | fns | placeholder | named |
+|---|---:|---:|---:|
+| kernel | 197 | 190 | 7 (uso_file_open, uso_skip_to_end, uso_find_file, __osProbeTLB, __osResetGlobalIntMask, __rmonSendHeader, __osSetFpcCsr) |
+| bootup_uso | 349 | 349 | 0 |
+| game_libs | 1891 | 1880 | 11 after run 441 (memcpy, ldiv, lldiv, osPfsInitPak, __osPfsGetStatus, __osSumcalc, __osIdCheckSum, guOrtho, guMtxF2L, guMtxIdentF, guMtxL2F) |
+| game_uso | 240 | 240 | 0 |
+| timproc_uso_b5 | 194 | 194 | 0 |
+| timproc_uso_b3 (trkproc.uso) | 62 | 62 | 0 |
+| timproc_uso_b1 (timproc.uso) | 59 | 59 | 0 |
+| arcproc_uso | 59 | 59 | 0 |
+| mgrproc_uso | 57 | 57 | 0 |
+| titproc_uso | 46 | 46 | 0 |
+| h2hproc_uso | 40 | 40 | 0 |
+| gui_uso | 39 | 39 | 0 |
+| eddproc_uso | 15 | 15 | 0 |
+| n64proc_uso | 7 | 7 | 0 |
+| boarder1..5_uso | 6 each | 6 each | 0 |
+| map4_data_uso_b2 | 3 | 3 | 0 |
+| **total** | **3288** | **3270** | **18** |
+
+**Libultra is NOT named.** Comments identify about 100 libultra/libc/gu functions in the
+kernel and game_libs (see the `grep "= libultra"` comments and the `game_libs_ido53_*.c`
+donor headers), but their symbols are still placeholders. That is the cheapest first wave.
+
+**Globals.** 662 distinct `D_XXXXXXXX` names are used in src/ (bootup_uso 272,
+match_imports 312, kernel 151, game_libs 124, timproc_b5 75, game_uso 35, others <10 each).
+undefined_syms_auto.txt holds 487 `D_` pins. On top of that, **1532 `&D_00000000 + 0xNN`
+uses** are USO data-section-base accesses, where the real "global" is an offset into a
+module's Data/RoData/Bss. Those need *section-base structs*, not renames (see section 9).
+
+**Structs vs raw offsets.**
+- 3247 `typedef struct` definitions and 1292 distinct type names, almost all **TU-local and
+  partial** (pad arrays plus a few fields), redefined per file. For example, OSThread is
+  typedef'd privately in 5 files. kernel_000.c alone has about 8 partial views of the same
+  0x9C-byte USO module slot (`UsoEntry74`, `UsoTable94`, `UsoLoadSlot`, `UsoLoadSlotF`, `UsoModule`, ...).
+- 6476 raw `*(T*)((char*)p + 0xNN)` accesses, against 12750 `->field` accesses. By unit (a looser
+  `(char*)x + 0xNN` count): game_libs 1237, game_uso 583, timproc_b5 368, bootup 306,
+  h2hproc 190, titproc 155, match_imports 91, kernel 77, mgrproc 75, arcproc 44, gui 34.
+- No shared type headers exist yet. include/ has only common.h (base typedefs),
+  include_asm.h and macro.inc. **Run 441 added the first one: include/libultra/os_thread.h.**
+
+**Other shape facts that matter for readability work.**
+- 189 INCLUDE_ASM / GLOBAL_ASM lines remain in src/. These are handwritten asm (exception
+  handlers, TLB, the RSP ucode blob) and pad/data sidecars. 153 `#ifdef NON_MATCHING` blocks remain.
+- **Donor splicing.** Many functions (libultra in game_libs, -O0 islands, C++ NCC/MIPSpro
+  bodies) are compiled in a separate *donor* TU (`*_ido53_*.c`, `*_o1_*.c`, `*_ncc_*.cpp`,
+  `*_mp72_*.cpp`, `src/match_imports/*.c`). Their bytes are spliced into the host unit by
+  `REPLACE_FUNC_BODY` in the Makefile. The host TU holds a *placeholder body*,
+  e.g. `void lldiv(int m) { volatile int lldiv_spliced ... }`. **The readable C lives in the
+  donor file.** Readability edits to a host placeholder body are wasted. Edit the donor.
+- C++ (229 `.cpp` donors, game_uso/bootup_uso/game_libs): functions are `extern "C"`
+  placeholder names, and class ctors/vtables are mapped by Makefile
+  `objcopy --redefine-sym __ct__1BFPc=...` with *mangled* names (39 such lines).
+
+## 2. Subsystem map
+
+Addresses are segment-local (USO VRAM 0) for USOs, and VRAM for the kernel. Anchors marked
+**[known]** are from proven donors or verbatim-source matches. **[strings]** are from the
+debug strings in bootup.uso (ROM 0xD9FE28-0xE5D0D4; 689 strings, dump with a 6+ printable
+char scan). **[guess]** marks hypotheses to verify with call graphs.
+
+### Kernel (0x80000000-0x8000A5xx, ROM 0x1000-0xBBC0, real addresses, not a USO)
+| range | subsystem | evidence |
+|---|---|---|
+| 0x80000000-0x800000AC | entry / boot stub | kernel_000_entry |
+| 0x800000B0-0x800029A0 | **USO loader + ROM filesystem** (kernel_000*.c): file open/seek (uso_file_open, uso_skip_to_end), uso_find_file (0x9C-byte FS entries), the module slot table D_800130A0[135] x 0x9C, D_80012D60[] live modules, the reloc applier (func_800018F0 = 12-byte reloc record scan) | [known] + kernel_026 strings "USO: loading %s", "USO: unloading %s", "unkown reloc type %x", "USO: UnCompress %d to %d", "cross referenced symbol section not loaded", "USO Version: %s" = "3.1" |
+| 0x800029B0-0x80002CA4 | small helpers (kernel_045/056) | [guess] |
+| 0x80002CD0-0x800044CC | libultra core: exception preamble/handler (0x80002E70, 0x800031F0), thread queue (__osEnqueueThread, __osPopThread, __osDispatchThread), osInitialize @0x80002530 | [known] (comments) |
+| 0x800044CC-0x8000A110 | libultra: Leo/disk (osLeoDiskInit 0x80004E50), PI/EPI DMA, osCreateThread 0x80005B10, osCreateMesgQueue 0x800053D0, osRecvMesg/osSendMesg, __osDevMgrMain 0x80005C50, cache ops, TLB, osStartThread 0x8000A110 | [known] |
+| 0x80008424-0x80009850 | **rmon** (libultra remote debugger: __rmonSendHeader, register dumps, disassembler switch fns 0x8000858C/0x80001EC8) | [known] |
+| 0x80009E60-0x80009FD0 | kernel_026: USO loader tables + printf strings (data) | [known] |
+
+### game_libs = the Text section of bootup.uso (ROM 0xDE50D8; USO section offset = splat + 0x1466C)
+| range (splat offset) | subsystem | evidence |
+|---|---|---|
+| 0x00000-0x0EBC8 (game_libs.c, _mid, _tail, o0_*) | **libgdl system layer**: memory/heap ("New(): Cant allocate %dk", "Memory Dump", SysLinks/AppLinks), HostIO, file I/O ("Read() bad length", "Write not at end", "Out of DMA slots"), DMA (SUPERDMA/FastCopy/SLOWCOPY/BGCOPY), App::Update/Display loop ("RunApp", "gfx.Start", "app.Update") | [strings] + comments heavy on alloc/list. Assign by xref |
+| 0x0EBC8-0x1C9E4 | no functions (data/bin) | report |
+| 0x1C9E4-0x2D374 (game_libs_post.c head + game_libs_o2_* donors) | **audio driver = OoT/MM-style N64 audio** (AudioSynth_ProcessNote 0x1E134, AudioLoad_RelocateFontAndPreloadSamples 0x25504, gAudioCtx, osAiSetNextBuffer 0x27784) | [known] |
+| 0x2D374-0x31DF8 | post.c tail after the audio driver | [guess] sound glue ("SndCPU", "SndRSP", "snd.GWork") |
+| 0x31DF8-0x32D74 | RSP ucode blob (local glabel, not functions) | [known] |
+| 0x34458-0x62F08 (game_libs_post0b.c, 850 fns, 191 KB) | **libgdl engine core**: GfxLib (display lists: taskDL1/2, MainStaticDL, sprites, FrameBuffers, "Show DL Usage"), PolyShape/MorphShape, CollShape/CollObjMgr (collision), node graph (DefNode/DefMNode/DefQNode, MtxMode), animation/skin (animate.cpp, skin.cpp), RCP manager thread ("RCP Mgr", "rcpMgrThread"), vector/matrix math (0x5C000-0x60000 math-dense) | [strings] mapprop.cpp / gfxlib.cpp / animate.cpp / skin.cpp asserts. Sub-ranges must come from string xrefs |
+| 0x62F64-0x6BAD4 (post1b) | mixed engine plus the libultra start: osSendMesg 0x69E04, osRecvMesg 0x69F64, exception handler 0x6A5F0 | [known] for the libultra part |
+| 0x6BAD4-0x75264 (post1b2*, post1c, post2*, ido53_*, o1_*) | **libultra / libc / gu**: PI/SI/SP DMA, VI (osViSetMode, __osViSwapContext), timers, controller + **controller pak** (osPfsInitPak, __osPfsGetStatus, __osSumcalc, __osIdCheckSum, __osRepairPackId, __osCheckPackId; osContStartReadData 0x6C084; osMotorInit 0x6D270), gu (guOrtho*, guMtx*, guPosition*), libc (memcpy, strchr, ldiv/lldiv, _Printf/_Litob/_Ldtob, sqrtf, bcopy/bzero) | [known] |
+
+### bootup_uso (349 fns, C++; the app layer of libgdl, VRAM 0)
+App/class layer of the engine. Debug strings in its data name the classes. **[strings]:**
+SnowBoarder (+ SnowBCol collision, SnowBDyn **dynamics/physics**, SnowBai AI, SnowBAnm
+animation, SnowBChild), Course/CourseShape/MapLighter/EnvSettings/FallingSnow/Snower,
+ItemMgr/MarkerMgr, Trails/DispSpray, **camera** (LookAtChase, "cam man", cam_info.bin,
+lookat_ca*.bin), Lights, GameFlow/PauseMenu/ProcessWindow, the HUD gadgets
+(TimeGadget, BestTimeGadget, CountDownGadget, PointsGadget, SpeedGadget, CoolGadget,
+CourseGadget), game modes (N64DEMO, TITLEDEMO, HEAD2HEAD, MULTIGAMERACE, TIMEATTACK,
+ARCADEMODE, TRICKMODE, TRAINING, EDITORS) and the .uso file table for each
+mode. 0xF1F0-0x12DB8 is the -O0 island strip (bootup_uso_o0_*).
+
+### Mode / process USOs (the strings above map them)
+| USO | mode (from the bootup mode/uso table) | fns |
+|---|---|---:|
+| titproc_uso | title / TITLEDEMO | 46 |
+| n64proc_uso | N64 logo / N64DEMO | 7 |
+| h2hproc_uso | HEAD2HEAD (2P versus) | 40 |
+| mgrproc_uso | game-flow manager, MULTIGAMERACE [guess] | 57 |
+| arcproc_uso | ARCADEMODE (match race) | 59 |
+| timproc_uso_b1 = timproc.uso | TIMEATTACK | 59 |
+| timproc_uso_b3 = trkproc.uso | TRICKMODE | 62 |
+| timproc_uso_b5 | third module in the timproc ROM range (not yet identified; probably trnproc/TRAINING or nameent/viewrec, **replay** = viewrec.uso?) | 194 |
+| eddproc_uso | EDITORS (debug editors) | 15 |
+| gui_uso | menus/GUI, inline RDP texture-load DL builders | 39 |
+| game_uso | **MainGame**: race setup and per-frame (0x44F4 = the 0x4E0-byte main object constructor), players, course | 240 |
+| boarder1-5_uso | per-rider data modules with 6 small fns each | 30 |
+| map4_data_uso_b2 | course data block with 3 tiny fns | 3 |
+
+Areas still to locate by xref: **input** (the libultra controller layer is in game_libs
+0x6C000+, and the game-side pad read is probably in the game_libs system layer), **replay**
+(viewrec.uso, the FIFO/replay models in the 2026-11-06 endgame memo), **save** (controller
+pak 0x71384-0x72550 + game-side wrappers), and the **heap** (game_libs 0x0-0xEBC8).
+
+**How to place functions precisely (recommended first task of every area):** walk each
+module's DataReloc/RoDataReloc tables (`scripts/uso-sym-oracle.py`, `scripts/uso-reloc-symbolize.py`)
+to map every debug-string address to the functions that reference it. Then propagate along the
+call graph (`jal` R_MIPS_26 targets in TextReloc). The C++ class strings
+("CollShape::CollShape", "SnowBoarder::Parms") name constructors and Parms readers directly.
+
+## 3. Proposed parallel work areas
+
+Keep **file overlap minimal**. A worktree edits only the src files of its area plus the
+Makefile/undefined_syms lines that the rename tool rewrites. Cross-area renames (callee in
+area A, callers in B) are fine because the tool edits callers' text. To keep merge
+conflicts down, **land small batches often**.
+
+| # | area | files (primary) | first wave |
+|---|---|---|---|
+| A | **kernel**: USO loader + kernel libultra + rmon | src/kernel/*, src/o1/*, src/libultra/os/* | name the ~45 libultra kernel fns from comments (plain names); consolidate the 0x9C module slot into one `UsoModuleSlot` in `include/uso.h`; write docs/USO_FORMAT.md (header, sections, Sym/reloc entries, loader flow) |
+| B | **game_libs libultra/libc/gu tail** 0x62F64-0x75264 | game_libs_post1b*.c, post1c, post2*, game_libs_ido53_*, game_libs_o1_*, src/libultra/game_libs/* | name the ~60 identified fns (donor headers); shared `include/libultra/*.h` (OSMesgQueue, OSPfs, OSPiHandle, OSIoMesg) replacing per-file typedefs |
+| C | **audio driver** 0x1C9E4-0x31DF8 | game_libs_post.c (audio half), game_libs_o2_* audio donors | OoT decomp names (AudioSynth_*, AudioLoad_*, AudioHeap_*, gAudioCtx fields); copy struct layouts from references/oot after offset verification |
+| D | **libgdl system layer** game_libs 0x0-0xEBC8 | game_libs.c, game_libs_mid.c, game_libs_tail.c, game_libs_o0_* | heap/alloc, file/DMA, HostIO, App loop; `gdl_` names |
+| E | **libgdl engine core** game_libs 0x34458-0x62F08 | game_libs_post0b.c (one 850-fn file; one owner, or two agents with strict address halves 0x34458-0x4C000 / 0x4C000-0x62F08 and frequent landing) | string-xref placement into GfxLib / PolyShape / CollShape / nodes / anim / math; Vec3/Mtx helpers first |
+| F | **bootup_uso** (C++ app layer) | src/bootup_uso/* | class-per-string naming: SnowBoarder, SnowBDyn (physics), SnowBCol, camera LookAtChase, GameFlow, gadgets |
+| G | **game_uso + boarder + map4** | src/game_uso/*, boarder*_uso, map4_data_uso_b2 | MainGame object (0x4E0 struct), players, course; resolve placeholder imports to the real game_libs/bootup names as areas B-F publish them |
+| H | **mode USOs + GUI** | titproc, n64proc, h2hproc, mgrproc, arcproc, timproc_b1/b3/b5, eddproc, gui_uso | menus/GUI, mode state machines, replay (identify b5) |
+| I | (optional, research) **USO Sym-hash / import resolution** | scripts/, docs | see [section 11](#11-open-research-items): cracking the Sym hash would *verify* names objectively |
+
+src/match_imports/ (118 files) holds per-function ports, which are independent copies of
+functions already in a main TU. Leave them to whichever area owns the function. The rename
+tool keeps them consistent automatically.
+
+## 4. Naming conventions
+
+Recommendation: **keep upstream names verbatim where the code is an upstream library, and
+use subsystem-prefixed lowerCamel for 1080's own code.** This matches what is already named:
+plain libultra (`__osSetFpcCsr`, `osPfsInitPak`) and the OoT audio vocabulary in comments.
+
+| code | convention | examples |
+|---|---|---|
+| libultra / libc / gu / libgcc | exact SDK name | `osSendMesg`, `__osPfsGetStatus`, `guMtxF2L`, `memcpy`, `__ull_div` |
+| **duplicate** libultra copies (kernel and game_libs each statically link one) | kernel keeps the plain name (precedent: kernel `__osSetFpcCsr`); the game_libs copy gets the **`gl_` prefix** (`gl_osSendMesg`). The tool refuses a plain name that already exists, so check the kernel list (section 2) first | kernel `osCreateThread` (0x80005B10); game_libs `gl_osCreateMesgQueue` |
+| OoT-derived audio driver | OoT decomp names verbatim (`AudioSynth_ProcessNote`, `AudioLoad_...`, `gAudioCtx`) | |
+| 1080 / libgdl C code | `<subsys>_<verbObject>` lowerCamel: `uso_` (loader), `fs_` (ROM filesystem), `heap_`, `dma_`, `gfx_`, `snd_`, `pad_`, `cam_`, `phys_`, `coll_`, `anim_`, `math_`, `gui_`, `replay_`, `save_`, `game_`, `<mode>_` (`h2h_`, `arc_`, `tim_`, `trk_`, `tit_`, `edd_`, `mgr_`) | `uso_findFile` (existing `uso_find_file` may stay), `heap_alloc`, `gfx_startFrame` |
+| C++ classes (bootup/game_uso/game_libs .cpp donors) | use the class names from the debug strings for the class and Cfront-style method names for the placeholder symbol: `SnowBoarder_ctor`, `CollShape_ctor`, `GfxLib_Display` | |
+| globals | `g<Name>` for globals (`gAudioCtx`, `gUsoModules`); `s<Name>` for TU-static; keep `D_` for uncertain ones | `D_800130A0` -> `gUsoModuleSlots` |
+| uncertain names | name what you know, and keep the address as a suffix when only the kind is known: `gfx_func_00045A10` | |
+
+Never rename: `*_00000000*` sentinels (`gl_func_00000000`, `func_00000000`, `D_00000000`,
+the blank-import aliases `gl_func_00000000_send` etc.). Those are USO import/base
+placeholders. Rename the *callee* instead, and replace the placeholder call with the real
+symbol only when the area owner proves the target (the report is name-blind, so this
+is pure readability).
+
+## 5. Rename mechanics: what a rename touches
+
+Measured on the 11-function batch (osPfsInitPak alone: 12 refs in 6 files, 2 expected objs, 1 file move):
+
+| place | touched? | how |
+|---|---|---|
+| src/ C/C++/headers (definitions, externs, calls, comments) | yes | textual, whole-word |
+| asm/nonmatchings/**/*.s (`nonmatching`, `glabel`, `endlabel`, `jal NAME`) | yes | textual |
+| **asm .s FILE NAME** | yes | `INCLUDE_ASM("dir", NAME)` resolves `dir/NAME.s`, so the file is renamed with `git mv`. `NAME_pad.s` sidecars are not renamed (their labels are independent `_pad_*` locals) |
+| expected/**/*.o | **yes, required.** objdiff pairs target and base symbols BY NAME | rename `NAME` and `NAME.NON_MATCHING` (and derived `NAME_<sect>`) in the symtab with `scripts/rename-elf-symbol.py`, a metadata-only strtab repoint. **Not objcopy --redefine-sym**: objcopy rewrites the symtab and renames local section symbols, which the donor-reloc import keys on. Regenerating expected/ is not needed, and refresh-expected-baseline.py is unreliable for match_imports/donor units |
+| Makefile | yes | REPLACE_FUNC_BODY `NAME=$(DONOR)`, SUFFIX_BYTES_FORCE, TRUNCATE lists, POST_COMPILE `rename-elf-symbol.py real=NAME` (becomes the harmless `real=real` when NEW is the donor's own name), match_imports rule paths |
+| **derived donor symbols** `NAME_rodata`, `NAME_bss`, `NAME_text`, ... | yes | replace-function-body.py *generates* `func_name + section` for a donor's local-section relocs, and undefined_syms pins them (120 `_rodata`, 19 `_bss`, 4 `_text` pins). Renaming the function renames the generated name, so the pin must follow |
+| undefined_syms_auto.txt / undefined_funcs_auto.txt / symbol_addrs.txt / tenshoe.ld | yes when present | textual |
+| scripts/match-bindings-NAME[-nm].json (+ file name), scripts/emu-symdump/*.json | yes | textual. The binding's `raw_sha256` hashes .text bytes, not names |
+| src/match_imports/NAME.c (+ file name + its Makefile rules) | yes | textual + git mv |
+| objdiff.json | no | units are per file, not per function |
+| report.json | regenerated by the gate, not edited | |
+| episodes/*.json | **no, deliberately** | historical training records keep the names they were matched under |
+| monorepo docs/ | no | historical. `renames.tsv` (1080 repo root) is the old-to-new ledger for translating doc references |
+| the linker / ROM | nothing name-dependent (no SORT() in tenshoe.ld; the ROM is objcopy -O binary of the ELF) | |
+
+Gotchas:
+- **Whole-word replacement also rewrites comments**, so you get "ldiv = ldiv" where a comment
+  used to say "gl_func_000744CC = ldiv". Harmless, but tidy comments in the same commit when convenient.
+- **Host placeholder signatures are fake** (`void lldiv(int m)` in game_libs_post2b_d.c is a
+  splice placeholder). With a real name the wrong prototype is more visible, and including
+  a real header that declares `lldiv` in that TU would be a type conflict. Keep SDK headers
+  out of host TUs, or fix the placeholder prototype; the bytes are spliced either way.
+- **A plain SDK name can collide with a donor's TU-local real name** used for its blank
+  imports. Example: the 70694 guOrtho donor POST_COMPILE renames `guOrthoF` (defined) to a
+  blank import, then re-adds `gl_func_00070694` with add-elf-func-symbol on the *same rule*.
+  The tool refuses that case, which is why guOrthoF was held back. It needs a hand edit:
+  rename the add-elf-func-symbol target, and confirm the blank alias is not the name being freed.
+- **C++ mangled names** (`__ct__8Bu6204ObFv`) encode identifier lengths. Renaming a C++
+  *class* or method changes the mangled name the Makefile objcopy maps from. The tool
+  refuses names that appear in `NAME__...` form. Do C++ class renames by hand and fix the
+  Makefile `--redefine-sym` spec.
+- **The same placeholder name never covers two different functions** (checked: no name is
+  defined in more than one src/<segment>; duplicate definitions are host+donor pairs of the
+  same function). `D_` names can be overloaded *semantically* across TUs though (one global
+  symbol and pin, used with different meanings). Check every use before renaming a `D_`.
+
+## 6. Do names reach the ROM? (no)
+
+- The USO import/export tables (Sym sections) store `[tag, value, word]` per symbol, where the
+  tag's low 16 bits plus the third word look like hash/ID data (section 11). They are **ROM
+  data**, carried in assets/*.bin and .s `.word`s, and are **never generated from our symbol
+  names**. Linking between USOs goes through these hashes at runtime, and our ELF names only
+  feed the build-time static link.
+- The ROM is `objcopy -O binary build/tenshoe.elf`. Symbol strings, .mdebug and the symtab are not emitted.
+- The only ways a rename could change bytes are (a) a name inside a C string literal or
+  `.ascii` (the tool refuses) and (b) a broken build pairing (donor splice, pin, derived name),
+  which the gate catches. kernel_026's printf strings are data and contain no symbol names.
+- **Proven:** the 11-name batch and the struct prototype both passed the full gate, with the ROM byte-identical.
+
+## 7. rename-symbol.py
+
+```
+scripts/rename-symbol.py OLD NEW [--dry-run]
+scripts/rename-symbol.py --batch renames.tsv [--dry-run]    # OLD<TAB>NEW [# comment]
+```
+- Rewrites every tracked text file (except episodes/, report.json, tools/, assets/,
+  expected/, landwip/), the derived `OLD_<sect>` names, file names (`OLD.s`,
+  `match_imports/OLD.c`, `match-bindings-OLD[-nm].json`), and the expected/ symtabs.
+  Appends to `renames.tsv`.
+- **Refuses:** `*00000000*` sentinels; OLD inside a string literal or `.ascii`; a C++-mangled
+  OLD; an invalid NEW or a C keyword; NEW already a symbol in any expected/build object,
+  undefined_syms, symbol_addrs or tenshoe.ld (or earlier in the batch); NEW already a
+  *code* token in the same C TU or in the same Makefile/ld/txt *rule line* as OLD (comments
+  stripped; `NEW=OLD` post-compile specs allowed); OLD defined in more than one segment;
+  OLD not a known symbol.
+- It does **not** check SDK duplicates across kernel/game_libs semantically (only by symbol
+  existence), so follow the `gl_` rule in section 4.
+- Always `--dry-run` first, review `git diff`, then run the gate. Commit the batch together
+  with the regenerated report.json, then land with the normal land script (the episode check
+  does not apply to readability commits; use the finish-landing path the user designates).
+
+## 8. readability-gate.sh
+
+```
+scripts/readability-gate.sh [--base REF] [--keep-build] [--no-write-report]
+```
+About 27 s on this machine (clean build, -j8). Steps:
+1. `rm -rf build`, then `make RUN_CC_CHECK=0 -j8`. `all: verify` requires "ROM OK (byte-identical)", plus an explicit `cmp`.
+2. `make verify-blocks`: 6/6 Yay0 code blocks OK.
+3. `make RUN_CC_CHECK=0 non_matching_objects`: 0 error lines.
+4. `objdiff-cli report generate`, compared with REF's report.json (default HEAD) **by
+   (unit, address, size)**: identical set, every function at 100.0, totals equal, and every
+   name difference must be an OLD-to-NEW chain in renames.tsv. Then report.json is refreshed in the tree.
+
+Verified on clean main (regenerated report.json was byte-identical to the committed one),
+after the 11-rename batch ("11 renamed (all in renames.tsv)"), and after the struct prototype.
+
+## 9. The struct path (prototype + gotchas)
+
+**Prototype (commit 3d277d0df).** `include/libultra/os_thread.h` defines OSThread and
+__OSThreadContext with the libreultra 2.0I layout, and adds compile-time offset asserts
+(`typedef char x[cond ? 1 : -1]`, accepted by IDO cfe). Kernel `func_80005B10`
+(osCreateThread, -O1) went from 14 raw `*(s32*)((char*)t + 0x11C)`-style stores to
+`t->context.pc`, `t->context.a0/sp/ra/sr/rcp/fpcsr`, `t->id/priority/next/queue/fp/state/flags/tlnext`.
+`__osActiveQueue` (`D_8000A41C`) was retyped `OSThread *`. **Byte-identical on the first compile.**
+The gate passed.
+
+**Rules that keep conversions byte-safe (IDO 7.1/5.3):**
+1. **Same access width and signedness.** `*(s16*)` -> an `s16` field, not `u16`. Signedness
+   picks lh/lhu and lb/lbu and changes shifts (sra/srl). That is the documented 0x80005B10 `u32 mask` trap.
+   s64 versus u64 for a plain 64-bit *store* is safe; for loads, comparisons or shifts it is not.
+2. **Same statement order.** Field stores are scheduled exactly like the raw stores. Do not
+   "tidy" the order to match the struct.
+3. **Constant-offset field access == `*(T*)((char*)p + K)`.** Both lower to `base+K`
+   addressing. This is the safe 90% case.
+4. **Not automatically safe:** (a) replacing `(char*)p + i*0x9C + K` index arithmetic with
+   `p[i].field`. Usually fine, but IDO's strength reduction / induction-variable choice can
+   differ when the multiply moves (several kernel_000 loops are written with a specific
+   comma-init or pointer walk to pin regalloc; see their comments). (b) Turning a
+   `char *ptr; ptr += 0x10` walk into a typed `T *ptr; ptr++` (the loop shape changes).
+   (c) Taking `&p->field` where the original took `(char*)p + K` and passed it on. That is
+   fine, but casts to/from `void*` can change the arg type and K&R promotion.
+   (d) Struct copies (`*a = *b`) instead of word loops, which change the copy codegen.
+   (e) Retyping a USO `&D_00000000 + K` base access as `gSomething.field`. **Unsafe for
+   matching reasons**: those references carry HI16/LO16 relocs against the D_00000000 base,
+   and some are the documented unpaired-HI16 form. Model a section base as
+   `extern struct XxxData D_00000000;` (keep the symbol name) and use
+   `D_00000000.field`. That keeps the symbol and offset, so the relocations are unchanged, but
+   verify per function.
+5. **Volatile / `register` / dummy locals that pin codegen must survive.** Many matched
+   bodies contain levers (`volatile int pad`, `if (1) {}`, `(t = x)` assignment-exprs,
+   decl-order tricks). Comments explain them. Keep them, and add field names around them.
+6. **Shared headers are opt-in.** Don't put new struct headers in common.h until every TU's
+   private typedef of the same name is migrated. A duplicate typedef is a cfe error, and IDO 5.3 donors use the
+   2.0I layout, so verify the layout before you merge headers.
+7. Struct **size** matters for anything with a stride (arrays, `sizeof` in alloc calls,
+   pointer increments). Assert the size too.
+
+**Highest-value struct targets:** the kernel USO module slot (0x9C, D_800130A0[135], about
+8 partial views in kernel_000.c); OSMesgQueue / OSPfs / OSPiHandle / OSIoMesg (per-file
+copies in game_libs donors); the game_uso main object (0x4E0) and its 0x3E0 child; the
+SnowBoarder object; the audio context (OoT `AudioContext` analogue); the libgdl Gfx/DL context
+(the gui_uso GfxCtx idiom `ctx->0xC` = DL cursor).
+
+## 10. Worktree setup gotcha (Part 0)
+
+The fresh worktrees had **no `tools/ido-static-recomp` and no `baserom.z64` symlinks** (the
+setup step had not run, or did not survive the move), and the main checkout's `assets/` was
+**stale**. `game_libs_text2_tail.bin` predated HEAD's splat config, so a build with copied assets
+produced a 16777260-byte ROM (+44 bytes) and failed verify. Fix (untracked files only):
+```
+cd projects/1080-agent-X
+bash /home/danjs/code/decomp/scripts/agent-setups/1080.sh   # symlinks + copies assets
+PATH=/home/danjs/code/decomp/tools/build-venv/bin:$PATH make setup   # re-extract bins from baserom
+PATH=/home/danjs/code/decomp/tools/build-venv/bin:$PATH make RUN_CC_CHECK=0 -j8   # -> ROM OK
+```
+The real fix is to run `make setup` in the main checkout (projects/1080-decomp) so later
+worktrees copy fresh assets. The tracked `tools/decomp-permuter` symlink points at
+/home/dan/... (dead), but the build does not need it.
+
+## 11. Open research items
+
+- **USO Sym hash.** bootup.uso has 2674 Sym entries `[tag, value, word3]`. The tag's high byte is
+  0x52 for text, and the low 16 bits vary (osSendMesg export @ section 0x7E470: tag 0x525305,
+  word3 0x60000AC2; memcpy @ 0x837F0: tag 0x5270FF, word3 0x520E6FE1). ELF hash, djb2,
+  djb2-xor, sdbm, FNV-1a, x31 and CRC32 of the plain names matched neither the tag low half nor
+  word3. If the hash function is found (mangled names? a module-prefixed string? a Kyoto
+  custom hash?), every export/import name becomes **verifiable against the ROM**, and
+  cross-USO imports (`gl_func_00000000` placeholders) could be named mechanically. Worth one agent-day.
+- **timproc_uso_b5 identity** (third module in the timproc ROM range): walk the module headers.
+- **String-to-function xref table** for bootup.uso (689 strings) via DataReloc/RoDataReloc.
+  It is the backbone for areas D, E and F.

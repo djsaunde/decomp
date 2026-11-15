@@ -37,12 +37,25 @@ import json,sys
 def exact(p):
     r=json.load(open(p)); return {fn['name'] for u in r['units'] for fn in u.get('functions',[]) if fn.get('fuzzy_match_percent')==100.0}, r['measures']
 b,bm=exact(sys.argv[1]); n,nm=exact(sys.argv[2])
+# readability renames: map base names through renames.tsv (old<TAB>new; chains followed)
+import os
+ren={}
+if os.path.exists('renames.tsv'):
+    for ln in open('renames.tsv'):
+        if ln.startswith('#') or '\t' not in ln: continue
+        o,nn=ln.rstrip('\n').split('\t')[:2]; ren[o]=nn
+def rn(x):
+    seen=set()
+    while x in ren and x not in seen: seen.add(x); x=ren[x]
+    return x
+nren=len(b & set(ren)); b={rn(x) for x in b}
+if nren: print(f"   (base names mapped through renames.tsv: {nren})")
 print(f"   exact: {bm['matched_functions']}/{bm['total_functions']} -> {nm['matched_functions']}/{nm['total_functions']}  code% {bm.get('matched_code_percent'):.2f} -> {nm.get('matched_code_percent'):.2f}")
 lost=sorted(b-n); gained=sorted(n-b)
 print(f"   gained: {gained}"); print(f"   LOST: {lost}" if lost else "   lost: none")
 r=json.load(open(sys.argv[2])); fz={fn['name']:fn.get('fuzzy_match_percent') for u in r['units'] for fn in u.get('functions',[])}
 sent=['gl_func_000551E0','gl_func_00055B10','gl_func_0000EBC8','gl_func_0000C5B0','game_libs_func_00062F08']
-print("   sentinels:", {s:fz.get(s) for s in sent})
+print("   sentinels:", {s:fz.get(rn(s)) for s in sent})
 PY
 # CI builds a fresh checkout of tracked files only; incremental builds above can hide
 # clean-build-only breaks (untracked donors, target-specific vars inherited by prerequisites)
