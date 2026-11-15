@@ -1,6 +1,6 @@
 # 1080 audio driver (game_libs 0x1C9E4-0x2D374) and sound glue (0x2D374-0x31DF8)
 
-Area C of the readability phase (agent-c runs 444, 446, 450). Uncommitted area doc.
+Area C of the readability phase (agent-c runs 444, 446, 450, 455). Uncommitted area doc.
 
 ## Overview
 
@@ -56,15 +56,41 @@ known:
   snd_SetPlayer0Channel0IO_30504, snd_SetPlayer0Channel8IO1_30564,
   snd_SetPlayer0Channel8Pan_305CC, snd_HandleSeqEvent_30AF4,
   snd_SetPlayer2ChannelIO_3190C (0x03 = CHANNEL_SET_PAN).
-- 0x2DF98 0x64-byte sound-object init; 0x2E06C..0x2E24C sound-object helpers
-  (flags +0x16, kind +0x21) calling 0x43BE4 (sfx start, 80.0f).
-- 0x2E354 (0xE64) big per-object sound update, 0x2F1B8 f32 binary search,
-  0x2F288 / 0x2F638 / 0x2F8A0 / 0x2F934 / 0x2F9D4 / 0x2FA90 / 0x2FB10 player-0
-  channel IO sequences (0x06000x00 = CHANNEL_SET_IO player 0), 0x2FB74 (0x990)
-  event -> sound command dispatcher, 0x30504..0x3061C more IO wrappers,
-  0x307A8 / 0x308AC (C++ NCC donors) fade timer ticks, 0x30AF4 (0x840) another
-  dispatcher, 0x31334 stepped cue driver, 0x3190C player-2 IO (0x0602xxxx),
-  0x31A74 IO sequences on channel 0xA.
+- Named in run 455 (49): the rest of the glue; every function in
+  0x2D374-0x31DF8 now has a name. Groups (evidence per name in the run-455
+  commit message and the mapping table below):
+  - sound objects (0x64 bytes, allocated by bootup 0x57C = mem_new(0x64) +
+    snd_SoundObjInit_2DF98; kind byte 0x21 picks player-0 channel 3 (kind 0)
+    or 7; driven per frame by bootup snd_updatePlayer -> snd_SoundObjSetAngle_2F720
+    + snd_SoundObjUpdate_2E354): Init / Reset / SetScaleIdx15 / 31 / SetFlag1A /
+    TriggerEvent / Disable / Start / Stop / EventIndex / Update /
+    UpdateChannel (2F288) / Play (2F578) / RequestCue (31608); bootup
+    0x85C..0xA68 are one-call wrappers over them.
+  - delayed seq start: snd_ScheduleSeq_2DDBC (seq, delay, arg, vol) sets
+    D_1C0BC / timer0 D_1C084 / import 0x202C0 / 0x202C4; snd_UpdateTimers_2D374
+    starts it at expiry (seq 15 -> player 3, else player 1).
+  - channel 8 of player 0 (ambient layer): snd_SetChannel8Mode_308AC,
+    snd_TickChannel8Fade_307A8 (0x01000800 volume), snd_TriggerChannel8Cue_30610
+    (+ IfIdle_3058C); state block = the 308AC/307A8 donors' file static
+    (import 0x202D8 in the reloc table).
+  - channel 0xA emitter: snd_UpdateChannel10Emitter_31A74 (mode, distance,
+    pan) from bootup 0x31C (func_3F8 = position -> distance / projection).
+  - cue queues (0x64 records at D+0x368 / 0x3CC / 0x430, 16-entry ring of
+    cue-script pointers, halfword (cmd, wait) scripts): snd_CueQueueSet /
+    Push / Step / Pop / Update_31754..31898; player-2 IO from them in
+    snd_SetPlayer2ChannelIO_3190C.
+  - bootup debug strings: 0x148 "Poop start" -> snd_HandleSeqEvent_30AF4,
+    0x188 "Poop end" -> snd_HandleSeqEnd_31334, 0x360 / 0x38C "Poop: Added /
+    Removed sound heap" -> snd_AddSoundHeap_31520 / snd_RemoveSoundHeap_31540
+    (AudioThread_InitExternalPool / ResetExternalPool); "NA_UpdPl" in
+    snd_updatePlayer.
+- Caller finding: /tmp/claude-1000/c455/callers.py and calls.py (bootup.uso
+  TextReloc + bootup_uso.symnames.json). Baked intra-module jals show as
+  `bu:func_00000008`; resolve them from the jal word (target - 0x1466C =
+  game_libs offset), e.g. gl_func_00043BE4 = snd_SoundObjPlay_2F578 (its old
+  comment "no-op epilogue stub" is wrong), gl_ref_00043824 = 2F1B8,
+  gl_func_000438F4 = 2F288, gl_func_000428FC = 2E290, 0x45DC0..0x45F04 =
+  the cue-queue functions, 0x46314 / 0x46324 = snd_RampInit / RampTick.
 OoT's game-side files (src/audio/game/general.c, sfx.c, sequence.c) are a
 different, later design; use them only for opcode semantics, not names.
 
@@ -114,32 +140,47 @@ relocations unchanged). Converted so far: AudioThread_SetFadeOutTimer /
 SetFadeInTimer / GetSeqPlayerIO, AudioSeq_InitSequenceChannel /
 SequencePlayerDisableChannels (&sequenceChannelNone), SeqChannelSetLayer /
 SeqLayerFree (&layerFreeList), snd_StopPlayer0/1Seq (seqPlayers[n].enabled).
+Run 455: the D_00000000_345c0-alias functions use a scoped
+`#define gAudioCtx_<addr> (*(AudioContext *)&D_00000000_345c0)`:
+AudioSeq_InitLayerFreelist, AudioSeq_ProcessSequences,
+AudioLoad_DecreaseSampleDmaTtls, AudioThread_ScheduleProcessCmds (all
+byte-identical first try). Per-function views moved onto audio.h types:
+ProcessNote (sample types, NoteSampleState, Note, AudioContext extern),
+LeakReverb / SaveReverbSamples (ctx->synthesisReverbs), DoOneAudioUpdate
+(SynthesisReverb), ProcessNotes / SeqLayerDecayRelease (Stereo,
+NoteAttributes), AllocNote (AudioListItem / NotePool), 2ABC0 (TunedSample);
+donors 2119C (Note) and 2B09C (TunedSample / Portamento / AdsrSettings).
 Byte-sensitive, left raw: AudioThread_GetChannelIO (tried: bytes change),
-pointer walks (AudioHeap_DiscardSequence, AudioSeq_InitSequencePlayers,
-InitSequencePlayerChannels), and the D_00000000_345c0-alias functions
-(AudioSeq_InitLayerFreelist, AudioSeq_ProcessSequences) -- they need their
-own alias macro. NOTE: in the glue range most `&D_00000000 + K` reads are NOT
+AudioSynth_FilterReverb as `&ctx->synthesisReverbs[a2]` (tried: the +0x18
+fold changes bytes; keep `base + a2 * 0x158` + 0x118..), pointer walks
+(AudioHeap_DiscardSequence, AudioSeq_InitSequencePlayers,
+InitSequencePlayerChannels), the dcb4 volatile-enabled sample-state view
+(lever), the 2119C volatile resetStatus context view. NOTE: in the glue range most `&D_00000000 + K` reads are NOT
 gAudioCtx (D+0x16E0 / 0x1724 / 0x1C1D8 are game_libs data: the USO reloc
 targets another section); only convert offsets whose target is proven.
 
 ## Next
 
-1. Convert the per-function Note / Reverb views to audio.h types where the
-   container types agree (gl_e134_* in AudioSynth_ProcessNote, gl_27E24_*,
-   gl_28604_*, gl_291C0_*, gl_2ABC0_*; gl_1D17C/1DB88/dcb4 Reverb views;
-   donors 26790 / 2119C / 2B09C), one function per gated commit.
-2. More gAudioCtx field conversions (see "Users" above for what is left).
-3. Name the rest of 0x2D374-0x31DF8: the sound-object helpers 0x2DF98 (init),
-   0x2E06C..0x2E290, 0x2E354 (per-object update), 0x2F1B8 (f32 binary
-   search), 0x2F288 (per-object integrator, vol/freq/IO on player 0),
-   0x2F578, 0x3061C (channel 8 IO), 0x307A8 / 0x308AC fade ticks, 0x31334 cue
-   driver, 0x31A74 (channel 0xA IO), and the small 0x31520..0x31DD8 wrappers.
+1. Model more of SequenceLayer / SequenceChannel (the 27E24 / 28604 / 291C0
+   / 26790 Note views carry their own layer / channel views; once the
+   fields exist in audio.h those Note views can go too). The 27E24 sample
+   state is a union of two bitfield views (bitField0 / bitField1 names);
+   converting it means renaming its accesses to audio.h bit names.
+2. Remaining D_00000000_345c0 users: the D_345c0_1CC98 / _27E24 / _21498 /
+   _201B8 typed aliases (SyncSampleStates, ProcessNotes, AudioHeap_Init,
+   AllocCached) and GS_24E28 (2495C/24E28 slow loads) -> AudioContext where
+   the view's fields agree.
+3. Retype the glue's sound-object as a struct (0x64: floats 0..0x10, flags
+   0x14..0x34, 0x38 / 0x44 / 0x48 / 0x50..0x5C, pan bytes 0x60..0x63) shared
+   by 2DF98..31608 and the bootup wrappers (header + per-function commits).
 4. Rename-tool note: a function whose REPLACE_FUNC_BODY donor lives in
    src/match_imports/<NAME>.c is "defined in several segments"; run 446's
    wrapper (/tmp/claude-1000/c446/rn.py) tolerates exactly that case when the
    Makefile has `REPLACE_FUNC_BODY += OLD=build/src/match_imports/OLD.c.o`; the
    tool then renames the donor file, bindings, origins .ld and Makefile rules
    together (AudioSeq_SeqChannelSetLayer, AudioSeq_InitSequencePlayer).
+   rename-symbol.py's check() now takes a 6th argument; run 455's copy
+   (/tmp/claude-1000/c455/rn.py) passes it through.
 
 ## Mapping (renames.tsv is authoritative)
 
@@ -435,3 +476,52 @@ targets another section); only convert offsets whose target is proven.
 | 2DEF4 | game_libs_func_0002DEF4 | snd_PlayPlayer2Seq_2DEF4 | command-word encoding (OoT audiothread_cmd.h ops); 1080-specific, address suffix kept (run 446) |
 | 2DF30 | game_libs_func_0002DF30 | snd_StopPlayer0Seq_2DF30 | command-word encoding (OoT audiothread_cmd.h ops); 1080-specific, address suffix kept (run 446) |
 | 2DF64 | gl_func_0002DF68 | snd_SetPlayer0ChannelFreqScale_2DF64 | command-word encoding (OoT audiothread_cmd.h ops); 1080-specific, address suffix kept (run 446) |
+| 2DD30 | game_libs_func_0002DD30 | snd_Stub_2DD30 | empty jr ra; nop stub in the sound glue (run 455) |
+| 2DD38 | game_libs_func_0002DD38 | snd_ScheduleSeqDefault_2DD38 | seq id -> D_1C0BC, 210 (0xD2) -> timer0 D_1C084; snd_UpdateTimers_2D374 starts that seq at expiry (15 -> player 3, else player 1); baked call from snd_HandleEvent_2FB74 case 512 (run 455) |
+| 2DD90 | gl_func_0002DD90 | snd_ScheduleSeqAfter_2DD90 | snd_ScheduleSeq_2DDBC((u8)seq, delay, 0, 1.0f) (baked jal 0x42428 = 0x2DDBC) (run 455) |
+| 2DDBC | game_libs_func_0002DDBC | snd_ScheduleSeq_2DDBC | seq id, delay (timer0), arg, volume -> the delayed seq-start record read by snd_UpdateTimers_2D374 (run 455) |
+| 2DF98 | gl_func_0002DF98 | snd_SoundObjInit_2DF98 | 0x64-byte sound object init (kind byte 0x21); called by the bootup ctor 0x57C right after mem_new(0x64); then the channel IO preset 2F8A0 (run 455) |
+| 2E06C | gl_func_0002E06C | snd_SoundObjReset_2E06C | clears 0x20/0x23 and floats 0/4, then the 2F934 IO preset for kind 0x21; called from the object update (run 455) |
+| 2E0A0 | game_libs_func_0002E0A0 | snd_SoundObjSetScaleIdx15_2E0A0 | o->0x32 = 0xF: index into the freq / vol multiplier tables (D+0x1C330 / 0x1C3B0) read by 2F288; bootup wrapper 0x8B4 (run 455) |
+| 2E0AC | game_libs_func_0002E0AC | snd_SoundObjSetScaleIdx31_2E0AC | o->0x32 = 0x1F, twin of 2E0A0; bootup wrapper 0x8D4 (run 455) |
+| 2E0B8 | game_libs_func_0002E0B8 | snd_SoundObjSetFlag1A_2E0B8 | o->0x1A (u16) = 1; bootup wrapper 0xA68 (run 455) |
+| 2E0C4 | game_libs_func_0002E0C4 | snd_SoundObjTriggerEvent_2E0C4 | event type 0x30, level 0x29 (from speed o->0: 25/38/50 thresholds), 0x2E/0x2D; bootup wrappers 0x8F4/0x940/0x98C/0x9D8 pass 0..3 (run 455) |
+| 2E1A8 | game_libs_func_0002E1A8 | snd_SoundObjDisable_2E1A8 | o->0x16 /= 1 (disabled), clear the 0x20 fired latch; bootup wrapper 0xA24 (run 455) |
+| 2E1C0 | gl_func_0002E1C0 | snd_SoundObjStart_2E1C0 | one-shot: latch bit5 of 0x16, then snd_SoundObjPlay_2F578(o, 0x29 / 0x2A, 0, 80.0f, o->0x28); bootup wrapper 0x85C (run 455) |
+| 2E24C | gl_func_0002E24C | snd_SoundObjStop_2E24C | clears the 0x16 bit5 latch set by 2E1C0 and requests cue 0x3D (2E1C0 counterpart); bootup wrapper 0x888 (run 455) |
+| 2E290 | game_libs_func_0002E290 | snd_SoundObjEventIndex_2E290 | o->0x31 (event type low byte) -> table index 0..16 for the update (gl_func_000428FC call in 2E354) (run 455) |
+| 2E354 | gl_func_0002E354 | snd_SoundObjUpdate_2E354 | per-object sound update (0xE64): channel IO / freq / vol commands, called from bootup snd_updatePlayer with the object (run 455) |
+| 2F1B8 | game_libs_func_0002F1B8 | snd_FindNearestF32_2F1B8 | binary search of a sorted f32 table, nearest index (gl_ref_00043824 in 2F720 / 2E354) (run 455) |
+| 2F288 | gl_func_0002F288 | snd_SoundObjUpdateChannel_2F288 | integrates o->0 and issues CHANNEL_SET_IO 6/5 + FREQ_SCALE + VOL_SCALE on player-0 channel 3 or 7 (kind); gl_func_000438F4 in 2E354 (run 455) |
+| 2F578 | game_libs_func_0002F578 | snd_SoundObjPlay_2F578 | /v/+15 clamped to 0x7F (x o->0x54 when bit0 of 0x1C), then snd_SetPlayer0ChannelPanIO_2F638(kind, id, ...); the 0x43BE4 callee of 2E1C0 / 2E354 (run 455) |
+| 2F630 | game_libs_func_0002F630 | snd_Stub_2F630 | empty stub (run 455) |
+| 2F720 | game_libs_func_0002F720 | snd_SoundObjSetAngle_2F720 | angle*180 -> pan byte 0x60, table lookups via 2F1B8, delta -> 0x58 clamp; called from bootup snd_updatePlayer (run 455) |
+| 2FB54 | gl_func_0002FB54 | snd_PostEvent_2FB54 | snd_HandleEvent_2FB74(ev, 0); 18 callers (run 455) |
+| 3058C | gl_func_00030598 | snd_TriggerChannel8CueIfIdle_3058C | starts at 0x3058C; calls the 0x30610 cue start only when its fade count (+8) and hold (+0xC) are 0 (run 455) |
+| 30610 | gl_func_0003061C | snd_TriggerChannel8Cue_30610 | starts at 0x30610; (duration, hold, mode): fade-up step (1-acc)/duration, CHANNEL_SET_IO 0x06000800 = mode (run 455) |
+| 307A8 | game_libs_func_000307A8 | snd_TickChannel8Fade_307A8 | per-frame: fade up for the count, hold, then decay to the floor; CHANNEL_SET_VOL_SCALE 0x01000800 (run 455) |
+| 308AC | game_libs_func_000308AC | snd_SetChannel8Mode_308AC | mode 0/1/2 -> floor / IO port 0 / decay; emits 0x06000800 IO + 0x01000800 volume (run 455) |
+| 309A4 | game_libs_func_000309A4 | snd_Stub_309A4 | empty stub (run 455) |
+| 309AC | game_libs_func_000309AC | snd_SetLevelRampTarget_309AC | sel 0/1/2 -> snd_RampInit_31CA8(&D_1C0C0, 0/30/70, 30); D_1C0C4 (current) feeds 2F288; bootup 0x1C8 (run 455) |
+| 30A20 | gl_func_00030A20 | snd_StartPlayer2Seq_30A20 | snd_PlayPlayer2Seq_2DEF4(a0, a1), stores both, then the cue-2 requests 316CC / 31710; bootup wrapper 0x27C (run 455) |
+| 31334 | gl_func_00031334 | snd_HandleSeqEnd_31334 | bootup 0x188 prints "Poop end" then calls it (0x148 "Poop start" -> snd_HandleSeqEvent_30AF4); DISABLE_SEQPLAYER 0x83010000 with per-state fades (run 455) |
+| 31520 | gl_func_00031520 | snd_AddSoundHeap_31520 | AudioThread_InitExternalPool wrapper; bootup 0x360 prints "Poop: Added sound heap" (run 455) |
+| 31540 | gl_func_00031540 | snd_RemoveSoundHeap_31540 | AudioThread_ResetExternalPool wrapper; bootup 0x38C prints "Poop: Removed sound heap" (run 455) |
+| 31560 | gl_func_00031560 | snd_PreNMI_31560 | AudioThread_PreNMIInternal wrapper; called from RcpMgr_service (run 455) |
+| 31580 | game_libs_func_00031580 | snd_InitCueQueues_31580 | ids / ring indices of the two 0x64 cue queues at D+0x368 (run 455) |
+| 315BC | game_libs_func_000315BC | snd_RequestCue_315BC | snd_CueQueueSet_31754(&queue[a0], 1, cue, 0x7F) (run 455) |
+| 31608 | gl_func_00031608 | snd_SoundObjRequestCue_31608 | object (0x22 surface, 0x21 kind) -> queue id 0x62 and snd_CueQueueSet_31754; from 2E24C / 2E354 (run 455) |
+| 316CC | gl_func_000316CC | snd_RequestCue2Prio_316CC | queue D+0x430: CueQueueSet(mode 1 = priority interrupt, a0+0x17F, 0x7F) + push (run 455) |
+| 31710 | gl_func_00031710 | snd_RequestCue2_31710 | queue D+0x430: CueQueueSet(mode 0 = append) + push (run 455) |
+| 31754 | game_libs_func_00031754 | snd_CueQueueSet_31754 | (queue, mode, cueId, prio): 0x54 mode, 0x58 prio, 0x5C = cue script from the halfword offset table (gl_ref_00045DC0) (run 455) |
+| 31784 | game_libs_func_00031784 | snd_CueQueuePush_31784 | pushes the pending 0x5C script into the 16-entry ring; mode 1 flushes when prio >= current (gl_ref_00045DF0) (run 455) |
+| 317F0 | game_libs_func_000317F0 | snd_CueQueueStep_317F0 | countdown 0x48; at 0 read the next (cmd, wait) halfwords from the 0x50 cursor (gl_ref_00045E5C) (run 455) |
+| 3183C | game_libs_func_0003183C | snd_CueQueuePop_3183C | dequeue the next nonzero ring entry into the 0x50 cursor (gl_ref_00045EA8) (run 455) |
+| 31898 | gl_func_00031898 | snd_CueQueueUpdate_31898 | push pending, step, else pop; returns 1 on a new cmd (gl_ref_00045F04 in snd_SetPlayer2ChannelIO_3190C) (run 455) |
+| 31A64 | game_libs_func_00031A64 | snd_ResetChannel10Mode_31A64 | D+0x1CAA8 (31A74's current mode) = -1 (run 455) |
+| 31A74 | gl_func_00031A74 | snd_UpdateChannel10Emitter_31A74 | (mode, distance, pan): channel 0xA IO 0 = mode, VOL_SCALE from distance vs per-mode range, PAN = pan+63; bootup 0x31C passes func_3F8's distance / projection (run 455) |
+| 31CA8 | game_libs_func_00031CA8 | snd_RampInit_31CA8 | ramp {target, cur, count, frac}: target, count, frac = 0 (run 455) |
+| 31CB8 | game_libs_func_00031CB8 | snd_RampTick_31CB8 | 8.8 fixed-point step of cur toward target over count; called by snd_UpdateTimers_2D374 (run 455) |
+| 31D70 | game_libs_func_00031D70 | snd_Init_31D70 | stores three config words then calls AudioLoad_Init; called from bootup SnowBoard_func_0000E800 (run 455) |
+| 31DA4 | gl_func_00031DA4 | snd_AudioUpdate_31DA4 | return AudioThread_Update(); called from RcpMgr_service (run 455) |
+| 31DD8 | gl_func_00031DD8 | snd_FrameUpdate_31DD8 | snd_UpdateTimers_2D374(); called from app_run (run 455) |

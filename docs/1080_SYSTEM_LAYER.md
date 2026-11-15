@@ -13,6 +13,7 @@
 - [5. Structs](#5-structs)
 - [6. Next](#6-next)
 - [7. Area E1 (post0b 0x34458-0x4C000 + post.c DMA), run 448](#7-area-e1-post0b-0x34458-0x4c000--postc-dma-run-448)
+- [8. Run 453: vtables, hostio kinds, readers, CollShape, Gadget](#8-run-453-vtables-hostio-kinds-readers-collshape-gadget)
 
 ## 1. String-xref method
 
@@ -139,3 +140,57 @@ best class-name evidence in this range. 0x3EE1C-0x3FB6C are the other hostio_add
 0x3D000-0x3D114, 0x42570-0x42648 all wrap fs_gdlReadFile/WriteFile); CollShape grid (0x3B2EC/0x3BE1C
 "no pGrid data"); the 0x42000-0x4C000 graphics block (lights 0x435FC, sprites 0x4B620 "SS StartDL");
 migrate the 5B070 allocator to heap.h (E2 owner); convert Node-derived ctors to Node fields.
+
+## 8. Run 453: vtables, hostio kinds, readers, CollShape, Gadget
+
+> agent-a run 453, branch agent-a: commits 15f1d5e55 and a7a2aa8d2 (pure renames, 74 + 51 names);
+> 99df6e671 and 15d4b2cba (hand edits). Gate PASS each time.
+> Scripts in /tmp/claude-1000/a453/: `xref.py` (calls/strings per function; Data refs now add the Sym
+> value, so a ctor's vtable store shows as `D+<vtable>`), `vt.py` (every DataReloc word resolved through
+> the **decompressed Sym section** (Yay0, payload at walk_dir offset + 4), so local function symbols
+> resolve; the emu symnames JSON alone leaves most as `symN`), `vtref.py` (functions that reference a
+> vtable, with its first 12 slots), `body.py` (C body with `&D_00000000 + K` replaced by the string).
+
+**Vtables.** A Cfront vtable at Data X has its first slot's function word at X+0xC, then one slot every
+8 bytes. A ctor stores X at +0x28 right after the Node_ctor call. Node's slots:
+
+| slot | Node | overridden by |
+|---:|---|---|
+| 0 | Node_hostioParms | every `<Class>_hostioParms` (ItemType, ItemMgr, PolyShape, MNode, ...) |
+| 1 | 0x38598 (per-child mtx copy when flags +0x8 & 0x200) | MNode 0x38DC0 |
+| 2 | Node_display (children with doFlags & 4) | App_Display, MNode/SNode/QNode_display, PolyShape_display, gadget *_display |
+| 3 | Node_update (doFlags & 8) | App_Update, MNode/QNode_update, CollObjMgr_update, CamMan_update, 0x36C08, 0x37938 |
+| 4 | Node_handleMsg (tags 2, 0xC, 0xD, 0xE) | MNode/SNode/QNode_handleMsg |
+| 5 | Node_broadcastMsg (child->handleMsg, child->broadcastMsg) | |
+| 6 | Node_doCommand | MNode/QNode_doCommand |
+| 7-9 | 0x38B6C / 0x38B74 / 0x38B7C stubs | slot 8 = ItemType_load / ItemMgr_Load |
+
+The HUD gadget vtables are in game_libs' own Data (D+0xC77C..0xCA4C), so "this range has no vtables"
+in section 1 was wrong: the DataReloc words point into it through local Sym entries.
+
+**HostIO message kinds** (0xA0 record: type +0, name +8, then kind-specific words from +0x48):
+2 addInt/addFloat (range), 3/4/0x28 unknown, 5 beginGroup, 6 addHeading, 0xB endGroup, 0xC addBool,
+0xD unknown, 0xE addFlag (ptr, mask), 0xF add{Short,Int,Float,Hex}Var / updateFloat, 0x10 addMatrix,
+0x11 addText, 0x18 addButton (member callback), 0x1A addVQS, 0x1D-0x20 / 0x33 / 0x36 remote file
+open/read/write/close/seek/size, 0x21 / 0x24 / 0x27 / 0x2A / 0x2F unknown, 0x22 askString, 0x23 fileDialog,
+0x25 sendImage, 0x29 addLink, 0x30 / 0x31 begin/endTreeNode, 0x32 addColour, 0x35 (SNode).
+Button/link callbacks are `new`ed {vptr, obj, PMF} objects invoked by MemberCallback_invoke (0x35A18).
+
+**Inline file I/O copies.** 39 tiny `fs_gdlRead{Int,Float,Vec3,Quad,24}_<addr>` / `fs_gdlWrite*_<addr>`
+(the four 0x0-0xEBC8 families included) are dead out-of-line copies of inline helpers, one set per C++
+TU. They have no callers and no data refs anywhere, so they keep their addresses.
+
+**CollShape** (+0x2C tris, +0x84 mesh with the grid at mesh+0xA0): CollShape_height / query ("no pGrid
+data"), below, raycast, nearestHit (names from the NCC donors' `Obj::height/query/below`).
+
+**Structs.** `include/gdl/node.h`: +0x18 is now `doFlags`; eight Node-derived ctors store `vptr`
+through Node. New `include/gdl/gadget.h` (Gadget 0x13C), used by Time/SpeedGadget.
+
+**Next.**
+1. The other gadget ctors to Gadget fields (BestTime/BestScore/CountDown/Points/Boards/Cool/Course;
+   check each lever comment first; BoardsGadget allocates 0x140).
+2. Unnamed Node classes with a vtable but no class string: 0x36B9C (vt D+0x1E878), 0x378D0 (D+0x1E938,
+   hostio "Speed" in 0x3787C), 0x3D5BC (D+0x1EF60, also used by game_libs 0x88B4/0x959C/0xC5B0), 0xC784
+   (D+0xD508, its update 0xCBF0 sets the race HUD gadgets' values), 0x4A670 (PolyShape-derived, probably MorphPoly).
+3. ItemType subclasses (vt D+0x1EFC0, D+0x1F050, D+0x1F228 = 0x3D7F8; ColourParms derives from the last).
+4. The rest of the 0x42000-0x4C000 graphics block (0x42938 "Hold"/"X %d", 0x44918, 0x44CE8 GDL_MAX_DDM).

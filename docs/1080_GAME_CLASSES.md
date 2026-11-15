@@ -13,6 +13,8 @@
 - [6. Run 451: GAME_MODE setups, replay, CamDirector, Process base](#6-run-451-game_mode-setups-replay-camdirector-process-base)
 - [7. game_uso (area G) first classes](#7-game_uso-area-g-first-classes)
 - [8. Cross-USO import resolution](#8-cross-uso-import-resolution)
+- [9. Run 452: snowai.h, SnowBoarder physics fields, SnowAI methods](#9-run-452-snowaih-snowboarder-physics-fields-snowai-methods)
+- [10. Run 456: proc API, TrickTable, RiderAnim, SnowAI path following](#10-run-456-proc-api-tricktable-rideranim-snowai-path-following)
 
 ---
 
@@ -230,3 +232,103 @@ can be resolved to bootup functions:
 
 That table is the starting point for naming the -O0 island: e.g. 2DC / 2FC / 100F0 / 1016C are part of
 the shared proc API.
+
+## 9. Run 452: snowai.h, SnowBoarder physics fields, SnowAI methods
+
+agent-g run 452 (branch agent-g on 430cf6b79): 2e8f5a55d + 028ce8c05 (headers), 42ed0fdb9 + 22c8f1827
+(field conversions), 7793cdbb7 (pure rename batch, 22 names). Every commit gated (PASS, ROM identical).
+
+**include/game/snowai.h.** SnowAI (0x4E0): Node base, vptr 0x28 (Data 0x5D8), `level` 0x2C (1..3),
+`rider` 0x30 (SnowBoarder *), `modeFlags` 0x68 (1 / 2 / 4 = A3C4 / A604 / A7F8 instead of steering), the
+embedded **SnowAIParms** at 0xE4 (0x3E0 = name "SnowAI::Parms" + list head + 41 x 0x18 SnowAIParm), unk4C4.
+The parms block is the "0x3E0 child" of the plan: its 41 entries are float parms built by game_libs
+0x35B1C(parm, owner, tag, 1) from 4-char tags in Data 0x6E8..0x788:
+de0-2 bd0-2 bt0-2 bu0-2 bj0-2 cf0-2 dd0 dd5 dd6 dd1 dd7 dd8 dd2 dd3 dd4 dp0-2 se0-2 ms1-8.
+Each triple is one value per difficulty: 591C picks `parm[base + level - 1]`. The tag is passed **by value**
+as a 4-byte struct, which is why SnowAI_ctor has the `$s2` marshalling slot. SnowAIParm: +0xC vtable
+(Data 0x3C8 float parm; 0xF78 / 0xFC0 are the float / int parm vtables of the C48C class), +0x10 value.
+
+**SnowBoarder physics** (include/game/snowboarder.h, from SnowBoarder_limitSpeed = old B520 and the ctor):
+pos 0xB4 (node position), vel 0x318, speed 0x348 (|vel|), startPos 0x3A4 (ctor x / z + ground height),
+dir 0x3C8 (unit forward), dragXZ 0x6C0, baseMaxSpeed 0x768, input 0x800 (ctor arg 4), sub808 (0xC member),
+rival 0x908, unk938 (drag only while 0), unk8C0 = 1 << state, tint[4] 0x8E0, maxSpeed 0xA78.
+SNOWB_FLAG_NUDGE 0x100, SNOWB_FLAG_CATCHUP 0x20000 (maxSpeed +-k when the rival leads / trails in z:
+the CPU rubber band). `state` 0x8C4 is ctor arg 2 (unk8C0 is its one-hot mask): it may be a rider slot,
+not a state; the name was kept.
+
+Converted bodies: SnowAI_func_0000591C (the cfe donor game_uso_591C.c; the two `unsigned int` level
+reads stay raw) and SnowBoarder_limitSpeed. The ctors (SnowAI_ctor, SnowBoarder_ctor) are left raw: their
+bodies do pointer arithmetic on the untyped `this` that carries the levers.
+
+**Names (7793cdbb7):** Sun_ctor (AE1C), SnowAI_reset (5728), SnowAI_dtor (5780), 14 SnowAI_func_* (the
+591C callees), SnowBoarder_limitSpeed, snd_sendEvent_000002FC (-> gl 0x2FB74), snd_unmuteAll_000002BC,
+gui_initRows_000100F0 / gui_centerRows_0001016C. bootup 0x1C8..0x3A0 is a run of audio wrappers:
+1D4/1E4 -> gl 0x309AC, 204 -> snd_SetSoundOutputMode_2D6C8, 224 / 244 / 264 -> 2D70C / 2D748 / 2D784,
+284 -> 30A20, 2A4 -> 2D618, 2C4 -> 2D670, 2E4 -> 2FB54, 304 -> 2FB74 (jal sites). **func_000001FC is not
+renamed**: the same symbol is a USO reloc base (`func_000001FC + 0x18` in bootup E68).
+
+**Still open:** the C2D4 class (vtbl 0x10FC, 0x2C bytes, slot 8 = C3F8 reads a count and N 0x40-byte
+records from a stream into Bss 0x0 / 0x4; C344..C3CC are its accessors), the C48C class (0x444 bytes,
+vtbl 0x115C, 32 float / int parms lnc jct jht jot jca jlt jli rfc tkt b1f b2f xf1 f1f-f4f l1f-l3f r1f r2f
+dm1-4 st1-3 sl1 sl2 slm stm; no class-name string, the base is import 0x10D33C); converting
+SnowAI_reset / the A3C4 family to snowai.h fields (5728 writes 0x34..0x78, 0xA4, 0x4D8, not yet in the
+header); the rest of the proc API (10B6C, 11E00, 1207C (+0x128 = a1), 139B0, F954, 120A8, 126EC, 11CD8,
+12C10, 12C64, 13FE0, 144B4).
+
+## 10. Run 456: proc API, TrickTable, RiderAnim, SnowAI path following
+
+agent-g run 456 (branch agent-g on 0eab7ffa2). Pure rename batches: 5a6952091 (25 names), b6049040f (26),
+431ec65d6 (6). Hand edits: d4650bff0 (snowai.h fields), 51b19406a (SnowAI_reset + scan family on fields).
+Every commit gated (PASS, ROM identical). Tool: /tmp/claude-1000/g456/dis.py (`dis.py game|bootup START END`
+= objdump of a module's Text with every TextReloc resolved to a name, string or section offset; imports
+from bootup are resolved through bootup's Sym table).
+
+**Proc API (bootup).** The global at bootup Bss 0xF8 (the "replay cfg" of section 6) is the **input
+manager**: pads at +0xE0 (count +0x120), replay inputs at +0x100 (count +0x124), active pad +0x128
+(-1 = any), pause flag +0x188. Pad objects (game_libs 675A4 fills them) keep +0x10 held, +0x14 previous,
++0x18 pressed (cur & ~prev), +0x1C released (~cur & prev). Names: input_pauseAll / unpauseAll / setActive /
+addPad / checkPressed / checkHeld / checkReleased / setActivePad / clearActivePad (all with address suffix).
+Other proc-API names: gui_clearRows / gui_addRow / gui_addRowSub (rows are 0x28 bytes at +0x84, count +0x78),
+snd_playSeq_000120A8 ("Poop start" wrapper = snd_HandleSeqEvent), settings_applySoundMode_0001266C and
+settings_setFlag4_000126EC (settings word at cfg +0x154, +4: bits 0-1 sound output mode, bit 2 unknown option
+mirrored into Bss 0x28C and broadcast as message 0x15), replay_freeRecord / replay_saveGhost (Backup_writeGhost),
+Process_fadeOut_0000F954 (pause input, Fader_start(gFader, 3, 0), "Poop end").
+**Fader** (vtbl 0xC6C8, gFader = Bss 0x288): Fader_start (mode +0x40, direction +0x68, seeds a 32x32 float
+grid), Fader_buildTexture (grid -> 32x32 RGBA16 texture +0x4C through a palette), Fader_checkDone (progress
++0x48 == 1.0, gfx_viBlack after a fade-out), Fader_isDone. TimeGadgetParms_setPos / setLabelPos / setPosF
+write the parm values (0x18-stride records: xps 0x44, yps 0x5C, lbx 0x74, ...).
+`func_00000148` / `func_00000188` ("Poop start" / "Poop end") are **not** renamed: both are USO reloc bases.
+
+**TrickTable (game_uso C2D4, vtbl 0x10FC).** No class string, Node_hostioParms not overridden, so named by
+role. bootup game_setupMode creates it with "rom/tricks.bin" inside the "ImgFileMgr" memtrack section (import
+46:267; module 46 = game.uso; the instance pointer is game.uso export 266). Slot 8 reads a count (Bss 4) and
+0x40-byte records (Bss 0). Accessors are static (the `this` arg is unused): getEntry, getEntry10 (+0x10),
+getField2C / 30 / 34 / 38, getCount. game_libs E05C (trick display / scoring, area D) calls getField30 and
+getEntry. C194..C27C are generic fs_gdlReadFile helpers (stream_readS32 / F32 / Vec3 / 16).
+
+**RiderAnim (game_uso C48C, vtbl 0x115C, 0x444 bytes).** Created by SnowBoarder_ctor (import 46:275). Its
+base (game_libs 62E80, vtbl Data 0x21F58) is the keyframe animation player ("StartAnim", "BadKeyFrame",
+update = gl 6337C, which is the call in SnowBoarder_update's "SnowBAnm" section). The 32 parms are anim timing
+(jump crouch / hang / out, trick, damage, stand, slide ...). Methods: update (slot 3; reads the rider at +0xB4
+and the pad), selectAnim D9CC (rider speed 0x348, buttons 0xA10, 0xA1C), setAnim / setNextAnim /
+setDefaultNext (anim ids are 8-byte pairs at +0xC0 / +0xC8), endTrick D63C (combo count +0x100, game_libs trick
+scorer E118 / E1DC), flipStance D6E4 (toggles rider flag 0x40 = stance, then SnowBoarder_func_0000E124; anim
+set 0x50000 / 0x10000), readParms (slot 8), reset (slot 10), init D458. Export hashes are not class names
+(C48C's is 0x424E4E50).
+
+**SnowAI path following** (snowai.h now covers 0x34-0x7C, 0xA0/0xA4, 0x4D8/0x4DC). The AI steers toward
+`targetNode`, an index into the course-node table (game.uso Data base + 0x548). At a fork SnowAI_steer (591C)
+loads `altNode` from the node's +0x6C and switches to it according to the per-level bj / bt / bd / bu parms
+(branch parms), or sets modeFlags 1 so SnowAI_pickFork (A3C4) keeps whichever is nearer the rival.
+SnowAI_startNodeScan / scanNodes (modeFlags 2) and startSegmentScan / scanSegments (modeFlags 4) test ten nodes,
+one per frame (`scanIndex`, `scanBestDist`), to re-acquire the path. `aiState` 0x64 selects SnowAI_update's step:
+0 SnowAI_steer, 1 6A30, 2 6CF0, 3 71E0 (unnamed). `initPending` 0x4D8: SnowAI_reset sets it; the next update,
+for a CPU rider (+0x848 == 2) racing a human, writes rider +0x758 from **ms1..ms8 chosen by the rival's 0x8C4**.
+
+**SnowBoarder 0x8C4 is probably the character id**, not a state: SnowAI_update maps its values 1..7 (default 8)
+to the eight ms parms, and the ctor takes it as arg 2. Rename `state` once a second use confirms it.
+
+**Next:** name 6A30 / 6CF0 / 71E0 (aiState 1..3) and 7538 (AI stick input: 0x44 / 0x4C / 0x50 / 0x58 drive a
+table of stick (x, y) at Data 0x638); RiderAnim fields (0xB4 rider, 0xC0 / 0xC8 anim ids, 0x100 combo, 0x13C
+parms) into a header; SnowBoarder 0x758 / 0x848 / 0xA10 / 0xA1C from RiderAnim_selectAnim; the rest of the
+game_uso RiderAnim helpers (D74C, D7F4, D8A8, D8EC, EDCC, EDD4) and the 0xE000+ classes.
