@@ -95,7 +95,7 @@ gamegfx, charsel (+ charsps / charfir / charmap).
    **SnowBoard** (`SnowBoard_ctor`: audio USO file info, `snd_Init`).
 3. **App start** `App_main` (0x415A4): heap stats, SysLib / GfxLib at 320x240 (`GfxLib_init`: frame
    buffers, "MainStatic" heap and display list, RcpMgr), then the App's InitInstance slot:
-   `SnowBoard_InitInstance` reads rom/version.bin and rom/anims.bin, builds **GameFlow** (`GameFlow_create`:
+   `SnowBoard_InitInstance` reads rom/version.bin and rom/anims.bin, builds **GameFlow** (the object the mode modules import as the InputMgr, bootup Bss 0xF8; `GameFlow_create`:
    gui.uso, flowimgs.bin) and enters the first flow mode with `GameFlow_startMode`.
 4. `app_run` (0x34EB4) never returns.
 
@@ -174,7 +174,7 @@ module's states.
 | kernel libultra / rmon | src/kernel, src/o1, src/libultra | include/libultra/*.h | `osCreateThread`, `osSendMesg`, `__osSetFpcCsr`, `k___ull_div` | USO_FORMAT 12 |
 | boot, threads | game_libs_post1b.c | | `boot_main_00066850`, `boot_entry_00066C30`, `boot_startThread_00066B64` | ENGINE_CORE 2 |
 | App / main loop | game_libs_post0b.c, game_libs_ncc_34EB4.cpp, game_libs_ncc_41D40.cpp | include/gdl/node.h (`App`) | `App_main`, `app_run`, `App_Update`, `App_Display`, `app_runProcess`, `app_loadUso` | SYSTEM_LAYER 7, 12 |
-| game app, flow | src/bootup_uso (bootup_uso_tail3a_10C8C.c, o0_*) | | `SnowBoard_ctor`, `SnowBoard_InitInstance`, `GameFlow_create`, `GameFlow_startMode`, `Process_update`, `Process_exit` | GAME_CLASSES 3, 6; SYSTEM_LAYER 12 |
+| game app, flow | src/bootup_uso (bootup_uso_tail3a_10C8C.c, o0_*) | include/game/input.h: the InputMgr **is** the GameFlow object (GameFlow_create fills it; `GAMEFLOW(p)`: procUsoPath 0x2C, flowProc 0x30, flowMode 0x38, ctrls[2] 0xC0, usoList 0x130, seq 0x13C, flowImgs 0x150, unlocks 0x154; run 505) | `SnowBoard_ctor`, `SnowBoard_InitInstance`, `GameFlow_create`, `GameFlow_startMode`, `Process_update`, `Process_exit` | GAME_CLASSES 3, 6; SYSTEM_LAYER 12 |
 | heap / memory | game_libs_post0b.c | include/gdl/mem.h | `Mem_init`, `Mem_allocLow`, `Mem_free`, `mem_new`, `heap_new`, `heap_tempAlloc`, `MemTracker_*` | ENGINE_CORE 2-3 |
 | files, DMA, HostIO | game_libs_post.c, post0b.c | include/gdl/dma.h | `fs_gdlOpenFile`, `fs_gdlReadFile`, `fs_gdlReadFileAsync`, `dma_read`, `dma_readAsync`, `hostio_dispatch` | SYSTEM_LAYER 7 |
 | Node graph | post0b.c | include/gdl/node.h | `Node_ctor`, `Node_update`, `Node_display`, `MNode_update`, `QNode_display`, `nodelist_dispatch` | ENGINE_CORE 1-2 |
@@ -189,7 +189,7 @@ module's states.
 | camera | bootup_uso_ncc_31C0.cpp, game_uso | include/game/camera.h | `cam_create`, `CamDirector_update`, `cam_updateView_00000B3C`, `SnowChaseActorCam_setMode_00002714` | CAMERA |
 | course / world | bootup_uso_o2_6808.c, bootup_uso.c, game_uso | include/game/course.h, envobj.h (U64BGWall, EnvSettings clip range, Fog / Snow / Tv1 items, FallingSnow, ShpNode; `WorldRegistry` = the game_* scene object, InputMgr +0x134: roots, lights, `players[]`, `windows[]`; `WORLDREG(p)`) | `WorldRegistry_create_00001E08`, `game_createMap`, `item_registerTemplates`, `EnvSettings_load`, `CourseMarker_registerTemplates` | COURSE |
 | race rules, HUD | game_libs.c, game_libs_tail.c | include/gdl/race.h, hud.h, gadget.h (`PointsPopup`, the score pop-up, `POPUP(p)`) | `RaceProcess_init`, `RaceProcess_handleInput`, `RaceTracker_update`, `RaceTracker_findGates`, `hud_addCourseGadget` | SYSTEM_LAYER 3, 10-11; MODES run 469 |
-| input, replay | bootup_uso o0_11C70.c / o0_1207C.c / ncc_11E00.cpp, game_libs_post1b.c (pad_*) | include/game/input.h (InputMgr: gameMode +0x3C, game +0x134) | `input_checkPressed_00011E00`, `replay_addInput`, `replay_beginPlayback`, `pad_threadLoop_00066EEC` | GAME_CLASSES 6, MODES run 466 / 484 |
+| input, replay | bootup_uso o0_11C70.c / o0_1207C.c / ncc_11E00.cpp, game_libs_post1b.c (pad_*) | include/game/input.h (InputMgr = GameFlow: gameMode +0x3C, game +0x134, locked +0x18C, initials +0x158; input_initDefaults_00012188 sets the selection defaults) | `input_checkPressed_00011E00`, `replay_addInput`, `replay_beginPlayback`, `pad_threadLoop_00066EEC` | GAME_CLASSES 6, MODES run 466 / 484 |
 | save | game_libs.c 0x97B4-0xC46C | include/gdl/backup.h | `Backup_ctor`, `Backup_openSession`, `Backup_writeCourse`, `backup_checksum` | SYSTEM_LAYER 4, MODES run 474 / 478 |
 | audio | game_libs_post.c, game_libs_o2_*.c | include/audio.h | `AudioSynth_ProcessNote`, `AudioLoad_RelocateFontAndPreloadSamples`, `AudioThread_Update`, `snd_Init`, `snd_updatePlayer` | AUDIO |
 | modes | src/{tit,arc,mgr,h2h,edd,n64}proc_uso, timproc_uso_b1 / b3 | include/game/modeproc.h (ArcRace / MgrRace / H2HRace, Arc / Mgr / H2HDataManager, TitleDemoProcess / GameDemoProcess), race.h (TimRace, TimDataManager) | `tit_procMain`, `arc_procMain`, `TimRace_checkRecord`, `TimDataManager_update_00001BCC`, `GameDemoProcess`, ... | MODES |
@@ -313,7 +313,8 @@ Aggregated from each doc's open-items list (2026-11-15). The doc in brackets hol
   `friction` (`DNode_solveContacts`, donor game_libs_ncc_65494.cpp); `Friction_vfn11_00063F34`; the RoData
   k constants (bootup RoData 0x8C8..0x9A0) [PHYSICS 9].
 - The counter-steer `pad_setIfNewer_00067A54` event (rumble or effect, unproven) [PHYSICS 3].
-- CamPath unk08 / 0C / 18 / 1C / 24 / 2C, CourseCam 0x278; the rider body at camSource (0x874); the RiderCam
+- CamPath unk08 / 0C / 18 / 1C / 24 / 2C, CourseCam 0x278 (camSource 0x874 is resolved: the rider's head node,
+  GAME_CLASSES 20); the RiderCam
   fov tables' RoData addresses [CAMERA 9].
 
 **Course and race**

@@ -32,6 +32,95 @@ base, D_00000000 + 0). Matched functions reach it through per-function base-0
 externs (gl_<addr>_gAudioCtx etc.) or `*(T *)&D_00000000`; keep those symbols
 when retyping (they carry the matched relocations), retype the extern.
 
+## For port authors: what to replace, what to keep (agent-c run 503)
+
+Audio splits into four layers. Replace layers 1 and 2. Reimplement layer 3 against
+your driver's command queue. Keep layer 4 (the game API) as the interface.
+
+**1. The OoT-derived driver: replaceable.** game_libs 0x1C9E4-0x2D374 (the table above)
+is the EAD driver that OoT's `src/audio/internal/` descends from. A PC port can use an
+existing OoT audio implementation for the sequence player, note / ADSR / vibrato code,
+the heap / load cache and the audio thread command queue. The CPU-side ABI synthesis
+of the OoT and MM PC ports also stands in for the RSP. Port these differences:
+- `SequenceChannel` has 8 layers (SM64-style), not 4. Everything after `layers` is
+  +0x10; the channel is 0xE4.
+- There are no 0xBD RANDPTR / 0xC4 RUNSEQ sequence opcodes, and no
+  `AudioSeq_SequencePlayerDisableAsFinished` / `Audio_SetFontInstrument`. A sequence
+  that hits an opcode the port does not know is a port bug: check `AudioSeq_*` here.
+- `NoteAttributes` is older (u8 combFilterGain + u16 combFilterSize, no filterBuf).
+  `SynthesisReverb` drops OoT's unk_14..unk_1B. The AudioContext is smaller.
+  include/audio.h asserts every offset.
+- `AudioLoad_Init` takes no heap parameters. It clears `gAudioHeap` for
+  `gAudioHeapInitSizes.heapSize`. That size block is bootup.uso Data +0x1CDD0:
+  {0x14000030, heapSize 0x34000, initPoolSize 0x8B00, permanentPoolSize 0x67A0}.
+  It sets refresh 50 / 60 Hz from osTvType, and it allocates three 0xB00-byte AI
+  buffers (aiBufLengths 0xA0).
+- The RSP microcode image is at game_libs 0x31DF8-0x32D74 (0xF7C bytes, data, not
+  functions; N64_FORENSICS `#game-libs-rsp-ucode-31df8-reclass`). The synthesis task
+  that `AudioSynth_*` builds runs on it. On PC: CPU ABI emulation, AI buffer -> host
+  stream.
+
+**2. libultra pieces: replace.** os.c (0x27704-0x27804: Audio_InvalDCache /
+WritebackDCache / osAiSetNextBuffer) and the statically linked `gl_os*` copies.
+
+**3. 1080 glue: reimplement.** game_libs 0x2D374-0x31DF8, the `snd_*` names (85
+functions, see below). It is game logic, not driver code: it computes values and
+queues OoT-encoded audio-thread commands (`op << 24 | player << 16 | channel << 8 |
+arg` through AudioThread_QueueCmd*). Port it as C against the replacement driver's
+command queue. The opcode table is in the next section. The command words are the
+whole contract, so a port only has to keep their meaning. The parts:
+- seq players: 0 = effects / rider (SoundObjs drive channels 3 / 7, 8, 10), 1 = music
+  (snd_PlayPlayer1Seq*, snd_ScheduleSeq + snd_UpdateTimers), 2 = cue scripts (the
+  cue queues), 3 = stick-driven freq scale and seq 15;
+- per-object sound state `SoundObj` (0x64, include/audio.h). The bootup
+  `snd_updatePlayer` updates it every frame from the rider (speed, angle,
+  contactSurface, reverbOn);
+- the channel-8 ambient fade / cue state and the three cue queues (`SndCueQueues`,
+  bootup Bss 0x338);
+- volume levels / mute / output mode wrappers (0x2D618-0x2DF64).
+
+**4. Game API (bootup.uso): keep as the port's interface.** Game code calls only these
+(they wrap the layer-3 functions; mode USOs import them, e.g. genproc's `gen_imp_snd_*`):
+
+| bootup | what |
+|---|---|
+| 0x1C8 snd_setLevelRampTarget, 0x21C / 0x25C snd_setPlayer1 / 2VolumeLevel, 0x2BC snd_unmuteAll | volume / mute |
+| 0x2DC snd_postEvent, 0x2FC snd_sendEvent | UI / game sound events (select screens, menus) |
+| 0x31C snd_updateChannel10Emitter | positional emitter (distance, pan) |
+| 0x360 / 0x38C snd_add / removeSoundHeap | external sample pool (AudioThread_InitExternalPool / ResetExternalPool) |
+| 0x3B8 snd_setPlayer1Channel15IO, 0x3D8 snd_setPlayer3FreqScaleFromStick | music IO, stick pitch |
+| 0x610 snd_updatePlayer | per-frame rider sound |
+| 0x85C..0xA9C SndHandle_* (start, stop, triggerEvent0-3, setScaleIdx15 / 31, disable, setFlag1A, setContactSurface, contactEventType), 0xB14 snd_soundObjSetReverb, 0xB2C snd_soundObjSetPan_00000B2C | SoundObj handle {obj, unk04, eventArg} |
+| 0x120A8 snd_playSeq_000120A8 | start a sequence |
+
+**Boot.** `SnowBoard_ctor` (bootup 0xE800) looks up three ROM files with
+`fs_gdlFileInfo`: "rom/audio_seq.uso", "rom/audio_wave.uso" and "rom/audio_bank.uso"
+(bootup Data 0x8D34 / 0x8D48 / 0x8D5C). It calls `snd_Init(seq, bank, wave)`, which
+stores them to bootup Bss 0x498 / 0x49C / 0x4A0. `AudioLoad_Init` reads those as
+seqRom / fontRom / sampleRom. `AudioLoad_InitTable` (0x22F60) adds the base to each
+table entry's offset, as in OoT.
+
+### Cartridge data formats
+
+The three audio USOs are data-only modules. Each is one Data section (USO section
+type 6, not Yay0-compressed) holding OoT's three archives. The four tables that index
+them live in bootup.uso Data. They use OoT's `AudioTable` layout: a 0x10 header {s16
+numEntries, s16 unkMediumParam, u32 romAddr, pad 8}, then 0x10-byte entries {u32
+romAddr (offset in the file), u32 size, s8 medium, s8 cachePolicy, s16 shortData1..3}.
+medium is 2 (cart) everywhere.
+
+| archive (OoT name) | file (USO info ROM) | size | table (bootup Data) | entries |
+|---|---|---|---|---|
+| sequences (Audioseq) | audio_seq.uso (0x1E940) | 0x208B0 | gSequenceTable +0x1DA40 | 90. 0-23 are real (cachePolicy 0 for 0-1, 3 for 15, else 2). 24 / 25 have size 0, so they alias seq 0x15 / 0x16 (OoT: a size-0 entry's romAddr is the real id). 26-89 alias seq 1 |
+| soundfonts (Audiobank) | audio_bank.uso (0xB810) | 0x130B0 | gSoundFontTable +0x1D620 | 30. shortData1 = sampleBankId1 << 8 \| sampleBankId2 (0xFF = none), shortData2 = numInstruments << 8 \| numDrums, shortData3 = numSfx. cachePolicy 0 (fonts 0-3, 12-13), 1 (4-11), 4 (14-29); fonts 9 / 10 are size-0 aliases of font 8 |
+| sample banks (Audiotable) | audio_wave.uso (0x3F270) | 0x4FEE30 | gSampleBankTable +0x1DFF0 | 13. cachePolicy 4. Samples are VADPCM, with codebooks and loops in the soundfont (Sample / AdpcmBook / AdpcmLoop, include/audio.h) |
+| seq -> fonts | (in bootup) | | gSequenceFontTable +0x1D810 | OoT layout: u16 offset per sequence (90), then {u8 count, u8 fontId...}. seq 0 (sound effects) = fonts 13 12 3 2 1 0; seq 1 = 12 x4; music seqs 2-25 use one font each (14-29); 26-29 = 12 13 4..7 4 |
+
+These are OoT's on-cart formats, so OoT tools (seq / font / sample extractors, e.g. the
+OoT decomp's audio extraction or Seq64) read the archives once the table offsets above
+are applied. The sequence bytecode is the 1998 opcode set (see the differences above).
+Data +0x1CDD0 (gAudioHeapInitSizes, above) is the fifth AudioLoad_Init data reference.
+
 ## Game-side sound glue (0x2D374-0x31DF8, 85 functions)
 
 1080's own code between the game and the driver. It mostly builds audio-thread
@@ -202,6 +291,14 @@ context types. Renamed (d7872181c): snd_soundObjSetPan_00000B2C (SoundObj +0x10,
 for kind 0). Not renamed: snd_soundObjSetByte1D_00000B14 (+0x1D: Update sends 0x40 when 1, else 8, on
 change, as channel IO 0x0500FF00 / 0x0502xx00; meaning unknown) and the 0x2Dxxx..0x31xxx suffixed
 snd_* names (not reached).
+
+**Run 503 (agent-c).** fa70d1b0a (**pure rename**) snd_soundObjSetByte1D_00000B14 ->
+`snd_soundObjSetReverb`; hand edit: SoundObj +0x1D `reverbOn`, +0x34 `reverbOnSent`. On a change,
+snd_SoundObjUpdate queues 0x05 (CHANNEL_SET_REVERB_VOLUME): 0x40 when on, else 8. It goes to player 0
+on all channels (0xFF) and to player 2 channel 0 (kind 0) / 1 (kind 1-2), after a 0x90
+SET_CHANNEL_MASK (6 / 0x60). Port-author section added above (layers, game API, boot, cart formats).
+The 0x2Dxxx..0x31xxx snd_* names keep their suffixes: only the command words are known, not
+their game meaning.
 
 ## Next
 

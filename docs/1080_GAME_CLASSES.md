@@ -25,6 +25,7 @@
 - [17. Run 488: RiderAnim states named, anims.bin decoded, AnimPlayer base](#17-run-488-rideranim-states-named-animsbin-decoded-animplayer-base)
 - [18. Run 494: RiderAnim helpers, TrickEntry, checkpoint.uso](#18-run-494-rideranim-helpers-trickentry-checkpointuso)
 - [19. Run 494b: game_uso.c raw offsets, sun.h, spin fields](#19-run-494b-gameusoc-raw-offsets-sunh-spin-fields)
+- [20. Run 502: SnowAI aim, DDM setters, the rider node list](#20-run-502-snowai-aim-ddm-setters-the-rider-node-list)
 
 ---
 
@@ -681,7 +682,7 @@ Sym 418 chk, 420 gtr + gtl; +0x48 descriptors 417 / 419 / 421). See course.h Rac
 cmd 0x67 stores the current node in a slot, cmd 0x66 parents to one; Node_doCommand). SnowBoarder_ctor copies
 14 slots into 0x820..0x874 after the rider model is built (slot -> field: 27 0x824, 34 0x820, 2 0x828, 7 0x830,
 1 0x82C, 6 0x834, 20 0x838, 28 0x844, 33 0x860, 29 0x854, 30 0x85C, 31 0x858, 32 0x864, 22 0x874). Which body
-part slot 22 is needs the rider shape stream (cmd 0x65 names the node).
+part slot 22 is needs the rider shape stream (cmd 0x65 names the node). (Resolved in section 20: the head.)
 
 **Next:** name the 0xFB7C..0x116D4 non-table helpers (crash slide, ollie, weight, landing, hop entry); type
 RiderAnim 0xF0 / 0xF4 (TrickTable entry struct) and convert the raw a0[0xFC / 4] accesses to RA(a0)->animSet
@@ -810,3 +811,144 @@ SnowBoarder_func_0000CAE8 (also used as a data placeholder in bootup_uso_tail4.c
 hand), the game_libs cam_func_0003xxxx); RiderAnim 0xD0..0xE0 (a third PMF at 0xD0, 0xD8 flag, 0xDC = 1 from init);
 the SnowAI_ctor / Parms ctors through parm-node casts; the node-list interpreter (ProcNodeList 0x55264) for the rider
 body-part registry slots (not started this run).
+
+## 20. Run 502: SnowAI aim, DDM setters, the rider node list
+
+**Renames** (renames.tsv has the evidence): SnowAI_pickFinishBranch (6FA8), SnowAI_aimAlongSegment (7C1C),
+SnowAI_aimWeave (8CD8), SnowAI_isInSegmentWidth (9B88), SnowAI_isAboveSegmentFloor (A0E8),
+SnowAI_isRivalInPath_000097EC (corrects run 494b's getRider: it is a meeting test, it does not return the rider),
+SnowBoarder_setDefaultDdms / setReflectionDdms / setRiderDdms (DDCC / DF04 / E014: three `gfx_getDdm(&gGfxLib, id)`
+records copied into the rider's DDM slots 0x8F4; DF04 runs right after light_setMirrorMatrix in SnowBoarder_display,
+E014 restores after the reflection pass), SnowBoarder_grabScreenThumb_0000E740 (SnowBoarder vtable 0x83D0 slot 14:
+a 64x32 u16 thumbnail, every 4th pixel of every 5th row of a 320-wide image from byte 0x9140, out of the main
+ScreenWindow (gGfxLib + 0x240) buffer through its virtual slot 11, into this + 0x1C). The AI behaviour is written up
+in docs/1080_PHYSICS.md section 8.
+
+**Fields.** snowai.h: aimMode 0x74, weaveAim / weavePrev / weavePhase 0x84..0x9C, the ctor tunables 0xA0..0xE0
+(leadLimit, sideBlock, lookAhead, turnGain, turnSpeedRef, minSpeed, aimRange, weaveLead, weaveLeadTime,
+weaveSideScale; the rest unk with their ctor values). SnowAI_ctor's finalize stores and its 41 parm builds now go
+through the struct (`parm[SNOWAI_PARM_*]`, SnowAIParm vptr / unk14 / value). rideranim.h: pendingState 0xD0
+(startFinish / startTimeout queue stateFinish / stateTimeUp there; stateRide enters it when it is not the null
+PMF), unkD8 (no game.uso writer; 0 lets blendWeight / blendWeightDeep fall back to stateRide / stateRideDeep),
+rideContacts 0xDC (rider->contactCount sampled by stateRide, 1 from init). Byte-identical first try.
+
+**The rider node list (ProcNodeList).** `SnowBoarder_loadBoardModel_0000B1B4` loads the boarder and board USOs and
+then calls `ProcNodeList(list, a4, a3, &req)` on a static list at **bootup Data 0xABBC** (Sym 564). The format,
+read from nodelist_dispatch / nodelist_skipBlock / nodelist_walk:
+- a list is a word stream; each command word is `(nargs << 16) | op`, followed by nargs argument words
+  (pointers are DataReloc words). The first word must be op 1000 (else the assert at Data 0x211C8).
+- interpreter ops: 1003 = call a node-def function (arg 0) with the rest as its arguments (MNode_def,
+  shape_cmdShape_00051520, skin_cmdSkinMgr / SkinShape / SkinAnim, anim_createAnimator); 1017 = run a sub-list;
+  1010 / 1011 = run the block only if the arg equals the request's character (cat, +0x40) / board index (idx,
+  +0x44); 1012 = only if (mask +0x48 & arg); 1014 ends a block, 1015 skips to the end of the block (else);
+  1016 sets +0x38, 1008 a global, 1004..1007 set / clear bits in two global flag words, 1018 prints.
+- any other op goes to the current node's virtual slot 7 (Node_doCommand): op 0 closes the current node (one per
+  1003), 100 the node name (a RoData string), 103 registers the current node in registry slot N (the 40-slot
+  shape-file registry, bootup Bss 0x3C058), 108 / 109 / 111 / 114 node parameters.
+The earlier scan for `0x67, n` missed it because the word is `0x00010067` (nargs 1 in the high half).
+
+Registry slots the list fills (MNode names from op 100; nesting from op 0):
+
+| slot | node | SnowBoarder field |
+|---|---|---|
+| 28 | "top" (model root) | 0x844 |
+| 27 | "board_a" | 0x824 (bodyNodes[1]) |
+| 32 | unnamed MNode under board_a holding the board shape (board index 1..9: board USOs mod4..mod12) | 0x864 |
+| 29 | a bootup-data shape (Data 0xA42C), mask bit 8 | 0x854 |
+| 24 | "ikbase_a" | - |
+| 20 / 21 | "waist_jnt_1" / "chest_jnt_1" | 0x838 (bodyNodes[6]) / - |
+| 22 | **unnamed MNode under "chest_jnt_2": the head** | **0x874 camSource** |
+| 31 | per-character shape on the head (characters 2..5 and 8) | 0x858 headShape |
+| 10..13 | "armL_jnt_1".."armL_jnt_3", "armL_eff" | - |
+| 15..18 | "armR_jnt_1".."armR_jnt_3", "armR_eff" | - |
+| 0 / 1 / 2 | "legL_jnt_1" / "legL_jnt_2" / "legL_jnt_3" | - / 0x82C / 0x828 |
+| 5 / 6 / 7 | "legR_jnt_1" / "legR_jnt_2" / "legR_jnt_3" | - / 0x834 / 0x830 |
+| 34 | "boarder_a" (the skinned body) | 0x820 (bodyNodes[0]) |
+| 30 | per-character SkinShape (mask bit 1; boarder USOs mod13..17) | 0x85C bodySkin |
+| 33 | a bootup-data SkinShape (Data 0xC104, mask bit 2) | 0x860 |
+
+The SkinMgr sub-list (Data 0xA924) builds one or two SkinMgrs per character; every joint gets SkinAnims for the
+mask bits 1 / 2 / 4. A port can rebuild the rider skeleton from this table (joint names, parenting, the per-
+character and per-board shapes) without the interpreter. The dump came from a throwaway script over
+uso-data-sites.py's Census (DataReloc + RoData strings).
+
+**Notes for other owners.**
+- agent-b (post0b): proposed names for the game_libs camera helpers: cam_func_00036074 ->
+  BallRotator_reset_00036074 (next to BallRotator_update_0003604C; identity quat, zeroed state, 200.0 radius);
+  cam_func_00036694 -> math_projectOnPlaneNorm_00036694 (p projected onto the plane with normal n, normalised;
+  degenerate -> a unit vector perpendicular to n); cam_func_00036A48 -> math_bestAlignedIndex_00036A48 (index of
+  the arr[i] whose callback result has the largest dot with dir); cam_func_000372D4 -> cam_placeAttached_000372D4
+  (copies a Vec3 to the attached object's node position, resets rot to (-90, 180, 0), virtual slot 3). Also the
+  ProcNodeList arg struct Gl5591CArg could take the field meanings above (+0x0C / +0x10 / +0x14 = a1 / a1 / a2,
+  +0x38 = 1, +0x40 cat, +0x44 idx, +0x48 mask).
+- agent-h (bootup_uso): SnowBoarder_func_0000CAE8 is still a weak name, but it doubles as a data placeholder in
+  bootup_uso_tail4.c (`SnowBoarder_func_0000CAE8[1] / [2]`) and in the TimeGadgetParms match_import, so it needs a hand
+  rename. The SnowBoarder 0x844 / 0x864 fields (unk844 / unk864, used in bootup_uso.c mirrorFlip) can become
+  `top` / `boardNode`.
+
+**Next:** RiderAnim unkD8 writer (search bootup / game_libs for a +0xD8 store through rider->anim); SnowAI unkB8..unkD4
+semantics (steer out flags); the 1008 / 1004..1007 global flag words of nodelist_dispatch; node ops 108 / 109 / 111 / 114.
+(All four answered in section 21.)
+
+## 21. Run 506: game_uso cleanup, open meanings, readability status
+
+agent-g run 506 (branch agent-g on e6043cf4d). Commits: 694808660 (dead code removal), f7ea7f882 (field conversions
+and meanings); both hand edits, no renames. Gate PASS after each (3288/3288, ROM identical); `objdump -d -r` plus
+.data / .rodata of all 208 game_uso (both trees) and bootup_uso objects identical to the run baseline. Scratch:
+/tmp/claude-1000/g506/ (chk.sh, dump.sh, region.py, live2.py = comment-stripped census that also counts the
+`*(T *)((char *)p + K)` form).
+
+**Dead code removed.** Every game_uso.c block no build path compiles: the cam_updateView cfe reference body,
+SnowChaseActor_update's pre-NCC body, GAMEUSO_591C_OLD_DECODE (SnowAI_steer) and GAMEUSO_7C1C_OLD_DECODE
+(SnowAI_aimAlongSegment), the SnowAI_aimWeave cfe NM body, LensFlare_display's old decode, the
+RiderAnim_stateHopStart wrap doc, the NM-era histories and NON_MATCHING-only externs that served only those bodies,
+and the unbuilt donor game_uso_ncc_7C1C_nm.cpp. Neither macro was defined anywhere. Each site has a one-line pointer
+to e6043cf4d. game_uso.c 11190 -> 8612 lines.
+
+**Census.** h492 census.py (all text): game_uso.c 381 -> 126 (dead 251 -> 0, compiled outside NM 87 -> 83, NM bodies
+43 -> 43). Comment-stripped live2.py (counts `((char *)p + K)` too): compiled game_uso.c 171 -> 113, NM 37 -> 37;
+`FW(p, K)` macro sites 59 -> 54. Donors unchanged (591C 24, mp72_B3C 8, ncc_D9CC 4).
+
+**Meanings.**
+- **RiderAnim.unkD8 has no writer.** A scan of every built object for `lw r, 0x840(x)` (rider->anim) followed by an
+  access at 0xD8(r) found nothing in bootup, game_libs or any other USO; inside game.uso only blendWeight /
+  blendWeightDeep read 0xD8(this). RiderAnim_init's clear of 0xBC..0x138 zeroes it, so both always fall back to
+  stateRide / stateRideDeep: a dead hook (rideranim.h).
+- **SnowAI 0xB8..0xD4** (snowai.h, with the out-flag bits of SnowAI_steer -> SnowAI_applyStickInput: 1 jump sequence,
+  2 button 0x400 = useDParms, 4 stick up, 8 stick down / crouch, 0x10 finished, 0x20 / 0x80 table gestures, 0x40 a
+  13-frame 0x100 press): crouchSteerRef 0xB8, stallYaw 0xBC, reachTime 0xC0, dParmsSteer / dParmsSteerScale 0xC4 /
+  0xC8, rivalPathTime / rivalPathDist 0xD0 / 0xD4 (the 97EC donor's k / lim). Also unk70 -> **finishTimer**.
+- **Node ops.** The SkinMgr vtable (Data 0x2C490) has Node_doCommand in slot 7, and Node_doCommand's case 108 (0x6C)
+  just returns: **op 108 is ignored** (the list writes the mask bit 1 / 2 / 4 after each SkinMgr, a leftover tag).
+  The MNode ops (MNode_doCommand, callees from `uso-data-sites.py calls`): **109 = scale** (cmd_readFixedVec3 ->
+  math_mtxScaleRows), **110 = rotate** (math_mtxRotateEuler), **111 = translate** (math_mtxAddTranslation), 112 = copy
+  a 4x4 matrix, 113 = flags |= 2, **114 = a short transform record** (pos s[0..2], quat s[3..6] / 32767, scale
+  s[7..9] * 0.01; math_quatScaleToMtx4 into +0x30, copied to +0x70). The vectors read as fixed point / 10000 (inferred from the values, cmd_readFixedVec3 not read): on "top",
+  character 1 gets scale 1.1 and +30 in y, characters 6 / 7 scale 1.2 and +50, character 3 scale 0.9 and -40.
+- **The global flag words.** 1006 / 1007 set / clear bits of `gPolyFlags_3EEC4` (Bss 0x3EEC4), 1004 / 1005 of
+  `gPolyGeomMode_3EEC8` word 0 (Bss 0x3EEC8). Every ShapeNode_ctor copies gPolyFlags into the new shape's +0x30
+  (the bits BasePolyShape_doCommand ops 106 / 107 set / clear per shape) and the 8-byte gPolyGeomMode into +0x34:
+  they are the render-flag defaults for the shapes built next. SnowBoarder_ctor sets gPolyFlags |= 8 and
+  geomMode[1] |= 0x20000, &= ~0x80002 before the rider list and restores {0, 0x2A003} after. 1008 writes the word
+  at Data 0x1EBD8 (sym 288; `bu_2c94_mode`, 6 from game_initDdm): MNode_addChild copies it into a flag-2 child's
+  parent +0xB0 when that is 0, so it is the default DDM id new MNodes inherit.
+
+**Readability status (5 functions, pre-readability 3e2ae9d53 vs now).**
+
+| function | before | now | still reads badly |
+|---|---|---|---|
+| SnowAI_onLose (6ECC) | `game_uso_func_00006ECC`; `*(int*)(*(int*)((char*)a0 + 0x30) + 0x848) != 2`, stores to `a0 + 0x80` / `+ 0x40` | `if (AI(a0)->rider->controller != 2)`, `AI(a0)->unk80 = v; AI(a0)->targetNode = ...` | the three calls are `gl_func_00000000` placeholders; unk80 has no name |
+| SnowAI_enterFinish (71A4) | `SnowAI_func_000071A4`; four raw stores | `aiState = 1; finishTimer = 0; if (unk4C4 > 0) ...` | unk4C4 (the scaled-parms countdown) and the placeholder call (probably SnowAI_restoreRiderParms: the steer donor has the same `restore; unk4C4 = 0` pair; not checked) |
+| RiderAnim_stateTrickAir (F424) | `game_uso_func_0000F424`; `*(int*)(*(char**)((char*)a0 + 0xB4) + 0xA18) = 0; a0[0x114 / 4] = 1;` | `rider->unkA18 = 0; trickPhase = 1;`, named callees holdJumpLift / readTrickInput, `groundFlags & 1` | the `w + 0x170 / 0x698 / 0x31C` float pointers (kept for regalloc; comments name them) |
+| RiderAnim_init (D458) | `FW(arg0, 0x114) = 2; FW(arg0, 0xFC) = 0x10000; FW(arg0, 0xDC) = 1; ...` | `trickPhase = 2; animSet = RANIM_GROUP_REGULAR; rideContacts = 1; unk104 = -1; hitKind = 0; unk11C = 1.0f` | the 0xF10 ROM probe after it (sp30 magic words) and the import_ calls |
+| SnowAI_steer (591C) | 1000+ lines of NM decode history and an OLD_DECODE body in game_uso.c | a 5-line header and the splice placeholder; the logic is in game_uso_591C.c with named tunables | the donor keeps ~24 raw rider reads (`*(float*)(sub + 0x348)` = speed) and cfront-style temporaries; converting them needs a per-site regalloc check |
+
+What still reads badly across game_uso.c: 259 `gl_func_00000000` / `game_uso_func_00000000` placeholder calls (the
+callee is only in the reloc table: `uso-data-sites.py calls` names them); 19 stale NM-era comments ("NATURAL CEILING",
+"Default build is INCLUDE_ASM", "No episode") on functions that are now exact; the SnowChaseActor*Parms_ctor /
+camKey_init / game_ItemType_create parm-node stores (`o + 0x10` etc. through alloc cursors, 40 sites); the
+three copies of the `head + 0x14` list-append idiom; 37 sites in NON_MATCHING bodies (Sun_display, readTrickInput).
+
+**Next:** retarget the placeholder calls in game_uso.c to their real callees where the call is not a lever (the
+report is name-blind; check each per .o); prune the 19 stale NM comments; a ParmNode struct for the
+SnowChaseActor / camKey / ItemType parm builders; name SnowAI.unk80 / unk4C4 and RiderAnim.unk104 / unk11C / unk120.

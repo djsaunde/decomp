@@ -511,3 +511,29 @@ MorphPoly_setVerts(shape, out)
 R is the 3x3 part of the world matrix. A port can do the same on the CPU, or upload bind poses and bone
 matrices and skin on the GPU (weights are per vertex per bone, at most the main bone plus the SkinAnims
 that list the vertex).
+
+## 13. Run 500 (agent-b): structs for the post0b engine classes
+
+New headers (all in include/gdl, field names from the bodies, the exact NCC donors and HostIO parm tags):
+- console.h: TextWin (0x58: rows / buf / maxCols / nRows / hScroll / visRows / top / cols / cur, cell size,
+  origin, muted, ring next / prev, title, owner, colour) and ConsoleMgr (0x3C: curWin, winList, input,
+  visibility = Node doFlags 0x4).
+- mem.h: MemTracker (0x44 tree node: start / end marks, bytes, kb, heapId, sibling / children / parent /
+  prevOpen, name[0x20]), MemTrackerPool, MemTrackerMgr (0x48: pool, open, root).
+- mnode.h: MNode (0xB4: Flags, Mtx (local), CMtx (world), MtxMode), QNode (MNode + VQS / CVQS AnimPoses),
+  SNode (0x88: Mtx object, pos, height, scale, rotX..Z, radius, next). Vtable slot 9 = setAnimPose (the
+  Animator target call), MNode slot 10 = getCMtx.
+- coll.h: CollObj (0x34: owner, next, kind, id, flags, hitMask, category, pos, vel, vptr at +0x30),
+  CollCylinder, CollContact (0x40), CollObjMgr (statics / dynamics lists).
+- item.h: ItemType (tag, next, typeId), ColourItemType (RGBA), ItemMgr (types).
+- polyshape.h: PolyVert / PolyNormal, BasePolyShape mats / matCap / nMats (+0x84..+0x90).
+- dlctx.h: DLCTX / DLBUF accessor macros (gfx_clearScreen's inline appends).
+Converted bodies: Animator_ctor, the console, memtrack, MNode / SNode / QNode, CollObj, ItemType / ItemMgr,
+CamFollow / FreeCam (on include/game/camera.h), gfx_clearScreen, BasePolyShape_genNormals / parse donor /
+accessors, the Window_doCommand donor; ProcNodeList's state struct got the nodelist_dispatch field names.
+Raw `*(T *)(p + K)` sites live in post0b: 1014 -> 705 (post1b unchanged at 240). Field conversions can
+swap commutative operand order (IDO_CODEGEN.md#field-conversion-commutative-operand-swap).
+
+Next: DNode (post1b, 0x3D4; DNode_init / resetXform / resetAccums are ~80 sites; its ctor parm tags name
+the fields), BallRotator (cam_func_00036074 = BallRotator_reset), PolyShape_display, CollShape, the
+HostIO objects, Window unk fields (+0x84 / +0x98 lanes, +0x100), ItemType +0x34..+0x40.

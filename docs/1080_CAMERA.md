@@ -40,10 +40,13 @@ parent; the parent link is a separate call:
 - **mode 1:** a RiderCam (MCamera(lookat, 0, 500, -1500), section 7) and under the look-at node a
   `SnowChaseActor(rider, rider, "rom/lookat_ca.bin")` named "LookAtChase";
 - all modes: both bodies go under `parent`; eye and look-at start at rider->startPos; the eye is then moved by
-  (0, 0, -1000). `rider->camSource` (SnowBoarder 0x874, set by the rider ctor) is the body a mode-3 eye parks at.
+  (0, 0, -1000). `rider->camSource` (SnowBoarder 0x874, set by the rider ctor) is the rider's **head node**
+  (registry slot 22, the MNode under "chest_jnt_2"; run 502), where a mode-3 eye parks.
 
 The game.uso camera's views (cam_setView_00000AEC) switch the two components with
-`SnowChaseActorCam_setMode(cam + 0x154, mode, &rider->vel)` and `SnowChaseActorLook_setMode(lookat + 0xB4, ..)`.
+`SnowChaseActorCam_setMode_00002714(cam + 0x154, mode, &rider->vel)` and
+`SnowChaseActorLook_setMode_00002FC8(lookat + 0xB4, ..)` (applied per frame by `SnowChaseActorCam_applyMode_000024BC` /
+`SnowChaseActorLook_applyMode_00002CC8`).
 
 ### 2a. The course camera (game.uso CourseCam, 0x27C)
 
@@ -55,7 +58,7 @@ that plays **scripted paths** from rom/cam_info.bin:
 `cam_updateView_00000B3C` evaluates a uniform cubic B-spline over keys k-1..k+2 at t = frame / key->frames for each
 channel whose mode says "spline" (eye, look, up, fov, rot), else takes key k's value; `key` / `frame` (0x25C /
 0x260) advance one frame per update, and the path ends after key numKeys (then the next path of the list).
-`camPath_read` loads keys[1..numKeys] (at most 15) and pads keys[0] = keys[1], keys[numKeys + 1] = keys[numKeys];
+`camPath_read_00000724` loads keys[1..numKeys] (at most 15) and pads keys[0] = keys[1], keys[numKeys + 1] = keys[numKeys];
 a path with any spline channel (`camPath_hasSpline_00000674`) ends one key early, at numKeys.
 Channel modes for look / eye (CamPath +0x00 / +0x10): 1 = chase component (camPath_init's default), 2 = keys
 **relative** (`cam_applyRelative_0000052C`: eye += the chase aim point = rider->pos + rotated cof, then look +=
@@ -123,7 +126,7 @@ camera) and other kinds to cams[1] (RiderCam) through the camera's command slot 
 becomes active (`CamDirector_setActiveCam`, which also zeroes its pitch / yaw). Manual mode (pad pressed 0x40):
 fov +-2 per frame (45..120) on held 8 / 4, pitch / yaw += stick * 2.
 
-**RiderCam** (bootup, 0x15C; slot 3 cam_func_00004948, slot 12 cam_func_00004914): command(kind, node) puts the
+**RiderCam** (bootup, 0x15C; slot 3 RiderCam_update_00004948, slot 12 RiderCam_command_00004914): command(kind, node) puts the
 eye at the node position + 100 up and sets mode = kind. Tick: kinds 0x13..0x17 (and 0x18..0x1C) pick fov from
 the eye-to-target distance (row {far, near, nearFov, farFov}: linear in between); kinds 0x1D..0x26 from an angle row
 {size, angle} clamped to [k, k']; mode 2 drifts the eye by rider->vel * k and restores baseFov.
@@ -138,7 +141,7 @@ is an orbit / pan controller. Neither is used for the race view.
 - Resolved in run 485: the cam_create chase classes (section 2), and CamDirector_update, the cam_create donor and
   the B3C donor (MIPSpro 7.2.1 edgcpfe) are on camera.h / snowboarder.h fields (bytes unchanged).
 - CamPath unk08 / 0C / 18 / 1C / 24 / 2C (read with the mode words, never used) and CourseCam 0x278 are unread.
-- What the rider body at camSource (0x874) is. Run 488: slot 22 of the shape-file node registry (bootup Bss
-  0x3C058, Sym 550; docs/1080_GAME_CLASSES.md section 17); the body part needs the rider shape stream.
+- Resolved in run 502: camSource (0x874) is registry slot 22 (bootup Bss 0x3C058, Sym 550), the head node of
+  the rider node list (docs/1080_GAME_CLASSES.md section 20).
 - Run 488: MCamera_ctor, CamFollow_ctor and CamDirector_ctor store their vptrs through the gl_data.h `_vtbl` aliases.
 - The RiderCam fov tables (bu_4948_t16 / t8, k0 / k1 / klo / khi) are not resolved to RoData addresses.

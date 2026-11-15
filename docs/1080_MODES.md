@@ -731,3 +731,108 @@ Next (not reached): GameFlow / SnowBoard app / Process / PauseMenu / QuitProcess
 the -O0 island objects; TreeTmpl / Tree (0xC8, +0x88 sub, +0xA0 copy of +0x5C); NameEntry overlays (0x10C,
 mgr 0x174) and Tim / Trk / Arc menu processes; game_libs.c / game_libs_tail.c raw sites; titproc MainLogo /
 KeyMessage; SnowBCollider_onContact's dead old decode (#ifdef BOOTUP_8BD4_OLD_DECODE).
+
+### Run 505 (agent-h): InputMgr is GameFlow; dead old-decode cleanup
+
+Commits on agent-h (base 974eada26; hand edits, no renames; gate PASS 3288/3288, ROM identical, every
+touched .o identical by objdump -d -r -z + data in the matching and NON_MATCHING builds): 53804e207
+(GameFlow fields), 303f4c896 (BOOTUP_8BD4_OLD_DECODE deleted).
+
+- **The InputMgr (bootup Bss 0xF8) is the GameFlow object.** GameFlow_create names its Node "GameFlow"
+  and stores every word up to 0x190; GameFlow_startMode / restart / loadProcUso / unloadUso / addPads,
+  input_initDefaults, snd_playSeq and the settings_* functions all take it as `this`. input.h now has
+  the Node base (as `char node[0x2C]`: NCC .cpp users cannot include node.h), procUsoPath 0x2C (the loaded
+  mode .uso path: loadProcUso compares it, unloads the old module), flowProc 0x30 (the per-mode object
+  startMode builds, vptr at +4, slot +0xC called), flowMode 0x38 (9 = none; the guard against
+  nextFlowMode), unk70..unk88, order90[5] = {4,3,1,2,5} / orderA4[5] = {5,1,2,3,4} (initDefaults; meaning
+  unknown), ctrls[2] 0xC0 (two 0x80-byte controller objects, ctor arg 1 / 2; addPads adds them or sets
+  `locked`), app 0x12C (gSnowBoard), usoList 0x130 (`FlowUso {handle, next}`), seq / seqArg 0x13C / 0x144,
+  flowImgs 0x150 (rom/flowimgs.bin), initials[3] 0x158 ('*' x 3), unk15C. Macro `GAMEFLOW(p)`.
+- **The unlocks record (+0x154)** is the settings block: +0 u16 unlock bits (settings_setBit), +2 u16
+  sequence step (settings_stepSequence), +4 u16 options (& 3 sound mode, & 4 flag 4, 8 language menu),
+  +6..+0xD the 8 bytes settings_get8 copies, +0x12 / +0x13 / +0x14 the three u8 volumes
+  (settings_vol1 / vol0 / vol2 Up / Down). Not yet a struct: `unlocks` is a `char *` that titproc /
+  mgr / arc index by byte offset.
+- Converted: GameFlow_create / startMode (plus NODE() for the child-attach idiom and the name),
+  GameFlow_addPads / unloadUso / loadProcUso, input_initDefaults, snd_playSeq, settings_save / setBit,
+  the six settings_vol* functions, settings_applySoundMode / setFlag4 / get8 / stepSequence, the stick
+  readers. Left raw: initDefaults' `*(a0 + i + 0x158)` initials loop (index form, rule 4a), the stick
+  readers' `(float **)(a0 + 0xE0)` pad table (InputPad is not float-first).
+- **Dead code:** the BOOTUP_8BD4_OLD_DECODE block (100 lines + its stale cap history) is gone; nothing
+  defines the macro. Still in the tree, all never compiled (no -D in the Makefile, no #define anywhere),
+  not deleted this run because the Edit-only rule makes each a full-text Edit: bootup_uso.c
+  `#if 0` after the cam_create placeholder (121 lines), BOOTUP_55A0 (318), BOOTUP_90CC (1060),
+  BOOTUP_B75C (254), BOOTUP_C234 (311); titproc_uso.c `#if 0` after TitleDemoProcess_handleInput (302);
+  game_libs.c `#if 0` after RaceProcess_handleInput (376); gui_uso.c five `#if 0` cfe bodies after the
+  splice hosts gui_drawStringScaled / drawSpriteScaledF / drawSpriteScaled / drawSpriteScroll /
+  texRect (100 / 89 / 93 / 145 / 167). The #ifdef ones keep their placeholder in an `#else` branch.
+- Census (`*(T *)(p + 0xNN)`, h492 regex): bootup_uso total 483 -> 383 (bootup_uso.c 181 -> 163,
+  tail3a_10C8C 32 -> 22, o0_120A8 27 -> 0, o0_123F0 18 -> 0, tail3b 15 -> 4, small o0 files 18 -> 1).
+  Others unchanged (game_libs.c 173, game_libs_tail.c 30, titproc_uso.c 39).
+
+Next: the GUI menu object (gui_initRows / centerRows / addRow / getCurrentRow / PauseMenu_update: +0x2C,
+0x34..0x48 colour, 0x6C / 0x70 x / y, 0x74 row height, 0x78 rows, 0x7C current row, 0x80, 0x84 rows[]
+of 0x28); Fader (tail4: +0x40..0x74) and the TimeGadget / BestGadget parm block (+0x44..0x108); the
+settings record as a struct; then the name-entry overlays (0x10C / mgr 0x174), Tim / Trk / Arc menu
+processes, game_libs.c's 173 sites, titproc MainLogo / KeyMessage, and the remaining dead blocks above.
+
+### Run 503 (agent-c): genproc Parms records, GenRoom, gen_imp_ imports
+
+Commits on agent-c (base c519196e2). Each was gated PASS (3288/3288, ROM identical), and every genproc
+.o was identical by objdump -d -r -z in the matching and NON_MATCHING builds:
+- 21471dc5e (hand edit): select.h Parms records, SelectWin colours / font / sceneSet / forceAccept,
+  and conversions.
+- 63848a140 (**pure rename**): 49 `gen_imp_*` import aliases.
+- 1c480c86b (hand edit): GenRoom.
+- fa70d1b0a (**pure rename**): snd_soundObjSetReverb.
+- 0dabd7733 (hand edit): audio.h reverbOn.
+- 638a22724: 873 lines of `#if 0` dropped with deadblocks.py.
+
+- **HostIO parm records** (include/game/select.h, `SelParmI / F / V3 / RGBA`): value at +0x10, named
+  by the 3-letter tags the ctors pass (Data name tables).
+  - `SelectWinParms` (SelectWin +0x2C, 0x38C) holds cwt, voy, ysp, hxp, hyp, msp, zsp, lsp, lfw,
+    sfw, cc0..cc8, c12, cc9, c11, c10, clx, cly, cox, coy, cff, cdf, ctf and tpy.
+    - msp = the transition step;
+    - zsp / lsp = the fade steps;
+    - lfw = the idleTimer reload;
+    - ysp = the stat row spacing;
+    - cc8 / c12 = the two colours passed to the item draw slot (win 0x254 / 0x278).
+  - `SelItemParms` (SelItem +0x2C) holds xpn ypn (label position), jnx jny, xp0 yp0 (stat bars),
+    xfp yfp, xfc yfc, cfv cf2, and off / of2 (camera offsets).
+  - `SelItemInfo` (SelItem +0x194) holds ixn (label row), am0..am4 (stat values), pos, rot, chy
+    and scl.
+- **Item +0x25C..0x264 / 0x294** = info.rot.v / info.scl.value. All five item classes copy
+  view[0..3] = {rot.z, rot.x, rot.y, scl}; only the statement order differs, and that order is a
+  matching lever.
+- **SelectWin**:
+  - 0x408 `forceAccept`: state3 treats it as an accept press (button 0x100); never set in
+    genproc;
+  - 0x410 `sceneSet` = SelectionMgr +0x2C (+4 / +8 = the per-player scene, stored at 0x414);
+  - 0x420 `colors[6][4]`: RGBA / 255 from SelectWin_init (90 grey, 255/145/58 orange, white,
+    13 near-black, 161/91/35 brown, 70 grey); no reader in genproc;
+  - 0x4D0 `font` = gui_fontCreate(0, font, 0x48, 0xDD, 3, 13).
+- **GenRoom** (gen_buildRoom, 0x60):
+  - world 0x2C;
+  - three BaseLights 0x38..0x40: "Ambient Light" (mask 1), "Local Light" (mask 2), and a second
+    "Ambient Light" (mask 4, colour 174/113/61);
+  - walls[6] 0x44: U64BGWall sky-box faces under the "BGBox2" BGBox (gen_createVRBox);
+  - modifier 0x5C (RoomModifier).
+- **Imports.** genproc's `timproc_uso_b5_func_XXXXXX` aliases are imports. The suffix is the
+  bootup address + 0x1466C, or the bootup_uso address itself. They are now `gen_imp_<target>`
+  (e.g. gen_imp_list_append, gen_imp_mem_new, gen_imp_Parms_addParm), resolved with
+  `scripts/uso-imports.py imports genproc`.
+- **Census** (conv2 PAT + FW patterns, incl. donors): 1711 -> 1587. timproc_uso_b5.c 963 -> 851,
+  CEB4 12 -> 3, o2_5FC0 38 -> 35.
+- **Reverted** because the bytes changed:
+  - SelectWin_display `tpy` (load order);
+  - canScrollNext (t-regs);
+  - state8;
+  - the 5FC0 donor's transition / fade operands (f16 / f18).
+
+Next (H1):
+- The match_imports donors' own context types (`B5TimingScreen` field_xxx in
+  context_timproc_uso_b5.h) could take the SelectWin names: a field rename only.
+- The SelItemsMgr_ctor / *List_createItem bodies (largest raw blocks).
+- gen_createScene {room, cam, cam2}.
+- CourseItem_update's model offsets (lever-sensitive int-cast forms).
+- Names for the 0x1CDD0 heap-size block's first word.

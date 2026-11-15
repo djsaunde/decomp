@@ -48,7 +48,7 @@ registers ten `WorldCourse` records (0x48: 64-byte name, descriptor pointer, nex
 | 8 | Practice | map10 | bg8 | map01 | map02 |
 | 9 | Test Grid | map5 | bg1 | (none) | (none) |
 
-(The table is the course descriptors decoded; the order of registration is the WorldRegistry_create order.)
+(The table is the course descriptors decoded; the order of registration is the WorldRegistry_create_00001E08 order.)
 
 The same object also carries the scene roots that game_init creates and passes to `game_setParams_00002060`:
 `ogRoot` 0x7C ("og"), `fgRoot` 0x80 ("fg"), `bgRoot` 0x84 ("bg"), `egRoot` 0x88 ("eg"), `mainGame` 0x8C
@@ -121,7 +121,11 @@ at game.uso Data 0x548: `mrk`, `mk1`..`mk9`, `mkl`, `mkr` (indices 0..11, `MARKE
   instance of that type nearest in z ahead of the rider (smallest dz >= 0), else the nearest behind.
 - A marker and its `link` form one path segment. `SnowAI_scanSegments` tests the ten types in turn (one per
   frame) and keeps the type whose segment passes closest to the rider (a rider up to 250 * wid behind the
-  marker still counts).
+  marker still counts). A segment is a corridor: `SnowAI_isInSegmentWidth` (left / right edges, half width
+  250 * wid + 50 at the marker, growing by the link's wid) and `SnowAI_isAboveSegmentFloor` (the rider above the
+  marker -> link slope minus 400); SnowAI_scanNodes needs both, scanSegments the second. The steering aim
+  (`SnowAI_aimAlongSegment` / `SnowAI_aimWeave`) is in docs/1080_PHYSICS.md section 8.
+- At the finish a trailing CPU rider takes the nearer of the `mkl` / `mkr` branches (`SnowAI_pickFinishBranch`).
 - Forks: a marker's `ext` is the type index of the other branch (SnowAI_steer copies it to altNode); the per-level
   `bj` / `bt` / `bd` / `bu` parms decide the branch, or `SnowAI_pickFork` keeps whichever of targetNode /
   altNode is nearer the rival.

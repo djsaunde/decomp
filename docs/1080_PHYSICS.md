@@ -30,6 +30,9 @@ the matched code. "k" means a RoData constant whose value was not needed for the
 - **0x800 input**: the controller object the rider reads. +0x0 stick x (f32), +0x4 stick y, +0x10 held buttons.
   For a CPU rider SnowAI writes this same object (section 8), so the physics never knows who is steering.
 - 0x804 ai, 0x840 anim (RiderAnim), 0x848 controller (0 pad, 2 CPU), 0x8C4 character, 0x908 rival.
+- 0x820..0x874: model nodes from the rider node list (bootup Data 0xABBC, docs/1080_GAME_CLASSES.md section 20):
+  bodyNodes (boarder_a, board_a, legL / legR joints 2-3, waist), 0x844 "top" (the root), 0x864 the board shape
+  node, 0x874 camSource = the head node.
 - 0x910..0x9E4: contact and ground state (section 5); 0x9F8..0xA00: edgeFriction, edgeGrip, turnRate
   (section 4); 0xA04 localUp; 0xA1C..0xA24 bump response; 0xA58 flags; 0xA78 maxSpeed.
 
@@ -48,7 +51,7 @@ the matched code. "k" means a RoData constant whose value was not needed for the
 8. `DNode_resetAccums_00065148`: clear the accumulators, recompute worldCog.
 
 After it, SnowBoarder_update computes fwdSpeed 0xA38 = dot(dir, vel), applies the `shake` jitter to six body
-nodes, and feeds the sound object (0x808) with contactSurface and landImpact.
+nodes (board and both lower legs by shake, both upper legs by half, the waist by minus half), and feeds the sound object (0x808) with contactSurface and landImpact.
 
 ## 3. Orientation and edge (SnowBoarder_updateOrient)
 
@@ -134,7 +137,7 @@ Bootup 0xC234; matched C is bootup_uso_ncc_C234.cpp (on snowboarder.h fields sin
 game_libs_post1b.c. Accumulator = {weight, pointSum, force, torque, origin} (SnowBAccum).
 
 - `DNode_addImpulseAt_00065250(this, worldPoint, force)` / `DNode_addMoveAt_000652D8`:
-  `DNodeAccum_addForce(acc, worldPoint - worldCog, force)`, which adds |force| to weight, point * |force| to pointSum,
+  `DNodeAccum_addForce_000641DC(acc, worldPoint - worldCog, force)`, which adds |force| to weight, point * |force| to pointSum,
   force to force and cross(point, force) / |point| to torque.
 - `DNode_applyAccums_00065448`: `DNodeAccum_apply_00064388(impulseAcc, &angVel, &vel, tsc)` and
   `(moveAcc, &orient, &pos, tsc)`. When weight is above epsilon, apply rotates the quat about the normalized
@@ -163,6 +166,25 @@ game.uso Data 0x638) into the rider's input object, so CPU riders go through exa
 the current level), SnowAI_finishRun, SnowAI_timeoutRun, SnowAI_recoverStuck (after 75 frames below speed 30).
 SnowAI_scanNodes / scanSegments re-acquire the path, one node per frame. The "course nodes" are CourseMarker
 types (mrk, mk1..mk9, mkl, mkr), each resolved to the nearest marker of that type: docs/1080_COURSE.md section 6.
+
+**The aim (agent-g run 502).** Each SnowAI_steer frame builds an XZ aim vector from the rider to a point, and
+the stick follows the signed angle between the rider's dir and that aim (turnGain, turnSpeedRef). `SnowAI.aimMode`
+picks the point:
+- 0, `SnowAI_aimAlongSegment` (0x7C1C): the end of the current segment (the marker's `link`). While the rider
+  leads the rival (sideBlock, a hysteresis on SnowAI_rivalLeadZ against +-leadLimit 1000) by at most 3000 in z,
+  the point moves half the segment width (250 * wid / 2) to the rival's side, which blocks the rival's line.
+  The point is kept inside the segment width.
+- 1, `SnowAI_aimWeave` (0x8CD8): entered when rivalLeadZ <= weaveLead and speed >= minSpeed (70) on a plain
+  segment, left when the lead passes the per-level `se` parm. It lays two waypoints (weaveAim / weavePrev) along
+  the segment, speed * weaveLeadTime / 2 apart, and offsets each new one sideways by 250 * width * weaveSideScale
+  times 0, -1, +1, +1 in turn (weavePhase): the CPU rider weaves across the course.
+Two segment tests drive the rescans: `SnowAI_isInSegmentWidth` (0x9B88; the rider between the left and right
+edges, half width 250 * wid + 50 at the marker, widening by the link's wid) and `SnowAI_isAboveSegmentFloor`
+(0xA0E8; the rider above the marker -> link slope minus 400). When a marker flag asks for them and they fail,
+steer starts SnowAI_startNodeScan / startSegmentScan. At the finish (MARKER_F_FINISH) a rider that trails
+picks the nearer of the `mkl` / `mkr` branches (`SnowAI_pickFinishBranch`, 0x6FA8). `SnowAI_isRivalInPath_000097EC`
+tests whether the rival is within 500 of the rider's relative path over the next 20 time units.
+The tunables are in snowai.h with their ctor values.
 
 ## 9. Open questions
 

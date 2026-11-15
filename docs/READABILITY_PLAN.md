@@ -604,6 +604,119 @@ The interior field symbols D_800195D4..D_800195E0 stay `D_` (separate reloc symb
   /tmp/claude-1000/a498/acand.txt); RoData float pools as named constants where a function reads several; hand
   conversions of the multi-object functions (DNode_solveContacts, SnowBoarder_*, MapProp_ctor / cam_create).
 
+#### 9.1.9 Run 504: owner commands, string / object / RoData renames, kRo_ pools; census
+
+- **Tool** (3fa960d81 on agent-a): `spell-base --owner-report [OUT] [FILE..]` prints, per owner area, the
+  exact `spell-base` / `convert NAME` commands that respell every provable plain site. There is one
+  command per file, and `--only` names that owner's functions. The output comes from the dry-run plans
+  of both subcommands; `--bare` is added when bare value uses are included. Every listed command
+  dry-runs to its stated count. New `--only RE` option (full match) for `convert` / `spell-base`.
+  The owner table `OWNERS` sits at the top of `owner_report` (first match wins):
+  - agent-c: Audio* / snd_* / Snd* functions in any file;
+  - agent-b: game_libs_post0b.c / post1b.c, plus gfx / anim / shape / window / light / CollShape functions elsewhere;
+  - agent-h: src/bootup_uso, game_libs.c, game_libs_tail.c;
+  - unassigned: the rest.
+  `calls` (agent-b) still works. `check` now also verifies the `kRo_` pools (below).
+- **Renames (pure):**
+  - 1af977de7: 134 string per-site aliases. 108 are in bootup_uso.c (agent-h's area: `D_00006538` ->
+    `sStr_Poop_start_6538` ... `D_00008D9C` -> `sStr_Node_8D9C`, `sTag_pyr_7E20` / `sTag_tr1_7E34` ...
+    item tags, `sFmt_Global_out_of_range_8868`). The others are in game_libs: the AudioLoad DMA labels,
+    CollShape, MorphPoly, Window, BasePolyShape, BaseLight, gfx_loadTexture and AnimData_load.
+    The same commit renames 11 object per-site aliases (`gTriEdgeNext_3B2EC_c`, `gMorphPolyShade_4AFB4_s`,
+    `gCourseColl_4F2DC_e`, `gAudioHeap_24378`, `gAudioHeapInitSizes_24378`, `gProcNodeList_41700_90cc_fz` ...).
+  - dff5783a1: 168 RoData constant per-site aliases become `kRo_<Func>_<K>`.
+  - Selection, for both commits: every file that uses the alias is in bootup_uso or game_libs (or is
+    its match_imports donor or context header), and every function that uses it has a site with it.
+  - Not renamed:
+    - `Tv1Tmpl_update`: a FUNCTION name that item_registerTemplates also uses as its K = 0x7E50
+      ("l01") placeholder. Fixing it needs a distinct per-site symbol, which is a hand edit in
+      bootup_uso.c (agent-h).
+    - Function names used as RoData placeholders the same way: `func_00000044`, `func_000003F8`,
+      `func_00000C10`, `SndHandle_triggerEvent0_000008F4` / `1_0000098C`.
+    - 54 derived `<Func>_rodata` splice symbols.
+    - The multi-K aliases `D_bu_ro_pool` / `D_bu_ro_dpool`.
+    - `gl_exc_intofftable` / `gl_exc_inttable`, which already carry the libultra names.
+- **RoData constant pools** (152575a9f, gl_data.h header only):
+  - Coverage: 62 `kRo_<Func>` pools, holding 284 constants. Every bootup.uso function that reads two or
+    more non-string RoData-base constants gets one.
+  - Definition: `#define kRo_<Func> GL_RODATA(first K)`. The comment gives `RoData+0xLO..0xHI` and
+    each value, decoded by the load at its site: `f` = lwc1, `d` = ldc1, `jtbl` = lw of a Text
+    offset (a switch table), `table` = addiu (address taken), `bu` = lbu.
+  - `check` verifies two things. Each pool's range must equal the function's RoData K set. Each
+    `kRo_<Func>_<K>` site must be a RoData-base site with that K, inside <Func>.
+  - Main pools:
+    - ColourParms_ctor 0xD0C..0xDE4: 53 colour defaults, n/255.
+    - SnowBoarder_ctor 0x868..0x8BC: 22 parm defaults.
+    - SnowBoarder_procColl, SnowBoarder_updateOrient (float / double mix).
+    - fsin / fcos / math_acosf: libm doubles 1/pi, pi, coefficient tables.
+    - Audio_BuildSyntheticWave, CoolGadget_ctor, item_registerTemplates, Fader_display, gfx_emitProjection.
+  - Owners whose sites are plain `D_00000000` (spelled `GL_RODATA(K)` by `spell-base`) or derived
+    `_rodata` symbols can cite the pool name in a comment. The source keeps its exact spelling.
+- **Gotcha:** after a rename that touches a donor file spliced into another TU (game_libs_o2_70FCC.c
+  -> game_libs_post2.c.o), an incremental make links the stale .o (`undefined reference to
+  gl_ref_00002508`). The gate's clean build is correct. `uso-data-sites.py`'s auto-make warns about
+  this but still uses the fresh map.
+- **Census after run 504** (scratch /tmp/claude-1000/a504/py/progress.py, which counts kRo_ aliases as spelled):
+
+  | site kind | sites | named object | spelled with a name | raw on a named object |
+  |---|---|---|---|---|
+  | direct object relocs | 2753 | 2093 (76%) | 1644 (60%, was 1595) | 449 (161 plain, 184 per-site alias, 104 donor splice) |
+  | section-base relocs | 1809 | n/a | 798 (44%, was 496) | |
+
+  The 184 raw per-site aliases cover two Syms, or via-base sites only, so they cannot be renamed
+  after one object. The 161 plain sites are what the owner commands below fix, together with
+  `spell-base`'s base sites.
+
+**Per-owner commands** (`spell-base --owner-report`, at agent-a 1af977de7; 244 sites). Re-run
+`$PY scripts/uso-data-sites.py spell-base --owner-report` after your own edits: renamed functions
+change the `--only` lists. Then run `check`, and gate the batch as one hand-edit commit.
+
+```
+PY=/home/danjs/code/decomp/.venv/bin/python   # run from the project root; then `check` and the gate
+
+### agent-c: audio: Audio* / snd_* / Snd* functions, any file (15 sites, 1 commands)
+$PY scripts/uso-data-sites.py spell-base src/game_libs/game_libs_post.c --only '^(AudioHeap_CalcFilterCoefs|AudioLoad_DmaSlowCopy|AudioLoad_RelocateFont|AudioThread_ScheduleProcessCmds|snd_ResetChannel10Mode|snd_SetPlayer2ChannelIO_3190C|snd_SetPlayer3FreqScaleFromStick)$' --write   # 15 sites, 7 functions
+
+### agent-b: game_libs_post0b.c / game_libs_post1b.c (150 sites, 10 commands)
+$PY scripts/uso-data-sites.py convert CMod_vtbl src/game_libs/game_libs_post0b.c --only '^(CMod_ctor)$' --write   # 1 sites, 1 functions
+$PY scripts/uso-data-sites.py convert CamMan_vtbl src/game_libs/game_libs_post0b.c --only '^(CamMan_ctor)$' --write   # 1 sites, 1 functions
+$PY scripts/uso-data-sites.py convert gConsoleNode_3EF04 src/game_libs/game_libs_post0b.c --only '^(TextWin_ctor)$' --bare --write   # 1 sites, 1 functions
+$PY scripts/uso-data-sites.py convert gHostio src/game_libs/game_libs_post0b.c --only '^(BaseMat_hostioParms|CMod_hostioParms|FogParms_hostioParms|Mat_print|gfx_declColourParm)$' --write   # 15 sites, 5 functions
+$PY scripts/uso-data-sites.py convert gNodeGlobals src/game_libs/game_libs_post0b.c --only '^(BaseLight_doCommand)$' --write   # 1 sites, 1 functions
+$PY scripts/uso-data-sites.py convert gSysLib src/game_libs/game_libs_post0b.c --only '^(gfx_setEvery4thFrameFlag)$' --write   # 1 sites, 1 functions
+$PY scripts/uso-data-sites.py convert gTriEdgeNext src/game_libs/game_libs_post0b.c --only '^(CollShape_raycast)$' --write   # 1 sites, 1 functions
+$PY scripts/uso-data-sites.py spell-base src/game_libs/game_libs_post0b.c --only '^(AnimCmd_setTableEntry|AnimDataMgr_allocSlot|AnimDataMgr_ctor|AnimDataMgr_lookup|AnimPlayer_ctor|Animator_ctor|BaseLight_doCommand|BaseLight_hostioParms|BaseMat_init_000517E4|BasePolyShape_addTri|BasePolyShape_avgTriColour|BasePolyShape_genNormals|BasePolyShape_genNormalsFast|BasePolyShape_getVtxNorm|BasePolyShape_parseCmd|CollShape_query|ColourItem_ctor|DisplayMgr_add|DisplayMgr_ctor|FogParms_hostioParms|GfxLib_hostioForceError|LightTarget_hostioParms|Mat_print|Mat_printHex_000517B8|MorphPoly_checkVtx|PolyShape_allocLightDL_000435FC|RcpMgr_removeTask|RcpMgr_startTask|RcpMgr_update|RcpTask_init|RcpTask_noUcode_NoC|RcpTask_noUcode_fastQ|ScreenWindow_allocBuffers|Shadow_ctor_0004B0A8|Sprite_ctor_0004B620|Window_ctor|Window_display|Window_hostioParms|Window_setupView|Window_update|ZoneShape_build|absrot_matrix4|anim_createAnimator|anim_formatId|console_createSystemWin|console_formatValue|gfx_addWindow|gfx_assertTexAligned|gfx_checkDLOverflow|gfx_childName_00056084|gfx_declColourParm|gfx_end|gfx_printColourF|gfx_printColourRGBA|gfx_printDLUsage|gfx_renderMode2Word|gfx_renderModeWord|gfx_start|light_addDefault_000513CC|shape_cmdLightTarget|shape_cmdShape_00051520)$' --write   # 115 sites, 61 functions
+$PY scripts/uso-data-sites.py convert gProcNodeList_41700 src/game_libs/game_libs_post1b.c --only '^(skin_cmdSkinAnim|skin_cmdSkinShape)$' --write   # 2 sites, 2 functions
+$PY scripts/uso-data-sites.py spell-base src/game_libs/game_libs_post1b.c --only '^(AnimPlayer_getKeyFrame|AnimPlayer_getKeyTime|AnimPlayer_start|SkinAnim_ctor|SkinMgr_ctor|SkinMgr_init|SkinMgr_reset|skin_cmdSkinAnim|skin_cmdSkinShape)$' --write   # 12 sites, 9 functions
+
+### agent-b: gfx / anim / shape / window / light / CollShape functions in other files (5 sites, 4 commands)
+$PY scripts/uso-data-sites.py spell-base src/game_libs/game_libs_o2_44B78.c --only '^(gfx_setVideoMode)$' --write   # 1 sites, 1 functions
+$PY scripts/uso-data-sites.py spell-base src/game_libs/game_libs_o2_51AD8.c --only '^(gfx_decodeMatCmd)$' --write   # 2 sites, 1 functions
+$PY scripts/uso-data-sites.py convert gPolyFlags_3EEC4 src/game_libs/game_libs_o2_52CD4.c --only '^(BasePolyShape_parse)$' --bare --write   # 1 sites, 1 functions
+$PY scripts/uso-data-sites.py spell-base src/game_libs/game_libs_ncc_43654.cpp --only '^(PolyShape_buildStateDL_00043654)$' --write   # 1 sites, 1 functions
+
+### agent-h: bootup_uso (src/bootup_uso/*) (41 sites, 1 commands)
+$PY scripts/uso-data-sites.py spell-base src/bootup_uso/bootup_uso.c --only '^(SnowBoarder_ctor)$' --write   # 41 sites, 1 functions
+
+### agent-h: game_libs.c / game_libs_tail.c (31 sites, 4 commands)
+$PY scripts/uso-data-sites.py spell-base src/game_libs/game_libs.c --only '^(PointsGadget_allocSlot_00003B1C)$' --write   # 1 sites, 1 functions
+$PY scripts/uso-data-sites.py convert gInputMgr src/game_libs/game_libs_tail.c --only '^(Backup_resetAll_0000B710|Backup_sessionSetNewNames|Backup_writeCourseArcadeOptions_0000B3DC|RaceTracker_ctor|RaceTracker_popFinalScore|RaceTracker_reset|RaceTracker_sendWinResult|RaceTracker_toggleGhost)$' --write   # 15 sites, 8 functions
+$PY scripts/uso-data-sites.py convert gSnowBoard src/game_libs/game_libs_tail.c --only '^(Backup_resetOptionsData_0000AFC4|RaceTracker_sendEndingMsg)$' --write   # 2 sites, 2 functions
+$PY scripts/uso-data-sites.py spell-base src/game_libs/game_libs_tail.c --only '^(Backup_ctor|Backup_read|Backup_resetCourseData_0000A670|Backup_sessionResetCourseScores|Backup_sessionResetCourseTimes|Backup_write|RaceTracker_ctor)$' --write   # 13 sites, 7 functions
+
+### unassigned: other game_libs files (coordinator or any free agent) (2 sites, 2 commands)
+$PY scripts/uso-data-sites.py convert gl___osEventStateTab src/game_libs/game_libs_ido53_6E1A4.c --only '^(gl_osSetEventMesg)$' --write   # 1 sites, 1 functions
+$PY scripts/uso-data-sites.py convert gl___osEventStateTab src/game_libs/game_libs_post1b2c.c --only '^(gl_osSetEventMesg)$' --write   # 1 sites, 1 functions
+
+totals: agent-c 15, agent-b 155, agent-h 72, unassigned 2; all 244
+```
+
+- **Next:**
+  - Owners: run the commands above.
+  - agent-h: give item_registerTemplates' K = 0x7E50 site its own symbol (it now borrows `Tv1Tmpl_update`).
+  - Hand-convert the multi-object functions (DNode_solveContacts, SnowBoarder_*, MapProp_ctor / cam_create).
+  - Name the 704 sites on unnamed direct objects; `census --direct` lists them.
+
 ## 10. Worktree setup gotcha (Part 0)
 
 The fresh worktrees had **no `tools/ido-static-recomp` and no `baserom.z64` symlinks** (the
