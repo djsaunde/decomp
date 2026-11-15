@@ -159,6 +159,19 @@ InitSequencePlayerChannels), the dcb4 volatile-enabled sample-state view
 gAudioCtx (D+0x16E0 / 0x1724 / 0x1C1D8 are game_libs data: the USO reloc
 targets another section); only convert offsets whose target is proven.
 
+Run 478 (agent-c, commit aff387302, **pure rename**): 45 names lost their address suffix. In game_libs:
+the AudioThread-op wrappers (MuteAll 0xF1, Unmute / UnmuteAll 0xF2, SetSoundOutputMode 0xF0,
+StopAudioCmds 0xF8, StopPlayer0Seq / StopPlayer1Seq 0x83), the string-backed ones (AddSoundHeap /
+RemoveSoundHeap / HandleSeqEnd), the loop entries (Init, AudioUpdate, FrameUpdate, UpdateTimers, PreNMI,
+ScheduleSeq, PostEvent) and the SoundObj methods (Init, Reset, SetScaleIdx15 / 31, SetFlag1A, Disable,
+Start, Stop, Update, Play). In bootup: the 18 one-call wrappers (`snd_postEvent`, `snd_addSoundHeap`, ...,
+`SndHandle_start` / `stop` / `disable` / `setScaleIdx15` / `31` / `setFlag1A` / `setEventArg`), whose
+callees were checked against bootup TextReloc jals (/tmp/claude-1000/c478/buxref.py). Bootup keeps
+lowerCamel (`snd_addSoundHeap` wraps game_libs `snd_AddSoundHeap`). These kept their suffix:
+TriggerEvent / EventIndex / SetAngle / UpdateChannel, the channel-8 / cue-queue / player-N IO helpers,
+`SndHandle_triggerEvent0-3` / `setUnk1F`, and `snd_soundObjSetByte1D` / `SetScaled`. The mapping table
+below uses the old names; renames.tsv has the chains.
+
 ## Next
 
 1. Model more of SequenceLayer / SequenceChannel (the 27E24 / 28604 / 291C0

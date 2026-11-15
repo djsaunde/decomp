@@ -161,7 +161,8 @@ directly: every state ends in `SnowAI_applyStickInput` (0x7538), which writes st
 game.uso Data 0x638) into the rider's input object, so CPU riders go through exactly the steering in sections
 3 and 4. States: SnowAI_steer (follow course nodes; at forks it picks a branch by the bj / bt / bd / bu parms of
 the current level), SnowAI_finishRun, SnowAI_timeoutRun, SnowAI_recoverStuck (after 75 frames below speed 30).
-SnowAI_scanNodes / scanSegments re-acquire the path, one node per frame.
+SnowAI_scanNodes / scanSegments re-acquire the path, one node per frame. The "course nodes" are CourseMarker
+types (mrk, mk1..mk9, mkl, mkr), each resolved to the nearest marker of that type: docs/1080_COURSE.md section 6.
 
 ## 9. Open questions
 

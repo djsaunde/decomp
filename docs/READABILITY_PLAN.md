@@ -335,7 +335,7 @@ copies in game_libs donors); the game_uso main object (0x4E0) and its 0x3E0 chil
 SnowBoarder object; the audio context (OoT `AudioContext` analogue); the libgdl Gfx/DL context
 (the gui_uso GfxCtx idiom `ctx->0xC` = DL cursor).
 
-### 9.1 USO section-base accesses (`&D_00000000 + K`) — plan (agent-a run 472)
+### 9.1 USO section-base accesses (`&D_00000000 + K`) — plan (agent-a run 472), tool + object names (run 479)
 
 **What a site is.** Every game_libs data reference is spelled off the zero placeholder
 (`(char *)&D_00000000 + K`), because the ROM holds pre-relocation words. The bootup.uso
@@ -375,17 +375,88 @@ D_00000000 cannot work.** Rule 4e (keep the D_00000000 symbol and K) still holds
 - Per-site *struct* overlay is still right **inside one object** (DmaSlot fields, HUD gadget
   vtable slots): the accessor gives the base, the struct gives the fields.
 
-**Tooling still to build** (next step): `scripts/uso-data-sites.py` that walks bootup.uso's
-Sym/TextReloc (parser: `scripts/uso-sym-oracle.py`; text offset = game_libs VRAM + 0x1466C)
-and emits, per function, each `&D_00000000` site as (section, Sym index, object offset, K).
-Uses: (a) a **checker** that every accessor macro use sits on instructions relocated against
-the Sym its comment claims (catches a K=0x10 Data string mislabelled as a Bss field);
-(b) a census to rank objects by access count, for naming waves; (c) a draft macro table
-(`gl_bss_3A240` style placeholders, renamed as areas identify them). Data objects referenced by
-DataReloc (vtables, string tables) can be named the same way.
-
 **Prototype (commit 628bc635c on agent-a):** `gDmaSlots` + the five dma_* strings, used by
 dma_startRead / startWrite / wait / read / write / allocSlot (game_libs_post.c). Gate PASS.
+
+#### 9.1.1 The tool: `scripts/uso-data-sites.py` (agent-a run 479)
+
+Reads bootup.uso Sym / TextReloc / DataReloc / RoDataReloc from the ROM, the map (bootup_uso and
+game_libs function placement, as Text section offsets: bootup_uso = VRAM, game_libs = VRAM + 0x1466C)
+and the built .o relocs (which placeholder each site is spelled with). HI16/LO16 are paired exactly as
+`uso_relocate` does, giving K. Needs a built tree; run from the project root with the venv python
+(`/home/danjs/code/decomp/.venv/bin/python scripts/uso-data-sites.py ...`).
+
+| subcommand | does |
+|---|---|
+| `sites FUNC..` | every LO16 site of a function: text offset, K, placeholder name, object (+offset) |
+| `census [--direct] [-n N]` | objects ranked by sites; columns sites / functions / distinct offsets / size (to the next named object) / DataReloc words inside (`N/MT` = M point at Text, i.e. a vtable) |
+| `object SYM` (or `Data:0x7290`) | the object's DataReloc words (vtable slots resolved to function names) and every function touching it, with offsets |
+| `check` | every `#define` over a placeholder whose comment says `Sym N` (or `GL_DATA/GL_RODATA/GL_BSS(K)`) must have a matching site in every function that uses it; exit 1 on a mismatch |
+| `convert NAME FILE.. [--exclude RE] [--write]` | respell a header object alias's plain-`D_00000000` sites (rules below) |
+| `selftest` | 1950 / 778 HI16 object sites, DMA claims accepted, wrong-section / wrong-object claims rejected, span parser regression |
+
+"[via base]" rows are section-base sites whose K falls inside a named object's span (same-TU objects,
+or anonymous strings after the last named object): identity by position only. Sizes are inferred.
+Census (run 479): 4670 LO16 sites; 400 objects have direct object relocs (2797 sites).
+
+#### 9.1.2 Convention: object aliases (run 479)
+
+`include/gdl/gl_data.h` holds the shared table. An object alias names the **placeholder symbol**:
+```c
+#define gHostio D_00000000 /* Bss+0x3C768 Sym 338, 8 bytes: ... evidence ... */
+```
+so `&gHostio`, `(char *)&gGfxLib + 0xA0`, `*(int *)&gSysLib`, `INPUT_MGR(gInputMgr).pads` all
+preprocess to the old tokens: byte-safe by construction, whatever the TU's `D_00000000` type is.
+Typed accessors (`gDmaSlots ((DmaSlot *)&D_00000000)`, in the subsystem header) remain right when
+the object has a struct and every use is through it. The comment MUST say `Sym N` (checker key).
+
+- **Only plain `D_00000000` sites convert.** Per-site zero aliases (`D_415A4_s1`, `D_00000000_3c740`,
+  `gl_d_4c5e4_flag`, `snw_port_func_..._timer_object`, ...) exist to defeat IDO's address CSE and
+  must keep their own symbol. They could later be *renamed* with rename-symbol.py to object-derived
+  names (e.g. `gSysLib_415A4_s1`), which is a linker-symbol rename, not a macro.
+- **`convert` proof rule.** A `&D_00000000` (+ K) site converts only when *every*
+  `D_00000000`-relocated LO16 in that function with the same K names the claimed Sym. Functions
+  whose .o carries no relocs (REPLACE_FUNC_BODY donor splices) are skipped. A function that
+  touches two objects at K = 0 (e.g. BestScoreGadget_ctor stores two vtables) is left alone:
+  convert those by hand with `sites FUNC` open, then run `check`.
+- After converting: `check` (0 mismatches), then the gate. Verify the diff is pure substitution
+  (map the names back to `D_00000000` and compare the -/+ lines).
+
+#### 9.1.3 Named objects (run 479; commit 8d02f1b50)
+
+| name | object | size | evidence | converted |
+|---|---|---|---|---|
+| `gAudioContext` | Bss+0x345C0 Sym 1255 | 0x5C30 | 379 sites, 133 Audio* functions (OoT gAudioContext) | 0: every site is a per-site alias (`D_00000000_345c0`, `gl_*_gAudioCtx` local macros). **agent-c**: retarget the local `gAudioCtx*` macros to it |
+| `gGfxLib` | Bss+0x3C168 Sym 154 | 0x5D8 | GfxLib global, 1080_GRAPHICS section 2 | 0 (header only). **agent-b**: `convert gGfxLib` finds 33 sites (DisplayMgr_display, RcpMgr_startTask, ColourItemType_display, console_drawTextN, shape_cmdShape, EnvSettings_display, SnowBoarder_func_0000DDCC/DF04/E014, TreeTmpl_display, Fader_checkDone, app_func_00042374/424FC, hostio_func_00042438/4247C) |
+| `gSysLib` | Bss+0x3C740 Sym 73 | 0x28 | `this` of heap_tempAlloc/FreeDefault, the fs_gdlRead*/stream_read* parm readers, pad_testButton, sys_timeInFrames; App_main queries its memory range first (169 functions). Role inferred from callers | 86 sites |
+| `gHostio` | Bss+0x3C768 Sym 338 | 8 | first argument of every hostio_beginGroup / add / endGroup in 47 `<Class>_hostioParms` | 52 sites (gfx / camera / light classes left to their owners: GfxLib, BaseMat, PolyShape, FogParms, BaseLight, LightTarget, CMod, MCamera, Window, Mountain, MapProp) |
+| `gInputMgr` | Bss+0xF8 Sym 272 | 0x194 | InputMgr (include/game/input.h) | 26 sites |
+| `gDmaSlots` | Bss+0x3A240 Sym 1504 | 0x2A8 | dma.h (run 472) | 6 functions |
+
+**Next naming wave (from `census --direct`).** Vtables (Data objects with Text DataRelocs; name each
+from its display / handleMsg slot with `object SYM`): Data+0xC77C Sym 861 = TimeGadget vtable (slot
++0x1C TimeGadget_display), +0xC7DC Sym 862 = CountDownGadget, +0xC8B4 Sym 864 = BestGadget
+(BestScore/BestTime ctors store 861 then 864: the inlined base ctor), +0xC760 Sym 860 (RaceProcess
+handleInput/reset, 1 Text ptr), +0x7290 Sym 256 (RaceProcess_createReplayCam, game_setupDemo*;
+784 bytes, 6 Text ptrs), +0x776C Sym 274 (17 Text ptrs; CamDirector_update, RaceTracker_findGates,
+SnowBoarder_handleMsg), +0xC338 Sym 850 (Fader_ctor, PauseMenu_create), +0x1EAA8 Sym 315 (MNode
+vtable: MNode/MCamera/BaseLight ctors), +0x75A0 Sym 143 (ColourItem_create x11), +0x1EFC0 Sym 414
+(item_create*). Bss: Sym 1448 Bss+0x338 (snd cue queues, 352 B, agent-c), Syms 1520/1542/1544 (the
+three 64-byte fs_buf* stream buffers), Sym 2605 Bss+0x42CA0 (__osContRam*/__osPfs*: the PIF buffer,
+4624 B), Sym 289/290 (BasePolyShape globals), Sym 550 Bss+0x3C058 (Node/BaseLight doCommand),
+Sym 326 Bss+0x58 (Backup / GameFlow), Sym 1558 Bss+0x416A0 (app_loadUso / unloadUso, 16 fns),
+Sym 2422 Bss+0x3F150 (boot stacks, 9552 B), Sym 2617/2576/2616 (the LeoDisk / DriveRom / CartRom
+OSPiHandles in gl_osLeoDiskInit / DriveRomInit / CartRomInit). Data scalars: Syms 1425-1432
+(snd), 2517/2533/2512 (__osThread* globals in gl___osDispatchThread / ExceptionPreamble).
+
+#### 9.1.4 osLeoDiskInit donor (run 479)
+
+The kernel donor kernel_ido53_4E50.c defined `LeoDiskHandle` / `__osDiskHandle` (tentative defs
+plus absolute pins), which blocked naming the kernel symbols. `extern` breaks the match (IDO 5.3
+then loses the shared lui $at of the pageSize/relDuration sb pair), so they are `static` now: the
+splice renames the .bss relocs to `osLeoDiskInit_bss` (pinned 0x800195D0; __osDiskHandle = +0x74).
+Kernel D_800195D0 / D_80019644 are now LeoDiskHandle / __osDiskHandle (pure rename 3d9282421).
+The interior field symbols D_800195D4..D_800195E0 stay `D_` (separate reloc symbols in the target).
 
 ## 10. Worktree setup gotcha (Part 0)
 

@@ -1,7 +1,9 @@
 # 1080: graphics pipeline (libgdl GfxLib), for a port author
 
 > agent-b run 476, 2026-11-15, 1080 branch agent-b (f00df5e00 [rename, 52 gfx_], 9a27aa26d [headers],
-> 54299fbde [DLMark / Window conversions], f15861371 [rename, 1]). Code: game_libs
+> 54299fbde [DLMark / Window conversions], f15861371 [rename, 1]). Run 481: 8b26df4ee [conversions,
+> material.h MAT_FMT_*], ef315c9e8 [rename, 4]; sections 6.1 / 6.2 / 7.1 (texture formats, material
+> and shape command streams) are new. Code: game_libs
 > `src/game_libs/game_libs_post0b.c` 0x41F90-0x5A9D0 plus NCC donors `game_libs_ncc_*.cpp`.
 > Headers: `include/gdl/{dlctx,rcp,window,polyshape,material,light,sprite,node}.h`.
 > Addresses are game_libs segment offsets (`nm build/tenshoe.elf` value). Related: docs/1080_ENGINE_CORE.md
@@ -75,7 +77,7 @@ Known fields:
 | 0x218 | RcpMgr * | GfxLib_hostioParms, GfxLib_reset busy-wait |
 | 0x240 | main ScreenWindow * | GfxLib_init, gfx_drawFbChar / gfx_drawFbSplash / gfx_clearFbRect |
 | 0x254 | current ScreenWindow * (emitters write to ->dl at +0x158) | ScreenWindow_display, gfx_emitRenderState, FogParms_emit |
-| 0x28C | word set by 0x46788 (GfxLib_reset, TextWin_draw) | role open |
+| 0x28C | CPU-draw flag: gfx_drawText / gfx_fillRect draw into the frame buffer when set | gfx_setCpuDraw (0x46788): TextWin_draw and the debug sprintf set 1 then 0, GfxLib_reset 0 |
 | 0x2AC | 51 words zeroed by GfxLib_reset | |
 
 ## 3. Display-list building
@@ -151,8 +153,77 @@ G_DL (gfx_callStaticDL) into that span. BaseMat_vslot4 (0x437C0) rebuilds a mate
 gfx_setLightDirs); gfx_setupMatTextures (0x45E20) sets texgen + G_TEXTURE scale and calls
 gfx_loadTexture (0x578B4, 0x25CC bytes: tile/LOAD_BLOCK/TLUT per format, "bad texfmt num %d",
 "unkown tile") per texture; gfx_flushTexture writes texels and TLUT back from the CPU cache;
-gfx_assertTexAligned ("Texture not aligned"). GDL_MC material commands: gfx_decodeMatCmd (0x51694+),
+gfx_assertTexAligned ("Texture not aligned"). GDL_MC material commands: gfx_decodeMatCmd (0x51AD8),
 Mat_fromFrameBuffer (render-to-texture from a ScreenWindow), Mat_clone.
+
+More BaseMat fields (run 481, material.h): id +0x18 (-1; "MAT %d", "unknown mat(%d) size %d"),
+shiftS / shiftT +0x2C / +0x2E, render tile +0x3C, next texture +0x40 (multi-texture chain), name
++0x44 ("<no name>"); geomFlags bit 22 = textured (Mat_print shows "Tex" vs "RGB").
+
+### 6.1 Texture formats (gfx_loadTexture 0x578B4, NCC donor game_libs_ncc_578B4.cpp)
+
+`format` = (component kind << 8) | bits per texel. hostio_sendImage computes the image size as
+`(fmt & 0xFF) * w * h / 8` (+ 0x200 for 0x508); gfx_texelBytes (0x52144) returns 4 / 2 / 1 / 0.5
+(else "unknown mat(%d) size %d"); gfx_texImageBytes = texelBytes * w * h, gfx_texRowBytes = texelBytes * w.
+The G_SETTIMG / G_SETTILE words in each arm give the N64 format (macros `MAT_FMT_*` in material.h):
+
+| code | N64 format | whole-texture load (no record) | image-record load (texFlags 0x10) |
+|---|---|---|---|
+| 0x120 | G_IM_FMT_RGBA, 32b | RGBA32 LoadBlock | RGBA32 LoadTile |
+| 0x110 | G_IM_FMT_RGBA, 16b (also every frame-buffer texture) | RGBA16 LoadBlock | RGBA16 LoadTile |
+| 0x408 | G_IM_FMT_IA, 8b | loaded as IA 16b (w*h/2 texels), render tile IA8 | IA8 LoadTile |
+| 0x308 | G_IM_FMT_I, 8b | loaded as I 16b, render tile I8 | I8 LoadTile |
+| 0x304 | G_IM_FMT_I, 4b | loaded as I 16b (w*h/4), render tile I4 | loaded as I8 at width/2 (LoadTextureTile_4b), render tile I4 |
+| 0x508 | G_IM_FMT_CI, 8b + 256-entry RGBA16 TLUT | TLUT, then CI as 16b, render tile CI8 | TLUT, then CI8 LoadTile |
+| 0x608 | 1 byte/texel + 0x200-byte TLUT (texelBytes, flush and size code accept it) | **rejected**: "bad texfmt num %d" | rejected: "unkown tile" |
+
+Every load starts with G_SETOTHERMODE_H G_MDSFT_TEXTLUT = G_TT_NONE (0xBA000E02, 0), or G_TT_RGBA16
+(0x8000) after a CI8 TLUT. The TLUT load is G_SETTIMG RGBA16 (the palette), G_RDPTILESYNC,
+G_SETTILE tile 7 at TMEM 0x100 (64-bit words: the upper half), G_RDPLOADSYNC, G_LOADTLUT count 255
+(0x073FC000), G_RDPPIPESYNC. CI textures go through a CI record: `*(texels)` -> {+0x8 pixels,
++0xC palette}.
+
+- **Whole-texture path** (texFlags & 0x10 clear; the gbi gDPLoadMultiBlock form): pixels at
+  `texels`, TMEM address = gfx_loadTexture's 3rd argument (& 0x1FF, 64-bit words), render tile =
+  `tile` (& 7), shifts = shiftS / shiftT, LoadBlock with texels-1 clamped to 0x7FF and
+  dxt = (0x7FF + w/8) / (w/8) (CALC_DXT). Port caveat: the shipped CI8 arm of this path reads the
+  record pointer (and the LoadBlock width / height from it) from a stack slot that only the record
+  path writes (0x59A04 `lw a2,476(sp)`), so CI8 is only well-defined with MAT_TEX_RECORD set.
+- **Image-record path** (texFlags & 0x10; the gbi gDPLoadTextureTile form): `texels` points to a
+  record {+0x0 image (or the CI record), +0x4 uls, +0x8 ult, +0xC image width, +0x10 image height};
+  the texture is the (width x height) sub-rectangle at (uls, ult) of the wider image, loaded through
+  tile 7 at TMEM 0 into render tile 0 (no shifts), SETTILESIZE from (0, 0).
+- **Wrap / mask** (both paths): masks / maskt = 0x62F08(width) / (height) (log2); cms from texFlags
+  0x100 (wrap, wins) / 0x200 (G_TX_CLAMP) / 0x400 (G_TX_MIRROR), cmt likewise from 0x1000 / 0x2000 /
+  0x4000 (`MAT_TEX_*`).
+- **gfx_setupMatTextures** (0x45E20): geomFlags bit 20 -> G_SETGEOMETRYMODE G_TEXTURE_GEN (+
+  G_TEXTURE_GEN_LINEAR with bit 24), texFlags |= 0x1100 (wrap S and T), G_TEXTURE scale 1984 / 1984
+  (3968 for S on a 64-wide texture); otherwise G_CLEARGEOMETRYMODE G_TEXTURE_GEN and scale 0xFFFF.
+  The G_TEXTURE word is 0xBB040801 (tile 0, on). Then it walks the `next` chain, numbering `tile`
+  0, 1, ..., calling gfx_loadTexture(ctx, mat, tmem) and advancing tmem by gfx_texImageBytes / 8;
+  then G_RDPPIPESYNC.
+
+### 6.2 Material commands (GDL_MC, gfx_decodeMatCmd 0x51AD8, donor game_libs_o2_51AD8.c)
+
+A stream of s32 words `{op, args...}` decoded into a BaseMat; unknown ops print
+"unknown GDL_MC cmd %d".
+
+| op | args | effect |
+|---|---|---|
+| 200 | 1 | skipped |
+| 201 | - | sub-parse (callee gets (stream, mat)) |
+| 202 | index (+4 words) | copy the colour from table [index] (Data +0x160) if set, else sub-parse |
+| 203 | format, texels, width, height, texFlags, shiftS, shiftT | the texture (section 6.1) |
+| 204 | geomFlags | +0x34 = 0, geomFlags = arg |
+| 205 / 206 | mask | geomFlags \|= mask / &= ~mask |
+| 207 | word | +0x34 = word |
+| 208 | name | look up a shared record: +0x48 = it, +0x34 / +0x38 = its words 1-2 |
+| 209 | name | name (+0x44) |
+| 210 | 4-char code | +0x58 = the 4 bytes, +0x32 = code[0], +0x30 = hex(code[1]) << 8 \| hex(code[2]) |
+| 211 | index | copy the whole material from the global table [index] (Data +0x148); "No glbMat" if empty |
+
+BasePolyShape_parseMats (0x51F5C, NCC donor game_libs_ncc_51F5C.cpp) is the token loop around it
+("too many materials", "Too many objects for List", "no parent mat", "unknown MatCmd cmd %d").
 
 ## 7. Shapes
 
@@ -173,6 +244,46 @@ Mat_fromFrameBuffer (render-to-texture from a ScreenWindow), Mat_clone.
 - `Sprite` (sprite.h, 0xD8): textured 2D quads; its "SS StartDL" sets 1-cycle, render mode, texture
   filter and G_TEXTURE once ("SS EndDL", "sprblock").
 - Shadow (Shadow_ctor 0x4B0A8): projected blob.
+
+### 7.1 Shape command stream (BasePolyShape_parse 0x52CD4, donor game_libs_o2_52CD4.c)
+
+The on-cartridge shape is a stream of s32 words: `op = word & 0xFFFF`, then the op's arguments, until
+op 2 (end). Pointers in the stream are already-relocated addresses of arrays in the same asset.
+Field names refer to polyshape.h (BasePolyShape).
+
+| op | args | effect |
+|---|---|---|
+| 0 | - | lit flag: normals are generated with lighting (passed to the normal generator) |
+| 1 | - | no-op |
+| 2 | - | end of stream |
+| 4 | ptr | +0x64 |
+| 6 | word | call (shape, word) |
+| 7 | word | +0x78 |
+| 8 | word | +0x7C, flags(+0x38) \|= 8 |
+| 9 | word | +0x50 |
+| 10, 19 | 1 | skipped |
+| 11 / 21 | bool | flags(+0x38) bit 0x2000 / 0x4000 |
+| 12 | word | +0x98 |
+| 18 | int | +0x9C = int / 10000.0f (default 1.0) |
+| 20 | bool | run a post-pass on the shape after parsing |
+| 25 | ptr | palette (+0x5C, RGB888) |
+| 26 | n, ptr | +0x44 (nTris) = n, +0x4C = ptr |
+| 27 | n, ptr | nVerts (+0x40), verts (+0x60, s16 x/y/z rows) |
+| 28 | n, ptr | nTris (+0x44), tris (+0x68, PolyTri {u16 flags, u16 v[3]}); enables the normal pass |
+| 29 | n, ptr | materials: "Mats", +0x8C = n, +0x80 = ptr, +0x84 = alloc(n*4); BasePolyShape_parseMats on the GDL_MC stream (6.2) |
+| 30 | ptr, ptr | +0x48, +0x6C |
+| 31 | - | "parsed materials broken" (error) |
+| 32 | ptr, ptr | +0x74, remap (+0x70, 3 u16 per vertex) |
+| 34 | ptr, ptr | vtxNormals (+0x58), faceNormals (+0x54) (f32[3] each) |
+| 35 | word | +0xA0 |
+| 36 | 3 | "shape scale dont work mate" (unsupported) |
+| other | | BasePolyShape_parseCmd (0x5231C): 3 = Node +0xC; 13 / 14 = node flags(+0x30) bit 2 / 1; 15 / 22 / 23 = flags(+0x38) bit 2 / 1 / 0x20000; 17 = +0x30 bit 4 then bit 2; 24 = flags(+0x38) \|= word; anything else "Invalid Shape cmd %d" |
+
+After op 2: with tris present (op 28) and no palette (+0x5C) and no vertex normals, allocate
+nVerts * 0xC vertex normals; without face normals allocate nTris * 0xC; then generate them
+(palette shapes get the one-argument variant, others (shape, lit, 1)). Unless gfx flag 0x100 is set
+the face-normal array is freed after use. A port can load these streams directly; every array is
+big-endian (byte-swap s16 / u16 / f32 on a little-endian host).
 
 ## 8. Lights, fog, hilites
 
@@ -195,8 +306,10 @@ FogParms (0x18: colour f32[4], min, max; "FogParms" / "Min" / "Max"): FogParms_s
    needs a readable/writable colour buffer in the port.
 3. **Fixed-point conversions**: Mtx (guMtxF2L), Vp quarter-pixel units, perspNorm (G_MW_PERSPNORM,
    ignore on a float pipeline), s8 normals (gfx_floatToS8x3), Light_t dir bytes.
-4. **Texture formats**: gfx_loadTexture's format table (format codes such as 0x110, 0x508 / 0x608
-   with a TLUT; the full code -> G_IM_FMT/SIZ table is not decoded yet) and TMEM tiling; texgen (G_TEXTURE_GEN) environment mapping and hilites.
+4. **Texture formats**: the section 6.1 table (RGBA32 / RGBA16 / IA8 / I8 / I4 / CI8 with an RGBA16
+   TLUT; convert to host formats at load time) and the TMEM layout (a multi-texture material packs
+   its textures back to back from TMEM 0, render tiles 0..n); texgen (G_TEXTURE_GEN) environment
+   mapping and hilites.
 5. **Cache / physical addresses**: osVirtualToPhysical in every G_DL / G_VTX word (gl_func_0006C384),
    osWritebackDCache (gfx_flushTexture). Both become no-ops.
 6. Keep: the DLContext / Node / Window structure, the matrix stack, materials, shapes and lights are
@@ -204,14 +317,22 @@ FogParms (0x18: colour f32[4], min, max; "FogParms" / "Min" / "Max"): FogParms_s
 
 ## 10. Open items
 
-- Roles still open (kept as `gfx_func_` / factual names): 0x43D2C (copies +0x64), 0x453A8 (two libm calls
-  on floats, results unused), 0x46788 (gfx +0x28C), 0x46B44 (gfx_vcall thunk), 0x47AB4 / 0x47AD8
-  (gfx +0x1F8 bytes), 0x47F68 (gfx +0x188 / +0x1E0 mode), 0x4E138 ((gfx +0x14 & 3) == 0);
-  gfx_setSizePairA/B (which of the two 320x240 pairs is screen vs frame buffer); the five
-  gfx_emptyStub_ (likely vtable slots).
-- Not converted to the new structs yet: ScreenWindow_display (NCC donor with its own local struct),
-  Window_setupView, ScreenWindow_allocBuffers, LightTarget_ctor, BaseLight_ctor, BaseMat_init,
-  MorphPoly_init, Sprite_ctor (has its own Obj620 view). Window/ScreenWindow fields between 0x100 and
-  0x144 and 0x174-0x1C0 are mostly unnamed.
+- Roles still open (kept as `gfx_func_` / factual names): 0x43D2C (copies +0x64; called by
+  PolyShape_vfn10), 0x453A8 (two libm calls on floats, results unused; no game_libs caller),
+  0x46B44 (gfx_vcall thunk; no game_libs caller), 0x47AB4 / 0x47AD8 (gfx +0x1F8 bytes, = vec * 127;
+  no game_libs caller and no game_libs reader of +0x1F8), 0x47F68 (gfx +0x188 = mode, +0x1E0 =
+  mode == 0; Window_display calls it with 0 then 1; nothing in game_libs reads either word),
+  0x4E138 ((gfx +0x14 & 3) == 0, gfx_end); gfx_setSizePairA/B; the five gfx_emptyStub_. The
+  "no caller" ones are exported to other USOs: look in bootup_uso / game_uso for their callers.
+- Converted in run 481: Window_setupView, ScreenWindow_allocBuffers, LightTarget_ctor (now
+  shape_cmdLightTarget, the GDL command that creates the node), BaseMat_init, MorphPoly_init, the
+  Sprite_ctor cfe reference body. The ScreenWindow_display NCC donor keeps a local view (its member
+  types carry the match) but its fields now use the window.h names. Still raw: BaseLight_ctor, the
+  Sprite_ctor NCC donor (C++ classes, members b0 / cc / d0 = scaleX / startDL / endDL).
+- Window / ScreenWindow fields 0x100-0x144 and 0x174-0x1C0: still mostly unnamed. Known since
+  run 481: ScreenWindow_display passes &Window+0xDC, +0x104 bit 2, +0xC0 / +0xC4 and the frame-buffer
+  size to the clear call; +0x1B0 is its last argument; +0x1C0 = bgDL[fbIndex].
+- Anim / skin data formats (AnimPlayer, SkinMgr): not decoded yet.
+- The texture-format 0x608 (accepted by the size code, rejected by the loader) may be dead data.
 - A typed model of the GfxLib global (section 2) for documentation; matched code must keep the
   `D_00000000 + K` form.

@@ -62,7 +62,7 @@ These belong to areas C (post.c) and E (post0b). Whoever owns post0b should take
 | 0x6A8C-0x8884 | object/list glue, 0x76F0 = mp72 donor | not yet |
 | 0x8AE4-0x93DC (o0_8AE4, mid) | -O0 mode launchers: load a .uso via bu_0118E4 and call its entry, common tail 0x93DC | app_launchNameEnt (nameent.uso), app_launchViewRec (viewrec.uso = replay) |
 | 0x97B4-0xC46C | **Backup = SRAM save** (section 4) | Backup_*, backup_checksum* (24) |
-| 0x9978-0xB710 | generic containers / iterators used by Backup and the race object (0x9DB8/0x9EBC/0xAAEC use string "ead") | not yet |
+| 0x9978-0xB958 | Backup record / ghost / session helpers (section 4, "Record helpers") | all named (agent-c run 478) |
 | 0xC784-0xE47C | race-object methods (0xD0D0 "chk"/"gtl"/"gtr" parms, 0xD318-0xE230 slot allocators shared with 0x3B1C/0x3C0C) | not yet |
 | 0xE2A4-0xEAAC | the HUD object that owns the gadgets | hud_releaseGadgets, hud_add<X>Gadget, hud_initSprites_* (struct Hud) |
 
@@ -86,6 +86,33 @@ mirror copy and restores the primary from it.
 | 0x218 | ghost header (n at +4), data n*4 at 0x230 | 16 | 0x228 | 0x7FE8 / 0x7FF8 |
 
 Structs and `BACKUP_SRAM_*` macros: include/gdl/backup.h (agent-c run 474; 1080_MODES.md "Run 474").
+
+**Record helpers (agent-c run 478).** Every Backup helper now has a plain name. The call graph comes
+from the bootup.uso TextReloc table + `scripts/emu-symdump/bootup_uso.symnames.json`: game_libs offset =
+bootup Text offset - 0x1466C. Script: /tmp/claude-1000/c478/xref.py, which prints calls and callers for a
+name regex.
+- **Bit 0x80 of an entry's flags is "new record" (`BACKUP_ENTRY_NEW`), not a valid bit.** The setters
+  OR it in, the default tables never set it, and `Backup_writeCourse` / `writeArcade` run
+  `courseClearNew` / `arcadeClearNew` before writing. The low 7 bits are character | board << 3
+  (`BACKUP_ENTRY_CHAR` / `_BOARD`).
+- Entry level, for each of `time` / `score` / `arcade`: `<x>EntryClearNew`, `SetName` (initials +
+  character / board), `Init` (defaults), `IsNew`, `IsSlower` / `IsLower`, `Set` (value + NEW).
+- Record level: `courseRecord{ResetTimes, ResetScores, ClearNew, SetNewNames, CountNewTimes,
+  CountNewScores, GetTime, GetScore, FindTimeRank, InsertTime, FindScoreRank, InsertScore}`,
+  `courseClearNew`, `courseSetNewNames`, and `arcade{ClearNew, SetNewNames, CountNew, GetEntry,
+  FindRank, Insert}`. hud_loadRecords calls the Find / Insert pairs.
+- Session level (BackupSession *): `sessionCountNew` / `HasNew` (RaceProcess_leave) /
+  `CountNewCourses` / `ListNewCourses`, which drive the name-entry screen; `sessionSetNewNames` (the
+  initials entered there, per BACKUP_MODE); `sessionClearNew`; `sessionResetCourseTimes` /
+  `CourseScores` / `Arcade` / `Ghost` (reset + write back).
+- Ghost: `ghost{Get,Set}{Mode, Bits2, Flag5, Bits6, Course}`, `ghostIsMode`, `ghostMatches`
+  (openSession), `ghostSetHeader`. app_createGame copies Bits2 / Flag5 / Bits6 to game global
+  +0x181..0x183, probably the ghost rider's character / variant / board. Bits2 is 3 bits and Bits6 is 4
+  bits, as in the entry flags; unconfirmed.
+- `Backup_cacheGhostBits` (C49C, end of the ctor) stores the saved ghost's bits in Backup.ghostBits.
+  `Backup_wordsEqual` (B958) has no bootup caller.
+- The renamed `Backup_writeCourseData_0000A768` / `writeArcadeData_0000AB70` are now `courseClearNew` /
+  `arcadeClearNew`; they never wrote anything.
 
 ## 5. Structs
 
@@ -305,8 +332,8 @@ loads genproc (+ charsel, and charsps / charfir / charmap by mode) and runs its 
 0x37540, the stick-driven debug controllers; no ctor in game_libs). Everything else got a TU or class prefix
 with the address kept (`Backup_func_`, `RaceTracker_func_`, `gfx_func_`, `coll_func_`, ...).
 
-**Next.** Read the result sprites (ids 0x60000-0x6000B) to name results 2-5; the Backup record helpers
-(0x9978-0xB958) need the BackupCourse/Arcade/Ghost structs; the `*_func_<addr>` range names in post0b
+**Next.** Read the result sprites (ids 0x60000-0x6000B) to name results 2-5; (Backup record helpers:
+done, run 478, section 4); the `*_func_<addr>` range names in post0b
 0x42000-0x4C000 (gfx) and 0x39EE4-0x3CF94 (coll) are the next refinement targets.
 
 ## 11. Run 469 (agent-c): race structs

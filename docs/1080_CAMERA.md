@@ -6,6 +6,7 @@ names. Written by agent-g run 475 from the matched code. "k" = a RoData constant
 ## Index
 - [1. Objects](#1-objects)
 - [2. Who builds what (bootup cam_create)](#2-who-builds-what-bootup-cam_create)
+- [2a. The course camera (game.uso CourseCam, 0x27C)](#2a-the-course-camera-gameuso-coursecam-0x27c)
 - [3. The eye: SnowChaseActorCam](#3-the-eye-snowchaseactorcam)
 - [4. The look-at point: SnowChaseActorLook](#4-the-look-at-point-snowchaseactorlook)
 - [5. SnowChaseActor (the one-body variant)](#5-snowchaseactor-the-one-body-variant)
@@ -38,6 +39,31 @@ names. Written by agent-g run 475 from the matched code. "k" = a RoData constant
 
 The game.uso camera's views (cam_setView_00000AEC) switch the two components with
 `SnowChaseActorCam_setMode(cam + 0x154, mode, &rider->vel)` and `SnowChaseActorLook_setMode(lookat + 0xB4, ..)`.
+
+### 2a. The course camera (game.uso CourseCam, 0x27C)
+
+The camera of modes 0 / 2 (`cam_ctor_00000858`, include/game/camera.h `CourseCam`; agent-g run 480) is an MCamera
+that plays **scripted paths** from rom/cam_info.bin:
+- `lists[view]` (0x158, `numLists` 0x1D0) is a CamList: up to 8 path indices played in order (`listPos` 0x254);
+- `paths[i]` (0x1D4, `numPaths` 0x24C) is a CamPath (0x7C): per-channel modes plus `numKeys` and the key pointers;
+- a CamKey (0x38) is look Vec3, eye Vec3, up Vec3, fov, frames (to the next key), rot Vec3 (pitch / yaw / roll).
+`cam_updateView_00000B3C` evaluates a uniform cubic B-spline over keys k-1..k+2 at t = frame / key->frames for each
+channel whose mode says "spline" (eye, look, up, fov, rot), else takes key k's value; `key` / `frame` (0x25C /
+0x260) advance one frame per update, and the path ends at numKeys (then the next path of the list).
+A path with `eyeMode == 1` / `lookMode == 1` hands the eye / look-at to the chase components (sections 3 and 4):
+that is the in-race view. There the player cycles `chaseMode` (0x26C) with pad pressed 0x40 (0 -> 1 -> 2) and
+holds 0x80 for 3 (look back; `savedChaseMode` 0x270 restores):
+
+| chaseMode | eye component mode | look component mode | |
+|---|---|---|---|
+| 0 | 1 | 1 | normal chase (height toy) |
+| 1 | 2 | 1 | chase at height ty2 |
+| 2 | 3 | 2 | fixed eye, looking 1000 ahead |
+| 3 | 3 | 3 | fixed eye, looking 1000 behind |
+
+Modes 2 / 3 also set rider +0xA58 bit 0x2000. `view` (0x250) is picked by cam_command (commands 3..18) or, when
+`rider->raceResult` changes (`lastResult` 0x264), by cam_pickResultView (result + game mode -> view 0..14).
+`pad` (0x274) is the input pad: cam_create's p4.
 
 ## 3. The eye: SnowChaseActorCam
 
@@ -98,7 +124,9 @@ is an orbit / pan controller. Neither is used for the race view.
 
 ## 9. Open questions
 
-- cam_create's p4 (player or window index?), and the exact classes of the cam_ca / lookat_ca chase objects
+- cam_create's p4 is the input pad (CourseCam.pad +0x10 held / +0x18 pressed). Open:  the exact classes of the cam_ca / lookat_ca chase objects
   (WR / W4 / WV in the 31C0 donor; likely SnowChaseActorCam / Look / SnowChaseActor by file name).
-- The game.uso camera (0x27C) fields beyond 0x150 rider / 0x154 chase component / 0x274 p4 are not typed yet.
+- CourseCam is typed (section 2a) but the B3C donor (MIPSpro 7.2.1 edgcpfe) is still on raw offsets; CamPath
+  0x08 / 0x18 / 0x24 / 0x2C and CourseCam 0x278 are unread by the matched code.
+- CamDirector_update and the cam_create donor (bootup_uso_ncc_31C0.cpp) are not on camera.h fields yet.
 - The RiderCam fov tables (bu_4948_t16 / t8, k0 / k1 / klo / khi) are not resolved to RoData addresses.

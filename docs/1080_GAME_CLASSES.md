@@ -20,6 +20,7 @@
 - [12. Run 465: naming coverage sweep, game.uso camera, Sun / LensFlare, ground handling](#12-run-465-naming-coverage-sweep-gameuso-camera-sun--lensflare-ground-handling)
 - [13. Run 470: DNode physics base, SnowBoarder orientation, input fields](#13-run-470-dnode-physics-base-snowboarder-orientation-input-fields)
 - [14. Run 475: physics donors on fields, camera.h](#14-run-475-physics-donors-on-fields-camerah)
+- [15. Run 480: course.h (world / course data model), CourseCam](#15-run-480-courseh-world--course-data-model-coursecam)
 
 ---
 
@@ -507,3 +508,28 @@ file and left raw.
 chase component 0x154, p4 0x274) as a struct and the B3C donor on it; MCamera ctor / lookAt in game_libs_post.c
 (area E file); the course / world data model (WorldRegistry, the SnowAI course-node table, CourseMarker, Mountain /
 MapProp); RiderAnim states by anim id (agent-b's AnimPlayer names).
+
+## 15. Run 480: course.h (world / course data model), CourseCam
+
+agent-g run 480 (branch agent-g on f304648ad). Hand edits: 0264481d6 (new include/game/course.h), c57b79a18
+(conversions), 5919dc6c9 (camera.h CourseCam + conversions). Pure rename: a38fb9ae0 (3 names). Every commit gated
+(PASS, ROM identical); each converted object's `objdump -dr .text` was compared with the pre-edit build.
+The port-author overview is docs/1080_COURSE.md.
+
+- **course.h:** the course descriptor stream (COURSE_OP_*), WorldCourse / WorldRegistry (0x118: course list +
+  og / fg / bg / eg / MainGame roots), CourseItemTmpl (bootup Data 0x7B6C), RaceGate (+0x64 / +0x84), CourseMarker
+  (0x8C) + CourseMarkerParms (wid / ext / flg) + MARKER_* types and flags, MapProp (0xDC), Mountain.
+- **game_createMap's case labels were wrong.** The donor's `case N:` values were source-order numbers; the
+  donor's own jump table is dropped for the pinned ROM table (RoData 0x5B4), so .text matched anyway. The labels
+  are now the real ops (bootup_uso_o2_6808.c).
+- **The "course-node table" (game.uso Data 0x548) is the marker type-name table** (mrk mk1..mk9 mkl mkr):
+  SnowAI.targetNode / altNode are marker TYPE indices; the marker is found by type + nearest z.
+- **Converted:** game_createMap donor, WorldCourse_ctor / WorldRegistry_create / addCourse / getCourse x2,
+  Mountain_hostioParms, MapProp_ctor / hostioParms (bootup); SnowAI_isAtFinish / pickFork / scanSegments,
+  cam_ctor_00000858 / cam_reset_000008FC / cam_setView_00000AEC (game.uso).
+- **Renames:** WorldRegistry_ctor_00001D8C -> WorldCourse_ctorEmpty_00001D8C; game_getNthChild_00001FC8 / 00002014
+  -> WorldRegistry_getCourse_*.
+
+**Next:** CamDirector_update and the 31C0 cam_create donor on camera.h; the B3C donor on CourseCam fields (EDG
+2.29 front end: verify per field); the gate item class (chk / gtl / gtr instance layout) and the rider +0xE4;
+RiderAnim states by anim id (agent-b's AnimPlayer names); agent-a's gl_data.h accessors for the course data sites.

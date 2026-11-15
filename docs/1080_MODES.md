@@ -183,6 +183,52 @@ base fields). Retype courseList as `ArcCourseList *` where no test depends on th
 0x7A0 / 0x7A4 / 0x7B8 (drawHud floats) and GameDemoProcess 0x6A8. The NameEntry slots 17 / 18 still need
 nameent's base roles.
 
+**Run 477 (agent-h, branch agent-h on 5a8efa2ab).** Gate PASS on each commit (3288/3288, ROM identical).
+a131aa7e7 (**pure rename**, 32: RaceTracker), 0f8b4268d (**pure rename**, 45: sys_ / coll_ / NameEntry
+17-18), then hand edits 249e0aa65 (InputMgr.session), 3b9c3e40a (DataManager bodies), 5ec3595a4 (arc
+courseList pointer), 68236b3d5 (MgrRace / GameDemoProcess fields).
+- **Caller map tool:** /tmp/claude-1000/h477/callers.py walks every module's TextReloc through dis.py and
+  prints each import/internal call of a weak name with its calling function (88 sites); that is the
+  evidence for most names below.
+- **RaceTracker** (game_libs 0xCA30..0xE368): addEntry / findEntry; passCheckpoints ("chk" list of entry 0,
+  checkpoint.uso hit test, then slot 11 = onCheckpoint) and passGates ("gtl" / "gtr" pair: onGateCleared =
+  snd 0x2C, score += 2000, bonus += 100 capped 500; onGateMissed = snd 0x2F, bonus = 0); tricks from
+  game.uso RiderAnim: startTrick (TrickTable lookups, showTrickName, snd 0x24, slot 12 onTrickStart),
+  addTrickPoints (pendingPoints), endTrick(rider, landed, combo) (popTrickPointsCombo snd 0x27 /
+  popTrickPoints snd 0x22, slot 13 onTrickEnd), showComboBonus / popComboBonus, endAllTricks (arc / trk
+  finish), popFinalScore (arc / trk: the 0xA0 value at 160,140; in arc 0xA0 is the countdown time,
+  50000 / 30000 ms by InputMgr.course, decremented by 0x21 per frame). SnowBoarder_update feeds
+  setEntrySpeed (0x348 / 2), setEntryHealth (0xA14), setEntryXZ (0xDC / 0xE4). **Rider result
+  messages** (SnowBoarder handleMsg, bootup_uso_ncc_D900.cpp: raceResult 0xA54): 1000 win (1), 1001 lose
+  (2), 1003 time up (3), 1002 (4), 1004 (5), 1005-1007 ending (6) -> sendWinResult / sendLoseResult /
+  sendDrawResult / sendRetireResult / sendTimeUpResult / sendResult5_0000DE80 / sendEntryLoseResult;
+  sendEndingMsg sends 1005 to the Bss 0x30 node (mgr_restartForEnding). toggleGhost (tim / trk, 2
+  entries): button 0x20 toggles entry 1's rider flag 4 and unkB0 (the ghost). Address kept:
+  flagReplayEnd_0000D090 (no reloc caller).
+- **sys_ / coll_**: dbg_printfSink (_Printf callback -> TextWin_write), dbg_printfNop, sys_hang,
+  pad_*Global (wrappers over the pad manager at Bss 0x3A4E8), sys_writebackDCacheAll, dma_waitAll
+  (dma_wait 1..9), sys_getTime, sys_initHeap (Mem_init on Bss 0x3A210), sys_getResetType (0x8000030C),
+  fs_set/getHandle (+0x20), sys_srand / randf / randFromSeed, sys_sumBytes; CollObjMgr_addStatic /
+  addDynamic (+0x2C / +0x30 lists of CollObjMgr_update), CollObj_init / initCylinder / sendBump (msg 20),
+  coll_contactPushOut, coll_offsetPointsByMtx, MemberCallback_invoke_0003A0C4, cam_isSphereInView.
+  **Import addresses:** dis.py's `T<x>` for game_libs is splat + 0x1466C; nm of build/tenshoe.elf gives
+  the same offsets except some post2 libultra copies, which sit 8 lower (T7E710 = gl_osSetIntMask 0x6A09C).
+- **NameEntry slots 17 / 18:** nameent.uso (module 33, vtable Data 0x80) slot 13 = display switches on
+  +0x60: 0 -> slot 17, 1 -> slot 18, 2 -> slot 19. Base 17 is empty, base 18 calls the owner race's
+  slot 2 (draws it). Overrides are `<Cls>NameEntry_drawEntryOverlay` (17) / `drawExitOverlay` (18).
+- **Hand edits:** InputMgr.session is `struct BackupSession *` (tag only: input.h cannot include
+  backup.h because bootup_uso_ncc_11E00.cpp builds without u8 / s8); arc init / reset, mgr init / display,
+  h2h init on the subclass structs; ArcRace / ArcDataManager courseList typed `ArcCourseList *`
+  (mgr keeps s32: other layout); MgrRace overlayAlpha 0x7A0, fade7A4, retriesVel 0x7B8;
+  GameDemoProcess unused6A8.
+
+**Next (H2).** The DataManager update bodies (arc / mgr / h2h / edd: `p` / `a1` caches are levers; field
+names can go on with casts). Name the RaceTracker head (0x0C is the node-name word every init writes,
+race.h has it in unk00[0x10]) and entry fields unk08 / unk10 / unk28 now that setEntryXZ / Speed / Health
+show them (x position, speed, health) - race.h is agent-c's file, coordinate. The mode race ctors and
+mgr drawIntro / drawHud could take MgrRace fields (lever-heavy). genproc's SelectWin / SelItem `_func_` /
+`vfuncN` / `stateN` names (timproc_b5) were left to agent-c (H1 owner).
+
 ## H1. timproc (time attack), trkproc (trick mode), genproc (select screens) (agent-c run 459)
 
 agent-c run 459, branch agent-c on 8239918e8. Pure rename commits 60938d18f (timproc + trkproc, 119 names)
@@ -429,3 +475,48 @@ SelItemEx with the typed model.
 - The Backup record-list helpers onto BackupTimeEntry / ScoreEntry / ArcadeEntry (check each; loop shapes
   are levers). InputMgr.session could become `BackupSession *` (titproc assigns it from an int).
 - SoundObj conversions (run-464 leftovers) were not reached.
+
+### Run 478 (agent-c): weak names (Backup, genproc, nameentry, sound) and record-helper types
+
+Commits on agent-c (base 5a8efa2ab), each gated PASS (3288/3288, ROM identical):
+1349b1c39 (**pure rename**, 63 Backup helpers), ff130a997 (**pure rename**, 31 genproc / nameentry),
+aff387302 (**pure rename**, 45 sound names, see 1080_AUDIO.md), 21ccb8f7d (hand edit: backup.h
+`BACKUP_ENTRY_NEW` + record helpers typed), a212eeccf (hand edit: SelectWin cheat fields).
+
+**Backup**: see 1080_SYSTEM_LAYER.md section 4 "Record helpers". Every `Backup_func_` is named. The
+record-list helpers now take BackupCourse / CourseRecord / TimeEntry / ScoreEntry / Arcade / ArcadeEntry.
+Typed `p++` walks and `&rec->times[k]` compiled identically. The `(char *)a0 + idx * 8` callee arguments
+in the Insert functions did not, so they stay as they were.
+
+**genproc** (call sites from `scripts/emu-symdump/timproc_uso_b5.reloc-sites.json`; `resolved - tbase` =
+callee offset):
+- **Cheat input.** On the character stage (state3) and the board stage (state6), SelectWin matches pad
+  sequences: Data 0xF60[step] = word lists ending in 0x100, with sound 0x27 on success.
+  `SelectWin_charCheatIndex_8C44` picks the sequence for the focused character (1-2 from the table at Data
+  0xF1C, 3 for item 4 with unlock bytes FC FF 07). `boardCheatIndex_8D38` returns 3 when all 24 bits at
+  InputMgr.unlocks +6 are set. `resetCheat_8D90` clears the result. Fields: `cheatChar` 0x4A4,
+  `cheatBoard` 0x4A8, `cheatStep` 0x4AC, `cheatTimer` 0x4B0. SelectionMgr_ctor's state names include
+  "CrystalGuy" / "MetalGuy" / "Panda", which are probably what these cheats unlock.
+- Camera: `lerpCamToItem_38B0` / `lerpCamToItemZoom_396C` (update; the state-5 zoom uses the item 0x184
+  offset, the others 0x164) and `setCamToItem_3A28` (ctor).
+- `SelectionMgr_canCommit_1D1C` gates commitSelection: in 2P, both windows must be on the same stage.
+  `setSplit_1DB0` divides the 240 lines between the windows. `onFadeDone_0470` is the empty Process slot 11.
+- SelItem sprite helpers: `drawStatBar` / `drawStatBarRight` / `drawSpritePlain` / `White` / `Color` /
+  `ColorEx`.
+- Slot 8 is `loadData` (SelectWin, SelItem, SelItemsMgr, SelItemList, CommonInfo). SelItem slot 27 is
+  `loadInfo` (the SelItemInfo at +0x194), forwarded by SelItemList slot 11 and SelItemsMgr slot 10.
+- NameEntry slot 17 `showRecord` (Tim / Trk / Arc: the base call, then the race helper at y 0x8C with the
+  final time or score) and slot 18 `fadeRecord` (Mgr: `fadeOut`).
+
+**Tried, reverted:** typing SelectWin_state6 onto `SelectWin *` renumbers the t-registers in its
+0x100 / 0x200 rows, even with the byte-offset `curItem` form. state6 stays `FW()`.
+
+### Next (run 478)
+
+- SelectWin state0..10 and the display: bisect state6's t-register renumbering (convert one row at a
+  time; the eventFlags / curItem loads were the first differing pair) before trying the others.
+- Item `updateHighlight` / `update` onto the Sel*Model structs (run 474 levers).
+- Remaining SoundObj conversions (1080_AUDIO.md Next 3).
+- Kept weak: `SelCharAnim_vfunc10_0000ABB4`; AnimPlayer slot 10 (`AnimPlayer_vfn10_00063704`, empty) is
+  unnamed.
+- The ghost Bits2 / Flag5 / Bits6 meanings: read the game global +0x181..0x183 users (game_uso).
