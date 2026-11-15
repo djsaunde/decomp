@@ -18,7 +18,7 @@ A="$ROOT/projects/1080-agent-$L"
 AH="$(git -C "$A" rev-parse HEAD)"
 # every agent commit must have an equivalent patch on agent-d HEAD (git cherry marks those '-')
 MISSING="$(git -C "$D" cherry HEAD "$AH" | grep '^+' || true)"
-if [ -n "$MISSING" ]; then
+if [ -n "$MISSING" ] && [ "${LANDED_BY_HAND:-0}" != 1 ]; then   # LANDED_BY_HAND=1: coordinator resolved a conflicted pick (patch-ids differ)
   echo "!! agent-$L commits not on agent-d HEAD (landing incomplete?); not resetting:"; echo "$MISSING"; exit 1
 fi
 git -C "$D" add report.json
