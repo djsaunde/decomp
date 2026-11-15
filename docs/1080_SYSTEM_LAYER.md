@@ -15,6 +15,7 @@
 - [7. Area E1 (post0b 0x34458-0x4C000 + post.c DMA), run 448](#7-area-e1-post0b-0x34458-0x4c000--postc-dma-run-448)
 - [8. Run 453: vtables, hostio kinds, readers, CollShape, Gadget](#8-run-453-vtables-hostio-kinds-readers-collshape-gadget)
 - [9. Run 457: gadget structs, vtable-only classes, ItemType subclasses, GfxLib DDM](#9-run-457-gadget-structs-vtable-only-classes-itemtype-subclasses-gfxlib-ddm)
+- [10. Run 462: RaceProcess base, app_launchGenProc, full-range sweep](#10-run-462-raceprocess-base-app_launchgenproc-full-range-sweep)
 
 ## 1. String-xref method
 
@@ -247,3 +248,61 @@ gfx_drawText (font renderer), dbg_screenOverlay_00042938 ("Hold"/"X %d"/"Y %d", 
 3. The rest of the 0x42000-0x4C000 placeholders (`gbi.py` lists GBI opcodes per function): 0x43654/0x43BEC
    (TRI2), 0x469A8 (FULLSYNC + RcpMgr_queueTask = the frame task submit), 0x45178 (guMtxF2L).
 4. 426 placeholders are left in 0x0-0xEBC8 + 0x34458-0x4C000. Most are untouched-string-free helpers.
+
+## 10. Run 462: RaceProcess base, app_launchGenProc, full-range sweep
+
+> agent-a run 462, branch agent-a: 7935a1d27 (58 names) and a6edfbfbc (365 names), both pure rename
+> batches, gate PASS each. Placeholders left in 0x0-0xEBC8 + 0x34458-0x4C000: 4 (0xB94 is held back as
+> ambiguous across segments; 0x8674, 0x402A4, 0x410AC). Scripts in /tmp/claude-1000/a462/: the a457 set
+> (`vtgl.py` = the old game_libs `vt.py`), plus `vtmod.py` / `dis.py` (agent-h's per-module tools, now also
+> resolving `game_libs_func_` and the timproc segments), `racevt.py` (the race vtables of all six modes side by
+> side), `vcall.py OBJ...` (virtual-call sites `lh off / lw off+4` -> slot, per function, from build objects),
+> `xmod.py` (every other module's call sites of each game_libs function), `classify.py` (per placeholder:
+> vtable slots, callers, cross-module callers, calls, strings).
+
+**RaceProcess** (game_libs race-process base). Vtable bootup Data+0xCE18 (38 slots). There is no out-of-line
+ctor: TimRace/TrkRace/ARC/MGR/H2HRaceProcess, trnproc's race and titproc's GameDemoProcess inline it
+(Node -> C338 -> Process C3A0 -> CE18 -> own vtable), then call `RaceProcess_init` (0x6900) and `RaceProcess_restart`.
+State: 0x4E0 phase (0 intro delay, 1 3-2-1 countdown, 2 racing, 3 end message, 4/5 alt end, 7 over), 0x4DC
+(1 racing, 2 ended), 0x4F0 flags, 0x4F4 timeout, 0x4F8 result code, 0x500 leave, 0x510 left-once, 0x54C/0x550
+message y / velocity. Base slots, named from where the base calls them:
+
+| slot | default | called from |
+|---:|---|---|
+| 4 / 8 | RaceProcess_handleMsg / RaceProcess_loadData | Node msg / load slots |
+| 12 / 13 | RaceProcess_handleInput / RaceProcess_drawGui | Process update / display hooks |
+| 14 / 15 | onEndRace / onEndRaceAlt | RaceProcess_endRace / endRaceAlt |
+| 16 / 17 | onPause / onCountdownStart | start button / intro delay over |
+| 18 / 19 | endTimerEnabled / altEndTimerEnabled (return 1) | phase 3 / 4-5 timer gate |
+| 20 | onRaceOver (Process_fadeOut) | every frame in phase 7 |
+| 21 / 24 | onEndTimerDone / onAltEndTimerDone | phase 3 / 4-5 timer expired |
+| 22 / 23 | onTimeoutExit / onTimeout | 0x4F4 expired, with / without flag bit 20 |
+| 25 / 26 / 27 | onPauseSelect / onQuitButton / onLeave | pause row chosen / bit 19 button / 0x500 set |
+| 28 / 29 | drawHud / drawIntro | drawGui (always / phase 0) |
+| 30 / 31 / 32 | drawResultExtra / drawTimeUpExtra / drawResult | drawResult (results 0,2,5 / 6), drawGui phase 3 |
+| 33-36 / 37 | updateSub0-3 / onMessageBounce | handleInput on 0x4D8 / dropMessage |
+
+So the mode-side role names line up as overrides: Tim/Trk slot 18 (startHud / isHudBusy) is the phase-3
+timer gate, slot 20 (checkRecord, arc/mgr setupRace) is onRaceOver, 21 onFinish = onEndTimerDone,
+25 runPauseRow / checkFade = onPauseSelect, 26 quit = onQuitButton, 29 drawOverlay = drawIntro, 30 drawHud =
+drawResultExtra, 17 release = onCountdownStart. Results (0x4F8): 0 = course finished (`RaceProcess_finishCourse`,
+from every DataManager_update on the rider's finish flag), 6 = time up (`RaceProcess_timeUp`, after
+RaceTracker_checkTimeLimit); 2/3/4/5 are named `RaceProcess_endResultN_<addr>` until the sprites (ids 0x6000x
+at +0x588..+0x690) are identified.
+
+**Launchers.** Bootup Data+0xC4EC is the flow-mode USO table (n64proc ... eddproc) and Data+0xC510 the
+helper table (genproc, nameent, gamegfx, charsel, charsps, charfir, charmap). `app_launchGenProc` (0x8AE4)
+loads genproc (+ charsel, and charsps / charfir / charmap by mode) and runs its entry through `app_runProcess`
+(0x93DC), so the procMain states 1-4 (h2h) / 0-3 (tim/trk) are the select screens. `app_createGame_<addr>`
+(0x8E48, 0x8FFC, 0x9100, 0x9204, 0x92F4) load gamegfx.uso and call game_init with mode 5 / 4 / 6 / 2.
+
+**Other confirmed names.** Node slot 1 `Node_updateChildren` (MNode/QNode override it), slot 7
+`Node_saveData`, slot 8 `Node_loadData` (SNode / ItemMgr / ItemType overrides); ItemType slot 10 `newItem`,
+11 `buildItems`, 14 `getItem` (12/13/15 kept as `vslotN`); `Parms_load_00035C6C`; `Backup_openSession` /
+`closeSession` (tim_openSession etc.); `gfx_submitFrameTask_000469A8`; `StickCtrlA/B_update` (0x37348 /
+0x37540, the stick-driven debug controllers; no ctor in game_libs). Everything else got a TU or class prefix
+with the address kept (`Backup_func_`, `RaceTracker_func_`, `gfx_func_`, `coll_func_`, ...).
+
+**Next.** Read the result sprites (ids 0x60000-0x6000B) to name results 2-5; the Backup record helpers
+(0x9978-0xB958) need the BackupCourse/Arcade/Ghost structs; the `*_func_<addr>` range names in post0b
+0x42000-0x4C000 (gfx) and 0x39EE4-0x3CF94 (coll) are the next refinement targets.

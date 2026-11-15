@@ -170,9 +170,12 @@ targets another section); only convert offsets whose target is proven.
    _201B8 typed aliases (SyncSampleStates, ProcessNotes, AudioHeap_Init,
    AllocCached) and GS_24E28 (2495C/24E28 slow loads) -> AudioContext where
    the view's fields agree.
-3. Retype the glue's sound-object as a struct (0x64: floats 0..0x10, flags
-   0x14..0x34, 0x38 / 0x44 / 0x48 / 0x50..0x5C, pan bytes 0x60..0x63) shared
-   by 2DF98..31608 and the bootup wrappers (header + per-function commits).
+3. SoundObj is in include/audio.h since run 464 (SoundObj 0x64 + bootup SndHandle {obj, unk04,
+   eventArg}). Converted so far: snd_SoundObjInit / Reset / SetScaleIdx15 / 31 / SetFlag1A / Disable /
+   Start / Stop and the 12 bootup wrappers (now `SndHandle_*_<addr>`). Still raw: TriggerEvent
+   (NM), EventIndex (reads the 0x31 low byte of eventType), Update_2E354, UpdateChannel_2F288,
+   Play_2F578, SetAngle_2F720, bootup snd_updatePlayer (all lever-heavy; convert one at a time). The
+   match_imports context header keeps `char *` prototypes; those TUs do not include audio.h.
 4. Rename-tool note: a function whose REPLACE_FUNC_BODY donor lives in
    src/match_imports/<NAME>.c is "defined in several segments"; run 446's
    wrapper (/tmp/claude-1000/c446/rn.py) tolerates exactly that case when the

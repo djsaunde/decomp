@@ -61,12 +61,47 @@ The gui context is gui Bss+8 (procs pass it as arg 0).
 **boarder1-5** (modules 13-17) are character data USOs; their only code is two TUs' inline reader copies
 (readInt / readQuad / a quad-parm read slot), named with a per-module suffix.
 
-**Next.** arc/mgr: the race-process slots still `*_func_*` (16, 18, 19, 21, 24, 27, 30-37), the
-state-machine helpers (arc 5C8 / 748 and mgr 504 / 9A8, tit B6C / C0C: gl 0xB0A8 / 0xB190 on bootup Bss
-0x240 / 0x244, probably load / free a replay or ghost file), mgr 5D0 / 700 (random course or rider pick
-from the unlock mask at Bss 0x24C), the credits roller (mgr 1BE4 uses Data 0x5F0); identify gl 0x8AE4 (the
-launcher used by procMain states 1-4) to name the h2h pause rows 2/3/4; gui 0x2BB0; structs for the input
-manager cfg (+0x34 next flow mode, +0x40 proc state, +0x44, +0x6C demo index, +0x138..+0x160).
+**Run 466 (agent-h, branch agent-h on 42f08ef0b).** 73dd5108b (75 names, pure rename), 361628c34
+(include/game/input.h), 6429b0b3b (field conversions). Gate PASS each.
+- **Race vslots** come from the base state machine gl 0x76F0 (the race object's `unk4E0` state:
+  0 pre-start delay, 1 countdown, 2 racing, 3 finished, 4/5 other end states, 7 after the end).
+  16 onPause (START with a pause menu), 17 countdown start (modes free their intro sprites: the
+  `*_release_*` names), 18 / 19 tick tests in state 3 / 4-5 (base returns 1), 20 every frame in
+  state 7 (`*_raceOver_*`: fade, then name entry / results; was misnamed setupRace), 21 onFinish
+  (state 3 -> 7), 22 / 23 the `unk4F4` timer expiry (flag bit 20 set / clear), 24 state 4/5 -> 7,
+  25 runPauseRow (`pauseMenu->rows[sel].fn`, +0x7C sel, stride 40, fn at +0x90; was misnamed
+  checkFade), 26 A/B/START while flag bit 19, 27 once `unk500`, 28/29 from gl 0x7FF4, 30/31 from
+  gl 0x7344, 33-36 per frame by view mode `unk4D8` 0..3. Unknown roles are `*_vfuncN_<addr>`.
+  TimRace / TrkRace use the same slot numbering (their names are agent-c's role guesses).
+- **Session course list** (session+8). arc (0x38): retries +0, idx +4, count +8, courses[5] +0xC
+  ({2,0,3,1,4}), times[5] +0x20, total +0x34. mgr: courses from +0xC, the rider for each course
+  from +0x24 (`list[idx + 9]`). `mgr_initMatchRace(level)`: 3 retries; level 1/2/3 = 4/5/6 courses
+  (ids 2..7; only 3 if the word at 0xA0000284 is not 0x240B17D7, a cart check); the 4 CPU rivals
+  from `mgr_pickRivals` ((playerRider + 1 + rand*3.9) % 5, distinct, never the player's own rider), then
+  the player's own rider, and an expert boss 5/6/7 picked by the unlock word (Bss 0x24C)->+2.
+- mgr / arc procMain states: arc 0-2 select (gl 8AE4 flags 1/1/2), 3 open session, 4 init courses,
+  5 race, 6 name entry, 7 replay, 8 ARCMenu, 9 close, 10 quit. mgr 0/1 select, 2 open, 3 initMatchRace,
+  4 race, 5 replay, 6 close -> 1, 7 close -> 8, 8 quit. Pause rows go to the replay state first when
+  gl B3B0 (a replay exists).
+- `mgr_startEnding_00001BE4` (view mode 2, per-course params Data 0x5F0 / 0x5FC for courses 5..7,
+  music 11) is the ending flyover; the credits text itself is drawn by `MgrNameEntry_drawCongrats`.
+- gl 0x8AE4 = load genproc + select USOs, then `GenSelectChar_ctor(0, players, 7, flags)` and run it
+  (agent-a's file; not renamed). The h2h pause rows 2/3/4 pass flags 1/2/4 to it. Naming them needs
+  the flag meaning inside GenSelectChar / SelectionMgr (genproc, agent-c's names).
+- `gui_drawSpriteIA8Clip_00002BB0`: an IA8 sprite's first `width` pixels in 32-px strips.
+- **include/game/input.h**: `InputMgr` (bootup Bss 0xF8) and `InputPad` with offset asserts. It is one
+  big exported object: +0x138 DataManager*, +0x148 / +0x14C the session (Bss 0x240 / 0x244),
+  +0x154 unlock ptr, +0x170, +0x17D.., +0x190 Fader* are all relocs against it (not yet in the struct).
+  Converted: arc_procMain, tit_procMain, n64_procMain + N64DemoProcess update.
+
+**Next.** Unnamed: arc 14C8 / 1C74 / 2884 (draw helpers), mgr B20 (a continue row that first calls
+race gl 6F90), 1A64 / 1AD0 / 1B58 (camera setup), 23FC / 2850 / 2E3C (draw), h2h 49C / 8EC / 944 (win
+bookkeeping: gl 6DC8 / 6DF8 / 6EE0 / 6F60, which agent-a is naming). When agent-a's 0x6900 names land, rename
+the `*_vfuncN_*` slots to match. Convert more users: the h2h / mgr procMain bodies use per-offset
+`import_800200xx` externs (would change symbols, so not byte-safe as a pure edit); bootup's own
+input_* bodies (agent-g's files) can take `InputMgr *` (input_checkPressed/Held/Released in
+bootup_uso_ncc_11E00.cpp, input_addPad / replay_addInput in o0_11C70.c, input_setActivePad /
+input_clearActivePad in o0_1207C.c).
 
 ## H1. timproc (time attack), trkproc (trick mode), genproc (select screens) (agent-c run 459)
 
@@ -165,7 +200,51 @@ genproc is the shared "pick character / board / course / level" step. Its classe
 - The race-object base (game_libs 0x6900, vtbl slots 12-33) is area D's. Naming its slots would turn
   the `TimRace_*` role names into confirmed overrides.
 - The gl 8AE4 / 8E48 / 9100 launchers (area D o0_8AE4) take (this, 1, 7, flags). Confirm that 8AE4 loads genproc.
-- `SelectWin_func_*` (16 accessors over +0x3C4 player / +0x40C item tables) and the item vfunc slots
-  need a SelectWin / SelItem struct. Sizes: SelItem has fields up to +0x2B4, SelectWin up to +0x4C4.
 - The genproc import list of bootup is in 1080_GAME_CLASSES.md section 8 (BGBox_ctor, U64BGWall_ctor,
   2060, 2C94, 34E8, B1B4, B49C).
+
+### Run 464 (agent-c): select.h, accessor and slot names
+
+Commits on agent-c (base 42f08ef0b): deb2060be (pure rename, 70 names), 8bc75a093 (hand edit:
+include/game/select.h and conversions), 294b1f461 (hand edit: audio.h SoundObj, see 1080_AUDIO.md),
+0b8fe9fcc (pure rename, 12 bootup SndHandle wrappers). Each gated PASS.
+
+**Vtable layout.** genproc classes are cfront Nodes (vptr +0x28). The function word of virtual slot N
+is at **vtbl + 8*N + 0xC** (its s16 delta at +8). Checked three ways: SelItemsMgr calls list slots 8 / 11
+at 0x4C / 0x64; slot 21 (0xB4) gets the other player's item, which matches CourseItem's two-argument
+state copy; slot 26 (0xDC) gets (win, 8), and Character's arrow draw tests flags & 8.
+
+**include/game/select.h** (offsets and sizes asserted):
+- `SelItem` 0x2B8: x 0x44, y 0x5C, labelIndex 0x1AC, node 0x29C, alpha 0x2A0, enabled 0x2A4 (f32, 0 =
+  locked), id 0x2B0 (written out by commitSelection), flags 0x2B4. `SelItemEx` adds model 0x2B8 (the
+  per-class QNode state; its layout differs per class, so it stays `char *`) and the stat-bar counters
+  0x2BC / 0x2C0.
+- `SelItemList`: items[12] 0x3C, count 0x6C. `SelItemsMgr`: count 0x3C, lists[4] 0x40 (character,
+  board, course, level = the stage index).
+- `SelectionMgr`: numPlayers 0x30, wins[2] 0x34, busy 0x4C.
+- `SelectWin` 0x4F0: player 0x3B8, numPlayers 0x3BC, stageMask 0x3C0, stage 0x3C4, stageBit 0x3C8,
+  state 0x3CC (the update switch), curItem[4] 0x3D0, chosenItem[4] 0x3E0, prevStage / prevItem
+  0x3F0 / 0x3F4, itemsMgr 0x40C, scene 0x414, owner 0x41C, fade 0x480, blink / frame 0x48C / 0x490,
+  busy 0x4B4, camPos 0x4C4, eventFlags 0x4D4, centerX 0x4D8, out[5] 0x4DC.
+
+**Converted** (object bytes identical): SelectWin_curItem / prevStageItem / chosenItem / chooseCurrent /
+prevFocusItem / itemCount / listCount / saveFocus / beginTransition / func_8D90,
+SelectionMgr_otherWin, and 35 item virtuals. The in-TU forward declarations of converted functions
+became unprototyped `f()`, so the many `(int *)scr` callers did not have to change. Left raw (lever
+bodies): findItem (8988), canScrollPrev / Next, next / prevStageBit, the state functions, the
+updateHighlight family, CourseItem_update.
+
+**Names.** `SelectWin_finish / _func_1CF0 / _1D1C` take SelectWin->owner, so they are now
+`SelectionMgr_*`. Item slots: 10 updateHighlight, 11 focus, 12 unfocus, 15 setChosen, 16 clearChosen,
+20 confirm, 21 copyState, 22 setAlpha, 23 drawLabel, 25 drawStats, 26 drawArrows. Slots 13 / 14 / 17-19
+/ 24 stay `vfuncN`: 13 is beginTransition's mode-2 unfocus, 17 toggles a flag bit (Character 0x20000,
+Board 0x20), and 18 / 19 are Character animation changes.
+
+### Next (H1)
+
+- Per-class model structs (SelCharacter / SelBoard / ...: focused / chosen / highlight / alpha
+  fields at different offsets per class) would let the `it->model + K` accesses go.
+- SelectWin state functions and display: convert onto the struct (lever-heavy, so check them one at a time).
+- Slots 13 / 14 / 17-19 / 24; SelectWin_func_8D90 / 894C / 8C44 / 8D38 (save-flag bit scan) / 38B0 / 396C / 3A28.
+- Area 3 of run 464 was not reached: the 25 non-audio placeholders in game_libs_post.c and about 20
+  kernel placeholders (kernel_056 / kernel_000, rmon).

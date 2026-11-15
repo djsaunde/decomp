@@ -1,6 +1,7 @@
 # 1080 Snowboarding: bootup_uso C++ classes (area F)
 
 > agent-g run 447, 2026-11-15, 1080 branch agent-g (commits a3beae5d7..1a7acb638 on c14657cc9).
+> Updated through run 465 (section 12).
 > Scope: `src/bootup_uso/*` = bootup.uso Text 0x0-0x1464C (349 functions). 88 functions named,
 > one layout header (`include/game/snowboarder.h`). Names are in `renames.tsv`.
 
@@ -16,6 +17,7 @@
 - [9. Run 452: snowai.h, SnowBoarder physics fields, SnowAI methods](#9-run-452-snowaih-snowboarder-physics-fields-snowai-methods)
 - [10. Run 456: proc API, TrickTable, RiderAnim, SnowAI path following](#10-run-456-proc-api-tricktable-rideranim-snowai-path-following)
 - [11. Run 461: SnowAI states, RiderAnim PMF state machine, SnowBoarder::Parms](#11-run-461-snowai-states-rideranim-pmf-state-machine-snowboarderparms)
+- [12. Run 465: naming coverage sweep, game.uso camera, Sun / LensFlare, ground handling](#12-run-465-naming-coverage-sweep-gameuso-camera-sun--lensflare-ground-handling)
 
 ---
 
@@ -378,3 +380,58 @@ and its Parms; SnowBoarder_updateDyn (BF8C) and its callees for orientation / bo
 (0x938 is probably the ground-contact flag: B520's drag, the SnowAI run-out tail and RiderAnim D74C gate on it; unproven; 0x3BC / 0x3C8 are the side /
 forward axes); the game_uso 0xA000+ classes (AC78 / 11A94 template creates, AD10..ADE0 parm-type readers,
 B274..BFDC = LensFlare / Sun methods via Data 0xC50..0xD34) and bootup's remaining placeholders.
+
+## 12. Run 465: naming coverage sweep, game.uso camera, Sun / LensFlare, ground handling
+
+agent-g run 465 (branch agent-g on 42f08ef0b). Pure rename batches: 11c65f6ba (109 names), cd2a1e9d2 (176),
+f565cc583 (7). Hand edit: 7214d8e29 (snowboarder.h). Every commit gated (PASS, ROM identical). Scratch tools in
+/tmp/claude-1000/g465/: `summ.py` (game.uso: callers / Data refs / cross-module importers / callees / strings per
+function), `bsumm.py` (the same for bootup), `dd.py` / `bdd.py` (annotated Data dumps for vtables), `dis.py`
+(now also resolves `game_libs_func_` names).
+
+**Coverage.** game.uso: every function now has a class / subsystem prefix (only the `game_uso_func_00000000`
+sentinel is left). bootup: 38 `func_` names remain; 26 of them are deliberately kept because the symbol doubles as
+a USO data-reloc base in the source (`func_X + K` or `&func_X`; list: 0, 8, 44, 80, F0, 148, 188, 1FC, 23C, 27C,
+29C, 3F8, 57C, 8B4, 8F4, 940, 98C, C10, 7620, 7A48, 89FC, 8A38, 8A40, 8A7C, 8AEC, CACC). Genuinely open: 6204
+(MapProp vtbl slot 12), 7204 (game_createMap helper), 7BF4 (one-slot vtbl Data 0x7770), E270, 12110, 122C4,
+127CC, 12818, 14004, 14010, 144F4, 14598.
+
+**Per-TU copies.** Every NCC TU re-emits the stream readers (`fs_gdlReadFile(gStream, buf, n)`: S32 / F32 /
+Vec3 / Quad (16 bytes)), the parm loaders (`tag = readS32(); read<T>(&parm->value)`: Float / Vec3 / Quad / Int)
+and the template "create instance" slot 10 (`new ColourItem(0x40)`, vptr Data 0x75A0, link into the type's list).
+Names: `stream_read<T>_<addr>`, `game_read<T>Parm_<addr>` / `boot_read<T>Parm_<addr>`,
+`game_ItemType_create_<addr>` / `boot_ItemType_create_<addr>` (the edd_ / tit_ / h2h_ precedent).
+
+**game.uso camera (TU 0x0-0x1800).** `cam_ctor_00000858` (0x27C bytes, vtbl Data 0x184, base gl 32E18 =
+MNode "camera") is what bootup cam_create builds from rom/cam_info.bin (modes 0 / 2; mode 1 builds a plain camera
+named "LookAtChase" with a SnowChaseActor). It holds camPath records (0x7C, header + camKey list of 0x38-byte keys:
+3 Vec3, F32, S32, Vec3) and camList index lists, both read in slot 8 (cam_readParms_00001644). Slot 3 cam_update
+runs cam_updateView (B3C: cubic B-spline over 4 keys via math_dot4 / math_blendVec3x4), slot 4 handleMsg (msg 8 / 9
+reset both chase actors and pick the view by the target rider's raceResult: cam_pickResultView), slot 12
+cam_command (commands 3..18 select views). No class string exists, so the prefix is the subsystem `cam_`.
+The SnowChaseActor* `*_readParms` names were the Parms-object constructors (renamed `*Parms_ctor`); their vtbl
+slot 8 is now `*_loadParms` (a freed name must not be reused: the gate folds renames.tsv chains).
+
+**Sun / LensFlare (game.uso 0xAE1C-0xC0E8).** Sun (0x178, vtbl 0xC5C, node "sun", Parms rot / ele / scl / mat /
+col): display (projects the sun, size * visibility 0xCC), update (position from rot 0x11C / ele 0x104),
+readParms, and Sun_measureVisibility: a member-function callback (16-byte object at +0xDC: vptr Data 0xC44, obj,
+PMF {0, -1, B4B8}) registered with the renderer by display (gl 4E1BC); it samples 9 depth-buffer texels around
+the sun's screen position (value 0xFFFC = clear) and eases 0xCC toward the visible fraction. LensFlare (vtbl 0xCEC,
+"LensFlare::Parms" fin / dlv / dfm): display draws N LensFlareElem records (0x24: pos, color quad, size, sprite,
+flags, F32) along the sun-to-centre axis; readParms reads the count and the records.
+
+**SnowBoarder ground handling (snowboarder.h).** SnowBoarder_updateDyn = limitSpeed, B75C (orientation), the
+"SnowBCol" section (procColl), then three game_libs physics steps (gl 65448, 64DEC, 65148). Each frame it rebuilds
+`friction` 0x360, `edgeGrip` 0x9FC, `edgeFriction` 0x9F8 and `turnRate` 0xA00 from the +0x3EC child's Parms
+(SnowBChildParms: ied ifr ded dfr efr nbf nel dbf del res flx sta) and SnowBoarder::Parms (edf, bdf, nts / dts, sfr):
+n* = normal set, d* = while `useDParms` (input bit 0x400 held), * ied, ifr on surface 'c' and * ded, dfr on 'b'
+(`surface` 0x9A2, 0 off the ground: edge terms zeroed, friction + k), `crouch` 0x990 (stick y < -0.75) adds
+|spin.x| * k, `slowdown` 0x960 (percent; 100 + speed < 30 stops the rider). procColl clears `contactCount` 0x938
+(the old unk938: so limitSpeed's wfr drag applies only with no contacts, i.e. in the air) and the
+contactNormal / contactDepth sums that SnowBCollider_onContact accumulates; `groundSurface` 0x9A0, `groundFlags`
+0x9A8 and `groundDist` 0x9D0 come from its ground query.
+
+**Next:** the 12 open bootup functions above; SnowBoarder_func_0000B75C (orientation: quatRotateAxisAngle over
+the axr / ayr / azr parms) and the three game_libs physics steps; convert the updateDyn / procColl NM bodies to
+the new fields; RiderAnim states: agent-b run 463 named the game_libs player (AnimPlayer_start 635D8,
+AnimPlayer_startIfChanged 6366C) on its branch, but the anim ids they pass still need an anims.bin index -> name map.

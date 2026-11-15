@@ -6,6 +6,8 @@
 > RcpMgr/RcpTask + libultra/os_task.h, 3a4aff57a/6a4f5b06a BasePolyShape, 4dafc55ab tool, 7aca920fd [rename, 3], 116f79f43 [rename, 6]).
 > agent-b run 458 (commits dc8e4f437 [rename, 62: vtable methods, RcpTask, reader templates], 1293c072a [rename, 37:
 > libultra/libc tail], b844a9296 include/libultra os_pi.h / os_timer.h / os_cont.h + 5 donor migrations).
+> agent-b run 463 (commits 973cf1d60 [rename, 130: AnimPlayer + post1b], be8429244 [rename, 164: post0b 0x4C000+],
+> cd0bf1205 [rename, 30: pad / boot / str leftovers]). Scope now also covers game_libs_post1b.c (0x62F64-0x69CC4).
 > Method: docs/1080_SYSTEM_LAYER.md section 1 (string xrefs through the bootup.uso reloc tables), plus the
 > matched bodies' own decode comments, GBI command words and class-name strings.
 
@@ -55,6 +57,13 @@
 | 0x5FE14-0x60370 | MemTracker / MemTrackerMgr (per-section memory accounting) | MemTracker_*, memtrack_begin/_end/_find/_walk, MemTrackerMgr_ctor |
 | 0x60584-0x61A0C | text console: TextWin (NCC donor says `TextWin::draw`), ConsoleMgr, formatter | TextWin_ctor/_draw/_printf/_write, ConsoleMgr_ctor, console_createSystemWin, console_formatHex8, console_itoa, console_pow10Scale, console_formatValue |
 | 0x61478-0x6179C | fatal error + routine-name stack | sys_fatal (106 callers), sys_imin, sys_imout |
+| 0x62E10-0x63704 | **AnimPlayer** (ctor 0x62E80, 0xB0 bytes, vtable D+0x21F58; base of game_uso RiderAnim) | slot 3 update = advance (time +0x78 between keys +0x7C/+0x80, key event +0x64, blend flag 0x80 / 0x100) + applyPose (targets list +0x30, frames +0x34/+0x38, interval +0xA0/+0xA4); start ("StartAnim": anim +0x74, keys, flags +0x98, blend frames +0x6C), startIfChanged, setBlend (+0x8C/+0x90/+0x94), getKeyFrame / getKeyTime ("BadKeyFrame" / "BadKeyTime"), setKey, reset, handleMsg (slot 4), vfn10; AnimCmd_setTableEntry (animate.cpp) |
+| 0x63884-0x65E64 | QNode dynamics: PhysQNode (vtable 0x222A8), Friction (0x22318, "Friction Limit"), **DNode** (ctor 0x64588, vtable 0x22208, "DNode::Parms"; bootup ShpNode derives) | DNode_ctor/_update/_handleMsg/_hostioParms/_solveContacts, DNode_func_* |
+| 0x65EE4-0x66850 | fs_ PI word access + chunked dma, list / dlist / DynArr helpers | fs_piReadWord/_piWriteWord/_readBytes/_writeBytes, list_append (39 callers) |
+| 0x66850-0x67AE8 | boot_ (main, mainuso reload, stack checks, thread start), pad_ controller thread (pad_init, probePaks, threadLoop, motor, Ctl pause / record / play) | |
+| 0x67B04-0x68044 | str_ house string utilities (stpcpy = str_copyEnd, strncpy, strrchr, strdup, strtol-lite), math_atan2s | the libc strlen at 0x6F1B0 keeps its plain name |
+| 0x682F8-0x68BF4 | BinFileMgr (vtable 0x2B2E8) / BinFile (0x2B2B0), ImageFileMgr (0x2B350) / ImageFile (0x2B278) | slot 10 of each Mgr = newFile |
+| 0x68C14-0x69C94 | skin.cpp: SkinMgr (ctor 0x695F4 "skinmgr", vtable 0x2C490), skin_cmdSkinMgr / SkinAnim / SkinShape node commands | SkinMgr_init/_reset/_update/_bindPose/_skinVerts; math_acosf at 0x69CC4 |
 | 0x61E58-0x62E80 | animation: AnimDataMgr, Animator ("anim"), key unpack/blend | AnimDataMgr_*, Animator_ctor, AnimData_load, anim_createAnimator, anim_blendPose, anim_unpackKey, anim_formatId |
 
 ## 3. Structs
@@ -106,7 +115,13 @@ RcpMgr_startTask).
   6F088 / 7369C, OSIoMesg in o1_6D964 / ido53_74EF4, OSPfs in post2b.c / ido53_718C0, OSMesgQueue in
   ido53_6F218 / 74EF4. Those donors carry their own base typedefs (u32, s32) and some use `void *` or
   unprototyped fn-pointer fields, so migrate one at a time and gate each.
-- Unnamed in 0x4C000-0x62F08: 0x4CFB8 (BaseMat vtable 0x1FBEC slot 0, empty), 0x51E98 (PMF parm callback
+- Run 463: osMotorStop / osMotorStart CONFIRMED from the reloc pairing (see commit cd0bf1205): 0x6CDB4 uses
+  _MotorStopData 0x62A00 + _motorstopbuf 0x62C00 (the buffer osMotorInit fills with 0).
+- Run 463 leftovers: the `f(&local); g(a0 + 0x10)` thunks (0x4D02C, 0x4E3F4, 0x4F9AC, 0x551B0, 0x55B10, 0x6370C,
+  0x65DDC, 0x65E0C, 0x65E84, 0x65EB4, 0x69C58; callee bu_000008, maybe Cfront static-init helpers), 0x67D80.
+  Many run-463 names are `<subsys>_func_<addr>` (prefix only); refine as callers from other USOs are resolved
+  (most `in:0` functions here are imported by bootup / game_uso). The header moves listed below were not started.
+- (Before run 463) Unnamed in 0x4C000-0x62F08: 0x4CFB8 (BaseMat vtable 0x1FBEC slot 0, empty), 0x51E98 (PMF parm callback
   of BaseMat), 0x551E0 / 0x5165C (CMod secondary-vtable slots), 0x4F85C / 0x4FBA4 (Mat factories: 0x4F85C builds
   from a ScreenWindow's frame buffer +0xF4 and size +0xB8/+0xBC; 0x4FBA4 clones and runs the GDL_MC command list),
   0x4DF90 (vtable 0x20400 helper), 0x521F8 (Node class sharing BasePolyShape_doCommand), 0x5AB84 / 0x5AD54 ctors,
