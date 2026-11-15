@@ -49,8 +49,8 @@ ty2, chy. Fields: target 0x38 (the rider), source 0x3C, mode 0x40, eyeOffset 0x2
 - **update (mode 1 / 2)**, with E = eye position (body world[3]):
   - horizontal: d = |A - E| in XZ, n = the XZ unit vector toward A. If d < mxz: move by n * (d - mxz) (back off
     at full rate); else move by n * (d - txz) * cxz (spring toward distance txz).
-  - vertical: h = E.y - A.y... more exactly `mag = ref.y - self.y` = E.y - A.y. If h < miy: move up by
-    (miy - h); else move by (H - h) * chy, H = toy (mode 1) or ty2 (mode 2).
+  - vertical: h = E.y - A.y (the eye's height above the aim point). If h < miy: move up by (miy - h); else move by
+    (H - h) * chy, H = toy (mode 1) or ty2 (mode 2).
   - eyeOffset = n * txz - (0, H, 0) (stored, not used by the move).
 - **mode 3:** eye = source position (both local and world translation): a fixed camera.
 - **applyMode (snap on a mode change)**, v = the rider velocity passed by setMode: eye = A - normalize(v.xz) * txz

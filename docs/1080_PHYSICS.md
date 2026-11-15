@@ -52,7 +52,7 @@ nodes, and feeds the sound object (0x808) with contactSurface and landImpact.
 
 ## 3. Orientation and edge (SnowBoarder_updateOrient)
 
-Bootup 0xB75C; matched C is src/bootup_uso/bootup_uso_ncc_B75C.cpp (raw offsets; map them with snowboarder.h).
+Bootup 0xB75C; matched C is src/bootup_uso/bootup_uso_ncc_B75C.cpp (on snowboarder.h fields since run 475).
 Every rotation is `math_quatRotateAxisAngle(&orient, axis, angle, this)`.
 
 - **Steering input.** steer = stick x * 0.15, yaw = stick x * -0.04 (both 0 while slowdown == 100).
@@ -92,15 +92,14 @@ Per frame, from SnowBChild Parms (`child.parms`) and SnowBoarder::Parms:
 - edgeGrip *= edf, friction *= bdf. If slowdown 0x960 (percent, set by RiderAnim on crashes) is non-zero:
   edgeGrip = 0, friction += slowdown / 100, vel.xz *= 1 - sfr.
 
-**Who consumes them.** SnowBCollider_func_0000E2D0 (bootup_uso_o2_E2D0.c) is the edge-grip response: it projects
+**Who consumes them.** SnowBCollider_edgeGrip_0000E2D0 (bootup_uso_o2_E2D0.c) is the edge-grip response: it projects
 the velocity and the side axis onto the contact plane, takes the lateral component times edgeFriction, clamps it
 to +-edgeGrip, scales by (1 + arg) and adds it as an impulse, so the edge resists sideways slip (carving).
 `friction` (0x360) is read by the contact solver; turnRate scales the edge steering in section 3.
 
 ## 5. Ground and contacts (SnowBoarder_procColl)
 
-Bootup 0xC234; matched C is bootup_uso_ncc_C234.cpp; a field-form reference copy is in bootup_uso.c under
-BOOTUP_C234_OLD_DECODE.
+Bootup 0xC234; matched C is bootup_uso_ncc_C234.cpp (on snowboarder.h fields since run 475).
 
 - prevPos / prevVel snapshots; msgCooldown counts down.
 - **Ground query.** `CollShape_nearestHit(course, &lastPos, 4000, &hit)`: groundSurface 0x9A0 and groundFlags
@@ -114,8 +113,14 @@ BOOTUP_C234_OLD_DECODE.
 - No ground: noGroundFrames counts; after 151 frames the rider is put 200 units above the nearest course point
   (`DNode_resetXform_00065360`).
 - **Collider contacts.** contactCount / contactNormal / contactDepth are cleared, then `DNode_solveContacts` runs
-  the child colliders; each contact calls `SnowBCollider_onContact` (bootup_uso_ncc_8BD4.cpp), which counts it,
-  sums the normal and depth, and adds impulses. contactCount == 0 is the "in the air" test used everywhere
+  the child colliders (SnowBCollider, 0x178: probe velocity 0x114, world point 0x120, touched triangle 0x14C, rider
+  0x170, flags 0x174); each contact calls `SnowBCollider_onContact(collider, depth, normal)` (bootup_uso_ncc_8BD4.cpp):
+  - body probes (flags & 0x1F0), depth < 0, triangle surface not 'a' / 'b' / 'c' (snow): count it, contactSurface =
+    the code, depth clamped to -30, hitFlags |= flags (stumble), pos += normal * -depth * 0.5 (push out),
+    contactNormal += normal, contactDepth += depth, impulse normal * -depth at the probe point;
+  - board probes (flags & 0xF), depth < 50: count it, hitFlags |= flags, contactDepth += depth, contactNormal +=
+    normal, then the edge grip (SnowBCollider_edgeGrip_0000E2D0 with edge^2, section 4) and the collider's
+    friction method (Friction_vfn11_00063F34(collider, depth, normal, 0.1)). contactCount == 0 is the "in the air" test used everywhere
   (limitSpeed's wfr drag, updateOrient).
 - **Averaging.** With contacts: contactNormal / contactDepth are averaged; penetration = normal * depth when
   depth < 0; impactVel = normal * -min(dot(lastVel, normal), 0); airFrames = 0. Without: airFrames++.
@@ -165,3 +170,6 @@ SnowAI_scanNodes / scanSegments re-acquire the path, one node per frame.
 - The contact solver's use of surfImp / surfSpd / surfVsc and `friction` (DNode_solveContacts, NCC donor
   game_libs_ncc_65494.cpp) is not yet written up.
 - The exact RoData constants (the k values above) are in bootup RoData 0x8C8..0x9A0; read them from the ROM.
+- Friction_vfn11_00063F34 (the collider's game_libs friction response) is not written up.
+
+The camera that follows the rider is in docs/1080_CAMERA.md.

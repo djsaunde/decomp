@@ -19,6 +19,7 @@
 - [11. Run 461: SnowAI states, RiderAnim PMF state machine, SnowBoarder::Parms](#11-run-461-snowai-states-rideranim-pmf-state-machine-snowboarderparms)
 - [12. Run 465: naming coverage sweep, game.uso camera, Sun / LensFlare, ground handling](#12-run-465-naming-coverage-sweep-gameuso-camera-sun--lensflare-ground-handling)
 - [13. Run 470: DNode physics base, SnowBoarder orientation, input fields](#13-run-470-dnode-physics-base-snowboarder-orientation-input-fields)
+- [14. Run 475: physics donors on fields, camera.h](#14-run-475-physics-donors-on-fields-camerah)
 
 ---
 
@@ -475,3 +476,34 @@ assert typedefs are under `#ifndef __cplusplus` (edg rejects them).
 SnowBCollider_func_0000E2D0 (edge-grip response) on fields; 0x8B8 / 0x8DC / 0x9E8..0x9F4 / 0xA40 / 0xA44 (display);
 the B75C / C234 NCC donors on fields; groundFlags bits 1 and 0x400.
 
+## 14. Run 475: physics donors on fields, camera.h
+
+agent-g run 475 (branch agent-g on 98fd6c22f). Hand edits: e140bc633 (physics donors), 8410c8ad2 (camera.h +
+game.uso chase camera), 584f363af (MCamera / RiderCam / CamDirector / FreeCam / CamFollow). Pure rename: 406098216
+(SnowBCollider_func_0000E2D0 -> SnowBCollider_edgeGrip_0000E2D0). Every commit gated (PASS, ROM identical); each
+converted donor .o was also compared with objdump -dr against the pre-edit object before the gate.
+
+**Physics donors.** snowboarder.h's asserts are under `#ifndef __cplusplus`, so NCC donors include it by relative
+path (`#include "../../include/game/snowboarder.h"`, after the donor's own s32 / f32 / u8 / u16 / u32 typedefs).
+bootup_uso_ncc_B75C.cpp (updateOrient) and _C234.cpp (procColl) now read rider-> fields; an access whose width
+differs from the field stays `*(T *)&rider->field` (e.g. pos.x passed as an int). A scratch converter
+(/tmp/claude-1000/g475/conv.py: offset -> field map, raw `*(T *)((char *)(v) + K)` -> field) did the bulk. New
+snowboarder.h fields: RiderInput (0x800: stickX / stickY / held), light 0x850. SnowBCollider_onContact (8BD4) keeps
+its C++ views (the inline V3 operators are part of the match) with snowboarder.h member names: SnowBCollider
+(pointVel 0x114, worldPoint 0x120, hitTri 0x14C, rider 0x170, flags 0x174) and RiderView. Its per-site import aliases
+resolve to BasePolyShape 52A4C (surface code), SnowBCollider_edgeGrip_0000E2D0, Friction_vfn11_00063F34 and
+DNode_addImpulseAt_00065250. E2D0 (-O2 C) takes SnowBoarder * and named parameters. docs/1080_PHYSICS.md section 5.
+
+**Camera (include/game/camera.h, docs/1080_CAMERA.md).** game.uso SnowChaseActorCam (0x124, Parms cof mxz txz cxz
+miy toy ty2 chy), SnowChaseActorLook (0x64, ch0), SnowChaseActor (0x138, off xxz mxz txz mxy miy toy cxz chy): all
+three move their parent CamMNode by math_mtxAddTranslation (game_uso_func_072EE8) on its local matrix. Their C bodies
+in game_uso.c (ctors, resets, setMode, loadParms, cam_toTargetLocal) and the five NCC donors (1DDC / 24BC / 28C0 /
+2CC8 / 3558, member names only) are converted. game_libs MCamera (gl 32E18, 0x150), bootup RiderCam (0x15C) and
+CamDirector (0x50; ctor and setActiveCam converted), and game_libs FreeCam (renames.tsv CamMan_*: the matching C++
+calls it FreeCam::update) / CamFollow (a debug orbit controller) are typed; FreeCam / CamFollow bodies are agent-b's
+file and left raw.
+
+**Next:** CamDirector_update and cam_create (31C0 donor) on camera.h; the game.uso camera object (0x27C: rider 0x150,
+chase component 0x154, p4 0x274) as a struct and the B3C donor on it; MCamera ctor / lookAt in game_libs_post.c
+(area E file); the course / world data model (WorldRegistry, the SnowAI course-node table, CourseMarker, Mountain /
+MapProp); RiderAnim states by anim id (agent-b's AnimPlayer names).
