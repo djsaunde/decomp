@@ -1,5 +1,7 @@
 # Ido Codegen
 
+> Start with docs/MATCHING_SUMMARY.md for the distilled techniques.
+
 > **Note (2026-05-23):** any entry below that recommends INSN_PATCH /
 > NON_MATCHING_INSN_PATCH / PROLOGUE_STEALS / instruction-appending SUFFIX_BYTES
 > as the fix is **OBSOLETE** — that post-cc instruction-patching was removed as
@@ -38482,7 +38484,7 @@ difflib and prints the best partners with their fuzzy. **An exact partner at rat
 Recipes from the four exacts:
 1. **396C: match_imports twin + placeholder prototype.** The frozen `src/match_imports/context_timproc_uso_b5.h`
    still declares 396C with the old `(char *, s32, char *, f32, f32)` placeholder, which conflicts with the typed
-   twin signature. Do not edit the frozen context (its sha is recorded in scripts/match-imports.json): wrap the
+   twin signature. Do not edit the frozen context (its sha was recorded in scripts/match-imports.json, retired at wrap-up 2026-11-15): wrap the
    include, `#define timproc_uso_b5_func_0000396C timproc_uso_b5_func_0000396C_ctx_placeholder` / `#include` /
    `#undef`. Casting typed locals from the placeholder params instead changes codegen (48 vs 47 words). Wiring = the
    38B0 stanzas duplicated (compile x2, ld x2 with `.text 0x396c`, bind x2 with a new `raw_sha256` of the linked

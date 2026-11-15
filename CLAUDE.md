@@ -26,6 +26,7 @@ This repo is a **multi-project N64 decompilation agent**. It wraps splat / asm-d
 - **Picking this up on a new machine:** read `docs/HANDOFF_NEW_MACHINE.md` FIRST — setup order, the verification gate, the landing ritual, policy invariants, and the current live queue.
 - **Debug a stuck diff:** `objdiff-cli diff -u <unit> <func>` for mnemonic-level comparison; falls back to `objdump -M no-aliases` for exact-byte verification.
 - **Research a technique:** see `docs/` (checked into the repo, accessible to all agents):
+  - `docs/MATCHING_SUMMARY.md` — **start here**: concise distillation of the techniques that got 1080's last hard functions byte-exact (policy, toolchain ID, uopt colouring, edg pool words, ugen rings, as1, build infra), with kit/section pointers into the docs below
   - `docs/IDO_CODEGEN.md` — IDO 7.1 codegen quirks (~115 entries)
   - `docs/PATTERNS.md` — asm-shape pattern recipes (~145 entries)
   - `docs/MATCHING_WORKFLOW.md` — NM wraps, fragment merging, objdiff, expected/, build hygiene (~70 entries)

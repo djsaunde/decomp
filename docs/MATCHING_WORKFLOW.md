@@ -1,5 +1,7 @@
 # Matching Workflow
 
+> Start with docs/MATCHING_SUMMARY.md for the distilled techniques.
+
 > **Note (2026-05-23):** any entry below that recommends INSN_PATCH /
 > NON_MATCHING_INSN_PATCH / PROLOGUE_STEALS / instruction-appending SUFFIX_BYTES
 > as the fix is **OBSOLETE** — that post-cc instruction-patching was removed as

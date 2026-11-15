@@ -1,5 +1,7 @@
 # Patterns
 
+> Start with docs/MATCHING_SUMMARY.md for the distilled techniques.
+
 > Asm-shape pattern recipes: how to recognize an asm idiom and the C source that produces it.
 
 > **Note (2026-05-23):** any entry below that recommends INSN_PATCH /

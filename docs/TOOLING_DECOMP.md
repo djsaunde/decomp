@@ -1,5 +1,7 @@
 # Tooling Decomp
 
+> Start with docs/MATCHING_SUMMARY.md for the distilled techniques.
+
 > Decompilation tooling: m2c, Ghidra, the permuter, decomp.dev integration.
 
 _10 entries. Auto-generated from per-memo notes; content may be rough on first pass — light editing welcome._

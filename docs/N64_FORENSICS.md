@@ -1,5 +1,7 @@
 # N64 Forensics
 
+> Start with docs/MATCHING_SUMMARY.md for the distilled techniques.
+
 > N64-specific knowledge: RSP ucode, splat config, ROM layout, game-specific.
 
 _10 entries. Auto-generated from per-memo notes; content may be rough on first pass — light editing welcome._
