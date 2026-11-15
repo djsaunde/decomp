@@ -1048,3 +1048,26 @@ Next (H1):
   0x108 lighttarget kid) as a shared SelModel base.
 - The match_imports Character / BoardList_createItem donors onto the context names.
 - Names for the 0x1CDD0 heap-size block's first word.
+
+### Run 522 (agent-c): SelectionMgr split screen, stage-list ctors
+
+a5e71bace on agent-c (hand edit; gate PASS 3288/3288; timproc_uso_b5.c.o, _8FC8.c.o and every
+select.h includer identical by sections, relocations and objdump -d -r):
+- `SelectionMgr` (0x58, asserted) 0x3C..0x54, from SelectionMgr_update (ncc_1F14), setSplit
+  (ncc_1DB0), finish and the ctor: waitMask 0x3C (bit 0 / 1 = wins[0] / wins[1] in SelectWin state 8,
+  rebuilt every update), prevWaitMask 0x40, split 0x44 (= wins[0]->centerX; wins[1] gets 0xF0 - split;
+  0x78 is the even split), zoomWin 0x48 (was unk48; 1 / 2 = the window sliding to full screen, the one
+  finish reports), busy 0x4C, shownMask 0x50 (bit per window with nonzero centerX), splitT 0x54 (0..1,
+  +0.05 per frame; split = 120 +- splitT * 120, also the fov / aspect blend). The ctor's two arms
+  (stageBit != 4: even split; == 4: wins[0] full screen, then setSplit) and finish are converted.
+- 8FC8 NEWS70 (Character / Board / Course / LevelList 0x70 ctors) writes SelItemList vptr / cfg2C /
+  parent / cfg34 / dispItems / count; VT = the SelItemList base vtable (Data 0xA94).
+- Census (F[WPF]( macro sites): timproc_uso_b5.c 365 -> 353, 8FC8 161 -> 154.
+
+Not done this run (next):
+- The ncc_1F14 / ncc_1DB0 donors still use raw SelectionMgr / SelectWin offsets (C++ units with their
+  own typedefs; including select.h there is untested under edg).
+- A shared select-model base (the five Sel*Model heads: pad to 0x10C, view / alpha / highlight /
+  focused / chosen at class-specific offsets, so only the 0x10C QNode head is common).
+- The match_imports Character / BoardList_createItem donors onto the context names.
+- timproc_uso_b5.c's remaining raw sites (the SelectWin_update / state bodies, SELWIN() users).

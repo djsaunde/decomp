@@ -731,3 +731,44 @@ Three commits, all gated (PASS, 3288/3288, ROM identical):
   the remaining AudioLoad_* raw sites (GetSamplesForFont, SyncLoadFont, DiscardFont); the o2_26D64 /
   o2_273B8 donors; then the select-screen items (SelectionMgr split-screen fields 0x3C..0x54, the 8FC8
   0x70 list ctors onto SelItemList, a shared select-model base, Character / BoardList_createItem).
+
+### Run 522 (agent-c): font / instrument / command types, donors 26D64 / 273B8, ProcessChannelCmd
+
+Four commits on agent-c (base 0e408e5bf), each gated PASS (3288/3288, ROM identical, placeholder
+check 0 mismatches); every rebuilt .o identical to the pre-run build (sections + relocations, and
+`objdump -d -r`):
+- f354a46c9 (hand edit): **include/audio.h font types**, OoT layouts with offset / size asserts:
+  AdsrEnvelope 0x4 (OoT EnvelopePoint), SoundFontSound (alias of TunedSample), Instrument 0x20,
+  Drum 0x10, SoundEffect 0x8, SoundFont 0x14, SampleBankRelocInfo 0x18, AudioTableHeader /
+  AudioTableEntry / AudioTable. AudioContext's sequence / font / sample-bank tables are now
+  `AudioTable *`, soundFontList `SoundFont *`, usedSamples `Sample *[0x80]`; AdsrSettings /
+  AdsrState.envelope `AdsrEnvelope *`. Views deleted and converted: DiscardSampleCacheEntry (221D8),
+  DiscardSampleCaches (22464; the entry keeps an s8 sampleBankId view, cast from the typed
+  persistentSampleCache.entries[j]), RelocateFont (23BDC), SyncLoadSample (230D0), AudioLoad_Init
+  tables (24378), ProcessAsyncLoad (250C8), RelocateSample (253C4), RelocateFontAndPreloadSamples
+  (25504), donors o2_25C54 (now includes audio.h) and o2_240A0. Raw sites: AudioLoad_DiscardFont
+  (fontCache.temporary.entries[0/1].id, persistent.entries[i].id, each alias symbol still its own
+  base), SyncLoadFont (soundFontList[a0].sampleBankId1/2), GetSamplesForFont (SoundFont / Drum /
+  Instrument; its baked fold jal 0x3A0EC = splat 0x25A80 = AudioLoad_AddToSampleSet).
+- e26855212 (hand edit): **AudioCmd** (0x8; op / arg0 / arg1 / arg2 / AudioCmdArg arg). 1080 has the
+  older layout: every value form (asFloat / asInt / asSbyte / asUbyte / asUShort) is at +4, not OoT's
+  +7 / +6. o2_273B8 is now (SequenceChannel *, AudioCmd *) on audio.h fields (20 -> 0 raw);
+  o2_26D64 (ProcessCmds) uses AudioCmd for the queue slot and SequencePlayer field names on its
+  per-player view (18 -> 0 by census2; the flags-byte view and the enabled-bit test stay, they are the
+  dead-mask lever). **Byte lever:** with typed operands, the target's `c.eq.s $f0,$f4` /
+  `beq v0,t4` needs the struct field FIRST (`channel->volumeScale != cmd->arg.asFloat`); the
+  command-first field spelling swaps both registers. The run-132 raw f2C read in 26D64 is retired by it.
+- 1b8140ecb (**tool output**, rename-symbol.py): AudioThread_ProcessSeqPlayerCmd ->
+  **AudioThread_ProcessChannelCmd**. Evidence: 0x273B8 = USO 0x3BA24 = ProcessCmds' callee
+  f(seqPlayer->channels[arg1], cmd) for each enabled channel; its cases write SequenceChannel fields.
+  1080 inlines the seq-player commands (0x41..0x4E) into ProcessCmds' switch. gl_func_0003ADFC in
+  26D64 is AudioThread_ProcessGlobalCmd (splat 0x26790); both stay pinned gl_func_ names.
+- a5e71bace (hand edit): select.h / genproc (see 1080_MODES.md run 522).
+- Census (census2: typed derefs + char* casts in Audio* / aud_ / snd_ fns): game_libs_post.c 396 -> 368,
+  o2_26D64 18 -> 0, o2_273B8 20 -> 0 (o2_25C54 / o2_240A0 were 0 by this metric; their local views
+  are gone).
+- **Next:** the 22464 / 221D8 entries could drop their s8 view if SampleCacheEntry.sampleBankId
+  went s8 and AllocTemporarySampleCacheEntry's u8 read were kept another way (untested); AudioLoad_Init
+  (24378) still has its own Ctx view (MesgQueue / pool padding) to fold onto AudioContext; the
+  remaining game_libs_post.c audio raw sites (368) are mostly AudioSynth_* command builders and
+  the NON_MATCHING bodies; ncc_28A68 (6) and o2_23914 (7).
