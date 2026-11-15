@@ -1,0 +1,36 @@
+## Common rules (readability phase)
+- **Goal:** readable source, with the ROM byte-identical and all 3288 functions exact.
+- **Read:**
+  - /home/danjs/code/decomp/docs/READABILITY_PLAN.md (sections 3–9);
+  - your area doc, if one exists, in /home/danjs/code/decomp/docs/1080_*.md;
+  - USO_FORMAT.md.
+- **Tools:**
+  - `scripts/rename-symbol.py` (try `--dry-run` first; `--allow-scoped-alias` exists);
+  - the gate, run as `GATE_TMP=/tmp/claude-1000/<you>/gate scripts/readability-gate.sh`. It must PASS before every commit.
+- **Commit hygiene (important):**
+  - A RENAME commit contains ONLY what `rename-symbol.py` produced, plus the renames.tsv lines. The coordinator replays renames.tsv deltas on main with the tool.
+  - Hand edits go in SEPARATE commits: struct headers, field conversions, comment fixes, tool changes.
+  - Never mix `git mv` of files into a tool commit.
+- **Name uniqueness is ROM-wide:** other areas name things in parallel. Before committing, grep the newest names on main in /home/danjs/code/decomp/projects/1080-decomp/renames.tsv. Avoid generic names that another area might also choose: game_libs and bootup each have their own TimeGadget, for example. Duplicate global names make ld segfault. For class names that recur in another segment, use a segment-qualified form (e.g. `TimeGadget_ctor_00013D40`).
+- **Evidence:** justify every name (comment or commit message). Keep an address suffix when only the kind is known. Never rename `*_00000000*` sentinels.
+- **Worktree setup:** fresh worktrees need `bash /home/danjs/code/decomp/scripts/agent-setups/1080.sh`, then `PATH=/home/danjs/code/decomp/tools/build-venv/bin:/home/danjs/code/decomp/.venv/bin:$PATH make setup`. Yours is already set up; just run a full make once.
+- **Commits:**
+  - on your own agent branch;
+  - author djsaunde <1245942+djsaunde@users.noreply.github.com>;
+  - via `git commit -F <scratch file>`;
+  - end each commit message with:
+    Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+    Claude-Session: https://claude.ai/code/session_01DbfSRBWaw6Jqe5SgVrtjU5
+- **Process:**
+  - Do NOT use `run_in_background`, and don't end a turn to wait for anything.
+  - Every command starts with `timeout 110` (600 for full make or the gate).
+  - No `git fetch` / `pull` / `rebase` / `merge` / `push` / `cherry-pick` / `reset` / `stash` / `--amend`. No sed -i on tracked files.
+  - Keep make at about -j8.
+  - Never `make -n`.
+  - Budget 70–85 minutes.
+- **Docs:** update your area doc /home/danjs/code/decomp/docs/1080_<AREA>.md (uncommitted).
+- **Report:**
+  - counts
+  - commits (marking which are pure renames)
+  - gate results
+  - what's next
