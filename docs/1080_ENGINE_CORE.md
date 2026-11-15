@@ -10,6 +10,9 @@
 > cd0bf1205 [rename, 30: pad / boot / str leftovers]). Scope now also covers game_libs_post1b.c (0x62F64-0x69CC4).
 > agent-b run 468 (on 19f8e0b6f: e8c40fbf9 [rename, 50: the last game_libs placeholders], 8fbf9b82b [rename, 17:
 > heap temp wrappers, agent-a's coll_/gfx_ position names], then 9 header-move commits b6f67ecbf..35a9a6469).
+> agent-b run 476 (on 27eefe3af: f00df5e00 [rename, 52 gfx_], 9a27aa26d [include/gdl window.h / light.h / material.h /
+> sprite.h, PolyShape + MorphPoly in polyshape.h], 54299fbde [DLMark / Window conversions], f15861371 [rename, 1]).
+> The graphics pipeline now has its own port-author doc: docs/1080_GRAPHICS.md.
 > Method: docs/1080_SYSTEM_LAYER.md section 1 (string xrefs through the bootup.uso reloc tables), plus the
 > matched bodies' own decode comments, GBI command words and class-name strings.
 
@@ -79,6 +82,9 @@
 
 ## 3. Structs
 
+Run 476 graphics headers (window.h, light.h, material.h, sprite.h, PolyShape / MorphPoly): see
+docs/1080_GRAPHICS.md, sections 4 and 6-8.
+
 `include/gdl/mem.h`: `MemBlock` (16-byte block header {hdr: owner id << 24 | size in 16-byte units, next, prev,
 magic}) and `MemHeap` (free-list sentinel, used-list sentinel at +0x10, id +0x20, usedSize +0x24), plus
 `MEM_MAGIC_ALLOC` 0x12345678 / `MEM_MAGIC_FREE` 0x87654321. Used by Mem_allocLow/High, Mem_free,
@@ -107,6 +113,15 @@ Next struct candidates: MemTracker; TextWin / ConsoleMgr; the RcpTask unk58-unk7
 RcpMgr_startTask).
 
 ## 4. Held back and next
+
+- Run 476: 53 graphics names (52 `gfx_func_` + MorphPoly_setVerts). Evidence per name is in commit f00df5e00.
+  About 8 `gfx_func_` remain with unclear roles (listed in docs/1080_GRAPHICS.md section 10). New headers:
+  window.h (DLMark 0xC, Window 0x144, ScreenWindow 0x1CC), light.h (BaseLight 0x138, LightTarget 0x16C),
+  material.h (BaseMat 0x60, vptr +0x5C), sprite.h (Sprite 0xD8), polyshape.h (+PolyShape 0xC0, MorphPoly 0xDC).
+  Converted: gfx_dlMark* (dlMarkStart needs an int-cast read of cur->base, or the registers swap) and
+  Window_updateAspect. Next conversions: Window_setupView, ScreenWindow_allocBuffers, MorphPoly_init,
+  BaseMat_init, LightTarget_ctor. The GfxLib global (fields in docs/1080_GRAPHICS.md section 2) stays as
+  `D_00000000 + K`.
 
 - Run 468: **no game_libs placeholders are left** (gl_func_ / game_libs_func_ except the `*_00000000*` sentinels).
   New in 0x27000-0x34400 (outside the old area): AudioThread_CheckSpecChange / ClearSpecChangeQueue / Noop1Cmd /
