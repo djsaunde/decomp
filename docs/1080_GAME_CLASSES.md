@@ -28,6 +28,7 @@
 - [20. Run 502: SnowAI aim, DDM setters, the rider node list](#20-run-502-snowai-aim-ddm-setters-the-rider-node-list)
 - [21. Run 506: game_uso cleanup, open meanings, readability status](#21-run-506-game_uso-cleanup-open-meanings-readability-status)
 - [22. Run 512: last placeholder calls, parm builders, field names](#22-run-512-last-placeholder-calls-parm-builders-field-names)
+- [23. Run 516: SnowBoarder and ShpNode on DNode](#23-run-516-snowboarder-and-shpnode-on-dnode)
 
 ---
 
@@ -1019,3 +1020,53 @@ expression to IDO (see the speed sites above). Plan: run from a base that has dn
 **Next:** the SnowAI_ctor archeology delete; camKey_init onto CamKey; ItemType_create x3 (struct + XCALL names);
 snowboarder.h's DNode base onto gdl/dnode.h; the 0x76E78 callee name (anim data manager load) and what
 import_80020098 + 0x138 is.
+
+## 23. Run 516: SnowBoarder and ShpNode on DNode
+
+**SnowBoarder.** include/game/snowboarder.h now starts with `DNode dnode;` (include/gdl/dnode.h) in place of the
+run-470 SnowB* mirror fields. Old name -> field: pos / orient -> `dnode.vqs.trans` / `.quat`; lastPos / lastOrient ->
+`dnode.cvqs.trans` / `.quat`; dparms -> `dnode.parms`; up / side / dir -> `dnode.axes[0]` / `[1]` / `[2]`; startPos ->
+`dnode.unk3A4`; vel, speed, angVel, velDir, lastVel, friction, surfImp / surfSpd / surfVsc, unk38C keep their names
+under `dnode.`. The rider-specific meanings moved into the `dnode` member comment. SnowBQuat, SnowBAccum,
+SnowBVec3Parm and SnowBDNodeParms are deleted (no other users). docs/1080_PHYSICS.md section 1 has the map as a table.
+
+- **The edg donors.** bootup_uso_ncc_B75C.cpp (updateOrient), bootup_uso_ncc_C234.cpp (procColl) and
+  game_uso_mp72_B3C.cpp include snowboarder.h by relative path, with no -I include, and edg rejects the gdl
+  headers' `&((T *)0)->f` asserts. Under `__cplusplus` the header therefore defines a layout mirror of DNode (AnimPose,
+  GdlParmF / V3, DNodeParms, DNodeAccum, DNode; same member names, MNode base opaque, sizeof-checked). The C build
+  checks the real offsets. If dnode.h changes a member name, change the mirror too.
+- **Sites.** About 120 field uses in 7 files: bootup_uso.c (limitSpeed, updateDyn, update, the E2D0 twin, the cam
+  node search, the r2 reset), bootup_uso_o2_E2D0.c, game_uso.c, game_uso_591C.c, and the three donors. The compiler
+  found every typed use (the old names no longer exist). **No site had to stay raw for this change.** The 591C
+  `*(float *)(sub + 0x348)` speed reads were already raw (run 512) and stay raw. Every touched object is
+  objdump -dr identical: the 4 C TUs on both build paths, and the 3 donors built from HEAD and from the new tree.
+  The "about 200 sites" estimate from run 512 counted every `pos` / `vel` / `dir` token, including other structs'
+  fields and comments.
+- **Not converted:** raw-offset rider accesses (`st + 0xDC`, `FF(r, 0x3A4 ...)` in bootup_uso_ncc_31C0.cpp,
+  `I(0x3DC)` in bootup_uso_ncc_CAE8.cpp, bootup_uso_90CC.c's startPos stores). bootup_uso_ncc_8BD4.cpp keeps its
+  own V3 rider view (`b->rider->pos`), which is not snowboarder.h. The bootup_uso.c comment lines 1356 / 1917 still say
+  `rider->pos` / `rider->startPos` (agent-h's file; field-access lines only were in scope).
+- **startPos stays `unk3A4` in dnode.h.** No game_libs DNode function reads or writes 0x3A4. Only SnowBoarder code
+  does (the ctor stores the spawn point; the reset at bootup_uso_ncc_CAE8.cpp passes `st + 0x3A4` to a call), so
+  the name belongs to the rider, not to DNode.
+
+**ShpNode** (include/game/envobj.h) = `{ DNode dnode; s32 life; }`. ShpNode_func_00008FA8 copies dnode.vqs (trans,
+scale and quat) into dnode.cvqs. The ctor's old `unk260 = 50` store is **dnode.parms.rad.value** (0x108 + 0x148 +
+0x10; the DNode default is 150).
+
+**game_uso.c.**
+- The SnowAI_ctor history comment (397 lines) is now a 7-line summary. The D_44F4_iter*_t / _p / _f externs above
+  the body are unused leftovers; they are mirrored in match_imports/context_game_uso.h and pinned in
+  undefined_syms_auto.txt.
+- camKey_init_000003F8 takes `CamKey *`. The old comment had look and eye swapped.
+- game_ItemType_create x3: XCALL names (mem_new, ColourItem_ctor, list_append), checked by the gate (2936 named
+  calls). arg0 is typed through ITEMTYPE() (gdl/item.h is now included in game_uso.c), and the attach is written
+  with NODE(): the type's unk40 node becomes the new ColourItem's child.
+
+**Absolute-token placeholders.** game_uso.c still has about 230 calls spelled with game_uso_func_0XXXXX tokens
+(game_uso_func_055750 99, _04A188 51, _077C44 8, _071028 8, ...). They carry relocs, so the gate's check verifies
+an XCALL name on them, but scripts/name-placeholder-calls.py `plan` only proposes names for `*func_00000000*`
+tokens (PH_RE). Extending plan to the absolute tokens would name them all in one pass.
+
+**Next:** that plan extension (or hand XCALLs; 055750 is mem_new at the three ItemType_create sites); a DNode view for the
+.cpp raw-offset sites (31C0 RIDER_START, CAE8); the 0x76E78 callee and import_80020098 + 0x138 (run 512 list).

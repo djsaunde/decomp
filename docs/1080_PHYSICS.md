@@ -17,12 +17,25 @@ the matched code. "k" means a RoData constant whose value was not needed for the
 
 ## 1. Object layout
 
-- **0x000..0x3D4: the game_libs DNode** (dynamics node). pos 0xB4, orient 0xCC (quat x y z w), lastPos 0xDC,
-  lastOrient 0xF4, `dparms` 0x108 ("DNode::Parms": gvt = gravity, tsc = accumulator time scale, cog = centre of
-  gravity, imp / spd / vsc = contact response values), surfImp / surfSpd / surfVsc 0x288 (the per-surface copies
-  the contact solver uses), two force accumulators (impulseAcc 0x294, moveAcc 0x2C8), angVel 0x2FC (a rotation
-  quat applied once per frame), velDir 0x30C, vel 0x318, worldCog 0x324, velDelta 0x330, lastVel 0x33C, speed
-  0x348; body axes up 0x3B0, side 0x3BC, dir (forward) 0x3C8.
+- **0x000..0x3D4: the game_libs DNode** (dynamics node), typed `DNode dnode;` (include/gdl/dnode.h; since
+  agent-g run 516). The prose below keeps short names; in the source they are:
+
+  | short name | source field | offset | meaning |
+  |---|---|---|---|
+  | pos | `dnode.vqs.trans[3]` | 0xB4 | world position |
+  | orient | `dnode.vqs.quat[4]` | 0xCC | orientation quat (x y z w) |
+  | lastPos / lastOrient | `dnode.cvqs.trans` / `dnode.cvqs.quat` | 0xDC / 0xF4 | pose at the end of the last integrate |
+  | dparms | `dnode.parms` | 0x108 | "DNode::Parms": gvt = gravity, tsc = accumulator time scale, cog = centre of gravity, imp / spd / vsc = contact response values |
+  | surfImp / surfSpd / surfVsc | `dnode.surfImp` ... | 0x288 | the per-surface copies the contact solver uses |
+  | impulseAcc / moveAcc | `dnode.impulseAcc` / `dnode.moveAcc` | 0x294 / 0x2C8 | force accumulators (DNodeAccum) |
+  | angVel | `dnode.angVel[4]` | 0x2FC | rotation quat applied once per frame |
+  | velDir, vel, worldCog, velDelta, lastVel | `dnode.velDir[3]` ... `dnode.lastVel[3]` | 0x30C..0x33C | |
+  | speed | `dnode.speed` | 0x348 | |vel| |
+  | friction | `dnode.friction` | 0x360 | section 4 |
+  | startPos | `dnode.unk3A4[3]` | 0x3A4 | spawn point (only SnowBoarder uses it) |
+  | up / side / dir | `dnode.axes[0]` / `[1]` / `[2]` | 0x3B0 / 0x3BC / 0x3C8 | body axes (rows of the orientation matrix); dir = forward |
+
+  So `vel.x` below is `dnode.vel[0]`, `up.y` is `dnode.axes[0][1]`, and so on.
 - **0x3EC: SnowBChild** with its own Parms (ground handling: ied ifr ded dfr efr nbf nel dbf del res flx sta).
 - **0x540: SnowBoarder::Parms** (29 float parms: hpf snf dsf icf tfc edf bdf ure mro mpi mdr axr ayr azr tlt wfr
   sfr dts nts trt twt min max jmp djp ufs bdm cdm tch). Values come from the parms file; the struct comments say

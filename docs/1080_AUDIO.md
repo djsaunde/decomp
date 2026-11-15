@@ -691,3 +691,43 @@ Commit a6d00146b (**pure rename**, gate PASS, 3 renamed). Callers from `scripts/
   Channel0IO_30504 / Channel8IO1_30564 / Channel8Pan_305CC) has no game-code caller that names its
   purpose; the io-port meanings would need the sequence scripts.
 - Step 6 (audio struct conversions in game_libs_post.c) was not reached this run.
+
+### Run 518 (agent-c): placeholder calls, heap caches, Note / seq / reverb fields
+
+Three commits, all gated (PASS, 3288/3288, ROM identical):
+- 5a30b70a1 (**tool output**, name-placeholder-calls.py `plan --write`): 35 sites. game_libs_o2_23914.c 9,
+  _26790.c 8, _2C7A4.c 13 (the 30 audio-driver sites), timproc_uso_b5_ncc_BDEC.cpp 5. The other 15
+  driver donors and the genproc files have no provable site left (timproc_uso_b5.c: 3 no-jal).
+  Oddity worth knowing: in AudioSeq_SequencePlayerProcessSequence (2C7A4) the two calls after the
+  load-complete test both resolve to AudioLoad_IsSeqLoadComplete, the second with defaultFont.
+- 33d289fb6 (hand edit): **heap cache types in include/audio.h.** AudioCacheEntry 0xC, SampleCacheEntry
+  0x14 (u8 sampleBankId), AudioSampleCache 0x294, AudioPersistentCache 0xD4, AudioTemporaryCache 0x2C,
+  AudioCache 0x110, Session / Cache / Common pool splits, AudioPreloadReq 0x14. AudioContext now models
+  0x21C8 cachePool, 0x21D8 / 0x21E8 persistent / temporaryCommonPool, 0x21F8 / 0x2308 / 0x2418 seq / font
+  / sampleBankCache, 0x2528 permanentPool, 0x2538 permanentCache[32], 0x26B8 / 0x294C persistent /
+  temporarySampleCache, 0x2BE0..0x2C10 the splits (OoT offsets - 0x828). 0x21A8..0x21C8 stays padding
+  (OoT: two unused pools). Converted: AudioHeap_Alloc / AllocZeroed / InitPool / ResetPool /
+  InitPersistentCache / InitTemporaryCache / AllocAttemptExternal / AllocZeroedAttemptExternal /
+  InitMainPools / InitSessionPools / InitCachePools / InitPersistent- and InitTemporaryPoolsAndCaches /
+  AllocPermanent / InitSampleCaches / AllocPersistentSampleCacheEntry, and AllocTemporarySampleCacheEntry's
+  gl_heap_* views. A scoped `#define gAudioCtx (*(AudioContext *)&gAudioContext)` covers
+  AllocZeroedAttemptExternal..DiscardSampleCaches (#undef after it).
+- 978b570cd (hand edit): Audio_NoteInit, Audio_NoteVibratoUpdate (Note *), Audio_NoteReleaseAndTakeOwnership
+  (ticksPerUpdateInv), AudioSeq_SequencePlayerDisable (SequencePlayer *, fontCache.temporary entries[].id
+  -> nextSide, which independently confirms the cache layout), SkipForwardSequence, SeqLayerFree,
+  AudioListPopBack. **Reverb:** `REVERB_AT(rec)` = `(SynthesisReverb *)(rec + 0x18)` names
+  synthesisReverbs[idx] off the kept `&gAudioCtx + idx * 0x158` base (IDO folds the 0x18): FilterReverb,
+  LoadAuxBufferC, UpdateReverbs. **Byte trap:** in LoadAuxBufferC's 0x05 packet, resampleFlags /
+  unk_0E as member reads re-rank the `|` operands (.text changes); they stay raw derefs.
+- Per-.o check: /tmp/claude-1000/c518/ocmp.py compares every non-debug section and the relocation
+  lists (symbol names) of two .o files; all 23 audio objects identical to the pre-run build.
+- Raw-access census (/tmp/claude-1000/c518/census2.py: typed `*(T *)(` derefs + `(char *)` casts in
+  Audio* / aud_ / snd_ functions of game_libs_post.c): 495 -> 396. The donors are mostly typed already
+  (o2_26D64 18, o2_273B8 20, ncc_28A68 6, o2_23914 7 left).
+- Not converted (reasons): Gl29000Obj (u32-container bitfield lever), AudioHeap_DiscardSampleCaches
+  (s8 sampleBankId view; audio.h has u8), the gl_221D8 / gl_22464 font views (no SoundFont / Instrument
+  types in audio.h yet), NON_MATCHING bodies (Audio_NoteVibratoInit).
+- **Next:** SoundFont / Instrument / Drum types into audio.h (gl_221D8 / gl_22464 / 23BDC views);
+  the remaining AudioLoad_* raw sites (GetSamplesForFont, SyncLoadFont, DiscardFont); the o2_26D64 /
+  o2_273B8 donors; then the select-screen items (SelectionMgr split-screen fields 0x3C..0x54, the 8FC8
+  0x70 list ctors onto SelItemList, a shared select-model base, Character / BoardList_createItem).
