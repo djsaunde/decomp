@@ -640,3 +640,51 @@ Next:
 - gfx_clearScreen (30), BasePolyShape_genNormals (24), math_mtxScaleRows (18);
 - the HostIO objects, Window +0x84 / +0x98 / +0x100, ItemType +0x34..+0x40, PolyShape_func_00043584;
 - the pad rename candidates above.
+
+## 16. Run 521 (agent-b): pad renames, InputPad = PadCtl, CollShape, DL packets
+
+Renames (pure, 6d1d0a47f; evidence in the commit message):
+- pad_testButton_00067550 -> **pad_isConnected** (the port's bit in PadDev.present);
+- pad_setIfNewer_00067A54 -> **pad_startRumble** (skipped when the same pattern is playing or
+  rumblePrio is higher); pad_set_00067A90 -> **pad_setRumble**;
+- pad_clear_00067AA0 -> **pad_clearButtons**; pad_clearSlot -> **pad_stopMotor**;
+- pad_isSlotState2 / pad_isSlotState2Global -> **pad_hasRumblePak** / **pad_hasRumblePakGlobal**
+  (pakState == 2).
+
+Headers and bodies (hand edits; identical objdump -dr for every changed .o):
+- **pad.h** is plain-C-typed (the NCC .cpp users of game/input.h have no s8 / u8 / f32), keeps its
+  offset checks under `#ifndef __cplusplus`, and now owns InputFrame and PAD_REPLAY_*.
+  game/input.h includes it and has `typedef PadCtl InputPad;`, with no duplicate defines.
+- The **pad_update donor** (game_libs_o2_675A4.c) is fully field-typed. IDO lesson: a struct field
+  read `p->f` is lowered in a different order from the `FW(p, off)` cast form inside a binary
+  expression. The commutative pairs that read `X | FW(0x10)` had to be written `p->held | X`, and
+  the doubleTap AND had to be `lastPressed & pressed`. The PLAY cursor that was scaled-index-first
+  as ints is `&p->replayFrames[p->replayFrame]`. The rumble byte keeps a `char *` local read
+  through a `u8 *` cast, because a `u8 *` local swaps the addu.
+- **coll.h**:
+  - CollShape (0x90): Node; tris; the token-stream fields 0x30 / 0x34 stream / 0x38 / box[6];
+    unk54[3]; shape = BasePolyShape * at +0x84.
+  - CollTri (12 bytes: axU / axV / axis / sign / tag / d).
+  - CollGrid (the XZ cell grid at BasePolyShape +0xA0).
+  - POLY_TRILIST / POLY_COLLGRID, for BasePolyShape unk4C / unkA0.
+
+  CollShape_initTriPlane, the CollShape_raycast / query NM reference bodies, NullCollShape_ctor
+  and the CollShape_ctor donor (game_libs_o2_3AC5C.c) use these types. The local views ObjB9 / TriB9
+  / ColB9 / FaceB9 / ObjBE / TriBE / ColBE / FaceBE / GridBE and AxisInfo_3AA5C are gone.
+- **dlctx.h** DLGfx {w0, w1} + DLPKT(): gfx_clearScreen has 0 raw sites (and takes f32 *colour).
+- **polyshape.h** POLYTRI(): BasePolyShape_genNormals. Its three cross-product lines stay raw,
+  because POLYVERT there reorders the lh loads (the same field-vs-cast effect).
+- math_mtxScaleRows / math_mtxAddTranslation take f32 (*)[4].
+- `uso-data-sites.py check --update-ratchet` dropped the 4 spelled post0b entries.
+
+post0b cast sites (census, compiled code): 507.
+
+Next:
+- name BasePolyShape unk4C (s16 tri list, parse cmd 26) and unkA0 (CollGrid *, parse cmd 35) in
+  polyshape.h, then drop POLY_TRILIST / POLY_COLLGRID;
+- convert the CollShape_ctorPoly NM body;
+- the HostIO objects, Window +0x84 / +0x98 / +0x100, ItemType +0x34..+0x40,
+  PolyShape_func_00043584;
+- PolyShape_display, whose matching code is the NCC donor game_libs_ncc_48AEC.cpp (the C body is
+  NM reference only).
+

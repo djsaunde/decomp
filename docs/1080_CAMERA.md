@@ -77,6 +77,11 @@ holds 0x80 for 3 (look back; `savedChaseMode` 0x270 restores):
 
 Modes 2 / 3 also set rider +0xA58 bit 0x2000. `view` (0x250) is picked by cam_command (commands 3..18) or, when
 `rider->raceResult` changes (`lastResult` 0x264), by cam_pickResultView (result + game mode -> view 0..14).
+cam_pickResultView reads the GameFlow object (include/game/input.h; the import `import_80020098`, agent-g run 523):
+result 0 (racing): view 1 for flow modes 4 / 6 / 7 or flow mode 1 with procState 0, else by `course` (2 -> 6,
+3 / 5 -> 7, 4 -> 8, 6 -> 9, 7 -> 10, other 0); result 1 (win): view 11 when GameFlow +0x7C is set, else by course
+(2 / 4 -> 13, 7 -> 14, other 2); result 2 -> 12; 5 -> 3; 6 -> 4, or 5 on course 7. The look-at node is typed as
+`LookAtNode` in camera.h (MNode + `chase`, the SnowChaseActorLook at 0xB4), the same name as the 31C0 class.
 `pad` (0x274) is the input pad: cam_create's p4.
 
 ## 3. The eye: SnowChaseActorCam

@@ -46,6 +46,11 @@ the matched code. "k" means a RoData constant whose value was not needed for the
 - 0x820..0x874: model nodes from the rider node list (bootup Data 0xABBC, docs/1080_GAME_CLASSES.md section 20):
   bodyNodes (boarder_a, board_a, legL / legR joints 2-3, waist), 0x844 "top" (the root), 0x864 the board shape
   node, 0x874 camSource = the head node.
+- 0x954 marker / 0x958 markerLink / 0x9B8 linkDir: the course marker SnowAI_updateMarker (game.uso) last found,
+  its link and normalize(pos - link.pos) in XZ (agent-g run 523). Child parm `sta` (0x528) scales RiderAnim's
+  landing-hit thresholds (bumpUp * hitScale against l3f / l2f / l1f * sta, RiderAnim_selectAnim).
+- **Jump.** RiderAnim_startOllie adds parms.jmp * 0.8 to vel.y; stateOllieTakeoff adds parms.djp and resets angVel
+  to identity.
 - 0x910..0x9E4: contact and ground state (section 5); 0x9F8..0xA00: edgeFriction, edgeGrip, turnRate
   (section 4); 0xA04 localUp; 0xA1C..0xA24 bump response; 0xA58 flags; 0xA78 maxSpeed.
 

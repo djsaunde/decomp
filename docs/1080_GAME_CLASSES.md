@@ -29,6 +29,7 @@
 - [21. Run 506: game_uso cleanup, open meanings, readability status](#21-run-506-game_uso-cleanup-open-meanings-readability-status)
 - [22. Run 512: last placeholder calls, parm builders, field names](#22-run-512-last-placeholder-calls-parm-builders-field-names)
 - [23. Run 516: SnowBoarder and ShpNode on DNode](#23-run-516-snowboarder-and-shpnode-on-dnode)
+- [24. Run 523: game_uso raw sites, GameFlow import, AnimDataMgr_lookup](#24-run-523-game_uso-raw-sites-gameflow-import-animdatamgr_lookup)
 
 ---
 
@@ -1070,3 +1071,43 @@ tokens (PH_RE). Extending plan to the absolute tokens would name them all in one
 
 **Next:** that plan extension (or hand XCALLs; 055750 is mem_new at the three ItemType_create sites); a DNode view for the
 .cpp raw-offset sites (31C0 RIDER_START, CAE8); the 0x76E78 callee and import_80020098 + 0x138 (run 512 list).
+
+## 24. Run 523: game_uso raw sites, GameFlow import, AnimDataMgr_lookup
+
+Census (compiled code, `*(T *)(p + K)` casts / accessor uses): game_uso 273 / 227 -> 125 / 212; bootup_uso 714 / 149
+-> 710 / 139 (the two donors). Commits a0d7483f4, 16a0b554d, befe7756c, all hand edits, every changed object
+objdump -dr identical.
+
+- **import_80020098 is GameFlow** (include/game/input.h InputMgr). Every offset game.uso reads fits: +0x34
+  nextFlowMode, +0x40 procState, +0x64 course, +0x138 dataMgr (RaceTracker), +0x148 backup (the match_imports
+  CourseItem_drawLabel). The other import names are the same object named base + addend: import_800200CC = +0x34,
+  import_80020110 = +0x78, import_800201D0 = +0x138. In C they are read as `INPUT_MGR(import_X).field` (same symbol,
+  same addend). **`import_80020098 + 0x138`** is therefore GameFlow.dataMgr; RiderAnim_update (D204) sets
+  RTF_FLUSH | RTF_POINTS in its hudFlags (+0xB4) while endTrickFlag is set and course == 0 (the trick-points HUD),
+  and RiderAnim_endTrick passes dataMgr to the two score calls. GameFlow +0x7C (cam_pickResultView's win view 11) is
+  still unnamed (input.h pad7C, not my header).
+- **0x76E78 is AnimDataMgr_lookup** (game_libs 0x6280C). game_uso address tokens are game_libs offsets + 0x1466C
+  (055750 = mem_new 0x410E4, 04A188 = the parm ctor 0x35B1C). The call stays a token for agent-a's CALL tool.
+- **New fields:** SnowBoarder marker / markerLink / linkDir (0x954 / 0x958 / 0x9B8, SnowAI_updateMarker), unkA68
+  (stateTrickWindup writes 1; no reader), child.parms.sta documented; camera.h LookAtNode (snowlookat + chase).
+- **Converted:** RiderAnim state functions (ollie / hop / switch stance / trick windup / endings / crash recover),
+  SnowAI updateMarker / rivalLeadZ / isAtFinish / isInSegmentWidth / timeoutRun, the Node vptr / name stores of 12
+  ctors (`NODE(p)->vptr`), cam_reset / cam_command / cam_pickResultView, SnowAI_steer (591C donor: CourseMarker flg /
+  ext / link, rival, flags, vel, pos, parms.nts, every dnode.speed read), the B3C donor's look-at and result-view
+  reads, RiderAnim_selectAnim's rider reads (D9CC donor includes snowboarder.h), and in the bootup donors
+  RIDER_START = dnode.unk3A4 (31C0) and SnowBoarder_reset's rider fields (CAE8).
+- **Byte traps:** `x * member` products where the member is the second operand move FP registers; write them
+  member-first (591C `dnode.speed * reachTime`). SnowAI_scaleRiderMax's savedMax resists both orders.
+  SnowAI_steer's `*(unsigned int *)(self + 0x2C)` (level) must stay an unsigned raw read (the member, even cast,
+  moves the code by 10 words). The `0 * (int)p` / `(int)p + 8` levers in 591C and the `p += 0x318` / `src += 0x70`
+  bumps stay.
+- **Left (125):** about 106 are data-symbol sites (`&game_uso_D_807FFxxx + K` Pair2 / parm-tag / double constants,
+  the SnowAI_ctor `D_44F4_iter*` tag reads), not struct offsets. Struct sites left: CourseCam readParms' walking
+  pointer (p + 0x1D4 / 0x158 = paths[i] / lists[i]), the 0x40-byte ColourItem subclass (+0x3C) in the three
+  ItemType_create twins, the 8-byte {vptr, 0} member headers in Sun / LensFlare ctors, MemberCallback_invoke,
+  savedMax, level, 591C's nts value read, the B3C `ob` store and the 43D8 / 7C1C rodata reads. About 50
+  `a0[0xNN / 4]` int-index forms are not counted by the census but are still raw.
+
+**Next:** a C++-safe rideranim.h (mirror like snowboarder.h) so D204 / D9CC / the other NCC RiderAnim donors can drop
+FW / FF on `arg0`; the `a0[K / 4]` forms; GameFlow +0x7C (with input.h's owner); name the data-symbol sites
+(Pair2 state tables) once the data-alias tooling covers game_uso.
