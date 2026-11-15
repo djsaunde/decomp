@@ -24,6 +24,9 @@
 - [10. Open items](#10-open-items)
 - [11. Skeletal animation (animate.cpp)](#11-skeletal-animation-animatecpp)
 - [12. Skinning (skin.cpp)](#12-skinning-skincpp)
+- [13. Run 500 (agent-b): structs for the post0b engine classes](#13-run-500-agent-b-structs-for-the-post0b-engine-classes)
+- [14. Run 511 (agent-b): DNode, PhysQNode, Friction](#14-run-511-agent-b-dnode-physqnode-friction-includegdldnodeh)
+- [15. Run 515 (agent-b): controllers, packed files, BallRotator](#15-run-515-agent-b-controllers-packed-files-ballrotator)
 
 ## 1. Frame flow
 
@@ -574,3 +577,66 @@ Next: post1b pad_* (pad thread object, ~25 sites: pad_reset_000673FC, pad_startP
 initMotors / set*), ImageFile_init / BinFile_set / list_allocNode / DynArr, skin leftovers; then the run 500
 list (BallRotator, PolyShape_display, CollShape, HostIO objects, Window +0x84 / +0x98 / +0x100,
 ItemType +0x34..+0x40, PolyShape_func_00043584).
+
+## 15. Run 515 (agent-b): controllers, packed files, BallRotator
+
+New headers (all in include/gdl; evidence in each header comment):
+- **pad.h**: the controller layer.
+  - **PadDev** (0x13F8) is the Bss device block gSysDevBlock_3A4E8 (Sym 1505, whose 5112-byte span
+    is exactly this size). Layout:
+    - +0x0000 the 4 KB pad-thread stack;
+    - +0x1000 OSThread;
+    - +0x11B0 the message queue, with 4 slots at +0x11C8;
+    - +0x1200 OSContPad[4] (osContGetReadData), +0x1218 OSContStatus[4] (osContInit);
+    - +0x1228 OSPfs[4];
+    - the per-port pakState / motorOn / hasMotor / motorValue;
+    - readDone, the present bit pattern, motorRetry.
+
+    The thread (pad_threadLoop_00066EEC donor) handles three messages: 5 is the SI event (pak
+    probe), 1 starts a read (it pushes motorValue[] first), and 2 is read done.
+  - **PadCtl** (0x80) is one controller, the object the bootup modes call InputPad
+    (include/game/input.h, agent-h). Fields:
+    - stick (raw / 80 with a 0.2 dead zone);
+    - held / prevHeld / pressed / released;
+    - doubleTap (the same press again within 10 frames), port (1-based);
+    - injected input, replay, paused, recordMask, mirrorX;
+    - the rumble pattern: a 0xFF-terminated byte string, rumblePrio, and dirIndex.
+
+    pad_setIfNewer_00067A54 (start a rumble unless a higher-priority one is running),
+    pad_set_00067A90, pad_clear_00067AA0 (clear the button words), pad_clearSlot (stop the motor)
+    and pad_isSlotState2 (rumble pak present) are rename candidates. So is pad_testButton_00067550,
+    which tests the port's bit in the present mask, i.e. "controller connected". The pad_update
+    donor (game_libs_o2_675A4.c) still uses FW(); converting it is next.
+- **binfile.h**: BinFileMgr (0x38: Node, fileHandle, groups, nGroups), BinFileGroup (0x10: files,
+  nFiles, mgr), BinFile (0x20, Cfront vptr at +0x1C: flags bit 0 = no data, fileOffset, data, mgr,
+  size), ImageFile (0x30: width / height / format / dataOffset / dataSize, from the tag stream that
+  ImageFile_load reads).
+- **mem.h** gained DynArr (0xC: items, count, capacity; 8-byte slots) and DynArrPool
+  (list_allocNode_000665B4).
+- **polyshape.h**: BasePolyShape +0xA8 / +0xAC are skinInvBone / skinBoneMtx (stored by SkinMgr_init).
+- **ballrot.h**: BallRotator, the virtual trackball Node. It projects the cursor's current and
+  previous screen points onto a sphere (centre, "Radius") and composes the drag rotation into its
+  parent MNode's matrix. Its fields are named by role in BallRotator_reset / update / func_00036224.
+
+Rename (pure, 36020705f): Friction_vfn11_00063F34 -> Friction_applyContact, plus its four
+`kRo_Friction_applyContact_<K>` constants. The gl_data.h pool macro `kRo_Friction_vfn11_00063F34`
+needed a one-token hand edit in the same commit: rename-symbol.py refuses a #define, and
+`uso-data-sites.py check` keys every kRo_ pool on its function's name, so the gate fails unless the
+pool macro and the function move together. **Any rename of a function that owns a kRo_ pool has this
+problem** (a tool feature request for agent-a: let rename-symbol.py carry `kRo_<OLD>` along).
+
+Raw sites: post1b 113 -> 58, post0b 705 -> 629. Every step had an identical objdump -dr for the
+matching and NON_MATCHING .o, and the gate passed. Two conversions did not stay identical:
+- pad_updateMotor_00067084: typed `dev->motorOn[a1]` keeps `this` live across the call (a spill),
+  so the `v1 = a0 + a1` byte-row pointer stays, with a comment;
+- the second nVerts loop of the SkinMgr_update NM body: BASEPOLY()->nVerts grew the NM .text by
+  12 bytes of tail padding, so the raw form stays.
+
+Next:
+- convert the pad_update donor;
+- CollShape (0x90: Node, the 12-byte AxisInfo tri planes at +0x2C, shape +0x84). Its bodies use the
+  local views ObjB9 / ColB9 / TriB9 / ObjBE, which a coll.h CollShape should replace;
+- PolyShape_display (29 sites, gctx = the GfxLib DL context);
+- gfx_clearScreen (30), BasePolyShape_genNormals (24), math_mtxScaleRows (18);
+- the HostIO objects, Window +0x84 / +0x98 / +0x100, ItemType +0x34..+0x40, PolyShape_func_00043584;
+- the pad rename candidates above.

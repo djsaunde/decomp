@@ -259,6 +259,11 @@ already-relocated addresses of arrays in the same asset (GRAPHICS 7.1).
 | `g<Name>` / `s<Name>` / `D_<addr>` | global / TU-static / unidentified data; `<Class>_vtbl` for vtables (include/gdl/gl_data.h) |
 | `gl_func_<addr>`, `func_<addr>`, `<seg>_func_<addr>` | not yet named (none left in game_libs) |
 | `*_00000000*` (`gl_func_00000000`, `func_00000000`, `D_00000000`, `gl_func_00000000_send` ...) | **never renamed**: USO import / section-base placeholders |
+| `CALL(Callee)(args)`, `FCALL(f)`, `GCALL(f)`, `XCALL(tok, f)` (include/uso_call.h) | a USO placeholder call with its real callee named: expands to exactly `gl_func_00000000` / `func_00000000` / `game_uso_func_00000000` / `tok`, so bytes cannot change; `scripts/name-placeholder-calls.py check` (gate step 5) verifies each name against the ROM TextReloc of that jal; rename-symbol.py rewrites `CALL(OLD)` with the callee |
+| `GL_DATA(K)` / `GL_RODATA(K)` / `GL_BSS(K)` (include/gdl/gl_data.h) | a bootup.uso section-base site, = `(char *)&D_00000000 + K` |
+| `GL_DATA_STR(K, "text")` / `GL_RODATA_STR(K, "text")` | the same site where K starts a string; the literal documents it (`check` compares it with the ROM bytes) and is discarded by the macro |
+| `sStr_<words>_<K>`, `sFmt_<words>_<K>`, `sTag_<tag>_<K>` | content-named per-site aliases of a string at section offset K (plain text / printf format, specifiers dropped / gdl parm tag); content-named, so they do not follow function renames |
+| `kRo_<Func>` / `kRo_<Func>_<K>` | RoData constant pool of function `<Func>` (gl_data.h macro, = GL_RODATA(first K)) / one constant of it (a per-site linker alias); follow `<Func>` on a rename (rename-symbol.py, run 517) |
 
 **Why the source looks the way it does** (all of it is deliberate; READABILITY_PLAN section 9):
 - **Raw offsets kept on purpose.** `*(T *)((char *)p + 0xNN)` (`FW(p, off)` macros) remain wherever a typed
@@ -277,8 +282,11 @@ already-relocated addresses of arrays in the same asset (GRAPHICS 7.1).
   same address): the ROM bytes carry HI16 / LO16 relocations against the section base, so the base symbol
   and offset must stay. Named objects are aliases in include/gdl/gl_data.h; per-site aliases
   (`gGfxLib_2c94_ctx`, `D_76F0_fadeB`) keep a distinct symbol where IDO needs one (READABILITY_PLAN 9.1).
-- **Cross-module calls** go through `gl_func_00000000(...)` (a `jal 0` with an import reloc). The comment or
-  the area doc names the real callee; the call itself cannot be spelled with the callee's name in matched code.
+- **Cross-module calls** go through `gl_func_00000000(...)` (a `jal 0` with an import reloc). Most are
+  written `CALL(Callee)(...)` (uso_call.h; 2927 named, 3032 raw left at run 517, census in READABILITY_PLAN
+  section 0): the macro drops
+  the name, so the callee is documentation verified against the ROM relocs, not a real symbol reference.
+  The raw ones left (mostly bootup_uso and the mode USOs) are named in comments or the area docs.
 - **Codegen levers** survive in matched bodies: `if (1) {}`, `volatile int pad`, `register` locals, comma
   expressions, odd declaration orders, distinct alias externs. The comments explain them; do not tidy them.
 - **Donors.** Many functions are compiled in a separate TU (`*_ncc_*.cpp` C++, `*_mp72_*.cpp` MIPSpro,
