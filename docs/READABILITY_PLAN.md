@@ -518,6 +518,45 @@ The interior field symbols D_800195D4..D_800195E0 stay `D_` (separate reloc symb
   (CollShape query), 557, 805, 1675, 1853/1854 (GfxLib init), 2344/2345 (sys_fatal/imin/imout). Name the
   Data-base string sites per function: there are 1809 base sites, with the strings resolvable via `sites`.
 
+#### 9.1.7 Run 493: closing the named-object gap; census update
+
+- **Tool** (69879364c, 70ee5304b): `convert` refuses typed accessors (`gDmaSlots ((DmaSlot *)&D_00000000)`
+  turned `&D_00000000` into `&gDmaSlots`, which does not compile). `convert --bare` also respells bare value
+  uses (`D_00000000 |= mask`, `(Thread *)D_00000000`) as K = 0 sites, but not member accesses. `check` scopes a
+  local macro to its `#define` .. `#undef`: a `rec` macro in AudioSynth_LoadAuxBufferC was matching later
+  functions' `rec` locals.
+- **Conversions:** 194 sites by `convert` (832962cd7); 29 by `--bare`, plus hand conversions of
+  multi-object functions (812bfa5b1):
+  - osDestroyThread, osContInit, __osLeoResume: mapped by the libultra source.
+  - GameFlow_restart / loadProcUso / create, settings_setFlag4, pad_update: -O0, so source order = site
+    order.
+  - snd_TriggerChannel8Cue donor (c1afdf1e0).
+  - Excluded: game_libs_tail.c (agent-h), and the game_libs_post0b.c gfx / anim functions (agent-b).
+- **Renames (pure):** 131 per-site aliases (eac819fbc) and 14 more for wave 3 (06c8d0716).
+- **New names:**
+  - gl___osContinitialized (2561), gl___osEventStateTab (2537);
+  - wave 3: gSysImStack / gSysImDepth (2344 / 2345), gGfxFbWidth / gGfxFbHeight (1853 / 1854),
+    gSysDevBlock_3A4E8 (1505).
+- **Census after run 493 (direct object relocs, 2753 sites):** named object 2029 (74%); spelled with a name
+  1552 (56%, up from 1077); raw on a named object 477:
+  - 177 plain;
+  - 183 per-site alias;
+  - 117 donor splice.
+
+  Most of what remains is in other owners' files (gGfxLib, gHostio and the vtables in game_libs_post0b.c
+  gfx; gInputMgr in game_libs_tail.c), or in functions with two objects at K = 0 (convert those by hand
+  with `sites FUNC`).
+  The remaining per-site aliases each cover two Syms or via-base sites only.
+  Base sites: 24 / 1809 spelled (unchanged).
+- **Next:**
+  - Owners: run `convert NAME FILE --bare` in game_libs_post0b.c / game_libs_tail.c.
+  - Hand-convert the multi-object audio functions: AudioHeap_AllocPersistentSampleCacheEntry,
+    AudioLoad_StartAsyncLoad, AudioHeap_InitMainPools.
+  - Hand-convert SnowBoarder_*, MapProp_ctor / cam_create (MNode_vtbl + own vtable), Snower_display.
+  - Still unnamed: 451, 1925, 1708, 557 (ProcNodeList, 80 B), 805, 1675, 2461 (pad_update's u8
+    button table), 610 / 725 (GameFlow flags), the parm tag tables, and the Data-base string sites
+    per function.
+
 ## 10. Worktree setup gotcha (Part 0)
 
 The fresh worktrees had **no `tools/ido-static-recomp` and no `baserom.z64` symlinks** (the

@@ -179,10 +179,22 @@ FreqScale). Still suffixed (kind only): snd_Stub_2DD30 / 2F630 / 309A4, FindNear
 Player0ChannelIOPreset_2F8A0 / 2F934, SetPlayer0ChannelPanIO_2F638 / Params_2F9D4 / IO12_2FA90,
 ResetPlayer0ChannelIO1_2FB10, SetPlayer0Channel0IO_30504 / Channel8IO1_30564 / Channel8Pan_305CC,
 SetPlayer1Channel15IO_2D910, SetPlayer2ChannelIO_3190C, HandleEvent_2FB74, HandleSeqEvent_30AF4,
-AudioThread_Set / ClearExtWord, bootup snd_soundObjEventIndex_00000A9C (really a mode letter ->
-flag bit map; misnamed, rename when its callers are known) / SetScaled_00000B2C, snd_playSeq_000120A8.
-A cue-queue struct (0x64: ring[16], wr 0x40, rd 0x44, timer 0x48, 0x4C, script 0x50, mode 0x54,
-limit 0x58, pending 0x5C, cmd 0x60, id 0x62) is the next hand edit (Ring3183C is a partial view).
+AudioThread_Set / ClearExtWord, bootup snd_soundObjSetScaled_00000B2C / SetByte1D_00000B14 (callers
+bootup 0xBD04 / 0xC790 / 0xC7A8), snd_playSeq_000120A8.
+
+**Run 495.** `SndHandle_contactEventType` (was snd_soundObjEventIndex_00000A9C): the four
+SndHandle_triggerEvent* call it as f(h, h->contactSurface). SndHandle +0x8 `contactSurface` is set each
+frame by SnowBoarder_update through `SndHandle_setContactSurface` (0xA94) from SnowBoarder.contactSurface
+(0x9A4, the surface code of the last obstacle hit). It maps 0 -> 1, 'e' 4, 'd' 0x10, 'm' 0x40, 't' 0x20,
+'n' / 's' 8, other 2: the SoundObj eventType of the hit sound. game.uso calls the triggers.
+**Cue queues: include/audio.h `SndCueQueues`** (bootup Bss 0x338, Sym 1448, 0x160 bytes). +0x0..0x1C is
+the channel-8 cue / fade state: mode, cue (cmd 0x06000800), fadeInFrames, holdFrames, level (cmd 0x01000800),
+floor, upStep, downStep. +0x20 timer[3] (snd_UpdateTimers). +0x30 `SndCueQueue queue[3]` (0x64 each: ring[16],
+wr, rd, timer, script, mode, limit, pending, cmd, cue). Spell the Sym-1448 sites `SND_CUEQ(gSndCueQueues)`
+(converted: TriggerChannel8CueIfIdle, the TriggerChannel8Cue NM body). Spell the Bss-base sites
+`SND_CUEQ_AT_BASE(D_00000000)` (converted: RequestCue2 / Cue2Prio / SetPlayer2ChannelIO queue[2]).
+Not converted: the two NCC donors (TickChannel8Fade, SetChannel8Mode; module-local static), InitCueQueues /
+RequestCue (the strength-reduced `a0 * 100` index; untested), UpdateTimers, SoundObjRequestCue (NM).
 
 ## Next
 

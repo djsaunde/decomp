@@ -192,7 +192,7 @@ module's states.
 | input, replay | bootup_uso o0_11C70.c / o0_1207C.c / ncc_11E00.cpp, game_libs_post1b.c (pad_*) | include/game/input.h | `input_checkPressed_00011E00`, `replay_addInput`, `replay_beginPlayback`, `pad_threadLoop_00066EEC` | GAME_CLASSES 6, MODES run 466 / 484 |
 | save | game_libs.c 0x97B4-0xC46C | include/gdl/backup.h | `Backup_ctor`, `Backup_openSession`, `Backup_writeCourse`, `backup_checksum` | SYSTEM_LAYER 4, MODES run 474 / 478 |
 | audio | game_libs_post.c, game_libs_o2_*.c | include/audio.h | `AudioSynth_ProcessNote`, `AudioLoad_RelocateFontAndPreloadSamples`, `AudioThread_Update`, `snd_Init`, `snd_updatePlayer` | AUDIO |
-| modes | src/{tit,arc,mgr,h2h,edd,n64}proc_uso, timproc_uso_b1 / b3 | include/game/modeproc.h, race.h | `tit_procMain`, `arc_procMain`, `TimRace_checkRecord`, `GameDemoProcess`, ... | MODES |
+| modes | src/{tit,arc,mgr,h2h,edd,n64}proc_uso, timproc_uso_b1 / b3 | include/game/modeproc.h (ArcRace / MgrRace / H2HRace, Arc / Mgr / H2HDataManager), race.h (TimRace, TimDataManager) | `tit_procMain`, `arc_procMain`, `TimRace_checkRecord`, `TimDataManager_update_00001BCC`, `GameDemoProcess`, ... | MODES |
 | select screens | timproc_uso_b5 (genproc) | include/game/select.h | `SelectWin_init`, `SelectionMgr_ctor`, `GenSelectChar_ctor` | MODES H1, run 464 / 484 |
 | 2D / gui | src/gui_uso | | `gui_drawString`, `gui_drawSprite`, `gui_fillRect` | MODES H2 |
 
@@ -265,6 +265,12 @@ already-relocated addresses of arrays in the same asset (GRAPHICS 7.1).
   field changes the bytes: a different load width or signedness, a moved multiply in index arithmetic, a
   pointer walk becoming `p++`, a struct copy, or IDO picking registers differently (e.g. SelectWin
   `eventFlags`, MODES run 484). Each area doc lists what is still raw and why.
+- **Cast macros on untyped pointers.** Where a body's `char *` / `int` parameter or local is itself a lever,
+  fields are reached through a cast macro instead of retyping it: `NODE(p)` (gdl/node.h), `RACEPROC(p)`,
+  `TIMRACE(p)`, `DATAMGR(p)`, `TIMDATAMGR(p)` (gdl/race.h), `ARCRACE / MGRRACE / H2HRACE(p)` and
+  `ARCDATAMGR / MGRDATAMGR / H2HDATAMGR(p)` (game/modeproc.h). `NODE(c)->parent` / `->unk04` is the
+  child-attach idiom every ctor inlines. A member access can still reorder loads (IDO orders a commutative
+  operand pair differently for members than for raw derefs), so each conversion is checked object-identical.
 - **USO section-base accesses** are written `&D_00000000 + K` (or `(char *)&gGfxLib + K`, an alias at the
   same address): the ROM bytes carry HI16 / LO16 relocations against the section base, so the base symbol
   and offset must stay. Named objects are aliases in include/gdl/gl_data.h; per-site aliases
@@ -331,8 +337,9 @@ Aggregated from each doc's open-items list (2026-11-15). The doc in brackets hol
 **Modes and data model**
 - SelectWin unk3F8 / 400 / 404 / 484 / 488 / 4BC / 4C0, SelItem +0x25C..0x294, `eventFlags` stays raw
   (register renumbering) [MODES run 484].
-- The race session object (RaceProcess +0x528 / RaceTracker +0x4C) has no struct yet; RaceTracker vtable
-  slots and the DataManager subclasses (0xE0) [MODES run 469].
+- RaceTracker vtable slots; TrkDataManager (shares TimDataManager's 0xB8..0xD7 tail, but 0xD8 is a
+  once-flag) has no struct of its own; the score pop-up slot objects that `RaceTracker_pop*` fill
+  (+0x44 .. +0xAC, built by PointsGadget_ctor_00003138's 8 slots) [MODES run 469, 492].
 - Gadget setters with address suffixes (`CourseGadget_setFloat2_0000254C` ...), the `app_shiftAddLookup_00042400`
   table, ItemType slot 12 [SYSTEM_LAYER 12].
 - Unnamed bootup Data objects Sym 256 (0x1C-byte rows used by `game_setupSolo`) and Sym 274 [SYSTEM_LAYER 12].

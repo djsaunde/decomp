@@ -77,7 +77,7 @@ Functions (bootup):
 - `replay_freeRecord(mgr)` (mem_delete of replayData[1]), `replay_clearRecord_00012BF8`.
 
 Race setup (bootup.uso, TextReloc-checked):
-- `game_setupSolo`: pad_open(o, 1), replay_addInput, **replay_beginRecordWithGhost(mgr, o,
+- `game_setupSolo`: pad_open(o, 1), input_addRacePad, **replay_beginRecordWithGhost(mgr, o,
   0)**: every solo race records player 1, which is what the post-race replay shows.
 - `game_setupVsGhost`: live pad o1 (port 1) and playback pad o2 (port 0), both added,
   beginRecordWithGhost(mgr, o1, o2); the player rider from playerRider / Flags / Board
@@ -88,6 +88,20 @@ Race setup (bootup.uso, TextReloc-checked):
 - h2h / mgr: `h2h_startReplay` restarts the race and pad_startPlay(replayData[p],
   replayLen[p]) on both pads, timeout (u16)(min len + 0xF); `mgr_startReplay` is the
   1-player twin (docs/1080_MODES.md, run 471).
+
+## Saving the ghost (run 495)
+
+Only the post-race "save ghost?" prompts call `replay_saveGhost`, read from each module's own
+Sym import table (kind-1 entry: module 0 = bootup, word3 top half = bootup Sym index; script
+/tmp/claude-1000/c495/xmod.py, statically, no emulator dump):
+- timproc.uso (time attack) `TimMenu_handleInput_00002A8C`: `replay_saveGhost(&gInputMgr,
+  BACKUP_MODE_TIME)`;
+- trkproc.uso (trick attack) `TrkMenu_handleInput_00002C98`: the same with BACKUP_MODE_TRICK.
+The stick (0x10001 / 0x4002) moves the cursor obj+0x58 between 0 (save) and 1 (skip). Confirm
+(0x40100) on row 0 plays snd 5 and saves; otherwise it plays 0x802 and skips. No other module
+(titproc, mgrproc, h2hproc, arcproc, trnproc, genproc, viewrec, game) imports it. So a ghost is
+only ever written from a solo time / trick run that the player chose to keep. h2hproc imports
+replay_freeRecord (5 sites) and pad_startPlay; mgrproc and titproc import pad_startPlay.
 
 ## The saved ghost (SRAM)
 
@@ -102,11 +116,9 @@ of both the RAM buffer and the SRAM area (6400 * 4 = 0x6400 bytes).
 
 ## Open
 
-- Which mode calls replay_saveGhost with which `mode`, and when (the time / trick
-  onRaceOver paths): the mode modules call bootup through import placeholders; symbolize
-  their TextRelocs like buxref.py does for bootup.
 - InputMgr +0x184 (cleared by every begin / save), recordMask bit 0x40000, the 0x1700
   button bits' meaning (game buttons after the pad remap).
-- `replay_addInput` (0x11CA4) appends to InputMgr +0x100 and is used for the race pads in
-  all game_setup* builders; "race pads" may be the better name.
+- Resolved (run 495): `replay_addInput` is now `input_addRacePad`. InputMgr +0x100 racePads
+  are the pads that input_pauseRacePads / input_unpauseRacePads pause (pad_setPause); it does not
+  record anything.
 - viewrec.uso (the replay viewer, ROM 0x642346) has no splat code segment.

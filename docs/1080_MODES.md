@@ -596,3 +596,41 @@ Next:
 - SelectWin: unk3FC / 400 / 404 / 484 / 4B8 / 494 users are known (see select.h comments) but not their
   meaning; the item +0x25C..0x294 floats; eventFlags stays raw.
 - Not started: the genproc / select-screen ctors' vtable stores via agent-a's `_vtbl` aliases.
+
+### Run 492 (agent-h): race / DataManager field conversions in the mode modules
+
+Commit a1a61e1b5 on agent-h (base 07b9b8571; hand edit, gate PASS 3288/3288, ROM identical, every
+touched .o identical in the matching and NON_MATCHING builds).
+
+- Cast macros: `NODE(p)` (gdl/node.h); `DATAMGR(p)`, `TIMDATAMGR(p)` (gdl/race.h, which now includes
+  node.h); `ARCRACE / MGRRACE / H2HRACE(p)`, `ARCDATAMGR / MGRDATAMGR / H2HDATAMGR(p)` (game/modeproc.h).
+  They join RACEPROC / TIMRACE (run 487) for bodies whose untyped parameters / locals are levers.
+- New struct `TimDataManager` (race.h, 0xE0): race 0xB8, rankLabel 0xBC, colour[4] 0xC0, alpha 0xD0,
+  unkD4, beepTimer 0xD8, unkDC (1 after init; with 2 entries mirrors entries[1].rider->0x800->0x4C, and
+  a 1 -> 0 edge calls (this, 1)). TimDataManager_init / _update are fully typed. TrkDataManager shares
+  the 0xB8..0xD7 tail (TIMDATAMGR is used there with an offset whitelist) but its 0xD8 is a once-flag.
+- New field names: RaceProcess dropX / dropY / dropVel / dropFloor (0x558..0x564, mgr's second
+  bouncing sprite, sprites[11]); RaceTracker shownScore (0xA8), blinkTimer (0xAC), owner (0x50),
+  ghostFlag (0xB0); MgrRace lostX / lostY / lostVelX / lostVelY / lostFalling (0x7B0..0x7C4, the used
+  retry icon); H2HDataManager beepTimer (0xD4).
+- Census of `*(T *)(p + 0xNN)` (regex in /tmp/claude-1000/h492/census.py), before -> after:
+  arcproc_uso_tail1.c 198 -> 61, mgrproc_uso.c 249 -> 50, timproc_uso_b1.c 173 -> 108,
+  timproc_uso_b3.c 242 -> 117, h2hproc_uso.c 49 -> 15, game_libs_tail.c 56 -> 46.
+  Converter: /tmp/claude-1000/h492/conv.py (per-function base -> macro list, header-parsed layouts,
+  type-checked, lvalue-aware; configs *.cfg next to it).
+- Kept raw on purpose: ARCRaceProcess_drawIntro's `count == idx + 1` (the ArcCourseList member form
+  swaps the two loads' registers); TrkDataManager_update's int and char ** reads of 0xB8 (two load
+  chains are its lever). MGRRaceProcess_drawHud: `x = v + x` became `x = x + v` for lostX / lostY /
+  dropY, because with members IDO loads a commutative pair in the opposite order.
+- What is left raw: Node vtable-slot calls (`*(short *)(vt + 0x58)` / `+0x5C`), the name-entry
+  overlay objects (0x10C / 0x174, no struct), sprite internals (`*(char **)(race + 0x6E4)` = a
+  RaceSprite's +0x10 image), int reads of f32 RaceEntry fields (posX / progress / pct as bits),
+  entries[1] reads at +0x60.. (beyond one RaceEntry), the score pop-up slot objects that
+  RaceTracker_pop* fill (+0x44 y, +0x5C, colour +0x64..0x70, +0x78 alpha, +0x9C life, +0xA0 font sprite =
+  pointsList + 0x108 / 0x138 / 0x150, +0xA4..0xAC), the Tim / Trk / Arc menu processes (arg0 + 72 ...).
+
+Next:
+- A struct for the pop-up slot object (built by PointsGadget_ctor_00003138's 8 slots; GlSlot3B1C in
+  game_libs.c already has 0x78..0xB4) would take game_libs_tail's RaceTracker_pop* (~60 sites).
+- NameEntry overlay structs (Tim / Trk / Arc 0x10C, Mgr 0x174: +0x60 mode, +0xD4 owner race,
+  +0xD8..0xEC positions, +0x108 / +0x168 fade) and the Tim / Trk / Arc menu process layout.

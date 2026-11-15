@@ -12,6 +12,7 @@ names are the current repo names. Written by agent-g run 480 from the matched co
 - [5. Items (rom/*_item.bin)](#5-items-romitembin)
 - [6. Markers and the AI path (rom/*_mark.bin)](#6-markers-and-the-ai-path-rommarkbin)
 - [7. Race gates and progress](#7-race-gates-and-progress)
+- [7a. Splitting checkpoint.uso](#7a-splitting-checkpointuso-investigation-agent-g-run-494-no-config-change-made)
 - [8. Props: MapProp, Mountain, BGBox, U64BGWall](#8-props-mapprop-mountain-bgbox-u64bgwall)
 - [9. Open questions](#9-open-questions)
 
@@ -139,8 +140,54 @@ gate->next once gate->z <= entries[0].progress, then runs a gate test (gate, rid
 result goes to the tracker's vtable. Note that findGates looks the `chk` gate up with entries[0]'s rider and
 stores it in entries[0].gate on every pass (its lookup and that store use no entry offset), so checkpoints are
 tracked for the first rider only; the fork pair is per entry. The gate item class itself is in **checkpoint.uso**
-(module / file id 50, not split): run 488 traced the bootup chk / gtr / gtl templates to its exported vtables
+(module / file id 50, not split; section 7a): run 488 traced the bootup chk / gtr / gtl templates to its exported vtables
 (course.h RaceGate comment; docs/1080_GAME_CLASSES.md section 17).
+
+## 7a. Splitting checkpoint.uso (investigation, agent-g run 494; no config change made)
+
+The gate class can only be typed once checkpoint.uso (module / file id 50) is a built segment. Facts from the
+ROM (scratch parser /tmp/claude-1000/g494/ck2.py, crunch64 for Yay0):
+
+- **Where it is.** It sits inside the splat slice `game_uso_inter12` (tenshoe.yaml, [0x7D6CF5, bin], the
+  "153289-byte data gap"). That gap is not game.uso data: it holds four separate USO files of the same archive,
+  each an Info record (`0000002C ... 12345678 <id> 00000001 <name>`) followed by its section records:
+
+  | file (id) | Info | RoData | Data | Text (size, jr ra) | Sym | TextReloc | DataReloc | End |
+  |---|---|---|---|---|---|---|---|---|
+  | balloon.uso (47) | 0x7DECB6 | 0x7DECF6 +0x20 | 0x7DED22 +0x41B0 | 0x7E2EDE +0x570 (11) | 0x7E345A | 0x7E37DE | 0x7E3AF6 | 0x7E3D66 |
+  | heli.uso (48) | 0x7E3D6A | 0x7E3DAA +0x100 | 0x7E3EB6 +0xCBC0 | 0x7F0A82 +0x1B60 (26) | 0x7F25EE | 0x7F2D3E | 0x7F3752 (+ RoDataReloc 0x7F3DBE) | 0x7F3E2A |
+  | fire.uso (49) | 0x7F3E2E | - | 0x7F3E6E +0x23A0 | 0x7F621A +0x3B0 (7) | 0x7F65D6 | 0x7F6912 | 0x7F6B52 | 0x7F6D0E |
+  | **checkpoint.uso (50)** | 0x7F6D12 | 0x7F6D52 +0x10 | 0x7F6D6E +0x3F00 | **0x7FAC7A +0x980 (17)** | 0x7FB606 +0x48C | 0x7FBA9E +0x474 | 0x7FBF1E +0x450 | 0x7FC37A |
+
+  (offsets are the section payloads; each payload follows a 12-byte {type, size, flags} record header). No
+  section is Yay0-compressed (flags 0x1000xxxx / 0x0800xxxx, bit 0x10000 clear). bg1tex.uso (id 51) starts
+  at 0x7FC37E, so **the slices named game_uso_block2_yay0 / inter23 / block3_yay0 / post (0x7FC3BE..) belong
+  to bg1tex.uso, not game.uso**; only block0 / block1 and the start of inter12 are game.uso.
+- **Size.** 0x980 bytes of text, about 17 functions (17 `jr ra`), 0x48C / 12 = 97 symbols. The bootup chk /
+  gtr / gtl templates import its Sym 417..421 (vtables 418 chk, 420 gtr + gtl; +0x48 descriptors 417 / 419 /
+  421), so the class has C++ vtables; the compiler is probably the game.uso one (IDO 7.1, C plus NCC donors).
+- **The blocker: alignment.** The text payload starts at ROM 0x7FAC7A, which is 2 mod 4 (so do balloon, heli
+  and fire: 0x7E2EDE, 0x7F0A82, 0x7F621A). Every code segment split so far (gui / titproc / eddproc / arcproc
+  / h2hproc ...) starts word-aligned. A plain splat `code` segment at 0x7FAC7A needs the linker to place a
+  .text output section at an unaligned LMA (the .o's .text has alignment 4 or 16) and splat itself to
+  disassemble from an unaligned ROM offset; neither has been tried in this repo.
+- **What a split needs** (for the coordinator):
+  1. tenshoe.yaml: cut game_uso_inter12 into `game_uso_inter12` [0x7D6CF5 .. 0x7DECB6) (the rest of game.uso
+     after block1), `balloon_uso_all` / `heli_uso_all` / `fire_uso_all` bins (or later splits of their own),
+     `checkpoint_uso_pre` [0x7F6D12, bin] (Info + RoData + Data + the Text record header), the code part
+     [0x7FAC7A .. 0x7FB5FA), `checkpoint_uso_post` [0x7FB5FA, bin] (Sym + relocs + End), and a bin up to
+     0x7FC3BE. Renaming the bg1tex slices is optional and separate.
+  2. Either (a) a real `code` segment at the unaligned start, after proving ld + objcopy honour an unaligned
+     `AT()` LMA and splat extracts it, or (b) the game_uso_block1 route: keep the code as a bin and splice the
+     .text of an UNLINKED object (`checkpoint_uso.c.o`) into it at build time (a Makefile recipe like the Yay0
+     block one, minus the crunch64 step). (b) avoids the alignment question and keeps every in-unit `jal` /
+     `lui` at 0, which is what the ROM holds (USO relocations are applied by the loader from TextReloc).
+  3. symbol naming: the module's Text / Data symbols as `checkpoint_uso_func_XXXXXXXX` /
+     `checkpoint_uso_D_XXXXXXXX`; its imports (game_libs / bootup symbols through the Sym table) resolved the
+     same way as game.uso's (dis.py desc()).
+  4. objdiff.json + report units, expected/ objects, the readability gate's unit list, and
+     scripts/agent-setups/1080.sh (asset copy) updated for the new unit; the 3288-function total grows by ~17.
+  The ROM bytes do not change; the risk is only the layout / tooling, hence coordinator sign-off.
 
 ## 8. Props: MapProp, Mountain, BGBox, U64BGWall
 

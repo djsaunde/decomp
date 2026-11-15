@@ -65,20 +65,28 @@ gfx_setVideoMode (0x44B78) picks the VI mode ("video mode not supported").
 One data object in the bootup.uso data section, reached as `&D_00000000 + K` (a USO base
 placeholder; do not retype it as a struct in matched code, see READABILITY_PLAN section 9 rule 4e).
 Source spelling since run 486: `gGfxLib` (include/gdl/gl_data.h: Bss+0x3C168, Sym 154, 0x5D8 bytes), so
-`(char *)&gGfxLib + 0x254`. 43 game_libs sites are converted; the 19 bootup_uso sites
-(EnvSettings_display, SnowBoarder_func_0000DDCC / DF04 / E014, TreeTmpl_display, Fader_checkDone) are
-left to the bootup owner, and per-site aliases (`gGfxLib_2c94_ctx`, ...) keep their own symbols.
-Known fields:
+`(char *)&gGfxLib + 0x254`. 43 game_libs sites converted in run 486; run 489 added the 19 bootup_uso
+sites (`convert`), Snower_display, MapProp_display and the gfx NCC donors whose base is CSE'd at K = 0
+(Fader / ColourItem / PolyShape_shade / PolyShape_vslot12 / Sprite_display / RcpMgr_func_00043D38 /
+light_setMirrorMatrix, the post0b GS4B / G240_4C300 macros). Per-site aliases (`gGfxLib_2c94_ctx`, ...)
+keep their own symbols. Proof rule for a hand conversion: `sites FUNC` shows every D_00000000 LO16 at
+that K naming Sym 154. Known fields:
 
 | off | meaning | evidence |
 |---|---|---|
+| 0x0 | every-4th-frame flag: (gSysLib frame counter & 3) == 0 | gfx_setEvery4thFrameFlag (last call of gfx_end); PolyShape_display tests it |
+| 0x130 | f32 scale (multiplies camera +0xA8 distances) | MapProp_display, Fog_display, Snower_display |
+| 0x188 / 0x1E0 | view stage (0 projection, 1 modelview) / stage == 0 | gfx_setViewStage_00047F68, called twice by Window_display |
+| 0x190 | the shadow light (MNode, position +0xA0) | gfx_setShadowLight / gfx_getShadowLight; "no shadowlight" |
+| 0xE4 | extra model matrix pointer (shadow / mirror) | light_setShadowMatrix / light_setMirrorMatrix set it, PolyShape_display reads it |
+| 0x20C | frame time (u32 prof_timerRead("OneFrame") at init; "WARNING: zero v frame time" below 10) | GfxLib_init, sys_timeInFrames |
 | 0x60 | projection matrix (f32[4][4]) | gfx_matrixModeProjection points +0xE0 here |
 | 0xA0 | modelview matrix | gfx_matrixModeModelView, gfx_resetModelView |
 | 0xE0 | current matrix pointer | gfx_loadMatrix / multMatrix / loadIdentity |
 | 0x18C | light list head (Link {obj, next}) | gfx_updateLights, gfx_setLightDirs, gfx_selectLights |
 | 0x1C4 | flags (bit 1 cleared by gfx_beginView; bit 2 = clear with a zero quad) | ScreenWindow_display |
 | 0x1F4 | matrix mode (1 projection, 0 modelview) | gfx_matrixMode* |
-| 0x1F8 | 3-4 signed bytes (float * 127) | 0x47AB4 / 0x47AD8, role open |
+| 0x1F8 | s8 unit vector (float * 127) + pad | gfx_setDirBytes_00047AB4 / gfx_setDirFromVec_00047AD8; no reader in bootup.uso |
 | 0x204 | frame-buffer index (0 / 1) | ScreenWindow_display, gfx_clearFbRect |
 | 0x208 | perspNorm (u16) | gfx_calcPerspNorm -> gfx_emitPerspNorm |
 | 0x214 | MainStaticDL (DLContext *) | gfx_callStaticDL, MorphPoly_init |
@@ -125,6 +133,20 @@ frame-buffer size), near/far/aspect +0xAC-0xB4, frame-buffer width/height +0xB8/
 vpW/vpH/vpX/vpY +0xC8-0xD4, Z buffer +0xF0, colour buffers +0xF4/+0xF8 (RGBA5551, one allocation
 +0xFC). ScreenWindow: fbIndex +0x144, fbOwner +0x148, per-buffer "startdraw" / "bg" / "setupDyn"
 DLContexts, current dl +0x158, two DLMarks +0x15C/+0x168.
+
+Run 489 (window.h): originX / originY +0xC0 / +0xC4 (Window_doCommand 110 sets them with vpX / vpY;
+the clear rectangle's corner), clearColour f32[4] +0xDC (flag 0x4 = clear colour), clearFlags +0x104
+(bit 2 with flag 0x2 = clear Z), displayMask +0x108 (Node_setDisplayMask in Window_display), two
+4-entry hook lists: taskHooks +0x124 / nTaskHooks +0x11C (Window_addTaskHook; Window_runTaskHooks runs
+them from RcpMgr_startTask on the task's window) and hooks +0x134 / nHooks +0x120
+(Window_addHook_0004EDEC / Window_runHooks_0004ED0C); both counts are zeroed by Window_display.
+ScreenWindow clearAlpha +0x1B0 = the RGBA5551 alpha bit of the clear fill. New windows copy their
+defaults from gWindowDefaults (Bss Sym 324, 0x40 bytes) in Window_setDefaults. Window_projectPoint
+maps a point through proj to frame-buffer pixels (0 when behind the eye). Window_display's order:
+gfx_setViewStage(0), gfx_matrixModeProjection, Window_setupView, gfx_loadMatrix(proj),
+gfx_setViewStage(1), gfx_matrixModeModelView, gfx_loadIdentity, gfx_emitProjection (guMtxF2L of the
+projection into the DL, G_MTX projection load, three gfx_makeLookAt into gLookAt* objects).
+gfx_setScreenSize (Data Syms 1853/1854, 320x240) is the size GfxLib_init gives the main ScreenWindow.
 
 The viewport becomes a `Vp` with vscale = (vpW*2, vpH*2, 0x1FF), vtrans = (vpX*4 + vpW*2, ..., 0x1FF)
 (RSP quarter-pixel units). The software matrix stack is OpenGL-like: gfx_matrixModeProjection /
@@ -301,6 +323,12 @@ gfx_updateLights (cache positions, dirty flag), gfx_transformLightDirs (into eye
 gfx_setLightDirs (Lights block: dir bytes = dir * 120 at +0x10 + 16*i after the 8-byte ambient).
 gfx_makeLookAt fills a LookAt (two Light_t, guLookAtReflect layout) for reflection mapping;
 gfx_calcHilite computes hilite texture coordinates (guLookAtHilite form, 32x32 hilite).
+BaseLight HostIO parms (BaseLight_hostioParms): "Atten" +0xC8 (0..8000), "FallOff" +0xCC (0..1000),
+"MaskID" +0xD0; the ctor sets dir = (0, 1, 0), intensity 1, mask 0xFFFF. Shadows and reflections:
+SnowBoarder_display calls light_setMirrorMatrix_00054E78 (Householder reflection about a plane) and
+light_setShadowMatrix_00054D04 (projection away from the shadow light, gfx_getShadowLight = GfxLib
++0x190); both build a matrix at their object's +0x12C and point GfxLib +0xE4 at it, which
+PolyShape_display multiplies in. A port can do planar shadows / mirrors the same way.
 FogParms (0x18: colour f32[4], min, max; "FogParms" / "Min" / "Max"): FogParms_set / setDefault
 (white, 996..1000) / lerp / emit (gfx_emitFog: G_SETFOGCOLOR + G_MW_FOG).
 
@@ -325,32 +353,36 @@ FogParms (0x18: colour f32[4], min, max; "FogParms" / "Min" / "Max"): FogParms_s
 
 ## 10. Open items
 
-- Roles still open (kept as `gfx_func_` / factual names): 0x43D2C (copies +0x64; called by
-  PolyShape_vfn10), 0x453A8 (two libm calls on floats, results unused; no game_libs caller),
-  0x46B44 (gfx_vcall thunk; no game_libs caller), 0x47AB4 / 0x47AD8 (gfx +0x1F8 bytes, = vec * 127;
-  no game_libs caller and no game_libs reader of +0x1F8), 0x47F68 (gfx +0x188 = mode, +0x1E0 =
-  mode == 0; Window_display calls it with 0 then 1; nothing in game_libs reads either word),
-  0x4E138 (*a0 = (gSysLib +0x14 & 3) == 0: every 4th frame; gSysLib +0x14 is the frame counter
-  SkinMgr_update also stamps; called by gfx_end); gfx_setSizePairA/B; the five gfx_emptyStub_.
-  Run 486 caller search, all negative: no cross-USO caller resolves (h460 mods.pkl / xmod.py, rerun
-  with current names: only 7 gfx_ names have resolved external callers, none of these), and no
-  bootup.uso DataReloc word points at any of them (vt.py scan; sanity: AnimPlayer_update at 0x21F7C
-  is found). Their callers are unresolved imports (Sym hashes, READABILITY_PLAN section 11), so the
-  names have to come from the bodies.
+- Run 489 named the `gfx_func_` leftovers from their bodies and their TextReloc-resolved callers
+  (R_MIPS_26 relocs name the callee Sym; new `scripts/uso-data-sites.py calls FUNC` / `calls --to FUNC`
+  lists them, which resolves every `gl_func_00000000` placeholder call inside bootup.uso):
+  gfx_setEvery4thFrameFlag, gfx_setViewStage_00047F68,
+  gfx_setDirBytes / gfx_setDirFromVec, gfx_setScreenSize (+ gfx_setScreenSize2_00044CB0, no reader),
+  kind-only gfx_copyField64_00043D2C / gfx_floatPairThunk_000453A8 / gfx_thunk_00046B44.
+  The five gfx_emptyStub_ are exported but have no bootup.uso caller (kept).
+- Profiler (compiled out; names from 20+ callers and their name strings): prof_timerStart /
+  prof_timerStop ("MorphUpd", "ADrawUpd", "1GFrame", "OneFrame"), prof_beginSection / prof_endSection
+  ("CPU", "Display()"), prof_timerRead_0004DD2C / _0004DD3C (return 1.0f), prof_timerReset_0004DD4C
+  ("MHupd", "Anm"); gGfxPhase_* = Bss Sym 1850, the gfx_start / gfx_end phase label ("Start", "End",
+  "Swap", "DoneSwap"). A port can drop all of it.
 - Converted in run 481: Window_setupView, ScreenWindow_allocBuffers, LightTarget_ctor (now
   shape_cmdLightTarget, the GDL command that creates the node), BaseMat_init, MorphPoly_init, the
   Sprite_ctor cfe reference body. The ScreenWindow_display NCC donor keeps a local view (its member
-  types carry the match) but its fields now use the window.h names. Still raw: BaseLight_ctor, the
-  Sprite_ctor NCC donor (C++ classes, members b0 / cc / d0 = scaleX / startDL / endDL).
-- Window / ScreenWindow fields 0x100-0x144 and 0x174-0x1C0: still mostly unnamed. Known since
-  run 481: ScreenWindow_display passes &Window+0xDC, +0x104 bit 2, +0xC0 / +0xC4 and the frame-buffer
-  size to the clear call; +0x1B0 is its last argument; +0x1C0 = bgDL[fbIndex].
-- Anim / skin data formats: decoded in run 486 (sections 11 and 12, include/gdl/anim.h, skin.h).
-  Not converted yet: anim_blendPose's NCC donor (its Blend / Pose types could become Animator /
-  AnimPose), AnimFrameCache_releaseAll / initSlots / allocSlot (index arithmetic loops), the NM
-  bodies of SkinAnim_bind / skinVerts / SkinMgr_update / skin_cmdSkinMgr, SkinMgr_reset, SkinAnim_ctor.
-- Not started in run 486: the Window +0x100-0x144 / ScreenWindow +0x174-0x1C0 fields, BaseLight_ctor,
-  the Sprite_ctor donor member names (item 2 of the run brief).
+  types carry the match) but its fields now use the window.h names. Run 489 converted BaseLight_ctor
+  (light.h fields, the vptr stores; its stale 150-line decode comment replaced), the Sprite_ctor NCC
+  donor (sprite.h member names, Sprite_vtbl, GBI comments), Window_setDefaults and Window_projectPoint.
+- Window / ScreenWindow: still unnamed Window +0x100, +0x10C[2] (MapProp_display writes two 0..127
+  values), +0x114 / +0x118 (4-byte members the ctor zeroes), +0x80 / +0x84[5] / +0x98[5] (floats:
+  defaults 50000 / {0, 2200, 3000, 19584, 12500}, scaled by 85 / fov into +0x98); ScreenWindow
+  +0x174, +0x188, +0x1A0-0x1AC, +0x1B4 (PolyShape_stub_0004C20C writes it; probably a ScreenWindow
+  method), +0x1B8, +0x1BC.
+- Anim / skin: run 489 converted the frame-cache loops (SLOT_AT keeps the byte-offset address),
+  allocSlot, the anim_blendPose donor (Animator / AnimPose views), SkinAnim_ctor, SkinMgr_reset, the
+  SkinAnim_bind donor and the SkinAnim_bind / skinVerts / SkinMgr_update NM bodies. skin_cmdSkinMgr's
+  NM body only got string annotations (its comments name its locals).
+- Still unnamed in the area: BaseMat_func_* (4), BasePolyShape_func_* (3), MorphPoly_func_0004B040,
+  PolyShape_func_* (3), RcpMgr_func_* (3), ScreenWindow_func_00038C04 / C70, DisplayMgr_func_0004DE80,
+  the *_stub_ / *_vfn* leaves, gfx_emptyStub_ x5.
 - The texture-format 0x608 (accepted by the size code, rejected by the loader) may be dead data.
 - A typed model of the GfxLib global (section 2) for documentation; matched code must keep the
   `D_00000000 + K` form.

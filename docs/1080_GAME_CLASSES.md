@@ -23,6 +23,7 @@
 - [15. Run 480: course.h (world / course data model), CourseCam](#15-run-480-courseh-world--course-data-model-coursecam)
 - [16. Run 485: camera donors on fields, CamPath semantics, gates, anims.bin](#16-run-485-camera-donors-on-fields-campath-semantics-gates-animsbin)
 - [17. Run 488: RiderAnim states named, anims.bin decoded, AnimPlayer base](#17-run-488-rideranim-states-named-animsbin-decoded-animplayer-base)
+- [18. Run 494: RiderAnim helpers, TrickEntry, checkpoint.uso](#18-run-494-rideranim-helpers-trickentry-checkpointuso)
 
 ---
 
@@ -684,3 +685,84 @@ part slot 22 is needs the rider shape stream (cmd 0x65 names the node).
 **Next:** name the 0xFB7C..0x116D4 non-table helpers (crash slide, ollie, weight, landing, hop entry); type
 RiderAnim 0xF0 / 0xF4 (TrickTable entry struct) and convert the raw a0[0xFC / 4] accesses to RA(a0)->animSet
 function by function; decode the rider shape stream for the registry slot names; split checkpoint.uso for the gate class.
+
+## 18. Run 494: RiderAnim helpers, TrickEntry, checkpoint.uso
+
+agent-g run 494 (branch agent-g on 4b8811979). Pure rename 806436965 (31 names). Hand edit adea6fdf0 (new
+include/game/tricktable.h; RiderAnim trick fields; conversions in game_uso.c and the E35C / F6D4 donors). Both
+gated (PASS, 3288/3288, ROM identical); game_uso.c.o and the two donor objects' .text were also compared with
+the pre-edit build. Scratch: /tmp/claude-1000/g494/ (pre.dis = reloc-resolved D204..EE74, tricks.txt, ck2.py).
+
+**Helpers named** (renames.tsv carries the one-line evidence): startCrashSlide FB7C, blendTurn FBF8, startOllie
+FC34, startHop 1001C, blendWeight / blendWeightDeep 10BAC / 10C4C, startLanding 10DC8, restartRide 10E2C,
+playHitAnim 115EC, startHitAnim 11624, crashRecover 116D4; and the per-state checks the state bodies call:
+trickCrash D74C (contact during a trick), checkReverseBrake D7F4, checkBrake D8A8, checkJump D8EC, checkRow
+E1FC, holdJumpLift E2D0, startQueuedTrick E35C, playSpinSound E564, readTrickInput E5C8, checkGroundSpin E91C,
+readStickSpin EAF4, updateSlowdown ECEC, addTrickPoints EE30, jumpTakeoff F360, checkBackwardSwitch 11750,
+clearTricks 11888, hitFeedback 1189C (pad_set rumble + SndHandle_triggerEvent per hit kind). FB7C, FBF8,
+FC34, 10BAC, 10C4C, 10DC8, 10E2C and 116D4 have no caller in game.uso Text or Data; they are exported (Sym
+328..339), so they are either called from another module or dead.
+
+**rom/tricks.bin** (Info record 0x91F90E, file id 0x43; count 29 at ROM 0x91F94E, records from 0x91F952). TrickEntry
+(tricktable.h): name[16], 16 bytes at +0x10 (same in every entry), anim +0x20 (written at trick start from
+animSwitch when the rider is in switch stance and animSwitch != 0, else animRegular), animRegular +0x24,
+animSwitch +0x28, inputMask +0x2C (grab bits low; 0x1000 / 0x2000 = 180 each way, 0x4000 / 0x8000 = 360, 0x10
+/ 0x20 / 0x40 / 0x80 ... from readTrickInput, 0x100000 / 0x200000 extra spin), points +0x30, riderMask +0x34
+(picked only when riderMask & rider +0x8C0), flags +0x38 (1 = half turn: stance flips; 2 = grab; 4 =
+ground-only), mirrorIndex +0x3C (the entry reported while rider flag 0x20 is set). readTrickInput picks the
+entry whose inputMask equals the gathered trickButtons once they have been held longer than the tkt parm.
+
+| # | name | animRegular | animSwitch | inputMask | points | riderMask | flags | mirror |
+|---|---|---|---|---|---|---|---|---|
+| 0 | MELANCHOLY | 0x3000A | 0x3000A | 0x2 | 100 | 0xFECD | 2 | 0 |
+| 1 | LIEN AIR | 0x30009 | 0x30009 | 0x2 | 100 | 0xFFFFFF33 | 2 | 1 |
+| 2 | METHOD | 0x30002 | 0x30002 | 0x12 | 200 | 0xFF4F | 2 | 2 |
+| 3 | SHIFTY | 0x3000F | 0x3000F | 0x12 | 300 | 0xFEB1 | 2 | 3 |
+| 4 | INDY | 0x30005 | 0x30005 | 0x22 | 200 | 0xFF57 | 2 | 4 |
+| 5 | TWEAK | 0x3000C | 0x3000C | 0x22 | 300 | 0xFEA9 | 2 | 5 |
+| 6 | NOSE GRAB | 0x30008 | 0x30008 | 0x42 | 200 | 0xFFFF | 2 | 6 |
+| 7 | TAIL GRAB | 0x30004 | 0x30004 | 0x82 | 200 | 0xFEFF | 2 | 7 |
+| 8 | STIFFY | 0x3000E | 0x3000E | 0x52 | 250 | 0xFFFF | 2 | 8 |
+| 9 | MUTE GRAB | 0x30003 | 0x30003 | 0x62 | 250 | 0xFFFF | 2 | 9 |
+| 10 | STALEFISH | 0x30007 | 0x30007 | 0x92 | 250 | 0xFFFF | 2 | 10 |
+| 11 | INDY NOSEBONE | 0x3000D | 0x3000D | 0xA2 | 250 | 0xFFFF | 2 | 11 |
+| 12 | 180AIR | 0x1001E | 0x1001F | 0x1004 | 100 | 0xFFFFFFFF | 1 | 13 |
+| 13 | 180AIR | 0x1001F | 0x1001E | 0x2004 | 100 | 0xFFFFFFFF | 1 | 12 |
+| 14 | 360AIR | 0x10020 | 0x10021 | 0x4004 | 200 | 0xFFFFFFFF | 0 | 15 |
+| 15 | 360AIR | 0x10021 | 0x10020 | 0x8004 | 200 | 0xFFFFFFFF | 0 | 14 |
+| 16 | 540AIR | 0x30016 | 0x3001A | 0x101004 | 250 | 0xFFFFFEFF | 1 | 17 |
+| 17 | 540AIR | 0x3001A | 0x30016 | 0x102004 | 250 | 0xFFFFFEFF | 1 | 16 |
+| 18 | 720AIR | 0x30017 | 0x3001B | 0x104006 | 300 | 0xFFFFFFFF | 0 | 19 |
+| 19 | 720AIR | 0x3001B | 0x30017 | 0x108006 | 300 | 0xFFFFFFFF | 0 | 18 |
+| 20 | 900AIR | 0x30018 | 0x3001C | 0x201006 | 500 | 0xFFFFFFFF | 1 | 21 |
+| 21 | 900AIR | 0x3001C | 0x30018 | 0x202006 | 500 | 0xFFFFFFFF | 1 | 20 |
+| 22 | 1080AIR | 0x30019 | 0x3001D | 0x204007 | 3000 | 0xFFFFFFFF | 0 | 23 |
+| 23 | 1080AIR | 0x3001D | 0x30019 | 0x208007 | 3000 | 0xFFFFFFFF | 0 | 22 |
+| 24 | FRONT FLIP | 0x10022 | 0x10022 | 0x20004 | 100 | 0xFFFFFF01 | 0 | 24 |
+| 25 | BACK FLIP | 0x10023 | 0x10023 | 0x10004 | 100 | 0xFFFFFF01 | 0 | 25 |
+| 26 | PANDA TWEAK | 0x30024 | 0x30024 | 0x101004 | 300 | 0xFFFFFF01 | 0 | 27 |
+| 27 | PANDA TWEAK | 0x30024 | 0x30024 | 0x102004 | 300 | 0xFFFFFF01 | 0 | 26 |
+| 28 | ONE FOOT | 0x3001E | 0x3001E | 0x82 | 400 | 0xFFFFFF01 | 2 | 28 |
+
+(The file's own +0x20 values (sometimes -1) are never read: trick start overwrites them.) Group-3 anim numbers are the grab / spin names of
+section 17 (0x3000A melonchollie_8_1, 0x30009 lien_6, ...); 0x1001E..0x10023 are the group-1 180 / 360 airs and
+flips.
+
+**RiderAnim fields typed:** jumpCharge 0xE4 (s16), unkE6, trickButtons 0xE8, trickInputFrames 0xEC,
+queuedTrick 0xF0, curTrick 0xF4, lastTrick 0xF8 (all TrickEntry *).
+
+**Rider node-registry slots (not resolved).** Node_doCommand cmd 0x67 / 0x66 / 0x65 take one argument word from
+the command record's argument pointer; a scan for `0x67, n < 40` (and `op & 0xFFFF == 0x67`) found no
+instance in the raw ROM, in any of the 29 Yay0 blocks (decompressed), in boarder1..5.uso / penguin.uso Data
+(per-character data: anim weights, no node stream) or in any parsed USO's Data / RoData. rom/player1..8.bin are
+parm files (hpf / snf tags). So the stream that registers slots 0..39 is built in a form other than a flat
+word array (most likely the node-list interpreter, ProcNodeList 0x55264, reading a tokenised / differently
+encoded asset). Next step: decode nodelist_dispatch's input format, or trace which file SnowBoarder_ctor's
+model load reads, then re-scan for that encoding.
+
+**checkpoint.uso:** split write-up in docs/1080_COURSE.md section 7a (no config change).
+
+**Next:** the node-list format for the registry slots; convert the remaining raw RiderAnim accesses
+(readTrickInput E5C8 NM body, stateTrickWindup / Hold, the 0x110 / 0x114 / 0x118 / 0x124..0x130 spin fields)
+on rideranim.h; name 0x110 (crash-recover flag) / 0x114 (trick phase: set 2 by stateTrickEnd); the SnowBoarder /
+SnowAI / camera / course `_func_` names.
