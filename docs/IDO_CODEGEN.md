@@ -14852,6 +14852,8 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit DXIII (agent-h 2026-11-14, run 428): **game_uso 8CD8 EXACT (99.997 -> 100, 483211a06) on agent-c's run 426 member-call body (every target spill word, 99.116). Two causes read from the instrumented trace: (1) K1 on lenf's `a` added one pool block (21 / 32): K3; (2) f's KR5 chain temp went back to 3 / 3 because its `r` word (M-116) was no longer a live LR in the NEXT statement (g's trailing dummies made word 4 a dead kept pointer): the KR5 num drop needs the `r` word to be a register LR nearby. g back to the plain conversion fixes it, but its base-ctor `this` (7 / 3) then beats the shared d2 / g pointer (13 / 6): five code-free blocks in a base ctor chosen by the zero argument's TYPE (`Vec3(v.x, 0, v.z)` -> `Vec3(float, int, float)`, no extra word) give 7 / 4 under 13 / 7. The pool budget (den = (n - 2) / 4 + 2) is restored with a block-free `Vec3(float, short, float)` for the other conversions and 7 blocks in XZ(float, float, int) (perp 3 / 5, pool 21 / 31). Landed with the B3C recipe: a `_lay` function of 64 float multiplies puts the table at donor .rodata +0x100 (volatile constant stores make no literals under edg)**](#kit-dxiii-agent-h-run428) -- _scratch /tmp/claude-1000/h428/ (t/ev.py, t/gen2.py, t/ust2.py untruncated store order); ~230 variants._
 - [kit DXIV (agent-g 2026-11-14, run 430): **post0b 48AEC NM 99.886 -> 99.915 -> 99.919 (2076 B, 9 lines left: else g home + agent-h's loop 2). (1) B (M-12) was colored v0 because it was picked with every cost 0, NOT because of the else count (its `0 * (int)B` fold is now dropped: byte-neutral). Eight `if (1) {}` at the start of the `if (B != 0)` arm give B more units, so its priority (1.5) falls under i's (M-80, 1.0). i then takes v0 and B the target's v1. (2) Named locals in ONE inline body are all allocated at body entry, whatever statements sit between them. To put pool words between c and g, g must be in a later SCOPE: draw's own block-scoped `Gfx *g` in an inner block, entered after `if (me(me(me(me(GS->ctx))))) {}` has created pool words 2 / 3, lands at vfp-108 = target. Draw's g is the slot's first holder only through `lR6(Mtx *m) { m = me(m); return nq3((int)m, (int)m, (int)m, dl->count); }`: the block-free keep holds the gctx home spill, and an `if (0)` keep adds a block to the s1 base LR (K0 den 23 -> 24), which then splits and loses s1 (2112 B). (3) Else g: uopt makes ONE LR per home word, so a holder on slot 7 (-124) joins the arm-1 count / loop-`this` s0 LR (nF0 via me^3: g s0, c2 loses s0, 2068 B). A named else g declared first in the else block lands at -128, because arm 1's lR6 statement creates slot 7**](#kit-dxiv-agent-g-run430) -- _scratch /tmp/claude-1000/g430/ (trB.sh B/i picks, al.py difflib-aligned diff); ~700 variants._
 - [kit DXV (agent-h 2026-11-14, run 431): **post0b 48AEC NM 99.919 -> 99.996 (2 lines left: the else g home). A member inline called through a named simple-variable receiver (`AIter *ip = &it;`, paid for by dropping dc3's dead dd word) does not materialise `this`, so `ip->cur()` puts elem1 on slot 1 and it.a on slot 2. The loop tests' invisible slot-2 word then reaches the loop body, takes a1, and both idx*4 get t0. `me(ip)->curM()` keeps elem2 on slot 4 and dc3's this on slot 7. The forcing oracle (M-100 -> a1) named the target first**](#kit-dxv-agent-h-run431) -- _scratch /tmp/claude-1000/h431/; ~900 variants._
+- [kit DXVI (agent-h 2026-11-14, run 433): **post0b 48AEC stays at 99.996. The -O2 frame keeps only ucode-referenced words, in creation order: unused named locals vanish, dead-stored ones keep a word. The target's else-g word (-124) must be a high-priority a2 family LR, because gctx skips a2, so a lone g (pri 1.5) cannot be it. Three dead-stored named words after arm-1 g move our slot-4 a2 family to vfp-124 with every colour unchanged (frame +8 left). The s0 family moves to slot 8 byte-identically. What remains is an arm-1 pool-depth rewrite**](#kit-dxvi-agent-h-run433) -- _scratch /tmp/claude-1000/h433/; ~330 variants._
+- [kit DXVII (agent-g 2026-11-14, run 432): **post0b 48AEC stays at 99.996. The else c2 word drops with no recolouring when the mtx slot is stored in the dead existing variable `A` (`(Mtx *)(A = (f32 (*)[4])...->mtx())`, src through the constant). On kit DXVI's three-dead-word body, every register and home is then the target's +8 (99.929, one word left among P5-P7). Slot rules: nq3's parameter position puts the arm-1 count on P4 / P5 / P6; a member call reserves `this` after all its arguments; fG's parameter order is irrelevant; no LR split rescues a g on P7**](#kit-dxvii-agent-g-run432) -- _scratch /tmp/claude-1000/g432/ (fz.py, lay.py frame map, trm.py LR rows); ~700 variants._
 - [kit DVIII (agent-g 2026-11-14, run 424): **post0b 48AEC NM 99.684 -> 99.713 -> 99.742 (2076 B, 27 lines left). (1) The mtx() count / mh words follow the receiver depth: me^k on a single-return `&mh->buf[mh->count++]` puts the count on slot k+1 and mh on k+2. Arm 1 at depth 4 (count s5 with it.a = v0, mh s6 = v1) and else at depth 3, with the code-free `if (mh->count) {}` dropped, makes arm 1 and B exact. (2) A uopt EXPRESSION LR (`this->dl` on the shared dcQ / dc3 `this` word, one LR across both loops) held v1 over n. A u32 view of dl on dcQ's slot count splits it, and dc3 drops `if (c) {}`: loop-1 / loop-2 n and the loop-3 bottom copy match. A separate dcQ result word t gives the target's loop-1 body but costs a frame word (360)**](#kit-dviii-agent-g-run424) -- _scratch /tmp/claude-1000/g424/ (t/fz.py, dd.py, gen.py / genv.py variant grids, picks.py trace reader); ~1000 variants._
 - [kit DVII (agent-c 2026-11-14, run 423): **game_uso 8CD8 NM 98.508 -> 98.719 (2828 B, frame 528). Switch lever: in `switch (*K3(&(s->phase &= 3)))` the switch reads the stored value back through a zero-code pointer identity, so the masked value is no uopt LR (ours v0) but a ugen temp (t8 / t9, as in the target): +0.17. Frame lever: KR1's named `const T *p` gets its own edg word at every expansion. KR2 (`*KP(&r)`, parameters only) puts the pointer in the pooled VREGs instead, so it has the same dead-block code with no frame word. With agent-h's mv / mvf hoist (kit DVI, 98.402 at frame 536), mvf and its `+=` operand through KR2 give the frame back. Inverse model: a plain `return XZ(...)` chain temp has num 3 because edg emits a second `lda temp` as the copy source. Through a pointer (KR1, or a conversion read through its `this` word) num is 2. Casts / NRV are no-ops, and the KR2 / `.me()` returns cost a VREG plus s in s0. The chained site 5 now fits frame 528 (XZ::operator* through KW6), and a W / C / C2 block cell gives pool a2. That reaches 98.461 at the colour optimum, so the rest is layout**](#kit-dvii-agent-c-run423) -- _scratch /tmp/claude-1000/c423/ (t/ut.sh, t/pp.sh, t/ub.sh, t/bd.sh, t/sd.py, t/fr.sh)._
 - [kit DVI (agent-h 2026-11-14, run 422): **game_uso 8CD8 NM 97.537 -> 98.508 (2828 B), FP registers only, integer colours unchanged. A target FP add whose destination is a uopt register (f0 / f2 / f12 / f14) where ours writes a ring temp is a sub-sum that is a uopt value in the target. One code-free `if (sum) {}` before the statement (uopt CSEs it, test deleted) or a reassigned local (`float dot = partial; dot += rest;`) gives that, and drops one ring pop, which realigns every later ring register. Plus `(250 * width) * kE0` as the left operand. `sig.py` (FP op sequence by index against the target) reads the residual quickly. Left: the e * dot products sit in float pool slots 1-3, and slot 3 (f2) blocks dot's f2. Pool-structural**](#kit-dvi-agent-h-run422) -- _scratch /tmp/claude-1000/h422/ (t/sig.py, t/fd.py, t/mn.py, t/sp.py)._
@@ -68749,3 +68751,115 @@ me's p, then the result, then `a`.
 - LX / fG / nF0 leading dummies and receiver depths: the else g home stays at sp+240 (vfp-112) in every form.
 
 **4. Left at 99.996 (2 lines).** The else g home (`sw/lw a2,228(sp)`, ours 240). It is kit DXIV's slot-7 problem.
+
+## kit DXVI (agent-h 2026-11-14, run 433): post0b 48AEC stays at 99.996 -- where the else g home comes from: the -O2 frame keeps only ucode-referenced words, in creation order; the target's -124 word must be a HIGH-PRIORITY a2 family (not a lone g); three dead-stored named words after arm-1 g move our slot-4 family to -124 with every colour unchanged (frame +8 left) <a name="kit-dxvi-agent-h-run433"></a>
+
+_agent-h run 433, base cc154311e (99.996). No commit (nothing above 99.996). About 330 variants. Scratch
+`/tmp/claude-1000/h433/`: `t/ro.sh X.cpp` prints the -O0 -g named-word offsets plus kit DIV's per-line slot roles
+(`roles.py`); the instrumented uopt is `g413/tr.sh` (kit CDXCVII); `t/fz.py` / `t/dd.sh` as in kit DXV._
+
+**1. Which stage decides the home.**
+- The else g is a VARIABLE, not a uopt expression temp. Its slot `buf + count * 8` is built from memory loads, so it
+  cannot be CSE'd across the packet call. A spilled LR goes back to its own word (kit CDXCVII), so the home is the frame
+  word of whichever variable holds g.
+- In our build that variable is nF0's result word: pool slot 4, LR M-112 (the a2 family: ++idx, prim dl head, elem2,
+  loop-3 vptr, plus the else g).
+- Word ORDER is the front end's: words are created in order (block entry for named words, first use of each new depth
+  for pool words), and the -O0 `-g` mdebug offsets agree with -O2 for every referenced word.
+- The -O2 frame keeps only words that the ucode REFERENCES:
+  - `int d1, d2, d3;` (never used) in arm 1's inner block shows in the -O0 mdebug at -112..-120, but the -O2 object is
+    byte-identical (99.996).
+  - `int d1 = 0, d2 = 0, d3 = 0;` (dead stores, like kit DXII's dd) keeps the three words.
+- Occupants of word -124 (slot 7) in our build: arm 1's nq3 count n, the else fG's m (a copy of c2), loops 1 / 2's dcQ /
+  dc3 `this`, and loop 3's bottom-copy temps. That LR (M-124) is the s0 family.
+
+**2. The target's -124 LR is a high-priority a2 LR, not a lone g.**
+- In the target, gctx (M-4, pri 2.75, a3/a2 both cost 4.0, scan order v0 v1 a0 a1 a2 a3) skips a2. So an a2 LR that
+  overlaps gctx is coloured before gctx.
+- Arm 1 and the else hold no visible a2 value apart from the else g. So g's LR is coloured at pri > 2.75. A lone g LR
+  is pri 1.5 (u=2, num 3 / den 2).
+- Lone-g layout, `wtf.cpp`, 99.788:
+  - The else is `LW(int z, Mtx *m, int n) { fG(nS(n), m); }` with `nS(n) { return count = n + 1, &dl->buf[n]; }`,
+    called as `LW((int)this, m, count)`, on the section 3 base.
+  - That gives g home 228, count v1 and c2 s0 (with `LX(c2 + 0 * (int)c2)`, which lifts c2 to pri 2.0 over g).
+  - But g's LR is coloured after gctx, so gctx / dl / g rotate to a2 / a3 / a1 (target a3 / a1 / a2).
+- So in the target the else g shares its word with an a2 family, as ours does on slot 4. Only the word's address
+  differs.
+
+**3. Moving the s0 family off slot 7 (byte-identical 99.996, `07/c1.cpp`).**
+- arm-1 count to slot 8: `nq4` with 4 `(int)m` dummies in lR6;
+- drop LX's dead `dd`, which pays for the new slot-8 word;
+- loops 1 / 2: one held slot before `this` (`me(it.cur())->n8A` and `me(me(ip)->curM())->n8A`);
+- loop 3: `it.cur()->draw(this), (void)me(GS->ctx);`. The dead load holds slot 5, so the bottom copy's ++idx moves off
+  slot 8. Without it, ++idx joins the s0 family (99.861). `me(it.cur())` / `draw(me(this))` push the vptr off slot 4
+  instead (99.51).
+- Slot 7 then holds no call-crossing role. But every way of putting the else g on slot 7 fails:
+  - receiver me^3: g s7, but count lands on s8, the s0 family (98.5-99.1);
+  - the count materialised first (LW / LZ forms): g is a lone LR (section 2).
+
+**4. Structural confirmation: three named words before slot 4 (`24/a.cpp`, 99.954).**
+- Base plus `{ Gfx *g; int d1 = 0, d2 = 0, d3 = 0; c = ...` in arm 1's inner block, and LX's `dd` dropped.
+- The slot-4 word (the whole a2 family with the else g) moves to vfp-124. The else g is `sw/lw a2` at vfp-124.
+- Every register and every sp-relative loop home is unchanged. The only diffs are the frame (360 vs 352) and the
+  vfp-relative words above `it`.
+- The target layout is therefore: arm-1 g (-108), THREE words, the a2 family word (-124), TWO words, then loop-1 `it`
+  (-144). Ours has g, slots 4-7, c2, dd.
+- What is still needed is to take 2 words out of {s5, s6, s7, c2} without recolouring:
+  - c2 is a named else word that cannot move before slot 4, since its scope is the else;
+  - s5 / s6 carry the v0 / v1 families;
+  - s7 is the s0 family, so arm 1's count must stay s0. In the target that count is s0 only by sharing a variable with
+    a call-crossing value (kit CDXCIII: mt / count / c2).
+- A consistent target model: arm 1 at pool depth <= 3, with named c, g and one named mt/count variable. The else has
+  named c2 plus one more named word, and its own depth-4 statement creates the a2 word (-124). Slots 5 / 6 are created
+  in the else, slot 7+ in the loops. That is an arm-1 rewrite (the arm-1 mtx() / lR6 pool roles become named or
+  substituted), not an else-arm lever.
+
+**5. Tried, flat or worse:** else c2 as an EL(src, c) parameter (it takes slots 9-11, frame +8, 98.1-99.0); count
+read at the LX / LY call site (the count LR picks up blocks and takes s0, 98.4-98.5); code-free blocks in fG or after
+`gctx = ...` (2108-2116 B); folded g uses in fG (98.5); prim's dl head on slot 7 (M-124 pri 3.0 but s0, 98.2).
+
+## kit DXVII (agent-g 2026-11-14, run 432): post0b 48AEC stays at 99.996 -- the else c2 word drops byte-neutrally by storing the slot in the dead existing variable `A`; on kit DXVI's three-dead-word body every register and every home is the target's at +8 (one word left) <a name="kit-dxvii-agent-g-run432"></a>
+
+_agent-g run 432, base cc154311e (99.996). About 700 variants. Scratch `/tmp/claude-1000/g432/`: `fz.py` scorer (it
+prints every `sw/lw a2,N(sp)`), `lay.py` edg frame map (named words from -g2 mdebug plus VREG pool words from
+ualloc.py), `trm.py WORDS f.cpp...` (instrumented-uopt rows for the given M words: priority / units / colour),
+`ust.sh` (-O0 edg store order per line)._
+
+**1. Frame map of the base** (vfp offsets, `lay.py`): P1 -92, c -96, P2 -100, P3 -104, g -108, P4 -112, P5 -116,
+P6 -120, P7 -124, c2 -128, dd -132, it -144. The target's sp+228 is vfp-124. Slot families (uopt makes one LR per
+word, `trm.py`): P4 = a2 {else g, loops' n}, P5 = v0 {mtx counts}, P6 = v1 {mh}, P7 = s0 {arm-1 nq count,
+loop-1 dcQ `this`, loop-2 dc3 `this`}.
+
+**2. Slot rules measured on this body.**
+- The arm-1 count's slot is set by its position in nq3's parameter list. `nqp0 / nqp1 / nqp2` (n first / second /
+  third) put it on P4 / P5 / P6 (it joins that family, gctx takes s0, 97.8-97.9). Four dummies (nqk4) create P8 in
+  arm 1, which shifts loop 1's words (gbi -208). A dead named `Ctx *cc = c;` in dcQ restores every frame home, but
+  the count then shares loop 1's heavy slot-8 word (v0, pri 36.5).
+- A member call reserves `this` after all its arguments, so the loops' `this` is always above n's slot. Unused
+  trailing dummy parameters take no word. Kept ones (`if (0) { d = 0; }`, `if (d) {}`) take one and move `this`
+  to P8, but cost 52 B. Free-function wrappers with unmodified parameters are substituted away (byte-identical).
+  Wrappers with kept parameters grow the frame.
+- fG's parameter order does not matter (m is substituted): the else g's home is the first word that holds nF0's
+  result (P4).
+- No LR split rescues a g on P7. With g there, the merged s0 LR has pri 22 against c2's 1.5. `if (c2) {}` tests do
+  not raise c2. Code-free blocks in nq3 cost code (2104 B+).
+
+**3. Dropping c2 without recolouring (outside arm 1).** Making the else a single inline statement (PX(src, m))
+explodes the pool (+16-24 B frame). Taking `&A` / `&B` makes them memory (2088 B). But a plain store into the dead
+existing variable A works: `gctx = GS->ctx; func_00000000(I2((f32 (*)[4])((char *)&D_00000000_j + 0xA0)),
+(Mtx *)(A = (f32 (*)[4])me(me(gctx))->mtx())); me(me(gctx))->LX((Mtx *)A);`. On h433/24/a.cpp (three dead named
+words after arm-1 g) this gives c2-free layout `g -108, d1-d3, P4 -124, P5, P6, P7, it -148`, 99.929. The aligned
+diff then has ONLY +8 offsets: every register is the target's, and every home is the target's plus 8, including the
+else g at sp+236 = vfp-124. Reusing B the same way gives 99.900. So the one word left is P5, P6 or P7: the s0
+family (P7) needs a word it can share, which is the arm-1 rewrite of kit DXVI 4.
+- With c1's s0-to-slot-8 edits (h433/07) added and only ONE dead named word (`int d1 = 0;`), the body is
+  byte-identical to the target except the else g home: frame 352, g at sp+236 (vfp-116). The a2 family lands
+  wherever slot 4 is created, so the word count decides it.
+- Counting argument: words -92..-132 are 11. c (-96), g (-108) and the a2 word (-124) are fixed, and the slot
+  families are 1 a3, 2 a1, 3 t1, 4 a2, 5 v0, 6 v1, 7 s0. Slots are created in order, so with this family-to-slot
+  map, slots 5-7 all fall after -124. Only two words fit there (it at -144). So one of the v0 / v1 / s0 families
+  must move to a slot below the a2 family's, or onto a shared named word. Either way arm 1's pool roles are renumbered.
+
+**4. Flat or worse:** named else g first in the else (-128 with P7 present; with arm 1 at 6 words it reaches -124
+but the count leaves s0, 97.6); count + loops' `this` moved together to P8 (receiver / argument grids, 93-97.8);
+random multi-knob combinations (97-98.3); LX receiver depth 0-6 x mtx depth 0-6 (no 228).
