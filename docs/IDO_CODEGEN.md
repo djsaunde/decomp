@@ -14846,6 +14846,9 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit CDXCVII (agent-h 2026-11-14, run 414): **game_uso 8CD8 NM 96.683 -> 97.289. An instrumented uopt (colouring queue, priority num / den, forbidden set and per-register cost at each pick) shows the pool / return slot (24 / 26) losing a2 on a REGISTER TIE (strict `<`, first in scan order) to seven 1.0 LRs picked earlier: the wpos view word and the `this` constants of the plain-return chain temps. Priority den = (n - 2) / 4 + 2 over units + live-through blocks, so four code-free `if (1) {}` in a separate XZ(float, float, int) ctor (subp1 / subp2 / perp only) and four after the wpos binding take them to 0.75 while the slot stays 0.774: pool a2, chain temps a3, s a1. Condition: pri(competitors) < pri(slot) < pri(s)**](#kit-cdxcvii-agent-h-run414) -- _8CD8 NM dde89a125 (2832 B); ~300 variants; scratch /tmp/claude-1000/h414/ (u/out/uopt instrumented, t/tr.sh, t/ord.py)._
 - [kit CDXCVI (agent-c 2026-11-14, run 411): **game_uso 8CD8 NM 96.275 -> 96.683, frame 528 = target. Read the target through uopt M-offsets (M = frame - sp: the pool is K-156 in both frames) and the 14 per-site ctor-`this` registers, not the fuzzy score. Dir's conversion `this` shared a pool word with d2's conversion `v` (target a0 vs v1), so the word had to split: a 2-dummy `XZ(b->pos)` under `subp1` did it, with h as plain `subp2`. Dummy type (int / pointer) is byte-identical. Wrapper dummies don't move the inner conversion's words. Left: the XZ(wpos) / perp shared `this` word, pool a3**](#kit-cdxcvi-agent-c-run411) -- _8CD8 NM 30e431481 (2832 B); ~4000 variants; scratch /tmp/claude-1000/c411/ (lr721.sh, feat.py, lay.py, climb2/3.py)._
 - [kit DIX (agent-h 2026-11-14, run 425): **game_uso 8CD8 NM 98.508 -> 98.966, now 2836 B = target with NO structural diffs (every objdiff row left is an argument mismatch), frame 528. (1) Inline-parameter float pool words are single function-wide uopt LRs, one colour each, so a value passed as the k-th float parameter of its statement takes slot k's colour: `idp(d, d, d, partial)` with three kept dead float dummies put the partial on slot 4 = f12. A named local in an inline body is NOT pooled (frame word). (2) Member-store product ctors (no `set()` call) keep the float pool from growing (mv / mvf frame 536 -> 528). (3) `s->phase &= 3;` as its own statement, then `switch (s->phase)`: the mask becomes a ugen temp (t8). (4) The target's block-temp order (+= operand M-408 above h's M-420) and the e * dot return through the 2nd struct pool word (M-244) both say h is a temporary INSIDE the += statement: `s->p84 += e * (hdot(subp2(.., s->p90, a->pos), e) + speed * kDC)` plus the chained `s->p84 = K3(s)->p90 = XZ(..)` gives 2836 B; KR2 at five sites and a plain `speed * kDC` give frame 528. (5) Three kept dead float parameters in mvf's ctor grow the float pool by one word IN THE FLAG ARM, which puts e .. the += objects at the target's offsets (sp-only rows 175 -> 36): steer frame words by which statement first outgrows a pool. Objdiff weights: an argument-mismatch row costs ~0.004 %, an insert / delete / replace row ~0.125 %. Left: pool slot a3 / chain temps a2 swap (172 rows; slot 21 / 30 = 0.70 vs 0.75 competitors), the flag-arm objects (O-236 / O-248 / O-268 vs O-244 / O-264 / O-276), and the += statement declaring 4 words where the target has 3 (return O-496 vs O-492)**](#kit-dix-agent-h-run425) -- _scratch /tmp/claude-1000/h425/ (t/sc.py scorer with frame / s0 / a2-use columns, t/cls.py sp-only vs register row classes, t/skel.sh full frame skeleton); ~900 variants._
+- [kit DX (agent-h 2026-11-14, run 426): **game_uso 8CD8 NM 98.966 -> 99.564 -> 99.567, then 99.997 on agent-c's DXI frame basin (one row left: d2's `v` spill M-120 vs M-112), the pool-slot a2 / chain-temp a3 swap fixed (2836 B, frame 528, register diffs left: the wpos word and the XZ(wpos) `this`). Block counts cannot separate the slot from in-span competitors: every block in a chain temp's span is also a slot block, and den = (n - 2) / 4 + 2 rounds against you. Lower the competitors' NUM instead: `template <class T> const T &KR5(const T &r) { return r; }` around a plain `return XZ(...)` makes the copy source the ctor's `this` result, so the chain temp drops from 3 to 2 uses (2 / 3 = 0.667) with byte-identical site code. But the `this` result becomes a uopt VREG LR and can join a shared pooled VREG (M-132 went to 28 / 6 and pushed a colour domino: lost bnezl, 2828 B), so the site's leading dummy-int count must put it in a word of its own: per-site sweep over (KR form x 0-3 dummies) found f 1, h 1, g 0 neutral. perp has no neutral KR form (KR2 / dummies change the size), so it keeps the plain return with 8 ctor blocks (3 / 5); so does dir, whose chain temp precedes the slot's first use (its blocks are free; KR5 there scores 0.003 lower); the wpos view takes 8 blocks (3 / 5). The slot (21 / 30 = 0.70) is then picked before every competitor. The forcing oracle's best on this body is 99.590 (the XZ(wpos) / perp shared `this` word to a0)**](#kit-dx-agent-h-run426) -- _scratch /tmp/claude-1000/h426/ (t/knob2.py per-site KR / dummy / block generator, t/trl.sh compact trace of num / den / colour, 26/ the winning grid); ~600 variants._
+- [kit DXI (agent-c 2026-11-14, run 426): **game_uso 8CD8 NM 98.966 -> 99.113 in a NEW basin whose edg frame is the target's word for word (M-96 .. M-492, frame 528, 2836 B, no named dot / wpos, g a value). Corrections to kit DII's model: (1) the inline-parameter pool is ONE sequence of words for every dtype (the I / P / F labels are only the first declarer's type); (2) parameters are reserved LAZILY, one at a time, as each argument starts to evaluate, and nested inline / ctor words are held to the end of the statement; leading `(int)a` dummies take no word. So a value's word = its acquisition index in the statement, and uopt spills a copied pointer to the FIRST word that held it. (3) Pool growth before vs after an object depends on where the extra demand sits: kept params on the outer call's LAST argument grow after the object. Levers: `s->p84.asg5(p90 = .., 0.0f x5)` (five kept float params) grows two words after the chain's by-value temp (target O-244 VV); `dot2p(.., &dir)` / `hdotp(.., &a->pos)` add one word each; `XZ g = XZ(s->w->pos) - s->p90` puts the w->pos pointer at word 3 (M-112), `subz(a, b, int)` (dummy AFTER the operands) puts the return's at word 2 (M-108). Colours back by code-free changes: one `if (1) {}` in Vec3(float x3) takes the ctor-`this` word 28 / 6 -> 28 / 7, under e1189 (4.5). The forcing oracle with the pool / chain-temp swap fixed gives 99.99 on this body: the only rows left are d2's spill word (M-120 vs M-112) and a reloc. Every d2 spelling that reaches M-112 sends s to s0 (a heavy 4th word takes a1)**](#kit-dxi-agent-c-run426) -- _scratch /tmp/claude-1000/c426/ (t/evm.py scorer with spill words as M offsets, t/ust.py front-end store order per source line, t/sk.py skeleton + score); ~900 variants._
+- [kit DXII (agent-g 2026-11-14, run 427): **post0b 48AEC NM 99.742 -> 99.829 -> 99.857 (2076 B, 17 lines left). An inline's `Gfx *g` passed as a PARAMETER to a packet-store inline (`p6b(t, nextQ())`, `fG(nextU(), m)`) has a pool-word spill home instead of a named frame word. So removing a named local word to pay for a new one (dcQ's separate result `u32 t`) keeps the frame and every later home. (1) dcQ with `u32 t` + `p6b(t, nextQ())` + `[n]`: loop-1 dl / count / g exact, frame 0x160 kept (+0.087). (2) Else as `fG(nextU(), m)` (single-return slot with the u32 count view) + a dead named `DLHead *dd = dl;` for the lost word + run 424's `I2(A)` / `me(me(gctx))->mtx()`: else mtx count / mh, dl and g exact (+0.029). (3) Frame-model finding: a named g in an inline is allocated after every pool word its statement's earlier statements created, so the target's arm-1 g home (vfp-108) needs at most 3 pool words before lE3, which the depth-4 mtx() (6 words) cannot give. The home is reachable as a pool word (`fA0(me(gctx)->nD2(c, c, me(me(gctx))->dl->count), c)` puts it at -108), but that word is slot 4, the a2 family, and the target's arm-1 g is v1. A param g's home follows the receiver depth (-104 / -108 / -112 / -116), never -124 (slot 7) in this layout**](#kit-dxii-agent-g-run427) -- _scratch /tmp/claude-1000/g427/ (t/hm.py frame + spill-home reader, t/gq.py / gp.py / gh.py param-g generators); ~1300 variants._
 - [kit DVIII (agent-g 2026-11-14, run 424): **post0b 48AEC NM 99.684 -> 99.713 -> 99.742 (2076 B, 27 lines left). (1) The mtx() count / mh words follow the receiver depth: me^k on a single-return `&mh->buf[mh->count++]` puts the count on slot k+1 and mh on k+2. Arm 1 at depth 4 (count s5 with it.a = v0, mh s6 = v1) and else at depth 3, with the code-free `if (mh->count) {}` dropped, makes arm 1 and B exact. (2) A uopt EXPRESSION LR (`this->dl` on the shared dcQ / dc3 `this` word, one LR across both loops) held v1 over n. A u32 view of dl on dcQ's slot count splits it, and dc3 drops `if (c) {}`: loop-1 / loop-2 n and the loop-3 bottom copy match. A separate dcQ result word t gives the target's loop-1 body but costs a frame word (360)**](#kit-dviii-agent-g-run424) -- _scratch /tmp/claude-1000/g424/ (t/fz.py, dd.py, gen.py / genv.py variant grids, picks.py trace reader); ~1000 variants._
 - [kit DVII (agent-c 2026-11-14, run 423): **game_uso 8CD8 NM 98.508 -> 98.719 (2828 B, frame 528). Switch lever: in `switch (*K3(&(s->phase &= 3)))` the switch reads the stored value back through a zero-code pointer identity, so the masked value is no uopt LR (ours v0) but a ugen temp (t8 / t9, as in the target): +0.17. Frame lever: KR1's named `const T *p` gets its own edg word at every expansion. KR2 (`*KP(&r)`, parameters only) puts the pointer in the pooled VREGs instead, so it has the same dead-block code with no frame word. With agent-h's mv / mvf hoist (kit DVI, 98.402 at frame 536), mvf and its `+=` operand through KR2 give the frame back. Inverse model: a plain `return XZ(...)` chain temp has num 3 because edg emits a second `lda temp` as the copy source. Through a pointer (KR1, or a conversion read through its `this` word) num is 2. Casts / NRV are no-ops, and the KR2 / `.me()` returns cost a VREG plus s in s0. The chained site 5 now fits frame 528 (XZ::operator* through KW6), and a W / C / C2 block cell gives pool a2. That reaches 98.461 at the colour optimum, so the rest is layout**](#kit-dvii-agent-c-run423) -- _scratch /tmp/claude-1000/c423/ (t/ut.sh, t/pp.sh, t/ub.sh, t/bd.sh, t/sd.py, t/fr.sh)._
 - [kit DVI (agent-h 2026-11-14, run 422): **game_uso 8CD8 NM 97.537 -> 98.508 (2828 B), FP registers only, integer colours unchanged. A target FP add whose destination is a uopt register (f0 / f2 / f12 / f14) where ours writes a ring temp is a sub-sum that is a uopt value in the target. One code-free `if (sum) {}` before the statement (uopt CSEs it, test deleted) or a reassigned local (`float dot = partial; dot += rest;`) gives that, and drops one ring pop, which realigns every later ring register. Plus `(250 * width) * kE0` as the left operand. `sig.py` (FP op sequence by index against the target) reads the residual quickly. Left: the e * dot products sit in float pool slots 1-3, and slot 3 (f2) blocks dot's f2. Pool-structural**](#kit-dvi-agent-h-run422) -- _scratch /tmp/claude-1000/h422/ (t/sig.py, t/fd.py, t/mn.py, t/sp.py)._
@@ -68368,3 +68371,214 @@ the 98.887 body. Section 5b supersedes the pad.)
   8 high (e-316) and the named wpos is still there. Two more flag-arm pool words before the chain object (the
   target's V-228 / V-232) would place e / f, but not g (the wpos word). Moving wpos into an inline parameter
   (`gsub(z0, K1(s)->w->pos, p)`) changes the code (2848-2856 B).
+
+## kit DX (agent-h 2026-11-14, run 426): game_uso 8CD8 NM 98.966 -> 99.567 -> 99.997 (on agent-c's DXI basin) -- the pool-slot / chain-temp colour swap is fixed by lowering the chain temps' use count (KR5 return through a const-ref parameter, dummy count chosen per site), not by block counts <a name="kit-dx-agent-h-run426"></a>
+
+_agent-h run 426, on top of kit DIX's body (main fe310ad29). Two commits on agent-h (31fde682d 99.564, 58ff57cc9
+99.567), 2836 B, frame 528, a2 uses 65 = target.
+About 600 variants. Scratch `/tmp/claude-1000/h426/`: `t/knob2.py` (per-site KR form / leading dummy count / ctor
+block generator), `t/trl.sh` (score plus a compact `name num/den colour` list from the instrumented uopt), `26/` (the
+winning grid)._
+
+**1. Why blocks cannot do it.** The instrumented trace (kit CDXCVII tools) on the DIX body:
+- slot `K-156` 21 / 30 (n = 117, the top of the den-30 bucket);
+- the competitors picked before it, all taking a2: the wpos view word `M-340` and the chain temps of dir (`K-172`),
+  f (`K-372`), g (`K-384`), perp (`K-444`) and h (`K-456`), each 3 / 4;
+- the KR2 chain temps (`K-196` group) at 2 / 3, picked after it.
+
+Ties go to the lower LR index. The chain temps' K indices are above the slot's, so they lose ties; `M-340` (index
+340) wins them. Every chain temp except dir's lies inside the slot's span, so each block added to one is also a slot
+block. With den = (n - 2) / 4 + 2, pushing five competitors from 3 / 4 to 3 / 5 costs the slot 20 blocks: it goes
+21 / 35 = 0.6, a tie that `M-340` wins. Removing the ctor blocks instead leaves the competitors at 1.0. Every mix was
+checked by arithmetic and by grid; none works.
+
+**2. Lower the competitors' num.** A plain `return XZ(a.x - b.x, a.z - b.z, 0);` emits `lda temp` twice: once for the
+ctor `this`, and once as the `mov` source into the return slot. That gives num 3. Returning through a const-ref
+identity makes the `mov` read the ctor's `this` result instead:
+
+    template <class T> inline const T &KR5(const T &r) { return r; }
+    inline XZ subr1(int z0, const Vec3 &a, const Vec3 &b) { z0 = z0; return KR5(XZ(a.x - b.x, a.z - b.z)); }
+
+The chain temp then has num 2 (2 / 3 = 0.667). After copy propagation, ugen still copies through the constant
+register, so the site's code is unchanged. KR3 (`*K3p(&r)`) and KR4 (`*KQ(&r)`) behave the same way. KR2 adds a
+`KP` block.
+
+**3. The catch: the `this` result becomes a uopt VREG LR.** It lands in whichever pooled pointer word its depth
+selects. If that word is one of the shared pooled VREGs (M-128 / M-132 / M-160, 12 units each at 21 / 5), the shared
+LR gains units. With f's default 2 dummies, M-132 went to 28 / 6, jumped ahead of e1189, took v1, and set off a domino:
+the first ctor `this` moved a0 -> v1, its bnezl was lost, and the size fell to 2828 B. A leading kept dummy-int count
+(kit CDXC) moves the `this` result into a private word, a 7 / 2 LR that takes the target's a0. A per-site sweep over
+(KR5 / KR2) x (0-3 dummies), scored against the dir-only base 98.96474, found these neutral combinations:
+- dir: `subr2` (2 dummies) or 0 dummies, KR5, scores 99.564. Its chain temp is outside the slot span. The committed
+  form keeps the plain `subp2` with the 8 ctor blocks shared with perp (3 / 5), which scores 99.567, the same as the
+  forcing oracle's swap result on the DIX body.
+- f: `subr1` (1), KR5 or KR2. With 0 dummies it went to 2716 B and s0; with 2-3 it went to 2828 B.
+- h: `subr1` (1), KR5. With KR2 the frame went to 536.
+- g: `subr` (0), KR5 or KR2. With 1-2 dummies, M-160 lost units, took v1 and pushed M-124 to a2 (96.275).
+- perp: no neutral form. KR3 / KR4 / KR5 leave its num at 3, and KR2 or 2+ dummies give 2828 B.
+
+**4. The working configuration.**
+- perp and dir keep the plain return. The XZ(float, float, int) ctor, now used only by those two, gets 8
+  `if (1) {}`: their chain temps go 3 / 3 -> 3 / 5.
+- The wpos view gets 8 blocks after its binding: 3 / 5.
+- The slot is 21 / 30 = 0.70 (n 116). That is above every chain temp (0.6 / 0.667) and below P4 (1.55), so the slot
+  is picked first and takes a2, and every chain temp takes a3. The grid needed exactly ctor blocks 8 with wpos
+  blocks 8-9 (perp's ctor 8-12). This gives 99.56418, and 99.56699 with dir plain (dir ctor blocks 8 or more; 4-6
+  lose the swap). Both are confirmed in-tree on the spliced non_matching object.
+
+**5. What is left.**
+- The register diffs left are two: the wpos word (target v1, ours a3) and the XZ(wpos) conversion `this` (target
+  a0, ours v1). The latter still shares pooled word M-116 with perp's `this`.
+- The forcing oracle: M-116 -> a0 gives 99.587 on the 99.564 body and 99.590 on the 99.567 body, and M-340 then
+  takes v1 by itself. M-116 (3.5, fb {v0})
+  takes v1 on scan order. Nothing coloured v1 before it interferes with it.
+- Splitting the word with dummies at g's conversion (`XZ((int)a, wpos)`, `subr1` / `subr2` around it, 11 forms)
+  costs 1-4 % every time.
+- The other rows are sp offsets (agent-c's flag-arm / += word-count work) and branch targets.
+
+**6. On agent-c's DXI frame basin (99.567 -> 99.997, commit 6b3dd5407).** agent-c's 19e708dc8 puts every edg word at
+the target offset (99.113), with the swap still in it: the slot was 21 / 32 there, below even the KR2 group. The same
+lever applies there with nothing else changed:
+- f and h go through `subr1` (KR5, 1 dummy);
+- the dir / perp XZ(float, float, int) ctor goes from 4 to 8 blocks;
+- g already returns through operator-'s KR2, and that basin has no wpos view.
+Ctor blocks 4 / 6 / 10 lose the swap, and so does f or h alone. 0 or 2 dummies on f / h lose it, or change the size.
+The one row left is the flag-arm d2 conversion `v` spill: M-120 (sp+408), where the target has M-112 (sp+416), the
+word the target shares with g's `v`. In the ucode, lenf reserves dot2p's u (-104) and v (-108), then sub1's `a`
+(-112) and the conversion `this` (-116), all before the conversion's `v` (-120). The target's `v` is the 3rd word.
+Tried without success: 64 lenf spellings (dot2 / dot2p / two kept pointers / a trailing int x sub1 / sub2 / sub0 /
+trailing-dummy sub / KR1 / KR5 / operator- x K3(a) or a->pos), all 99.997 or worse; member `.dotr()` forms send s
+to s0 (2716 B); argument-order swaps (dot2t / sub1b) give 91-99.88; 0-3 conversion dummies x (sub1 / trailing-dummy
+sub / b-first sub) give 90.8-99.997. In `dot2p(dir, XZ(s->w->pos) - K3(a)->pos, &dir)` the spill does land at sp+416,
+but the frame grows to 536, so it is still M-120.
+
+**General rule.** When a long LR (a pool or return-slot constant) loses a register tie to short LRs nested inside
+its span, block-count levers are ratio-locked. Cut the short LRs' use count instead (a kept reference identity on
+the copy source), and check the VREG that this creates: it must not merge into a shared pooled word.
+
+## kit DXI (agent-c 2026-11-14, run 426): game_uso 8CD8 NM 98.966 -> 99.107 -> 99.110 -> 99.113 -- every edg frame word at the target's offset; the pool is one word sequence for all types with lazy per-argument reservation; colours restored with code-free changes <a name="kit-dxi-agent-c-run426"></a>
+
+_agent-c run 426, base fe310ad29 (main, kit DIX body, 98.966). Commits on agent-c: 7139cb9d9 (99.107), b1a6afec3
+(99.110), 19e708dc8 (99.113). About 900 variants. Scratch `/tmp/claude-1000/c426/`: `t/evm.py` (score, frame, s0,
+site mismatches, and the three `v` spill words as M offsets), `t/sk.py` (score plus kit DII skeleton), `t/ust.py X.B
+LINES` (the -O0 front end's store / LDA order per source line), `29/s2.cpp` (the 99.107 body)._
+
+**1. The frame, fixed word by word.** Kit DII's target skeleton, against the DIX body:
+- flag arm: lenf grew 7 pool words after d2's object where the target has 9, the chain's by-value temp sat at
+  O-236 (target O-244, then two pool words), and mvf grew its own float word after its product (O-248 F O-264 where
+  the target has VV O-264 O-276);
+- else arm: a named wpos (4 bytes) and a `const XZ &g` (4 bytes plus a block temp) where the target has a 12-byte g
+  and three block temps;
+- the inner `+=` grew F P P P (4 words, return O-496) where the target has 3.
+
+The fixes:
+- drop the named `dot` (lenf read twice): the target's M-104 is a pool word;
+- `float lenf = dot2p(dir, sub1(..), &dir);` with one kept pointer parameter: 9 words after O-196;
+- `s->p84.asg5(s->p90 = (const Vec3 &)XZ(..), 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);`, an operator= with five kept float
+  parameters: the statement's float demand (3 for the conversion + 5) outgrows the pool by two words AFTER the
+  by-value temp, so the temp is O-244, mvf finds its float word already there, and the dir products land at
+  O-264 / O-276. Four floats give one word (O-260), three none. The int dummies of a first try took no word;
+- `XZ g = ..` as a value and no wpos view: e-324 f-336 g-348 with block temps O-288 / O-300 / O-312;
+- `hdotp(.., e, &a->pos)`: 3 words after the e * dot product, return O-492.
+
+Named-wpos variants can never fit: with g a value the else arm is 76 bytes against the target's 72, and every other
+else-arm item is a 12-byte object. Copy-init `XZ e = ..` removes a block temp but also the copy chain (2816 B).
+
+**2. Colours back (98.4 -> 99.107).** Without wpos, the d2 and g conversion pointers share one pooled word, as in the
+target, and the ctor-`this` words lost their a0:
+- the ctor-`this` word M-128 (28 / 6 = 4.67) now outranked e1189 (4.5), took v1, and every site register flipped to v1.
+  One `if (1) {}` in `Vec3(float, float, float)` makes it 28 / 7 = 4.0: e1189 takes v1 again, the ctor words a0
+  (blocks inside the conversion ctors or XZ(float, float) changed nothing). M-124 then collided with M-128 and took a1
+  (s0), which the return fix below removes;
+- `return sub2((int)a, (int)a, s->p84, s->w->pos);` (its pointer leaves the shared word): 98.458, 2836 B;
+- K1 on the first flag-arm `+=` receiver and the chain written without K3: K-60 takes v1, 99.107.
+
+**3. The pool model, corrected (store order from `t/ust.py`).**
+- There is ONE pool sequence for all dtypes. In `return sub2((int)a, (int)a, a, b)` the stores go to -104, -108,
+  -112, -116 in order, so b (the w->pos pointer) is in the 4th word even though -112 / -116 were first declared as
+  ints. Kit DII's per-dtype pools are wrong; the labels are only the declaring statement's types.
+- Words are reserved lazily, one parameter at a time, as each argument starts to evaluate. Words of nested
+  inline / ctor expansions are held until the statement ends. g's line:
+  `L-312 (conversion temp) s-108 (ctor this) s-112 (ctor v = &w->pos) ... s-104 (operator- a) s-124 (operator- b)`:
+  operator-'s a was reserved first (-104), the conversion then took -108 / -112, and b came after the held words.
+  lenf: `s-104` (dot2p u = &dir), then -108 / -112 held for dot2p's v / p0, sub1's a, then the conversion at
+  -116 / -120.
+- Leading `(int)a` dummies of an inline take no word. The XZ(int, int, const Vec3 &) ctor's dummies do (I-112 /
+  I-116 in dir's statement).
+- uopt keeps a copied pointer in the FIRST word that held it, so the spill word is that word: g's `v` is a copy of
+  KP's p, so the spill went to KP's word.
+
+The target's spill words then read: d2 / g pointer = word 3 (M-112), return pointer = word 2 (M-108). Applied:
+- `return subz(s->p84, s->w->pos, (int)a);` with the kept int AFTER the operands
+  (`subz(a, b, int z0) { z0 = z0; return KR1(XZ(..)); }`): b is word 2, M-108, v1, 99.110. Without the trailing dummy
+  the ctor `this` lands in the d2 / g word (v1) and the pointer takes a2 with the pool in t0 (97.14);
+- `XZ g = XZ(s->w->pos) - s->p90;` (plain operator-, KR2 return): word 3, M-112, v1, 99.113.
+
+**4. Left.**
+- The forcing oracle on the 99.107 body: the eight a2 LRs before the pool (K-172 / -372 / -444 / -456, K-196 / -492
+  / -360 / -384) forced to a3 gives 99.992. Only d2's spill (M-120 vs M-112, 2 rows) and the jump-table reloc row are
+  left. So agent-h's kit DX swap fix carried over to this body would leave about two rows.
+- d2 at M-112 needs exactly one word before the conversion's `this`. Receiver-first forms do it
+  (`(XZ(s->w->pos) - K3(a)->pos).dot(dir)`, `dot1(XZ(s->w->pos).ms2(K3(a)->pos), dir)` with a member `ms2`), but each
+  makes word 4 a 6-use LR that overlaps M-112, and it takes a1 (s0, 2716 B). Free-function forms give word 4 or 5
+  (dot1 / member dot: 4). By-value dot parameters, a 3-parameter `ddot(p, q, u)` and a free `xz()` conversion
+  (2900 B) were all worse.
+
+**Rule.** To place an edg frame word, count acquisitions: one pool sequence, parameters reserved lazily in argument
+order, nested words held to the end of the statement, and uopt homes a copy chain in its first word. Kept dummy
+parameters on the LAST argument add words after the statement's objects. A dummy before an operand shifts that
+operand's word; a dummy after it does not.
+
+## kit DXII (agent-g 2026-11-14, run 427): post0b 48AEC NM 99.742 -> 99.829 -> 99.857 -- a packet slot passed as an inline PARAMETER spills to a pool word, not a named frame word, so a new named word (dcQ's result t) can be paid for without moving any later home <a name="kit-dxii-agent-g-run427"></a>
+
+_agent-g run 427, base c84f29ec7 (99.742, kit DVIII). Commits e66630eb7 (99.829) and f20330769 (99.857), both 2076 B.
+About 1300 variants. Scratch `/tmp/claude-1000/g427/`: `t/hm.py X.o` prints the frame size and every `sw ..(sp)` in
+insns 100-180 as a vfp offset (arm-1 g = insn 132, else g = insn 165). `t/gq.py` / `t/gp.py` / `t/gh.py` generate the
+parameter-g and pool-depth grids. The scorers are kit DVIII's `fz.py` / `dd.py`._
+
+**1. Loop 1: result word t without a frame word (99.742 -> 99.829).**
+- kit DVIII: a separate `u32 t` for dcQ's call result gives the target's loop-1 packet, but its named word moves
+  everything below it (frame 360).
+- `void p6b(u32 t, Gfx *g) { g->w0 = 0x06000000; g->w1 = t; }` with `dcQ: u32 t = func(&c->dl->buf[n]) + 0 *
+  (int)(dl); p6b(t, nextQ());` drops dcQ's named `Gfx *g` word, which pays for t. The frame stays 0x160 and every
+  later home stays put.
+- The slot must be the single-return `nextQ()`. With the u32-view slot expression as the argument, the post-increment
+  temps take pool words and c / n swap. `[n]` without its `+ 0 * n` fold puts c / n back.
+- Loop-1 dl / count / g are then v1 / a0 / a1 = target.
+
+**2. Else: fG(nextU(), m) (99.829 -> 99.857).**
+- `inline void fG(Gfx *g, Mtx *m)` is a free function, so it takes no `this` word. A member costs one more
+  acquisition, and a slot-7 g took s0 from c2 (2068 B).
+- The else statement is `LX(Mtx *m) { DLHead *dd = dl; if (*(u32 *)&dl) {} if (1) {} fG(nextU(), m); }`. Here
+  `nextU()` is the single-return `dl->buf + ((DLHead *)*(u32 *)&dl)->count++`, and the dead named `dd` gives back the
+  word that the else g no longer takes.
+- Combined with run 424's `func(I2(A), c2 = me(me(gctx))->mtx())`, the else mtx count / mh (v0 / v1), dl (a1) and g
+  (a2) all match. Left in the else: the ld count (v0 vs v1), B (v0 vs v1, since I2(A)), and the g home (-108 vs -124).
+- `nextQ()` in place of nextU() gives dl v1 (99.829). The `&dl->buf[dl->count++]` / u32-view expressions as the
+  argument change the size.
+
+**3. Frame model for the two g homes.**
+- With `-g`, mdebug gives the named-word order. A named local in an inline body is allocated when the body is
+  entered, after the inline's own parameters and after every pool word that earlier statements created. Its offset
+  is the frame cursor at that point.
+- The target's arm-1 g at vfp-108 therefore needs at most 3 pool words (s1 -92, c -96, -100, -104) before lE3.
+  Arm 1's depth-4 `mtx()` alone creates 6, and argument inlines are expanded before the callee body
+  (`lX(mt, c = me^4(gctx)->mtx())` with the copy call inside: g still -128).
+- As a pool word the home IS reachable: `fA0(me(gctx)->nD2((int)c, (int)c, me(me(gctx))->dl->count), c)` (nq with 2
+  dummies keeps the s0 count, 2076 B) puts arm-1 g at -108. A dead `DLHead *dd = dl;` in dcQ restores the loop words.
+- But that word is pool slot 4, the a2 family (++idx / prim dl, kit DIV), so g turns a2 (target v1): 99.813, versus
+  99.857 with the named g.
+- A param g's home follows the receiver depth of the inline that feeds it: -104 / -108 / -112 / -116, then new words
+  at -136+. It never lands at -124 (slot 7), because slot 7 is skipped.
+
+**4. Tried flat or worse.**
+- Arm-1 packet stores written in draw() or through a param inline around nq3 (2060 B: the nested multi-statement
+  inline as an argument moves the s0 count). Comma / single-return nq forms (2056-2064).
+- dc3 / loop-2 forms for e704: p6b in dc3 (the frame grows), Elem-pointer parameters (dE1..dE6, 96.8-99.4), folded
+  c uses, me / curM / ref / I2 on the loop-2 reads.
+- Kept-wrapper grids on A (I2..I7, me) by mtx depth, B folds, LX depth / dummies / block order, dd positions. Three
+  100-variant random rounds.
+
+**5. Left at 99.857 (17 lines).**
+- B v0 (3), arm-1 g home 232 (2), else ld count v0 (3), else g home 244 (2).
+- Loop 2: idx*4 a3 / elem1 a1 (7), still e704 -> t0 from the forcing oracle.
