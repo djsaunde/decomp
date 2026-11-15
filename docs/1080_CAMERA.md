@@ -138,5 +138,7 @@ is an orbit / pan controller. Neither is used for the race view.
 - Resolved in run 485: the cam_create chase classes (section 2), and CamDirector_update, the cam_create donor and
   the B3C donor (MIPSpro 7.2.1 edgcpfe) are on camera.h / snowboarder.h fields (bytes unchanged).
 - CamPath unk08 / 0C / 18 / 1C / 24 / 2C (read with the mode words, never used) and CourseCam 0x278 are unread.
-- What the rider body at camSource (0x874) is (a node of the rider model from the ctor's tables).
+- What the rider body at camSource (0x874) is. Run 488: slot 22 of the shape-file node registry (bootup Bss
+  0x3C058, Sym 550; docs/1080_GAME_CLASSES.md section 17); the body part needs the rider shape stream.
+- Run 488: MCamera_ctor, CamFollow_ctor and CamDirector_ctor store their vptrs through the gl_data.h `_vtbl` aliases.
 - The RiderCam fov tables (bu_4948_t16 / t8, k0 / k1 / klo / khi) are not resolved to RoData addresses.

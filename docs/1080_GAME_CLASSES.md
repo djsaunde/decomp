@@ -22,6 +22,7 @@
 - [14. Run 475: physics donors on fields, camera.h](#14-run-475-physics-donors-on-fields-camerah)
 - [15. Run 480: course.h (world / course data model), CourseCam](#15-run-480-courseh-world--course-data-model-coursecam)
 - [16. Run 485: camera donors on fields, CamPath semantics, gates, anims.bin](#16-run-485-camera-donors-on-fields-campath-semantics-gates-animsbin)
+- [17. Run 488: RiderAnim states named, anims.bin decoded, AnimPlayer base](#17-run-488-rideranim-states-named-animsbin-decoded-animplayer-base)
 
 ---
 
@@ -564,3 +565,122 @@ entries): the id -> entry map needs the AnimPlayer loader (game_libs 62E80.. / 6
 
 **Next:** decode the anims.bin entry header (AnimPlayer load path) to map anim ids to names, then name the 53
 RiderAnim_state_<addr> by the anims they start; the gate item instance class; the rider body at camSource.
+(Done in run 488, section 17; the anims.bin id list above was a misread.)
+
+## 17. Run 488: RiderAnim states named, anims.bin decoded, AnimPlayer base
+
+agent-g run 488 (branch agent-g on 9dcd5ce48). Pure rename 9ea04f99c (53 states). Hand edits bb6158407 (new
+include/game/rideranim_anims.h; RiderAnim embeds AnimPlayer; 45 anim-id literals in game_uso.c and the F060 /
+F13C / 10840 / 10A0C donors as RANIM_*), 3dcc072b9 (MCamera_ctor MNode_vtbl + MCamera_vtbl, CamFollow_ctor,
+CamDirector_ctor vptr stores on the gl_data.h aliases), 26d9c7873 (gate class home; camSource). All gated
+(PASS, ROM identical). Scratch: /tmp/claude-1000/g488/anims.py (anims.bin parser), an.py (per-state call
+arguments from the reloc-resolved disassembly).
+
+**rom/anims.bin.** The data starts at ROM 0x923C02 (after the 0x2C-byte Info record, file id 0x56, and the
+data record header): the AnimDataMgr_loadFile stream of docs/1080_GRAPHICS.md section 11, version 0x128, 9
+groups. Every anim record opens with cmd 4 (skip 0x20 bytes) and those bytes are the name plus the "<n>-0.dsc"
+source. An entry whose name starts with a 0 byte (or is all 0xFF) has numFrames 0. **Run 485's ids 0x100F8 etc.
+were misreads; every id RiderAnim uses is in range.** Note 0x30001 (boarder_ollie_arm, the stateOllie* anim) is
+one of the empty entries in the retail file. Listing (index hex, name, kN = keys, fN = frames; parentheses =
+empty):
+
+- group 0 (2): 0 (oarder_bump_l_break); 1 (oarder_normalposition)
+- group 1 (48): 0 boarder_row k3 f10; 1 (oarder_normalposition); 2 boarder_turn_normal_b66 k2 f13; 3 boarder_turn_normal_f55 k2 f13; 4 boarder_brake_b k2 f16; 5 boarder_brake_f k2 f16; 6 (oarder_weight_f); 7 (oarder_weight_b); 8 boarder_up_down k2 f6; 9 (oarder_landing_s); A new01_17_crashing_f_slide k3 f28; B boarder_crashing_f_1rot k3 f44; C boarder_bump_r k2 f21; D boarder_bump_l k2 f21; E boarder_crashing_bside_slip k3 f58; F boarder_crashing_fside_slip k3 f58; 10 (oarder_pre_jump_A); 11 boarder_pre_jump_AZ k2 f6; 12 boarder_crashing_bside_1rot k3 f57; 13 boarder_crashing_fside_1rot k3 f52; 14 boarder_crashing_f_bottocks k2 f16; 15 boarder_crashing_f_2rot k3 f63; 16 boarder_bump_r_break k2 f36; 17 boarder_bump_l_break k2 f36; 18 open_norm_fk_F02 k5 f11; 19 new_hop07 k6 f22; 1A blind_norm_fk_B02 k5 f14; 1B front_360_norm_fk_360_F01 k5 f28; 1C blind_360_norm_fk_360_B01 k5 f28; 1D swith_stanceNF k2 f11; 1E 01_15_180_air_open k5 f16; 1F 01_15_180_air_blind k5 f21; 20 01_15_360_air_open k5 f26; 21 01_15_360_air_blind k5 f26; 22 normal_front_flip3 k5 f19; 23 normal_back_flip3 k5 f21; 24 deep_pos_sw_stNF k2 f11; 25 knee_cushion06 k2 f17; 26 boarder_turn_n_preJ_b k2 f6; 27 boarder_turn_n_preJ_f k2 f6; 28 boarder_turn_dp_preJ_b k2 f2; 29 boarder_turn_dp_preJ_f k2 f2; 2A F_flip_crash4 k3 f22; 2B normal_B_flip_crash3_1 k3 f21; 2C boarder_yoroke_a02 k2 f16; 2D boarder_yoroke_b02 k2 f16; 2E boarder_yoroke_c01 k2 f16; 2F landing_a02 k2 f16
+- group 2 (19): 0 boarder_crashing_f_bottocks k2 f16; 1 (oarder_deepposition); 2 turn_deep_b2 k2 f4; 3 turn_deep_f1 k2 f4; 4 boarder_brake_dp_b k2 f7; 5 boarder_brake_dp_f k2 f7; 6 (oarder_weight_f_deep); 7 (oarder_weight_b_deep); 8 boarder_up_down_dp k2 f6; 9 boarder_landing_s k2 f12; A -; B -; C boarder_bump_dp_r k2 f21; D boarder_bump_dp_l k2 f21; E -; F (elect1_ok); 10 (elect2_ok); 11 (elect3_ok); 12 (ead_crashing_f_slide_d)
+- group 3 (37): 0 (oarder_hop); 1 (oarder_ollie_arm); 2 method_7 k5 f27; 3 mute_grab_6 k5 f26; 4 tail_grab5_1 k5 f27; 5 indy5 k5 f27; 6 (oarder_taipan); 7 stalefish_6 k5 f26; 8 nose_grab_6 k5 f25; 9 lien_6 k5 f26; A melonchollie_8_1 k5 f19; B (oarder_heel_edge_grab); C tweaked4_1 k5 f31; D indynb_6 k5 f26; E stiffy_6 k5 f19; F shifty_6 k5 f36; 10 (oarder_w_hand_g_01); 11 (oarder_w_hand_g_02); 12 normal_Jtear_air k5 f21; 13 normal_BS_handplant k5 f21; 14 normal_McTWIST k5 f26; 15 normal_alley_McTWIST k5 f26; 16 01_15_540_air_open k5 f31; 17 01_15_720_air_open k5 f36; 18 01_15_900_air_open k5 f43; 19 01_16_1080_air_open k5 f51; 1A 01_15_540_air_blind k5 f31; 1B 01_15_720_air_blind k5 f36; 1C 01_15_900_air_blind k5 f43; 1D 01_15_1080_air_blind k5 f51; 1E One_foot2 k5 f31; 1F fakie_mystery k5 f26; 20 01_16_1260_air_open k5 f61; 21 01_16_1440_air_open k5 f66; 22 01_16_1260_air_blind k5 f61; 23 01_16_1440_air_blind k5 f66; 24 panda_trick_X03 k5 f26
+- group 4 (5): 0 select_KIMATI_05 k4 f100; 1 select_DION_05 k4 f140; 2 select_AKARI_04_1 k4 f91; 3 select_RICKY_04 k4 f106; 4 select_ROB_02 k4 f120
+- group 5 (48): 0 boarder_row k3 f10; 1 (oarder_normalposition); 2 boarder_fk_turn_norm_b k2 f13; 3 boarder_fk_turn_norm_f k2 f13; 4 boarder_fk_brake_b k2 f16; 5 boarder_fk_brake_f k2 f16; 6 (oarder_weight_f); 7 (oarder_weight_b); 8 boarder_fk_up_down k2 f6; 9 (oarder_landing_s); A new01_20_fk_crashing_f_slide k3 f28; B boarder_fk_crashing_f_1rot k3 f41; C boarder_fk_bump_r k2 f21; D boarder_fk_bump_l k2 f21; E boarder_crashing_bside_slip k3 f58; F boarder_crashing_fside_slip k3 f58; 10 -; 11 -; 12 boarder_fk_crash_bside_1rot k3 f51; 13 boarder_fk_crash_fside_1rot k3 f51; 14 boarder_fk_crash_f_bottocks k2 f16; 15 boarder_fk_crash_f_2lot k3 f58; 16 boarder_fk_bump_r_break k2 f36; 17 boarder_fk_bump_l_break k2 f36; 18 blind_fk_norm_B02 k5 f14; 19 new_fk_hop06_1 k6 f22; 1A open_fk_norm_F02 k5 f11; 1B 360_fk_fk_360_B01 k5 f28; 1C 360_fk_fk_360_F01 k5 f28; 1D swith_stanceFN k2 f11; 1E (akey_180_air_B); 1F (akey_180_air_F); 20 (akey_360_air_B); 21 (akey_360_air_F); 22 (akey_front_flip); 23 (akey_back_flip); 24 deep_pos_sw_stFN k2 f11; 25 knee_cushion05 k2 f15; 26 -; 27 -; 28 -; 29 -; 2A -; 2B -; 2C boarder_yoroke_fka02 k2 f16; 2D boarder_yoroke_fkb01 k2 f16; 2E boarder_yoroke_fkc01 k2 f16; 2F landing_fk02 k2 f16
+- group 6 (44): 0 -; 1 -; 2 -; 3 -; 4 -; 5 -; 6 -; 7 -; 8 -; 9 -; A crash_f_1rot_DEAD5 k2 f46; B crash_f_1rot_DEAD5 k2 f46; C new3_bump_r_break_d k2 f27; D new4_bump_l_break_d k2 f27; E DEAD2_crash_bside_1rot k2 f76; F DEAD2_crash_fside_1rot k2 f76; 10 -; 11 -; 12 DEAD2_crash_bside_1rot k2 f76; 13 DEAD2_crash_fside_1rot k2 f76; 14 new3_bump_r_break_d k2 f27; 15 crash_f_1rot_DEAD5 k2 f46; 16 DEAD2_crash_fside_1rot k2 f76; 17 new4_bump_l_break_d k2 f27; 18 -; 19 -; 1A -; 1B -; 1C -; 1D -; 1E -; 1F -; 20 -; 21 -; 22 -; 23 -; 24 -; 25 -; 26 -; 27 -; 28 -; 29 -; 2A crash_f_1rot_DEAD5 k2 f46; 2B crash_f_1rot_DEAD5 k2 f46
+- group 7 (16): 0 start_a k2 f6; 1 turn_slow_b k2 f21; 2 turn_slow_f k2 f13; 3 boarder_goal_w3 k2 f31; 4 boarder_goal_l2 k2 f31; 5 boarder_goal_n_r5 k2 f36; 6 (oal_spin); 7 boarder_time_up6 k2 f26; 8 ending_WIN_480d k5 f481; 9 ending_LOSE_475b k5 f476; A start_A_type02 k3 f46; B start_B_type02 k3 f46; C start_C_type02 k3 f46; D start_D_type02 k3 f46; E start_E_type02 k3 f46; F HP_OM_goal_WIN5_2 k2 f56
+- group 8 (8): 0 (ormal_180_air_F); 1 (ormal_180_air_B); 2 (ormal_360_air_F); 3 (ormal_360_air_B); 4 (akey_180_air_F); 5 (akey_180_air_B); 6 (akey_360_air_F); 7 (akey_360_air_B)
+
+Groups 1 and 5 share their layout (regular / switch stance; RiderAnim.animSet holds 0x10000 or 0x50000), group 2 is
+the crouched ("dp") version of the same indices, group 3 holds the ollie and the TrickTable trick anims (entry
++0x20; +0x24 / +0x28 alternates, +0x38 bit 1 = spin), group 6 the selectAnim DEAD crashes (`| 0x60000`), group 7
+start / goal / ending. Macros: include/game/rideranim_anims.h (RANIM_ID, RANIM_GROUP_*, RANIM_*).
+
+**State machine.** States are PMFs (section 11). setState(pmf, key) stores key in AnimPlayer.eventKey (0x64), so
+the state changes when playback passes that key; key -1 goes to blendEvent (0x68) and the change happens when
+the ANIM_BLENDIN cross-fade ends. setNextState is the state the current one falls back to. Table (address,
+name, anim and keys started, next state):
+
+| addr | state | evidence |
+|---|---|---|
+| EE74 | stateStopped | init's held-at-start state: rider slowdown = 100 |
+| EE84 | stateSwitchStance | start(animSet|0x1D swith_stanceNF / 0x24 deep_pos_sw_stNF), key 1 -> stateSwitchStanceEnd |
+| EF20 | stateFlipToRide | flipStance, next = stateRide |
+| EF70 | stateSwitchStanceEnd | flipStance + yawPiOver, then ride / ride deep / hop air |
+| F060 | statePreJump | startIfChanged(0x10011 boarder_pre_jump_AZ, blend-in parm 0x16C) -> statePreJumpHold |
+| F13C | statePreJumpHold | setBlend(0x10028 / 0x10029 boarder_turn_dp_preJ_b / f) or 0x10011; after parm 0x184 frames -> statePreJumpCancel |
+| F284 | statePreJumpCancel | startIfChanged(animSet|8 boarder_up_down / 0x20008 boarder_up_down_dp), back to ride |
+| F424 | stateTrickAir | per-frame trick air step (no anim), next of stateTrickStart |
+| F49C | stateTrickEnd | trick done -> stateHopAir |
+| F514 | stateTrickWindup | trick anim keys 4..2 (spin flag 2); grab held -> stateTrickHold |
+| F5A8 | stateTrickRelease | chain the queued trick (stateTrickStart) or play trick anim 3..1 -> stateTrickEnd |
+| F664 | stateTrickHold | trick anim keys 2..3 -> stateTrickRelease |
+| F6D4 | stateTrickStart | RaceTracker_startTrick, start(TrickTable entry +0x20 anim) -> windup / release |
+| F8E8 | stateRowIn | startIfChanged(animSet|0 boarder_row, blend-in 5) -> stateRow |
+| F948 | stateRow | boarder_row keys 0..2 -> stateRowOut |
+| FA54 | stateRowOut | boarder_row keys 2..1 -> stateRide |
+| FABC | stateResumeRide | clear edge, next = stateRide |
+| FB04 | stateCrashRecover | after animSet|0xA crashing_f_slide: selectedAnim keys 2..1 -> stateRide |
+| FD04 | stateOllieTakeoff | 0x30001 boarder_ollie_arm keys 2..3 -> stateOllieRise |
+| FDCC | stateOllieRise | 0x30001 keys 6..6 (-> stateOllieLand) or 3..4 (-> stateOllieHang) |
+| FEC8 | stateOllieHang | 0x30001 keys 4..5 looping -> stateOllieDrop |
+| FF48 | stateOllieLand | 0x30001 keys 6..1 -> stateRideBlendIn |
+| FFB8 | stateOllieDrop | 0x30001 keys 5..6 -> stateOllieLand |
+| 10068 | stateHopStart | startIfChanged(animSet|0x19 new_hop07, keys 0..2, blend-in 10) -> stateHopRise |
+| 10128 | stateHopRise | new_hop07 to key 3 -> stateHopAir |
+| 102CC | stateHopAir | new_hop07 keys 3..4 looping; -> stateHopDrop / stateHopLand / stateCushionIn |
+| 10408 | stateHopDrop | new_hop07 keys 4..5 -> stateHopLand |
+| 104A4 | stateHopLand | on contact: endTrick, new_hop07 keys 5..1 -> stateRideBlendIn |
+| 1056C | stateCushionIn | startIfChanged(0x10025 knee_cushion06, blend-in 5) -> stateCushion |
+| 105DC | stateCushion | knee_cushion06 keys 0..1 -> stateCushionEnd |
+| 10648 | stateCushionEnd | next = stateHopLand |
+| 10694 | stateRide | setBlend(animSet|2 / 3 boarder_turn_normal_b / f by edge) or animSet|8 up_down |
+| 10840 | stateRideDeep | setBlend(0x20002 / 3 turn_deep_b2 / f1): crouched (useDParms) riding |
+| 1094C | stateBrake | setBlend(animSet|4 / 5 boarder_brake_b / f by edge) |
+| 10A0C | stateBrakeDeep | setBlend(0x20004 / 5 boarder_brake_dp_b / f) |
+| 10AC8 | stateRideBlendIn | turn blend with blend-in 10 -> stateRide |
+| 10B38 | stateRideDeepBlendIn | turn_deep blend with blend-in 5 -> stateRideDeep |
+| 10CF0 | stateBrakeBlendIn | brake / brake_dp blend with blend-in 10 -> stateBrake / stateBrakeDeep |
+| 10E8C | stateGoalNormal | 0x70005 boarder_goal_n_r5 (won, input-mgr +0x7C set) |
+| 10EC8 | stateGoalWinOM | 0x7000F HP_OM_goal_WIN5_2 (won, input-mgr +0x64 < 2) |
+| 10F04 | stateGoalWin | 0x70003 boarder_goal_w3 |
+| 10F40 | stateGoalLose | 0x70004 boarder_goal_l2 (raceResult != 1) |
+| 10F7C | stateTimeUpLose | 0x70004 boarder_goal_l2 after stateTimeUp |
+| 10FB8 | stateStand | 0x70000 start_a keys 0..1, next = itself |
+| 11124 | stateTimeUp | startTimeout's state: stand, then stateTimeUpLose |
+| 11168 | stateFinish | startFinish's state: stand, then a goal state by raceResult |
+| 11368 | stateEnding1 | ending anim (0x70008 ending_WIN_480d / 0x70009 ending_LOSE_475b) keys 2..3 |
+| 113C8 | stateEnding2 | ending keys 3..4 |
+| 11428 | stateEnding3 | ending keys 4..1 |
+| 11460 | stateStartIntro | start(0x7000A + character: start_A..E_type02, keys 0..2) |
+| 114FC | stateStartIntroEnd | start anim keys 2..1 -> stateStartWait |
+| 1155C | stateStartWait | animSet|8 boarder_up_down loop + ping-pong until the start |
+| 115DC | stateIdle | empty state |
+
+Entry points: RiderAnim_init picks stateStartIntro (Data 0xDB0), stateStartWait (0xDB8) or stateStopped (0xDC0);
+startFinish / startTimeout set stateFinish / stateTimeUp; startEnding / startEndingCpu start 0x70008 / 0x70009
+then stateEnding1..3. stateFinish: raceResult (0xA54) != 1 -> GoalLose; else input manager (bootup Bss 0xF8)
++0x7C set -> GoalNormal, +0x64 < 2 -> GoalWinOM, else GoalWin. Non-table helpers that start sequences:
+0xFB7C (crash slide -> stateCrashRecover), 0xFC34 (ollie, -> stateOllieTakeoff), 0x10BAC / 0x10C4C (weight blend
+animSet|7/6, 0x20007/6), 0x10DC8 (animSet|9 landing), 0x1001C (-> stateHopStart).
+
+**RiderAnim fields.** RiderAnim now starts with `AnimPlayer player` (stateArg / unk68 became player.eventKey /
+blendEvent). Not yet typed: 0xF0 queued trick, 0xF4 current TrickTable entry (anim id +0x20), 0x114, 0xE4 / 0xE6
+(pre-jump counters vs parm 0x184).
+
+**Gates.** The gate class is in checkpoint.uso (module / file id 50, ROM Info 0x7F6D1A), which is not split.
+bootup item_createChk (0x4C) / Gtr / Gtl (0x50) store SNodeItemType_vtbl then checkpoint.uso exports (vtables
+Sym 418 chk, 420 gtr + gtl; +0x48 descriptors 417 / 419 / 421). See course.h RaceGate.
+
+**camSource (0x874)** is slot 22 of the 40-slot shape-file node registry (bootup Bss 0x3C058, Sym 550: shape
+cmd 0x67 stores the current node in a slot, cmd 0x66 parents to one; Node_doCommand). SnowBoarder_ctor copies
+14 slots into 0x820..0x874 after the rider model is built (slot -> field: 27 0x824, 34 0x820, 2 0x828, 7 0x830,
+1 0x82C, 6 0x834, 20 0x838, 28 0x844, 33 0x860, 29 0x854, 30 0x85C, 31 0x858, 32 0x864, 22 0x874). Which body
+part slot 22 is needs the rider shape stream (cmd 0x65 names the node).
+
+**Next:** name the 0xFB7C..0x116D4 non-table helpers (crash slide, ollie, weight, landing, hop entry); type
+RiderAnim 0xF0 / 0xF4 (TrickTable entry struct) and convert the raw a0[0xFC / 4] accesses to RA(a0)->animSet
+function by function; decode the rider shape stream for the registry slot names; split checkpoint.uso for the gate class.

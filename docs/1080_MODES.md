@@ -575,3 +575,24 @@ rider2 / flags2 / board2, rec*, ghostRider / ghostFlags / ghostBoard).
   stage transitions, unk400 = 0x37 in state4); type itemsMgr / owner accesses where the reads are
   `char *`; SelItem +0x25C..0x294.
 - SelectWin_update in timproc_uso_b5_o2_5FC0.c (separate TU) is unconverted.
+
+### Run 490 (agent-c): replay path, titproc ghost imports, SelectWin fields
+
+Commits on agent-c (base 9dcd5ce48), each gated PASS (3288/3288, ROM identical): 391b5617c (**pure rename**,
+41 audio names, 1080_AUDIO.md), 99089df64 (hand edit: InputPad replay fields, InputFrame, InputMgr
+recordBuf / recordCap, Backup.ghostMaxFrames; bootup replay_* and game_setupSolo / VsGhost / Replay
+typed), dad315573 (**pure rename**, titproc_uso_func_01EF10 / 44 / 94 / C8 -> tit_imp_Backup_ghostGetRider /
+BoardFlag / Board / Course: titproc import T = game_libs + 0x1466C), e8eee189b (hand edit: tit_procMain
+states 7 / 9 write ghostRider / Flags / Board), 89d5eb92c (hand edit: SelectWin prevItemActive, idleTimer,
+transition, fovTarget / fovBase / fovFrom; SelectWin_update donor on SELWIN).
+
+The replay / ghost format for port authors is docs/1080_REPLAY.md (4-byte InputFrame per frame,
+pad_update RECORD / PLAY, the bootup replay_* API, which game_setup* records or plays, the SRAM ghost).
+
+Next:
+- Who calls replay_saveGhost with which mode (symbolize the timproc / trkproc TextRelocs as
+  /tmp/claude-1000/c478/buxref.py does for bootup); `replay_addInput` (0x11CA4) adds the race pads
+  (+0x100), "race pad" may be the better name; InputMgr +0x184.
+- SelectWin: unk3FC / 400 / 404 / 484 / 4B8 / 494 users are known (see select.h comments) but not their
+  meaning; the item +0x25C..0x294 floats; eventFlags stays raw.
+- Not started: the genproc / select-screen ctors' vtable stores via agent-a's `_vtbl` aliases.

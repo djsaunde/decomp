@@ -138,8 +138,9 @@ subtracts is lastPos.z). A gate's +0x84 is the next gate. `RaceTracker_passCheck
 gate->next once gate->z <= entries[0].progress, then runs a gate test (gate, rider pos, entry) whose non-zero
 result goes to the tracker's vtable. Note that findGates looks the `chk` gate up with entries[0]'s rider and
 stores it in entries[0].gate on every pass (its lookup and that store use no entry offset), so checkpoints are
-tracked for the first rider only; the fork pair is per entry. The gate item class itself (instance layout beyond
-+0x64 / +0x84, which item base it derives from) is not typed yet.
+tracked for the first rider only; the fork pair is per entry. The gate item class itself is in **checkpoint.uso**
+(module / file id 50, not split): run 488 traced the bootup chk / gtr / gtl templates to its exported vtables
+(course.h RaceGate comment; docs/1080_GAME_CLASSES.md section 17).
 
 ## 8. Props: MapProp, Mountain, BGBox, U64BGWall
 

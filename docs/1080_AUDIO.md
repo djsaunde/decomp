@@ -172,6 +172,18 @@ TriggerEvent / EventIndex / SetAngle / UpdateChannel, the channel-8 / cue-queue 
 `SndHandle_triggerEvent0-3` / `setUnk1F`, and `snd_soundObjSetByte1D` / `SetScaled`. The mapping table
 below uses the old names; renames.tsv has the chains.
 
+Run 490 (agent-c, commit 391b5617c, **pure rename**): 41 more glue names lost their suffix
+(volume levels, PlayPlayerN / Schedule seq helpers, the cue queues + RequestCue*, Ramp*,
+SoundObj TriggerEvent / EventIndex / SetAngle / UpdateChannel, the channel-8 / 10 helpers,
+FreqScale). Still suffixed (kind only): snd_Stub_2DD30 / 2F630 / 309A4, FindNearestF32_2F1B8,
+Player0ChannelIOPreset_2F8A0 / 2F934, SetPlayer0ChannelPanIO_2F638 / Params_2F9D4 / IO12_2FA90,
+ResetPlayer0ChannelIO1_2FB10, SetPlayer0Channel0IO_30504 / Channel8IO1_30564 / Channel8Pan_305CC,
+SetPlayer1Channel15IO_2D910, SetPlayer2ChannelIO_3190C, HandleEvent_2FB74, HandleSeqEvent_30AF4,
+AudioThread_Set / ClearExtWord, bootup snd_soundObjEventIndex_00000A9C (really a mode letter ->
+flag bit map; misnamed, rename when its callers are known) / SetScaled_00000B2C, snd_playSeq_000120A8.
+A cue-queue struct (0x64: ring[16], wr 0x40, rd 0x44, timer 0x48, 0x4C, script 0x50, mode 0x54,
+limit 0x58, pending 0x5C, cmd 0x60, id 0x62) is the next hand edit (Ring3183C is a partial view).
+
 ## Next
 
 1. Model more of SequenceLayer / SequenceChannel (the 27E24 / 28604 / 291C0

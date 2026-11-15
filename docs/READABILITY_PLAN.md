@@ -483,6 +483,41 @@ The interior field symbols D_800195D4..D_800195E0 stay `D_` (separate reloc symb
   289/290 (BasePolyShape, agent-b), 550 (Node doCommand buffer), 326 (Backup/GameFlow), 1558 (app_loadUso),
   2422 (boot stacks).
 
+#### 9.1.6 Run 491: tool, Bss/Data wave 2, path tables, class-name strings; progress
+
+- **Tool** (66b995ff3): `check` follows header aliases. A macro over `&gAudioContext` / `&gAudioContext_345c0`
+  inherits the alias's Sym claim, and every LO16 site spelled with a per-site alias named `<alias>_<suffix>`
+  must resolve to that alias's Sym. The tool runs an incremental `make RUN_CC_CHECK=0 -j8` when the map is
+  missing or older than a src/game_libs or src/bootup_uso file (`--no-build` only warns). After the gate it
+  needs no build and no `--keep-build`. `convert` gives NCC .cpp donors the relative include.
+- **Names** (13fdf354a, gl_data.h): gNodeGlobals (550), gSnowBoard (326), gSysApi (1558), gBootBss (2422),
+  gMainHeap (1797), gWindowDefaults (324), gMemTrackerMgr (2306), gl_osViModeTable (1947). Alias-only names
+  in owners' areas: gSndCueQueues (1448), gPolyFlags_3EEC4 / gPolyGeomMode_3EEC8 (289/290).
+  - Path / string tables: gBoardModelUsoPaths, gBoardBinPaths, gPlayerBinPaths, gBoarderUsoPaths,
+    gProcUsoPaths, gGameModeNames, gPlaceNames, gFaultFlagNames.
+  - 20 class-name strings `s<Class>Name` (`GL_DATA(K)`).
+  - Conversions: 42 object sites and 19 string sites. Renames: 38 per-site aliases
+    (2c3f431b7, pure).
+- **Progress (census after run 491; 4670 LO16 sites).** Scratch counter: /tmp/claude-1000/a491/py/progress.py.
+  A site counts as "spelled" when its placeholder is an object-named per-site alias, or when its function
+  uses a macro with that Sym / base-K claim.
+
+  | site kind | sites | named object | spelled with a name | raw |
+  |---|---|---|---|---|
+  | direct object relocs | 2753 | 1988 (72%) | 1077 (39%) | 1676 |
+  | section-base relocs (strings, statics) | 1809 | n/a | 24 | 1785 |
+  | imports / Text / absolute | 108 | | | |
+
+  The 911 raw sites on already-named objects break down as follows:
+  - 438 are plain `D_00000000`; owners can run `convert`. The largest are gGfxLib, gInputMgr, gSysLib,
+    gHostio, the vtables, and gSndCueQueues.
+  - 362 are per-site aliases not yet renamed (`gl_ref_*`, `D_xxxxx_*`).
+  - 111 are in donor splices without .o relocs; convert those by hand.
+- Next: run `convert` for the remaining plain sites in their owners' files. Name the remaining direct Bss
+  objects: 1505 (pad/sys TU block, 5112 B), 451 (collision, 4 B), 1925 (MorphPoly shade), 1708
+  (CollShape query), 557, 805, 1675, 1853/1854 (GfxLib init), 2344/2345 (sys_fatal/imin/imout). Name the
+  Data-base string sites per function: there are 1809 base sites, with the strings resolvable via `sites`.
+
 ## 10. Worktree setup gotcha (Part 0)
 
 The fresh worktrees had **no `tools/ido-static-recomp` and no `baserom.z64` symlinks** (the

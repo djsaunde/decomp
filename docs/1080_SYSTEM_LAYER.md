@@ -17,6 +17,7 @@
 - [9. Run 457: gadget structs, vtable-only classes, ItemType subclasses, GfxLib DDM](#9-run-457-gadget-structs-vtable-only-classes-itemtype-subclasses-gfxlib-ddm)
 - [10. Run 462: RaceProcess base, app_launchGenProc, full-range sweep](#10-run-462-raceprocess-base-app_launchgenproc-full-range-sweep)
 - [12. Run 482: named-object wave (vtables, libultra globals, per-site aliases)](#12-run-482-named-object-wave-vtables-libultra-globals-per-site-aliases)
+- [13. Run 491: system objects, gSysApi, path tables](#13-run-491-system-objects-gsysapi-path-tables)
 
 ## 1. String-xref method
 
@@ -397,3 +398,37 @@ Details and conventions: READABILITY_PLAN 9.1.5.
   gl___osViCurr / ViNext / ViDevMgr, gl___osContPifRam / ContLastCmd / MaxControllers / PfsPifRam,
   gl_DriveRomHandle / CartRomHandle / LeoDiskHandle; gFsStream0/1/2.
 
+## 13. Run 491: system objects, gSysApi, path tables
+
+All of these are in include/gdl/gl_data.h; READABILITY_PLAN 9.1.6 has the full list and the progress table.
+
+- **gSysApi** (Bss+0x416A0, Sym 1558) is a POINTER to a function table. The callers show these slots:
+
+  | offset | contents | where it shows |
+  |---|---|---|
+  | +0x0 / +0x4 | the memory range | "memory %x %x" |
+  | +0x40 | usoLoad(name) | app_loadUso; boot_reloadMainUso ("mainuso") |
+  | +0x44 | unload / banner | |
+  | +0x4C | remote openFile | fs_gdlOpenFile |
+  | +0x70 | thread stack query | dbg_printThreads |
+  | +0x74 | preload | app_loadUso |
+
+  boot_main_00066850 installs game_libs entries into the same table: +0x34 mem_heapNewThunk,
+  +0x80 dma_readChunked, +0x84 dbg_printf, +0x94 sys_timeInFrames, +0x98 / +0x9C heap_tempAlloc/FreeDefault.
+  app_initSystem sets +0x8C / +0x90. So the table is shared: the slots that game_libs fills are its
+  exports to other USOs. Which module owns the table is still open: find the store of the pointer itself.
+- **gBootBss** (Sym 2422) is the boot TU's 9552-byte static block:
+  - +0x0 holds the segment base;
+  - +0x1C0 / +0x1C4 and +0x2370 / +0x2374 are 0x12345678 stack canaries, checked by boot_checkStacks;
+  - +0x21C0 is the boot OSThread;
+  - +0x2470 / +0x2538 are the stack / queue arguments.
+
+  The Bss-base sites `(char *)&D_00000000 + 0x41310` etc. in boot_startThread fall inside this block. They
+  are section-base relocs, so they keep the base spelling.
+- **gMainHeap** (Sym 1797) is the default heap: printed by heap_printStats, and app_setHeapMode swaps +0x20.
+- **gWindowDefaults** (Sym 324) is the template that is copied into every Window.
+- **gMemTrackerMgr** (Sym 2306) is the singleton pointer.
+- **gSnowBoard** (Sym 326) is the static app object.
+- **gNodeGlobals** (Sym 550) is the 40-slot Node register file used by the doCommand opcodes 0x66 / 0x67.
+- **USO path tables:** gProcUsoPaths (genproc / nameent / gamegfx / charsel / charsps / charfir / charmap),
+  plus the board / boarder / player path tables used by SnowBoarder_loadBoardModel / func_0000CAE8.
