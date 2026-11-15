@@ -229,7 +229,7 @@ BasePolyShape_parseMats (0x51F5C, NCC donor game_libs_ncc_51F5C.cpp) is the toke
 
 - `BasePolyShape` (polyshape.h, 0xB0): s16 vertex rows (+0x60), PolyTri {flags, v[3]} (+0x68), face /
   vertex normals, RGB888 palette, remap table; built from a GDL shape command stream
-  (BasePolyShape_parse / parseCmd / parseMats, 0x4F9E4-0x54144); ZoneShape.
+  (BasePolyShape_parse / parseCmd / parseMats, 0x4F9E4-0x54144; format in 7.1); ZoneShape.
 - `PolyShape` (0xC0): PolyShape_init (0x493AC) compiles the geometry once into MainStaticDL
   ("genpoly": G_VTX batches and triangles, built through PolyShape_addFace, "face overflow");
   PolyShape_display (0x48AEC) then only emits G_MTX (0x01020040, modelview load), the material

@@ -62,7 +62,7 @@
 | 0x4F2DC | screen point -> world ray | gfx_screenRaycast |
 | 0x4F9E4-0x54144 | BasePolyShape: shape command stream, materials, normals, subdivision; ZoneShape | BasePolyShape_* (ctor, parse, parseCmd, parseMats, genNormals, genNormalsFast, ...), ZoneShape_build |
 | 0x51694-0x52144 | materials: parm groups, GDL_MC command decoder | BaseMat_hostioParms, Mat_print, gfx_decodeMatCmd, gfx_texelBytes, gfx_declColourParm |
-| 0x51448, 0x54A14, 0x54C6C | lights | LightTarget_ctor, BaseLight_hostioParms, LightTarget_hostioParms; CMod_ctor / CMod_hostioParms (0x545BC/0x54668, class string "CMod", RGBA at +0x2C) |
+| 0x51448, 0x54A14, 0x54C6C | lights | shape_cmdLightTarget (was LightTarget_ctor), BaseLight_hostioParms, LightTarget_hostioParms; CMod_ctor / CMod_hostioParms (0x545BC/0x54668, class string "CMod", RGBA at +0x2C) |
 | 0x55264-0x5591C | ProcNodeList (node command lists) | ProcNodeList, nodelist_dispatch, nodelist_skipBlock, nodelist_check* |
 | 0x55B44-0x55FB4 | crash/fault printer | sys_dumpMemory, fault_printThread, fault_printFlags |
 | 0x56580-0x5A2C4 | display-list context + F3DEX GBI emitters | gfx_newDLContext, gfx_endDL, gfx_emit{RenderMode,CombineMode,Combine1,Combine2,GeometryMode,CycleType,Fog}, gfx_set{Color,Depth}Image, gfx_loadTexture, gfx_initRDPState, gfx_clearScreen |
@@ -122,6 +122,11 @@ RcpMgr_startTask).
   Window_updateAspect. Next conversions: Window_setupView, ScreenWindow_allocBuffers, MorphPoly_init,
   BaseMat_init, LightTarget_ctor. The GfxLib global (fields in docs/1080_GRAPHICS.md section 2) stays as
   `D_00000000 + K`.
+- Run 481 (agent-b): those five conversions are done (plus the ScreenWindow_display donor view and the
+  Sprite_ctor reference body). Renames: gfx_texImageBytes / gfx_texRowBytes (0x520B8 / 0x52104),
+  gfx_setCpuDraw (0x46788, gfx +0x28C), LightTarget_ctor -> shape_cmdLightTarget (0x51448, a GDL shape
+  command, sibling of shape_cmdShape). docs/1080_GRAPHICS.md now has the texture-format table (6.1), the
+  GDL_MC material commands (6.2) and the shape command stream (7.1).
 
 - Run 468: **no game_libs placeholders are left** (gl_func_ / game_libs_func_ except the `*_00000000*` sentinels).
   New in 0x27000-0x34400 (outside the old area): AudioThread_CheckSpecChange / ClearSpecChangeQueue / Noop1Cmd /
