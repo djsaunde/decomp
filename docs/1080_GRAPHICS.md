@@ -371,8 +371,15 @@ FogParms (0x18: colour f32[4], min, max; "FogParms" / "Min" / "Max"): FogParms_s
   types carry the match) but its fields now use the window.h names. Run 489 converted BaseLight_ctor
   (light.h fields, the vptr stores; its stale 150-line decode comment replaced), the Sprite_ctor NCC
   donor (sprite.h member names, Sprite_vtbl, GBI comments), Window_setDefaults and Window_projectPoint.
-- Window / ScreenWindow: still unnamed Window +0x100, +0x10C[2] (MapProp_display writes two 0..127
-  values), +0x114 / +0x118 (4-byte members the ctor zeroes), +0x80 / +0x84[5] / +0x98[5] (floats:
+- Row clipping (run 489): Window clipRowLo / clipRowHi (+0x10C / +0x110, set by MapProp_display,
+  0..127) select which rows of a row-structured shape are drawn. PolyShape_clipToWindow_00049308 walks
+  the shape's +0x84 elements whose row span (+0x50 / +0x54) overlaps, and PolyShape_clipRows_00043D38
+  rewrites each element's row DL (rows outside become gDPNoOp, the head branches to the first kept
+  row, the row after hi ends the list). RcpMgr_startTask runs it on RcpTask.clipShape (+0x70) with
+  RcpTask.window (+0x74) as the current window. A port can cull rows on the CPU instead.
+- Node_runCommands_00038C04 / Node_runCommandArgs_00038C70 (were ScreenWindow_func_*): the GDL
+  command loop (vtable +0x38 doCommand per opcode until 0); ScreenWindow_ctor passes its varargs.
+- Window / ScreenWindow: still unnamed Window +0x100, +0x114 / +0x118 (4-byte members the ctor zeroes), +0x80 / +0x84[5] / +0x98[5] (floats:
   defaults 50000 / {0, 2200, 3000, 19584, 12500}, scaled by 85 / fov into +0x98); ScreenWindow
   +0x174, +0x188, +0x1A0-0x1AC, +0x1B4 (PolyShape_stub_0004C20C writes it; probably a ScreenWindow
   method), +0x1B8, +0x1BC.
@@ -380,9 +387,16 @@ FogParms (0x18: colour f32[4], min, max; "FogParms" / "Min" / "Max"): FogParms_s
   allocSlot, the anim_blendPose donor (Animator / AnimPose views), SkinAnim_ctor, SkinMgr_reset, the
   SkinAnim_bind donor and the SkinAnim_bind / skinVerts / SkinMgr_update NM bodies. skin_cmdSkinMgr's
   NM body only got string annotations (its comments name its locals).
-- Still unnamed in the area: BaseMat_func_* (4), BasePolyShape_func_* (3), MorphPoly_func_0004B040,
-  PolyShape_func_* (3), RcpMgr_func_* (3), ScreenWindow_func_00038C04 / C70, DisplayMgr_func_0004DE80,
-  the *_stub_ / *_vfn* leaves, gfx_emptyStub_ x5.
+- Run 489 also named Window_projectPoint, BasePolyShape_getFaceNormal / sampleTri /
+  getMatCodeChar / getMatCodeNum, MorphPoly_allocUpdateList / morphAll, PolyShape_buildStateDL,
+  gfx_set/getShadowLight, light_setShadowMatrix / setMirrorMatrix (all evidence in renames.tsv).
+- gfx_emitLights_000454C4 / gfx_emitOneLight_00045CB0 (were BaseMat_func_*): the Lights-record
+  emitters BaseMat_vslot4 calls (section 8).
+- Still unnamed in the area: BaseMat_func_00043BEC / 00051ED8,
+  BasePolyShape_func_000510F0 (UV + subdivide) / 00052674 (static state reset, App_softReset) /
+  00052BBC (extreme vertex of two triangles), PolyShape_func_00043584 (element reset; allocs the
+  0x100-byte row table at +0x7C when gfx flags bit 8) / 000483BC, RcpMgr_func_0004DB38 (returns 1),
+  DisplayMgr_func_0004DE80, the *_stub_ / *_vfn* leaves, gfx_emptyStub_ x5.
 - The texture-format 0x608 (accepted by the size code, rejected by the loader) may be dead data.
 - A typed model of the GfxLib global (section 2) for documentation; matched code must keep the
   `D_00000000 + K` form.

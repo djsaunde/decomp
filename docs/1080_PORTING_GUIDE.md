@@ -183,16 +183,16 @@ module's states.
 | collision | post0b.c 0x39EE4-0x3CF94 (`coll_*`) | | `CollShape_ctorPoly`, `CollShape_nearestHit`, `CollObjMgr_ctor` | SYSTEM_LAYER 7-8, PHYSICS 5 |
 | dynamics | game_libs_post1b.c | include/game/snowboarder.h (`SnowBAccum`, `SnowBDNodeParms`) | `DNode_ctor`, `DNode_update`, `DNode_solveContacts`, `DNode_integrate_00064DEC` | PHYSICS 6 |
 | animation, skin | post0b.c / post1b.c 0x61E58-0x69C94 | include/gdl/anim.h, skin.h | `AnimDataMgr_loadFile`, `AnimPlayer_start`, `anim_blendPose`, `SkinMgr_update` | GRAPHICS 11-12 |
-| rider | bootup_uso.c, bootup_uso_ncc_{90CC_nm,B75C,C234,8BD4}.cpp | include/game/snowboarder.h | `SnowBoarder_ctor`, `SnowBoarder_update`, `SnowBoarder_updateDyn`, `SnowBoarder_updateOrient`, `SnowBoarder_procColl`, `SnowBCollider_onContact` | PHYSICS |
+| rider | bootup_uso.c, bootup_uso_ncc_{90CC_nm,B75C,C234,8BD4}.cpp | include/game/snowboarder.h (`SNOWB(p)`) | `SnowBoarder_ctor`, `SnowBoarder_update`, `SnowBoarder_updateDyn`, `SnowBoarder_updateOrient`, `SnowBoarder_procColl`, `SnowBCollider_onContact` | PHYSICS |
 | CPU riders | src/game_uso (game_uso.c, game_uso_ncc_57D8.cpp) | include/game/snowai.h | `SnowAI_ctor`, `SnowAI_steer`, `SnowAI_applyStickInput`, `SnowAI_scanSegments` | PHYSICS 8, COURSE 6 |
 | rider animation | src/game_uso (game_uso_ncc_D204.cpp ...) | include/game/rideranim.h | `RiderAnim_update_0000D204`, `RiderAnim_selectAnim_0000D9CC` | GAME_CLASSES 10-11 |
 | camera | bootup_uso_ncc_31C0.cpp, game_uso | include/game/camera.h | `cam_create`, `CamDirector_update`, `cam_updateView_00000B3C`, `SnowChaseActorCam_setMode_00002714` | CAMERA |
-| course / world | bootup_uso_o2_6808.c, bootup_uso.c, game_uso | include/game/course.h | `WorldRegistry_create_00001E08`, `game_createMap`, `item_registerTemplates`, `EnvSettings_load`, `CourseMarker_registerTemplates` | COURSE |
-| race rules, HUD | game_libs.c, game_libs_tail.c | include/gdl/race.h, hud.h, gadget.h | `RaceProcess_init`, `RaceProcess_handleInput`, `RaceTracker_update`, `RaceTracker_findGates`, `hud_addCourseGadget` | SYSTEM_LAYER 3, 10-11; MODES run 469 |
+| course / world | bootup_uso_o2_6808.c, bootup_uso.c, game_uso | include/game/course.h (`WorldRegistry` = the game_* scene object, InputMgr +0x134: roots, lights, `players[]`, `windows[]`; `WORLDREG(p)`) | `WorldRegistry_create_00001E08`, `game_createMap`, `item_registerTemplates`, `EnvSettings_load`, `CourseMarker_registerTemplates` | COURSE |
+| race rules, HUD | game_libs.c, game_libs_tail.c | include/gdl/race.h, hud.h, gadget.h (`PointsPopup`, the score pop-up, `POPUP(p)`) | `RaceProcess_init`, `RaceProcess_handleInput`, `RaceTracker_update`, `RaceTracker_findGates`, `hud_addCourseGadget` | SYSTEM_LAYER 3, 10-11; MODES run 469 |
 | input, replay | bootup_uso o0_11C70.c / o0_1207C.c / ncc_11E00.cpp, game_libs_post1b.c (pad_*) | include/game/input.h | `input_checkPressed_00011E00`, `replay_addInput`, `replay_beginPlayback`, `pad_threadLoop_00066EEC` | GAME_CLASSES 6, MODES run 466 / 484 |
 | save | game_libs.c 0x97B4-0xC46C | include/gdl/backup.h | `Backup_ctor`, `Backup_openSession`, `Backup_writeCourse`, `backup_checksum` | SYSTEM_LAYER 4, MODES run 474 / 478 |
 | audio | game_libs_post.c, game_libs_o2_*.c | include/audio.h | `AudioSynth_ProcessNote`, `AudioLoad_RelocateFontAndPreloadSamples`, `AudioThread_Update`, `snd_Init`, `snd_updatePlayer` | AUDIO |
-| modes | src/{tit,arc,mgr,h2h,edd,n64}proc_uso, timproc_uso_b1 / b3 | include/game/modeproc.h (ArcRace / MgrRace / H2HRace, Arc / Mgr / H2HDataManager), race.h (TimRace, TimDataManager) | `tit_procMain`, `arc_procMain`, `TimRace_checkRecord`, `TimDataManager_update_00001BCC`, `GameDemoProcess`, ... | MODES |
+| modes | src/{tit,arc,mgr,h2h,edd,n64}proc_uso, timproc_uso_b1 / b3 | include/game/modeproc.h (ArcRace / MgrRace / H2HRace, Arc / Mgr / H2HDataManager, TitleDemoProcess / GameDemoProcess), race.h (TimRace, TimDataManager) | `tit_procMain`, `arc_procMain`, `TimRace_checkRecord`, `TimDataManager_update_00001BCC`, `GameDemoProcess`, ... | MODES |
 | select screens | timproc_uso_b5 (genproc) | include/game/select.h | `SelectWin_init`, `SelectionMgr_ctor`, `GenSelectChar_ctor` | MODES H1, run 464 / 484 |
 | 2D / gui | src/gui_uso | | `gui_drawString`, `gui_drawSprite`, `gui_fillRect` | MODES H2 |
 
@@ -268,7 +268,8 @@ already-relocated addresses of arrays in the same asset (GRAPHICS 7.1).
 - **Cast macros on untyped pointers.** Where a body's `char *` / `int` parameter or local is itself a lever,
   fields are reached through a cast macro instead of retyping it: `NODE(p)` (gdl/node.h), `RACEPROC(p)`,
   `TIMRACE(p)`, `DATAMGR(p)`, `TIMDATAMGR(p)` (gdl/race.h), `ARCRACE / MGRRACE / H2HRACE(p)` and
-  `ARCDATAMGR / MGRDATAMGR / H2HDATAMGR(p)` (game/modeproc.h). `NODE(c)->parent` / `->unk04` is the
+  `ARCDATAMGR / MGRDATAMGR / H2HDATAMGR(p)`, `TITLEDEMO / GAMEDEMO(p)` (game/modeproc.h), `SNOWB(p)`
+  (game/snowboarder.h), `WORLDREG(p)` (game/course.h), `POPUP(p)` (gdl/gadget.h). `NODE(c)->parent` / `->unk04` is the
   child-attach idiom every ctor inlines. A member access can still reorder loads (IDO orders a commutative
   operand pair differently for members than for raw derefs), so each conversion is checked object-identical.
 - **USO section-base accesses** are written `&D_00000000 + K` (or `(char *)&gGfxLib + K`, an alias at the
@@ -338,8 +339,8 @@ Aggregated from each doc's open-items list (2026-11-15). The doc in brackets hol
 - SelectWin unk3F8 / 400 / 404 / 484 / 488 / 4BC / 4C0, SelItem +0x25C..0x294, `eventFlags` stays raw
   (register renumbering) [MODES run 484].
 - RaceTracker vtable slots; TrkDataManager (shares TimDataManager's 0xB8..0xD7 tail, but 0xD8 is a
-  once-flag) has no struct of its own; the score pop-up slot objects that `RaceTracker_pop*` fill
-  (+0x44 .. +0xAC, built by PointsGadget_ctor_00003138's 8 slots) [MODES run 469, 492].
+  once-flag) has no struct of its own [MODES run 469, 492]. The score pop-ups are `PointsPopup`
+  (gdl/gadget.h, run 496); game_libs.c `GlSlot3B1C` is a private copy of it.
 - Gadget setters with address suffixes (`CourseGadget_setFloat2_0000254C` ...), the `app_shiftAddLookup_00042400`
   table, ItemType slot 12 [SYSTEM_LAYER 12].
 - Unnamed bootup Data objects Sym 256 (0x1C-byte rows used by `game_setupSolo`) and Sym 274 [SYSTEM_LAYER 12].

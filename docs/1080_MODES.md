@@ -634,3 +634,40 @@ Next:
   game_libs.c already has 0x78..0xB4) would take game_libs_tail's RaceTracker_pop* (~60 sites).
 - NameEntry overlay structs (Tim / Trk / Arc 0x10C, Mgr 0x174: +0x60 mode, +0xD4 owner race,
   +0xD8..0xEC positions, +0x108 / +0x168 fade) and the Tim / Trk / Arc menu process layout.
+
+### Run 496 (agent-h): bootup_uso / titproc / pop-up field conversions
+
+Commits on agent-h (base 9306a6ed3; all hand edits, no renames; gate PASS 3288/3288, ROM identical,
+every touched .o identical in the matching and NON_MATCHING builds, objdump -d -r compare):
+c0f5a23e8 (bootup SnowBoarder / WorldRegistry / Node), b6ceccaeb (bootup lights / cameras),
+fdd6f7ea7 (PointsPopup), 02b9e0f9a (titproc TitleDemoProcess).
+
+- **WorldRegistry is the game_* scene object** (InputMgr +0x134 `game`, course.h): game_setParams fills
+  ogRoot / fgRoot / bgRoot / egRoot / mainGame; new fields unk98 (two floats at +0xC4 / +0xCC go to every
+  rider build), numPlayers 0xC0, players[8] (`WorldPlayer {rider, arg}`, 0xC4), windows[4] (0x108).
+  `WORLDREG(p)`.
+- **SnowBoarder** (snowboarder.h): `SNOWB(p)`; unk814 / 818 / 81C (ctor's bu_90cc_fz words; update writes
+  landImpact to +0x94 of 818 / 81C by unk8B8 bits 4 / 1), bodyNodes[7] (0x820..0x838, the node-registry
+  model nodes that SnowBoarder_update jitters by shake), unk8B8, camera (0x8DC: the race camera every
+  game_setup* stores; SnowBoarder_update hands it to the sound update).
+- **PointsPopup** (gadget.h, 0xD4, PointsGadget_ctor_00000ED0): the score pop-up the RaceTracker_pop*
+  functions colour. x 0x44, y 0x5C, colour[4], alpha 0x78, state 0x94, value 0x98, timer 0x9C, font 0xA0,
+  velX / velY, arg 0xB0, text 0xB4. game_libs.c's private `GlSlot3B1C` (PointsGadget_allocSlot_00003B1C)
+  is the same object and can move onto it.
+- **TitleDemoProcess** (modeproc.h): timer 0x3C, state 0x40, keyDelay 0x68; `TITLEDEMO / GAMEDEMO(p)`.
+- Converter: /tmp/claude-1000/h496/py/conv2.py + layout.py (field leaves from gcc -m32 -malign-double
+  DWARF of the headers, so nested structs and 2-D arrays resolve; access kind checked; `=` stores of a
+  pointer into an int field, or the reverse, cast the right-hand side). Configs *.cfg next to it.
+- Census of `*(T *)(p + 0xNN)` (h492 regex), before -> after: bootup_uso.c 526 -> 246,
+  titproc_uso.c 102 -> 39, game_libs_tail.c 46 -> 30.
+
+Left raw: SnowBoarder_update's int reads of lastPos.x / z (0xDC / 0xE4, random seed bits) and the
+short store to hitFlags (u16 field); game_addPlayer / addWindow index arithmetic (rule 4a); the
+BaseLight colour parm floats (light.h types the 0x10C parm group as s32 words; agent-b's header).
+
+Next:
+- bootup: game_init's `scene` (+0x3C, +0x134: probably InputMgr, unproven), Tv1Tmpl / FogTmpl /
+  SnowTmpl / TreeTmpl (their parms are CourseParm records: `c + 0xC / 0x10 / 0x14`), SnowBCollider
+  (+0x170 / 0x174), FallingSnow, ShpNode_func_00008FA8, U64BGWall_ctor, EnvSettings_ctor.
+- NameEntry overlay structs (0x10C, mgr 0x174) and the Tim / Trk / Arc menu processes (not reached this run).
+- titproc: MainLogo / KeyMessage fields, GameDemoProcess_onQuitButton's menu object (+0x7C).
