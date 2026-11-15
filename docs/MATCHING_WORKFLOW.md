@@ -306,6 +306,7 @@ explicit shared blocks (goto a common label), not regeneration.
 - [Zero-length aggregates as code-free levers (2026-11-13): compiler-accepted `char c[0]` struct copies allowed when they emit no code and no ISO form works (first use: 396FC .alias placement)](#zero-length-aggregate-lever)
 - [MIPSpro 7.2.1 donor recipe (agent-h run 355): per-function `*_mp72_*.cpp` donors through tools/ncc721.sh (period EDG 2.29 edgcpfe + IDO 7.1 back end, installed by tools/fetch-mipspro721.sh) for the 4-label jump-table family only; layout-only `<func>_lay` functions put the table at the target's in-place %lo; placeholder re-emits the RoData; score drafts with `objdiff-cli diff -c functionRelocDiffs=none`](#mipspro721-donor-recipe) -- _game_uso B3C EXACT; titproc 116C NM 99.514 -> 99.586; gl 76F0 NM 99.0 -> 99.0035; 8CD8 / 1ADC not improved (why inside); 116C case-3 colour lead + the as1 `la` hoist it triggers._
 - [Reloc audit before a decode (agent-g runs 392 / 394): dump the function's USO TextRelocs (rel.py, MOD / SH env; expected/.o relocs for game_uso) and check every data symbol against the C: one struct vs several globals, array vs scalars, record size vs the next symbol, sibling usage; a mismatch is a legal decode fix that resets uopt CSE (65EE4 EXACT), no data HI16 / LO16 pair means nothing to fix there](#reloc-audit-before-decode)
+- [Matching DATA as C (1080 kernel_026, agent-c run 436): IDO 7.1 (and 5.3) put every address-initialised object, `const` included, in `.data`, so a splat `.rodata` span of pointer words is really `.data`; objdiff pairs data by SECTION NAME, then by SYMBOL NAME + size, so re-label the target `.s` to match the C's section and symbol boundaries before scoring](#data-as-c-kernel-026) -- _matched_data 1312 -> 1680/1680. A `.rodata` target vs a `.data` base scores nothing. IDO char-array symbols have size 0 (objdiff infers the extent from the next label), so leave the target string labels without `enddlabel`. Drop the `nonmatching` lines: an object that carries `X.NON_MATCHING` scores null even when it is byte-identical._
 
 
 ---
@@ -13664,3 +13665,19 @@ the decode fixed it went EXACT on plain -O2.
    colouring, so re-run the whole lever search on the new decode.
 4. No data HI16 / LO16 pair (only calls, a RoData constant, or no relocs at all) means there is nothing to fix at
    this level: 8CD8, 36694 and E2D0 all came out this way (kit CDLXXX), and so did 4BAF4 / 48AEC (kit CDLXXVIII 5).
+
+## Matching DATA as C (agent-c run 436, 2026-11-15) <a name="data-as-c-kernel-026"></a>
+
+1080's only data unit, `src/kernel/kernel_026` (ROM 0xAE60..0xAFD0, 368 B), was three INCLUDE_ASMs of a splat `.rodata` span holding pointer tables (`.word D_8000A5xx`) and printf strings. It scored 0 matched_data even though it was byte-identical. It is now C data with matched_data 1680/1680. What it took:
+
+1. **IDO cannot put a relocated word in `.rodata`.** Under IDO 7.1 and 5.3, at -O1 and -O2, with or without -g3/-Xansi, every object initialised with an address goes to `.data`: `const T *const x[]`, `const struct {char *p;}`, and `(u32)&sym` all do. `const char[]` without relocations goes to `.rodata`, which links *before* `.data`. That would put the strings ahead of the tables, while the ROM has the tables first. So the whole span is `.data`, and the strings are plain `char[]`. IDO 4-aligns each char array, which reproduces the ROM's inter-string zero padding. The section's 16-byte alignment supplies the trailing pad.
+2. **Linker:** the kernel's `build/src/kernel/*.c.o(.rodata)` glob does not take `.data`. Add `build/src/kernel/kernel_026.c.o(.data);` at the head of the kernel DATA block, ahead of `kernel.data.bin`. Update the splat yaml's subsegment to `.data` to match.
+3. **objdiff 3.8 data scoring:** sections are paired by name. A `.rodata` target against a `.data` base gives no score at all. Inside the section, symbols are paired by name, and each pair's match percent counts any size difference (a 0x40 vs 0x3C symbol scored 97 %). The unit's matched_data is the section size only when the section reaches 100 %. So re-label the target `.s` to the C's boundaries:
+   - `.section .data`;
+   - one `dlabel`/`enddlabel` per C object, with a separate label for an odd zero word (`D_80009E9C`);
+   - string labels with *no* `enddlabel`. IDO emits char-array symbols with size 0 and objdiff infers the extent to the next label, so both sides then agree, including the last string's pad to the section end.
+   Also drop the `nonmatching` lines: with `X.NON_MATCHING` objects in the target the old identical unit scored null.
+4. **Rebuild expected/ from the asm.** Before editing the .c, build the unit once with its INCLUDE_ASMs, copy the object to `expected/src/kernel/kernel_026.c.o`, and only then write the C. The target stays asm-derived, and `cmp` of the `.data` bytes plus `readelf -r` must show identical bytes and relocations.
+5. **asm-processor rejects a multi-line `/* */` comment line inside a non-.text INCLUDE_ASM** ("instruction or macro call in non-.text section"). Put the explanation in the .c instead.
+
+**Names:** func_80009EA0 and func_80009EB0 keep their names. Kernel code `jal`s those addresses (func_8000487C, func_80005C50, kernel_000_c.c), and the link resolves them to these data labels, so renaming them breaks the link.
