@@ -1,6 +1,6 @@
 # 1080 audio driver (game_libs 0x1C9E4-0x2D374) and sound glue (0x2D374-0x31DF8)
 
-Area C of the readability phase (agent-c runs 444, 446). Uncommitted area doc.
+Area C of the readability phase (agent-c runs 444, 446, 450). Uncommitted area doc.
 
 ## Overview
 
@@ -49,9 +49,13 @@ R_MIPS_26 is AudioThread_QueueCmdF32). Opcodes from OoT include/audiothread_cmd.
 Named (run 446): the 22 wrappers 0x2D618-0x2DF64 (`snd_*_<addr>`, address
 suffix kept: behaviour inferred, no OoT source). Still unnamed, with what is
 known:
-- 0x2D374 per-frame timer tick (six countdowns, fade to 0x1010300 / 0x4E/0x4D
-  player-1 ramps) -- likely snd_UpdateTimers.
-- 0x2D910 player-1 channel IO (0x06010F00) driven by two state inputs.
+- Named in run 450 (14): snd_UpdateTimers_2D374, snd_SetPlayer1Channel15IO_2D910,
+  snd_SetPlayer0ChannelPanIO_2F638, snd_Player0ChannelIOPreset_2F8A0 / _2F934,
+  snd_SetPlayer0ChannelParams_2F9D4, snd_SetPlayer0ChannelIO12_2FA90,
+  snd_ResetPlayer0ChannelIO1_2FB10, snd_HandleEvent_2FB74,
+  snd_SetPlayer0Channel0IO_30504, snd_SetPlayer0Channel8IO1_30564,
+  snd_SetPlayer0Channel8Pan_305CC, snd_HandleSeqEvent_30AF4,
+  snd_SetPlayer2ChannelIO_3190C (0x03 = CHANNEL_SET_PAN).
 - 0x2DF98 0x64-byte sound-object init; 0x2E06C..0x2E24C sound-object helpers
   (flags +0x16, kind +0x21) calling 0x43BE4 (sfx start, 80.0f).
 - 0x2E354 (0xE64) big per-object sound update, 0x2F1B8 f32 binary search,
@@ -81,26 +85,55 @@ All offsets are compile-time asserted (negative-array typedefs).
   listItem 0x70; rest padding (pre-OoT layout, unverified).
 - AudioListItem 0x10, NotePool 0x40, SeqScriptState 0x1C, AdsrSettings 0x8,
   Stereo 0x1, AudioAllocPool 0x10.
-- Opaque (stride only): SynthesisReverb 0x158, AudioAsyncLoad 0x54. Not yet
-  modelled: Note (0xD0; Audio_InitSampleState / Audio_NoteInit / NoteDisable
-  give flags 0x30/0x34, priorities 0x40/0x44, parentLayer 0x44?, noteSub 0xB0)
-  and NoteSampleState.
+- Opaque (stride only): AudioAsyncLoad 0x54.
+- Note 0xD0 (run 450): listItem 0x0, NoteSynthesisState 0x10 (0x20),
+  NotePlaybackState 0x30 (0x80: priority 0x0, unk_04 0x4, stereoHeadsetEffects
+  0x5, adsrVolScaleUnused 0x6, portamento/vibratoFreqScale 0x8/0xC, prev /
+  parent / wantedParentLayer 0x10/0x14/0x18, NoteAttributes 0x1C (0x14, older:
+  u8 combFilterGain + u16 combFilterSize, no filterBuf), AdsrState 0x30 (OoT
+  0x20), Portamento 0x50 (0xC: u8 mode, u16 cur, u16 speed, f32 extent),
+  VibratoState 0x5C (OoT 0x1C)), NoteSampleState 0xB0 (0x18 named + 8 pad; the
+  flag bits are a u32 bitfield run; Audio_InitSampleState's donor uses u8
+  containers, keep each donor's own container when converting).
+- SynthesisReverb 0x158 (run 450): OoT's fields to 0x13, then OoT - 8 (no
+  unk_14..unk_1B): nextRingBufPos 0x14, unk_18 (OoT unk_20), bufSizePerChan
+  0x1C, ring buffers 0x20/0x24, resample states 0x28..0x34, 0x14-byte
+  ReverbRingBufferItem items[2][5] at 0x38 (no items2), filters 0x100..0x10C,
+  tunedSample 0x110, sample 0x118, loop 0x128. Sample / TunedSample /
+  AdpcmLoop (flat, 0x30) / AdpcmBook added. gAudioCtx.notes is Note *.
 - Bitfield flag words use the u32 container the matched donors used (IDO's
   bitfield loads follow the declared container); keep it when converting.
 
 Users: game_libs_o2_240A0.c, _2B5F4.c, _27804.c (AudioContext alias),
 _2C7A4.c and _2BB7C.c (AudioContext + SequencePlayer / SequenceChannel /
 SequenceLayer / SeqScriptState / AdsrSettings / Stereo aliases).
+game_libs_post.c includes audio.h since run 450. After the last per-function
+gAudioCtx alias block (#undef after AudioLoad_*), post.c defines
+`#define gAudioCtx (*(AudioContext *)&D_00000000)` (same symbol and offsets,
+relocations unchanged). Converted so far: AudioThread_SetFadeOutTimer /
+SetFadeInTimer / GetSeqPlayerIO, AudioSeq_InitSequenceChannel /
+SequencePlayerDisableChannels (&sequenceChannelNone), SeqChannelSetLayer /
+SeqLayerFree (&layerFreeList), snd_StopPlayer0/1Seq (seqPlayers[n].enabled).
+Byte-sensitive, left raw: AudioThread_GetChannelIO (tried: bytes change),
+pointer walks (AudioHeap_DiscardSequence, AudioSeq_InitSequencePlayers,
+InitSequencePlayerChannels), and the D_00000000_345c0-alias functions
+(AudioSeq_InitLayerFreelist, AudioSeq_ProcessSequences) -- they need their
+own alias macro. NOTE: in the glue range most `&D_00000000 + K` reads are NOT
+gAudioCtx (D+0x16E0 / 0x1724 / 0x1C1D8 are game_libs data: the USO reloc
+targets another section); only convert offsets whose target is proven.
 
 ## Next
 
-1. Note (0xD0) / NoteSampleState from Audio_InitSampleState (27804 donor),
-   Audio_NoteInit, NoteDisable, ProcessNotes, AllocNote; SynthesisReverb fields
-   from AudioSynth_*.
-2. Convert game_libs_post.c's raw `(char *)&D_00000000 + 0xNN` audio accesses
-   (e.g. 0x2D00 + i * 0x160, 0x5280, 0x5368) to audio.h fields; post.c does
-   not include audio.h yet -- check its typedef names first.
-3. Name the rest of 0x2D374-0x31DF8 (list above).
+1. Convert the per-function Note / Reverb views to audio.h types where the
+   container types agree (gl_e134_* in AudioSynth_ProcessNote, gl_27E24_*,
+   gl_28604_*, gl_291C0_*, gl_2ABC0_*; gl_1D17C/1DB88/dcb4 Reverb views;
+   donors 26790 / 2119C / 2B09C), one function per gated commit.
+2. More gAudioCtx field conversions (see "Users" above for what is left).
+3. Name the rest of 0x2D374-0x31DF8: the sound-object helpers 0x2DF98 (init),
+   0x2E06C..0x2E290, 0x2E354 (per-object update), 0x2F1B8 (f32 binary
+   search), 0x2F288 (per-object integrator, vol/freq/IO on player 0),
+   0x2F578, 0x3061C (channel 8 IO), 0x307A8 / 0x308AC fade ticks, 0x31334 cue
+   driver, 0x31A74 (channel 0xA IO), and the small 0x31520..0x31DD8 wrappers.
 4. Rename-tool note: a function whose REPLACE_FUNC_BODY donor lives in
    src/match_imports/<NAME>.c is "defined in several segments"; run 446's
    wrapper (/tmp/claude-1000/c446/rn.py) tolerates exactly that case when the

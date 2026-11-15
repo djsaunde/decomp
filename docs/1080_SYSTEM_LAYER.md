@@ -12,6 +12,7 @@
 - [4. Save (SRAM) layout](#4-save-sram-layout)
 - [5. Structs](#5-structs)
 - [6. Next](#6-next)
+- [7. Area E1 (post0b 0x34458-0x4C000 + post.c DMA), run 448](#7-area-e1-post0b-0x34458-0x4c000--postc-dma-run-448)
 
 ## 1. String-xref method
 
@@ -99,3 +100,42 @@ chunks (`BackupCourse` 384, `BackupArcade` 96, `BackupOptions` 24; the bodies al
    (`gl_ref_0000C764_*`) to be decoded through DataReloc.
 3. The race object (0x6900, 0xC784-0xE230): find its ctor and class string (bootup_uso callers).
 4. Area E: take heap/HostIO/App names from section 2.
+
+## 7. Area E1 (post0b 0x34458-0x4C000 + post.c DMA), run 448
+
+> agent-a run 448, branch agent-a: commits 636b53f24, 3505460d0, 3b603bbce (pure renames,
+> 96 names) and c80a15176, 759e1f21e, 25a57c017 (structs + field conversions). Gate PASS each time.
+> Xref tool: /tmp/claude-1000/a448/xref.py (the run-445 script, with offsets taken from
+> report.json unit base + function address, so renamed functions keep their offsets).
+
+| subsystem | names |
+|---|---|
+| DMA (post.c 0x337AC-0x33B6C) | dma_startRead/startWrite/wait/read/write/allocSlot/readAsync/writeAsync/init, dma_rawRead, dma_writebackCache, dma_invalCache |
+| buffered streams (post.c, vtable-only) | fs_bufWrite_334E8, fs_bufWrite_33BE4, fs_bufRead_33EB8 |
+| gdl file layer (kind 0 = remote HostIO, 1 = local ROM via the system handler vtable, 2 = SRAM) | fs_gdlOpenFile/ReadFile/WriteFile/SeekFile/CloseFile/ReadFileAsync/WaitFile/FileInfo. `fs_gdl*` because the kernel owns fs_read/fs_seek/fs_close |
+| heap | heap_new, heap_tempAlloc, heap_tempFree, heap_printStats; mem_new (operator new, 125 callers), mem_newAligned, mem_delete |
+| debug / fault | dbg_printf (the libgdl printf), dbg_printThreads, dbg_faultThread, dbg_startFaultThread, dbg_printIndent, __pure_virtual_called |
+| HostIO | hostio_start/init/send/recv/dispatch; messages are 0xA0 bytes with the type at +0: 2 addFloat, 5 beginGroup, 0xB endGroup, 0xF updateFloat |
+| App | App_main (0x415A4: names itself "App", sets up SysLib/GfxLib 320x240, ends in app_run), app_run ("RunApp" loop), app_initSystem, app_loadUso/unloadUso, App_Reset/InitInstance/Update/Display/hostioParms, App_func_000417CC/00041820 |
+| Node classes | Node_ctor (base of all 45 "<Node>" ctors), Node_Load/Save/doCommand/printContents/def, MNode/SNode/QNode _ctor/_def/_hostioParms, BallRotator_hostioParms, Parms_addParm |
+| other classes | CollShape_ctor/ctorPoly, NullCollShape_ctor, CollObjMgr_ctor, ItemMgr_Load, ItemType_load, PolyShape_init/hostioParms, MorphPoly_genUpdateList/updateColours/update_4AAF0, FogParms_hostioParms, GfxLib_init/hostioParms |
+| gfx / math | gfx_start, gfx_end (app_run's "gfx.Start"/"gfx.End"), gfx_setVideoMode, gfx_viBlack, gfx_swapBuffer, gfx_addWindow, gfx_assertTexAligned, math_arcballPoint |
+
+**`<Class>_hostioParms` pattern.** Every engine class has a vtable slot that publishes its parms
+to the HostIO PC tool: `hostio_beginGroup("<Class>")`, one `hostio_add*` per parm, `hostio_endGroup()`,
+then the base class's slot (ending in `Node_hostioParms`). The class string in beginGroup is the
+best class-name evidence in this range. 0x3EE1C-0x3FB6C are the other hostio_add* message kinds
+(not yet named; read each body's type word).
+
+**Structs (include/gdl/).**
+- `dma.h` DmaSlot (0x44 x 10 at the data base): OSIoMesg +0, OSMesgQueue +0x18, msg +0x30, dram +0x34,
+  len +0x38, busy +0x3C, invalidate +0x40. dma_init keeps its pinned `k*0x44` IV form.
+- `node.h` Node (0x2C): name +0xC, children +0x10, parent +0x14, serial +0x1C, handle +0x20, Cfront vptr +0x28;
+  App = Node + words at +0x2C/+0x30.
+- `heap.h` HeapBlock (16-byte header: id<<24 | size/16, next, prev, magic 0x12345678) and Heap
+  (id +0x20, used +0x24). The allocator at 0x5B070 (area E2) still uses its private Blk5B070/Heap5B070.
+
+**Next.** hostio_add* kinds 0x3EE1C-0x3FB6C; the Parms member readers (0x35AA4/0x35AE0, 0x37C70-0x37E40,
+0x3D000-0x3D114, 0x42570-0x42648 all wrap fs_gdlReadFile/WriteFile); CollShape grid (0x3B2EC/0x3BE1C
+"no pGrid data"); the 0x42000-0x4C000 graphics block (lights 0x435FC, sprites 0x4B620 "SS StartDL");
+migrate the 5B070 allocator to heap.h (E2 owner); convert Node-derived ctors to Node fields.
