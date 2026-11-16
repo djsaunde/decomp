@@ -665,6 +665,29 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     search), ins2.py (insert a snippet at each line).
   - 0x559C / 0x1E60 were re-scoped to agent-b (559C was not started).
 
+- Run 676 (agent-h, commits 8d7f3f118 + 6ad5629b3 on agent-h, NM only, no renames, no exacts; 3558 / 3579).
+  - **15D0 / 1A18 / 2310 NM** (snoweffects_uso_ncc_nm.cpp): run 671's per-site `* 1` hooks landed (66 / 70 / 72 -> 42 /
+    46 / 48 lines), then three zero-code counted loads `(*(int *)((char *)t + K) & 0)` (distinct K) in the FA (prim
+    colour) packet's w0: 36 / 40 / 42 (objdiff 99.67 / 99.66 / 99.69). Found by a per-site greedy over hook count 0-2 x
+    phantom count 0-8 x `if (1) {}` (r676/gen18.py, s19.py; ~40 ms per NCC compile). Left: packets 3, 5-9 take a1 / a2 /
+    t0 where the target has a2 / a3, and the last packet a1 (target v1: its final live unit starts after the last count
+    store). Flat or worse: inline-function emitters (`Gfx *eW(Gfx *, a, b)` returning the packet, discarded or `(void)`,
+    or void; args become named temps, 346-464 lines); a `pk(Gfx *)` pass-through wrapper (edg gives the nested next() its
+    own pooled `this` temp, so the outer one spans fewer units: 54-436); per-site mixes of 5 next() bodies (all edg
+    inline temps are pooled by type, so renamed locals in a second next() change nothing); keeping packet 1's pointer
+    live with `+ 0 * (int)head` (its LR then spans units and takes t1: 90-360).
+  - **0x47D4**: the by-value-parameter emit helper (`emit(t, i, SnowBV3 w, ..)` with the lerp inside, or w = P passed
+    by value) brings the frame to the target's 184 but the FP colouring is unchanged ((float)i f2 / f f0 vs the target's
+    f14 / f12, w.x f2); operator chains `w = w + (Q - w) * f` keep their temps in memory (463-486 words). Draft stays
+    r671/t47.cpp (350 lines); variants in r676/47/.
+  - **0x97C** (2-word swap, cfe): the reload of p sits right after the jal in ugen's output (`cc -S`), so as1 puts it
+    before the mul.s. All 120 orders of the post-call group x 8 spellings of `r * 2` are flat (4 lines). An
+    address-taken p (`{ SnowParticle **pp = &p; }`) reloads at each use and lands the first reload one slot earlier
+    still. Flat too: inline randf, r2, early return, top-level decls, register p, `if (1) {}`, a return copy.
+    Next: something that makes ugen emit the reload lazily (after the 1.0f constant).
+  - **0x4188**: run 671's `* 1` hook does nothing here (all 256 hook subsets x 4 `if (1)` positions x 2 pad positions;
+    2187 random hook / phantom / `if (1)` mixes): still 3 words (packet 4's FC pointer v0 vs a3).
+
 ### snoweffects.uso 0x6000+ (agent-e run 639)
 
 - +2 EXACT (commit feb67fb6a on agent-e): 0x8C60 and 0x9FE8, both IDO 7.1 NCC. Own donor
@@ -1095,6 +1118,51 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   - The target also uses s3 for the hoisted &return-temp (sp+204) and `ra` as a scratch register; ours does not.
 - **0x270 not worked this run** (still NM 245 / 260, objdiff 99.7).
 
+### snoweffects.uso 0x270 / 0x28E0 (agent-c run 674, no commits)
+
+- **0x270 (15 differing words, positional): not cracked. Best 14.**
+  - **Invisible busy registers are copy-source LRs.** A named-result append (`Gfx *g = &dl->buf[n]; return g;`) makes
+    a separate LR for g, with one def and one use. The use is the copy into the macro's `_g`, and that copy is
+    folded away, so g's register never shows in the code. In one dump (stock macro + nextN on some sites) this LR
+    was M-108, coloured t0, with the def in unit 7 and the use in unit 8. No t0 appears anywhere in the output.
+    - This fits the target's 0x270, where E7 / F568 sit in t1 / t2 but no value uses t0.
+    - It also fits agent-h's 15D0 report: a1 busy in every unit, with no visible a1 value.
+    - What follows: choose next / nextN / nextR / nextI per site to place the hidden holders.
+  - **Put phantoms in a data word, not in the packet pointer.** `(t->dl->next() + (t->q & 0))` drops one use of the
+    pooled ctx temp (M-8: num 45 -> 44). That breaks the three-way v0 / v1 / a0 pool tie, and the whole function
+    re-colours. Phantoms in a w1 or immediate argument leave the tie alone.
+  - **The stock 2.0I `gDPLoadTextureTile` macro** (one pkt per sub-packet) changes the second-half sequence and moves
+    E7 / F568 to t0 / t1.
+  - **Search run.** A random hill climb, about 10k compiles, over:
+    - per-site next / nextN / nextR / nextI;
+    - 0-3 phantoms in each packet's data word;
+    - the w / h position (before or after the `if (1) {}`) and `h = w` vs `h = 32`.
+
+    Both the macro form and the hand-expanded form plateau at 14 / 15. Every 14 still has 3 packet pointers wrong
+    and the constant pair swapped.
+  - Tools in /tmp/claude-1000/c674/: dd.sh (NCC compile plus a positional word diff), tr.sh (instrumented colour
+    order for one function), pk.py (packet-pointer sequence), and g/s3.py with tmpl3 / 4 / 5.cpp (the search).
+- **0x28E0: c loses s2 because of a cost tie, not a priority problem.**
+  - c (M-16) crosses the loop's randf call, so t1..t5 / ra each cost 15.
+  - The s-register cost is 13.5 without the empty ifs. Each conditional block added in the loop raises it by 0.5:
+    one `if` 14.3, two 14.8, three 15.0. With all three ifs it ties at 15, and the tie goes to t1, the first in
+    register order. Without them c is s2 (run 655 draft).
+  - A `* 1` priority lever cannot fix a cost tie. `c = (GCtx *)((int)c * 1)` does nothing, and `if (c) {}` adds
+    0.5 more.
+  - Next: remove one loop block somewhere else (s-cost 14.5), or find a block-free spelling that keeps cy / cz
+    computed early.
+  - halfW / halfH (M-20 / M-24) are split before colouring; their pieces are never coloured. `halfW = halfW * 1` emits a
+    mul.s (+5 words, 87.07), because float `* 1` is not folded. The int lever does not carry over to floats.
+  - **Flat** (objdiff 28E0):
+
+    | Variant | objdiff |
+    | --- | --- |
+    | two-block forms, e.g. `if (cz != cy) {} if (cx) {}` / `if (cz == cy \|\| cx) {}` (cy / cz sink again) | 82.5-83.1 |
+    | ternary wrap amounts | 81.1, or 85.1 with the ifs |
+    | ternary fadeIn | 88.16 |
+    | inline `snowWrap(cx, cy, cz, &wx, ...)` with by-value coordinates (c goes back to s2, but +9 words) | 78.7 |
+- **0xC90: not reached.**
+
 ## heli.uso progress (agent-g run 632)
 
 - 22 / 26 EXACT, 3 NM wraps (0x4C0 90.7, 0x8A8 99.4, 0x980 94.7) after run 637 (agent-g
@@ -1176,6 +1244,42 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     f20) is a separate constant web: `(float)0` int-cast literal.
 - NM wraps spell the raw placeholder tokens: the named-call check cannot prove CALL() sites
   whose build path is INCLUDE_ASM.
+
+## heli.uso (agent-g run 678)
+
+- **0xB08 NM 84.2 -> 85.7 % (commit 8a0941bc0 on agent-g, gate PASS, no renames).** Exact count unchanged
+  (3558 / 3579). Diff rows vs the target (scratch `/tmp/claude-1000/agent-g/r678/m.sh`): raw 830 -> 829,
+  sp-masked 791 -> 770, reg-masked 316 -> 298, both masked 198 -> 180.
+- **`100.0f` twice = an int divisor.** With `f *= HF(0x154) / 100.0f` after `if (HF(0x154) < 100.0f)`, uopt keeps
+  one FP constant LR (f14) for both. The target rematerialises `lui at,0x42c8` at each site. `int h = 100;
+  f *= HF(0x154) / h;` does it: the int -> float conversion folds late (in uopt), so the divide's 100.0f is no
+  longer the same constant LR. Not levers: `if (1) {}` in the arm, `(float)100`, `(float)100.0`, a `float h`.
+  The same trick on the quaternion `* 2.0f` (fwdAx, target does not promote 2.0f / 1.0f there, ours does: f16 /
+  f18) strength-reduces to `add.s x,x` (worse); `(float)2.0` / `(float)2` fold at the front end (no change).
+- **The ugen t-ring start depends on the whole function.** Our first temp is t1, the target's t7; a fresh
+  function starts at t6. Truncating the body shows our head's temps flip t6 -> t1 when the tail's
+  `sqrt(toTgt.x^2 + toTgt.y^2 + toTgt.z^2)` is kept (any two-term version keeps t6), and a dummy function before
+  B08 does not move it (no cross-function state). So the head's register numbering is a symptom of the tail;
+  fix the tail first. Harness: `tr.py N...` (truncate after body line N, print first temps).
+- **Marker block copy (`q -> v1 -> v0`) not reproduced.** Agent-a's pool-temp recipe gives the copy only when the
+  helper returns `n != 0 && n->z < z` (n1: `ah1(L, q = L2, z)`, copy in the null-test delay slot, store through
+  q), but edg then materialises the bool (sltu / addiu 1 / beqz, 83.8). A void helper with the `if` inside, a
+  comma `return (m, ...)`, `L != 0 &&` outside, and passing the named q all coalesce to one register.
+- **Heading pointer + `vel = ...` assignment:** the target computes vel as op* temp (136) -> by-value op= param
+  temp (252, shared with the switch's op=) -> vel (308) through `h` (v0 from 48(sp)), i.e. `vel = *h * HF(0x154)`
+  with vel declared between dist and side. That puts vel / side at the target's 308 / 296 but scores 84.2
+  (p1 = h only: 85.4, structure-masked rows 173 vs 180). A named `Vec3 *h` costs a frame slot (frame 384, target
+  368).
+- **Frame (target, from the code):** outer = pp 356, player 352, q 348, toTgt 336, dir 324, dist 320, vel 308,
+  side 296, a 12-byte local at 284, key 280, 4 at 276, key2 272, 4 at 268, 4 at 264; then the case op= temp 252
+  (nothing in between). So only three 4-byte outer named locals besides key / key2 (tg / ps / h?); p, mode, f,
+  yaw, t, ang, s, sa, fwdAx and the axes must be nested-scope locals or not variables at all. Replacing tg / ps
+  with expressions loses the per-case recompute (79.1). Next: wrap the slerp / tail in nested blocks with their
+  own locals (t 208, ang 168, s 164, sa 148 sit between temps), and find a spelling of p / mode with no slot.
+- Drafts: `/tmp/claude-1000/agent-g/b08_keep/mp72_c6_857.cpp` (= the donor), `mp72_r678_hptr.cpp` (p1),
+  `mp72_r678_hptr_velassign.cpp` (v2). Harness `/tmp/claude-1000/agent-g/r678/`: m.sh (objdiff % + raw /
+  sp-masked / reg-masked rows), sd.py (structure diff), smap.py (target -> ours sp-slot map), g.py (outer
+  declaration list generator), var.py.
 
 ## heli.uso (agent-g run 672)
 
