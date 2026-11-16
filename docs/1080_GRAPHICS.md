@@ -801,3 +801,60 @@ Next:
   BasePolyShape: give Elem a header first;
 - post1b: boot_main_00066850's gSysApi table (a SysApi struct in gl_data.h needs the owner's OK),
   skin_cmdSkinShape's loader context.
+
+## 19. Run 537 (agent-b): SysApi, NodeListState, libultra stand-ins, genNormals cross products
+
+Hand edits only (no renames). Every changed .o had identical `objdump -d -r` in the matching
+and NON_MATCHING builds; the gate passed before each commit.
+
+- **include/gdl/sysapi.h** (new): SysApi, the table gSysApi (Bss+0x416A0, Sym 1558) points at.
+  The table lives outside bootup.uso; the known slots: +0x0 / +0x4 memStart / memEnd
+  (sys_setRegion; "Bootup Code size %dk" = (memStart + 0x80000000) >> 10), +0x8 / +0xC / +0x10 /
+  +0x14 / +0x1C the USO error and warning words boot_main prints, +0x40 usoLoad, +0x44
+  usoUnload, +0x48 fileInfo, +0x4C..+0x60 the kind-1 file services (fileOpen / fileRead /
+  fileSeek / fileClose / fileError / fileRomAddr: fs_gdlOpenFile .. fs_gdlReadFileAsync),
+  +0x70 symLookup(addr, &name, &offset) (the "(%s,0x%x)" in dbg_printThreads / dbg_faultThread),
+  +0x74 usoPreLoad (app_loadUso). Installed by game_libs (TextReloc targets): boot_main sets
+  +0x34 heapNew (mem_heapNewThunk), +0x80 dmaRead (dma_readChunked), +0x84 printfFn (dbg_printf),
+  +0x94 timeInFrames, +0x98 / +0x9C tempAlloc / tempFree; app_initSystem sets +0x8C sprintfFn
+  (sys_sprintf_00061B30) and +0x90 consoleSetOrigin (ConsoleDev_setOrigin). Accessors `SYSAPI`
+  and `SYSAPI_AT(alias)` (the per-site zero aliases gSysApi_34458_obj / _34548_obj / _34A78_rec).
+  game_libs_ncc_34A78.cpp (app_initSystem, not agent-b's) still spells +0x8C / +0x90 raw.
+- **include/gdl/nodelist.h** (new): NodeListState (0x4C), the ProcNodeList interpreter state
+  that was post0b's local Gl5591CArg (the edg donor's Strm). New names: +0x14 **animMgr**
+  (ProcNodeList a2; anim_createAnimator "Null AnimatorMgr specified"), +0x28 **obj** (the
+  object the last constructing command built), +0x2C **light** (light_addDefault), +0x38
+  **linkNodes** (op 1016; the *_def commands append the new node to parent->node). On it:
+  ProcNodeList, the four nodelist_check*, MNode_def, Node_def, light_addDefault_000513CC,
+  anim_createAnimator, shape_cmdShape_00051520, shape_cmdLightTarget, skin_cmdSkinShape,
+  skin_cmdSkinAnim. skin_cmdSkinMgr's NM body is still `int *self`.
+- post1b donor stand-ins on libultra types: gl__VirtualToPhysicalTask (OSTask_t, the seven
+  pointer fields osVirtualToPhysical converts), gl___osLeoResume (OSMesgQueue + a local
+  __OSEventState, __osEventStateTab[OS_EVENT_PI]). The real code is the -O1 donors.
+- **light.h**: BaseLight +0x10C is BaseLightParms (0x2C: GdlParms head "Parms", then one "col"
+  colour parm in GdlParmRGBA layout) with **parms.col[4]** at +0x124 (for agent-a's
+  gen_createLights port).
+- **genNormals lesson**: the cross-product rows match on typed `PolyVert *` locals when only the
+  SECOND product of each row has its factors swapped
+  (`(b.y - a.y) * (c.z - b.z) - (b.z - a.z) * (c.y - b.y)`). Swapping both products, or neither,
+  reorders the lh loads.
+- Window_display takes `Window *`; it and cam_isSphereInView read the camera through MCamera
+  (fov, mnode.world[3] = eye position, view[0..2][2] = the view forward column).
+
+Commits (agent-b, all hand edits, no renames): 0c5f00bf4 (sysapi.h), 099cfd5d6 (nodelist.h +
+libultra stand-ins), a27ba7aed (light.h BaseLightParms), 8cb7aaa4e (genNormals, Window_display,
+cam_isSphereInView).
+
+Census (compiled code, casts + accessor uses): post0b 512 -> 436, post1b 103 -> 42, owner b
+623 -> 486; whole ROM casts 2957 -> 2858, accessor uses 935 -> 897.
+
+Next:
+- post0b's top: the `<block>` (18), CamFollow_update / math_mtx4Adjugate (16), gfx_findVtx (15),
+  Mat_fromFrameBuffer / CollObjMgr_update (12), MorphPoly_updateColours / Window_setDefaults
+  (10), BaseLight_ctor (8, now has BaseLightParms); DNode_updateAttached (16) in post1b;
+  gl___osContGetInitData (8, post1b2) on os_cont.h;
+- the fs_gdl* file object (kind +0x4, handle +0x20): a GdlFile struct in a header;
+- the GfxLib* candidates not reached this run: gfx_beginView / GfxLib_reset NM bodies,
+  gfx_callStaticDL, gfx_vcall_0004E150; the HostIO objects; PolyShape_func_00043584 after an
+  Elem (clip-row) header;
+- skin_cmdSkinMgr NM body onto NodeListState.
