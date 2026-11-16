@@ -1540,3 +1540,19 @@ reloc's Sym + K); every changed .o is objdump-identical (text / data / rodata, r
 - Port-audit A/B leftovers annotated `RAW: byte-lock` (scanNodes / scanSegments link carriers, the
   `(unsigned)&b1 / &b4` casts: dropping them moves `addiu sp,244` (tried), MemberCallback_invoke's PMF dispatch,
   B274's `int gi / di` copies).
+
+## 35. Run 589: bootup donors at zero raw sites; uso-data-sites on the mode USOs
+
+- The run-580 donor conversions (CFA0 / 1304C / E740 / 7328 / E800) were lost in the run-581 merge (the
+  macros survived, the uses went back to raw + `RAW:` tags). Re-applied in 1a74498f9, plus:
+  - F81C game_createProcessWindow: `func_000000F0.game` is a `WorldRegistry *` (course.h; GameFlow.game per
+    agent-h run 584), and the store is `game->windows[3]`, the ProcessWindow slot;
+  - 63B4 MapProp_display: RoData+0x5B0 = 57.29578f (degrees per radian), `kRo_MapProp_degPerRad` =
+    `bu_63b4_c57c[0x34 / 4]` (same func_0000057C + 0x34 reloc);
+  - E740: the frame-buffer read is pixel (32, 58) of the 320-wide buffer, every 4th pixel / 5th row.
+  The bootup C++ donors now have no raw sites. Every changed donor .o is identical (objdump -dr).
+- `scripts/uso-data-sites.py --uso MODE` (4f74534bf): MODE is titproc / eddproc / mgrproc / arcproc /
+  h2hproc / timproc / trkproc / genproc (timproc_uso_b1 / b3 / b5 = timproc.uso / trkproc.uso /
+  genproc.uso). sites / census / object / const-table / spell / check work as for game.uso; constants
+  go to include/game/<src dir>_data.h (const-table --write creates it), and the gate's bootup check
+  also checks every such header that exists.

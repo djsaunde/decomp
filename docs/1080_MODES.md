@@ -1412,6 +1412,26 @@ coordination); H2HRace.dataMgr; the H2HRaceProcess_onPauseSelect / mgr o0_19C pa
 (menu->rows[cursor].arg); SnowBoarder_ctor (13 raw). Since main 0b77ceb96, Node.vptr / name
 take `(char *)` / `(const char *)` casts, not `(s32)`.
 
+### Run 588 (agent-h): owner-h RAW sites 41 -> 0
+
+Commit bd21b3803 on agent-h (base e48ba4cc3), gate PASS; every changed .o identical in both builds.
+- **Mode-USO data offsets:** `include/game/mode_uso_data.h` names section offsets of arcproc / mgrproc /
+  timproc / trkproc the game_uso_data.h way (per-site symbol + `kRoF_` / `kData_` / `kBss_` offset).
+  uso-data-sites.py does not read the mode modules; the values are checked by hand from
+  `scripts/uso-imports.py sites <module>` (the reloc is "RoData(base)" etc.) and
+  `scripts/uso_original.py modules()` (the section payload words). A named offset in a cast is not
+  counted raw by the census (TAIL_OFF wants a literal).
+- **Most "data-table" sites were GameFlow fields:** a mode site whose reloc is `bootup:Bss+0xF8` is the
+  GameFlow import, so `base + 0x4C / 0x54 / 0x58 / 0x60 / 0x64` = playerRider / playerBoard / rider2 /
+  board2 / course (the rider / board / course sprite ids). `bootup:Data+0xC510` is gProcUsoPaths.
+- **mgrproc Bss+0x30** is the running MGRRaceProcess (MGR_STATE_PTR; onPauseSelect stores this there).
+- **Tv1 screens are BaseMats:** Tv1Model +0x84 = BasePolyShape.mats, the screen word +0x1C =
+  BaseMat.texels (the frame image is blitted into the TV screen textures).
+- **WorldRegistry.windows[3]** (+0x114) is the ProcessWindow (game_createProcessWindow).
+- Volatile trap: a `volatile int *base` read spelled `((volatile InputMgr *)base)->course` changes the
+  timproc block bytes (ROM check passed, verify-blocks failed); the target read is the non-volatile
+  `((InputMgr *)base)->course`.
+
 ### Run 584 (agent-h): object identification for the unknown-object / data-table RAW sites
 
 Owner-h raw sites: 70 -> 41 (byte-lock 4, data-table 28 -> 26, donor-mirror 7, unknown-object 31 -> 4).
