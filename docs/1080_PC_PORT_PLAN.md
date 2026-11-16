@@ -23,7 +23,8 @@ first; this plan does not repeat them.
 14. M2 prep: libultraship patch series
 15. M1: audio mixer
 16. M1: link plumbing (CALL names, bound placeholder calls, data blobs / aliases, port/uso)
-17. M1: libultra shim and main loop
+17. M1: libultra shim and main loop (17.8: SysApi, port/fs, boot-path trace)
+18. M1/M2: byte order (USO blob type map + swap, rom/*.bin readers, bitfield audit)
 
 ---
 
@@ -2092,12 +2093,12 @@ by relative path; nothing new to add to the source lists.
   just ran). main.c's replay stop (`frameCount > last recorded frame`) matches.
 
 **What still blocks a headless boot once linking works** (in boot order):
-1. **No SysApi.** `gSysApi` (bootup Bss 0x416A0) points at the kernel's SysApi; nothing on the port
+1. **No SysApi.** (**Done in run 619, see 17.8.**) `gSysApi` (bootup Bss 0x416A0) points at the kernel's SysApi; nothing on the port
    fills it. boot_main reads `usoWarnNum` / `usoErrNum` / `memStart` / `memEnd` and stores six hooks;
    the game then calls `usoLoad` / `usoUnload` (-> port/uso), `heapNew`, `symLookup`, `dmaRead`,
    `tempAlloc`, ... A port SysApi (kernel replacement: heap region, port/uso, ROM fs) has to exist
    before `port_game_boot`; it fits in port_game_boot or a `port/kernel.c`.
-2. **No port/fs.** `fs_gdlFileInfo` / `fs_gdlRead*` and `dma_read` of named files (SnowBoard_ctor
+2. **No port/fs.** (**Done in run 619, see 17.8.**) `fs_gdlFileInfo` / `fs_gdlRead*` and `dma_read` of named files (SnowBoard_ctor
    reads the audio seq / wave / bank sizes first) need the ROM file system (17.4.4 names it; it does
    not exist yet). SRAM is done (17.2).
 3. **Byte order.** The blobs stay big-endian except the relocated words (16.5); every boot-time read of
@@ -2115,3 +2116,318 @@ by relative path; nothing new to add to the source lists.
    advances virtual time, so it reads 0 and prints the "zero v frame time" debug line (only
    `sys_timeInFrames` reads it, with no game caller); the pad and fault threads stay parked (counted
    in `parkedThreads`); hostio stays off (its flag word is 0).
+
+### 17.8 The kernel's SysApi, port/fs, and the boot path (run 619)
+
+agent-g run 619, branch agent-g on main 2a1ec167d, commits 2d4058ea7 and 44ca56523 (port/ only) and
+170519893 (src/, `#ifdef PORT` only). Gate PASS before both (ROM byte-identical, 3288/3288, 6405 named calls
+0 mismatches). Compiled with the 17.6 command (`port/sysapi.c`, `port/fs/fs.c`, `port/trace.c`: 0
+new warnings) and the two src units with the port CMake (`ninja` on their objects).
+
+**The SysApi IS the kernel's loader context.** `uso_callEntry` calls bootup.uso's entry with
+`&gUsoCtx`, and `boot_entry_00066C30` stores that argument in gSysApi. So the slots are `UsoCtx`'s
+(include/uso.h; `uso_init` in kernel_000_1594.c fills them), and the file services are the kernel
+bodies in kernel_000.c:
+
+| SysApi slot | kernel | port (`port/sysapi.c`) |
+|---|---|---|
+| +0x00 memStart | `heapCur` after bootup.uso loaded (0x8015D858) | a static host arena |
+| +0x04 memEnd | `heapLeft`: **a size, not an end** (`App_main`: `sys_getRegion(&a, &b); Mem_init(heap, a, a + b)`) | 0x2A27A8 = 0x80400000 - 0x8001FFA0 (mainuso heap) - 0x13D8B8 (bootup.uso's section allocations) |
+| +0x08..+0x1C | USO error / warning words | 0 |
+| +0x30 / +0x34 heapNew | `uso_alloc`; boot_main installs `mem_heapNewThunk` | logging stub (only the kernel loader called it) |
+| +0x40 / +0x44 usoLoad / Unload | `uso_load` / `uso_unload` | `port_uso_load` / `port_uso_unload` (below) |
+| +0x48 fileInfo | `uso_findDataSection` | `port_fs_info` |
+| +0x4C fileOpen | `fs_openFile` | `port_fs_open` |
+| +0x50 fileRead | `fs_readChecked` | `port_fs_read` |
+| +0x54 fileSeek | `fs_seek(file, whence, offset)` | `port_fs_seek` |
+| +0x58 fileClose | `fs_closeFile` (no-op) | `port_fs_close` (returns the handle to the pool) |
+| +0x5C fileError | `uso_getErrno` | `port_fs_errno` |
+| +0x60 fileRomAddr | `fs_tell` = romStart + pos | `port_fs_tell` (a ROM address: the PI shim serves `dma_readAsync` from it) |
+| +0x70 symLookup | `uso_addrToModule` (module name, Text offset) | `("host", addr)`: no module Text ranges on the port; nm names the address |
+| +0x74 usoPreLoad | `uso_clearMemStats` (args ignored) | no-op |
+| +0x80..+0x9C | kernel defaults, replaced by boot_main / app_initSystem | inert defaults (nullPrintf, nop, 0.0f) |
+| +0x3C, +0x64..+0x7C, +0xA0 | init, callEntry, getModuleName, printVersion, printMemStats, printModules, printSlots | log "not implemented" (no game caller known) |
+
+`port_game_boot` calls `port_sysapi_install()` (weak) after `port_uso_init` (which zeroes bootup Bss,
+where gSysApi lives) and before `boot_main_00066850`.
+
+- **usoLoad of a module port/uso does not carry** (`port_uso_load` = -0x14, but port/fs has the
+  file: audio banks, course / rider data, the `*.bin` names): the load is accepted, logged, and
+  tracked for -0x13 / unload. Whatever the game then reads from that module goes through fileInfo /
+  DMA (ROM) or the blobs; references into data-only modules that are not blobs are the 16.5 "80
+  into data-only modules not kept" words, a link-plumbing item.
+- **K&R pass-through:** `fs_gdlSeekFile` called `SYSAPI->fileSeek(o->handle)`; the kernel's
+  `fs_seek(file, whence, offset)` read a1 / a2 as they rode through from fs_gdlSeekFile's own
+  arguments. Under PORT it passes them (game_libs_post0b.c). The other SysApi call sites pass every
+  argument the kernel reads. `mem_heapNewThunk_00041258` (`return heap_new();`) has the same
+  pass-through shape, which is one reason the port never calls the table's heapNew.
+- **Handles:** on the N64 `fs_openFile` takes 0x28 bytes from the current heap through the +0x34
+  hook (the game's heap after boot_main) and never frees them; the port uses a 64-entry pool. Heap
+  addresses differ on the port anyway.
+- **Reads** copy from the ROM image. On the N64 `fs_read` went through +0x80 (`dma_readChunked`
+  after boot_main), i.e. PI DMA of the same bytes; skipping it avoids DMA-queue traffic.
+- `boot_reloadMainUso` (usoUnload + usoLoad of the main module) would re-run bootup.uso's
+  `module_reset` on the port: Bss zeroed, as the N64's reload. Only a debug path calls it.
+
+**port/fs** (`port/fs/port_fs.h`, `fs.c`) has the kernel's semantics over the in-memory ROM image
+(the PI shim's `PortUltraConfig.rom`). The extracted tree is not used: fileRomAddr hands the game
+a ROM address that it DMAs from, so the image must be there anyway.
+- Devices from the kernel's table at ROM 0xAE60 ("mainuso" 0xD9FDB0..0xE984B0, "rom"
+  0xB7C0..0xD9FDB0). Directory = `uso_scanRom`: per Info record with module id >= 0, the name and
+  the device offset just past the Info record (131 files).
+- Lookup = `uso_find_file`: split at the first `/`; the device gives romStart; the file is found
+  **by name only** (the N64's slot table is global). Unknown device or name: -0x11.
+- Open = `fs_openFile`: read the first record's 12-byte header; the window is its payload (a
+  `.bin`'s BinaryDataSection, a USO's first section). Read = `fs_read`: buf 8-aligned (-0x1C),
+  clamped to the window, raw big-endian bytes (Yay0 stays compressed). Seek: whence 0 sets the
+  device offset, else adds. Tell = romStart + pos.
+- Info = `uso_findDataSection`: walk the records (Bss has no payload) to Data; returns the ROM
+  address of its payload. Two deliberate differences from the kernel, both only on paths the
+  kernel would turn into garbage: the walk stops at EndOfFile / the device end (-1000; the kernel
+  wanders past it), and a read past the limit returns 0 bytes (the kernel's unsigned clamp wraps).
+- `port/fs/test_fs.c` (host build, the user's ROM): 23 checks, 0 failures. A scratch cross-check of
+  all 131 files (id, open window and size, first bytes, Data address) against extract.py's
+  `walk_device`: 131 / 131 agree.
+
+**gInputMgr (trace.c).** There is no `gInputMgr` symbol on the port: the game spells it
+`D_00000000` (gl_data.h `#define gInputMgr D_00000000`), bound per site. trace.c's default
+collector now reads `port_bootup_bss + 0xF8` (weak), so `gInputMgr` leaves port/undefined.txt and
+nothing is needed in aliases.ld.
+
+**For the CMake (agent-a):** add `sysapi.c` and `fs/fs.c` to the port host sources
+(`PORT_HOST_SOURCES`, or a `portfs` library linked with `uso` / `ultra`). `sysapi.c` needs
+`port_bootup_bss` (blobs), `port_uso_*` (libuso.a), `port_ultra_cfg` / `port_ultra_log`
+(libultra.a). `port/fs/test_fs.c` is a host test needing only `fs.c` and the ROM.
+
+**Static boot-path trace** (run 619; read from the sources the sourcemap selects, nothing run: no
+i386 libc here). The actual chain, with the vtable slots worked out from the bootup Data relocs
+(`VT_SLOT`, +8 bias):
+
+`port_game_boot` -> `boot_main_00066850` -> `SnowBoard_ctor` -> vtable +0x5C = **App_main** ->
++0x6C **SnowBoard_restart** -> `App_restart` -> slot 13 `SnowBoard_softReset` -> **App_softReset**
+(C++ donor 41820), then slot 15 **SnowBoard_InitInstance** -> `GameFlow_create` /
+`GameFlow_startMode(0)` -> n64proc vtable slot 0 = **n64_procMain**; back in App_main ->
+`app_runInit`. (`boot_startThread_00066B64` is the N64's real entry into boot_main: it starts the
+main thread there and writes the stack canary; the port skips it.)
+
+| step | external service / data read / wait | status |
+|---|---|---|
+| port_game_boot | RcpMgr service; port_uso_init (bootup.uso + static initialisers); **port_sysapi_install** | covered (app_staticInit's `mem_new` bind is ambiguous: 16.6) |
+| boot_main | osCreateViManager, osCreatePiManager, osViSetMode (VI mode table, big-endian: `width` wrong, harmless headless), SetSpecialFeatures, osViBlack; dma_init (10 queues); SysApi warn / err / memStart / memEnd; the six hook stores | covered (shim, SysApi) |
+| SnowBoard_ctor | `fileInfo` x3: rom/audio_seq.uso, audio_wave.uso, audio_bank.uso (data-only: fileInfo, no usoLoad); `snd_Init` -> AudioLoad_Init (queues, osCartRomInit / DriveRomInit, heap pools, `port_audio_swap_static`; no blocking receive, no DMA); App_ctor | covered |
+| SnowBoard_ctor | `SNOWBOARD_E800->vptr = ...` = a store to `stream_readS32_00000008 + 0x20` | **BLOCKS**: on the port that symbol is a function in .text (SIGSEGV); the object is gSnowBoard (bootup Bss 0x58) + 0x28. The ROM spelling needs a PORT form (`port_bootup_bss + 0x80`) |
+| SnowBoard_ctor, app_runInit / app_runOneFrame, App_softReset | C++ virtual calls (`root->f()`, `a1->v3 / v4 / v15`, `v12`) | **BLOCKS**: g++ reads the vptr at +0 with 4-byte entries; the game's objects hold a cfront vptr at +0x28 with 8-byte entries (16.6's `_ZTV` question, now on the boot path) |
+| App_main | sys_getRegion + Mem_init (memEnd as a size); app_initSystem: console window, fault thread (parked), pad_initGlobal (osSetEventMesg SI, osContInit, osPfsIsPlug / InitPak, osMotorInit; pad thread parked), SRAM handle | covered |
+| App_main | `sys_pollDevices` -> `boot_checkStacks_00066AF0` | **BLOCKS**: the canaries are never written (boot_startThread skipped) and the checker reads `gl_storage_66B64_threadRegion`, which match_imports' context defines as its own host array: sys_fatal ("mainThread stack overflow") and `for (;;)`. Runs twice before InitInstance |
+| App_main | `pad_sendMsg` (osSendMesg BLOCK, queue of 4) twice before the first `pad_portFrame` | unknown, low: a full queue would be a DEADLOCK report |
+| GfxLib_init | RcpMgr_ctor (`dma_read(0xB0000B70, 0x100)`: shim PI + immediate message), `gfx_waitRetrace` x3, osViSetEvent | covered (17.7); `gl_func_00000000` / `D_445AC_ga / gb` binds ambiguous |
+| dma_read | `dma_writebackCache` callees are mid-function entries (`gl_osSetIntMask+0x8`, `gl_osWritebackDCacheAll+0x4`) | link (binds-left) |
+| App_softReset | `import_80000310 != 0x17D7` -> sys_fatal | **BLOCKS**: osCicId (CIC-6103) is unresolved (undefined.txt, binds-left 132 / 167); the shim should define it = 0x17D7 and alias the token |
+| App_softReset | dma_waitAll, gfx_waitRcpIdle (drain), GfxLib_reset | covered |
+| SnowBoard_InitInstance | `fs_readRecord("rom/version.bin")`: fs_gdlOpenFile / ReadFile / CloseFile -> fileOpen / Read / Close; AnimDataMgr_ctor -> Node_Load("rom/anims.bin") | covered by port/fs; the fs_gdl* `D_00000000` sites are ambiguous (gSysApi 0x416A0 vs gHostio 0x3C768) |
+| SnowBoard_InitInstance | `sys_getResetType` reads `D_35360_X` (osResetType) | link: unresolved; alias it to the shim's `osResetType` (0 -> mode 0 = N64DEMO) |
+| GameFlow_create | `app_loadUso("rom/gui.uso")` (usoPreLoad + usoLoad; gui is in port/uso); pad_open x2; Backup_ctor / readOptions (SRAM); ImageFileMgr_ctor("rom/flowimgs.bin"); TextWin_ctor | covered |
+| GameFlow_startMode(0) | `app_printHeapOfType != 1` -> sys_fatal ("FLOW free blocks") | unknown: depends on the heap state |
+| GameFlow_startMode(0) | mode table (bootup Data 0xC52C, big-endian; entry 0 is 0 either way), `gModeUsoPaths[0]` = "rom/n64proc.uso"; loadProcUso -> usoLoad (in port/uso) | covered |
+| GameFlow_startMode(0) | `VT_SLOT(vptr, 0).fn` = n64proc Data 0xA4 -> n64_procMain | **BLOCKS**: every Text target in the blobs' reloc tables is 0 (below) |
+| n64_procMain | snd_playSeq, N64DemoProcess_ctor -> gui_spriteLoad x2 (big-endian sprite data), Fader_start, snd_postEvent, app_runProcess | covered (byte order: 16.5) |
+| app_runInit / OneFrame | hostio off (flag word 0); snd_PlayPlayer0Seq0 (queued); `while (flags & 4) yield` (not restructured); RcpMgr / pad drains, gfx_end | covered / unknown (the flags & 4 loop) |
+
+No blocking receive on this path waits on a parked thread's queue: each one follows a PI / SI action
+the shim completes at once.
+
+**Still blocks a headless boot, ranked:**
+1. **Every Text target in `port/gen/uso_modules.c` is 0** (1 bound, 3303 written as 0; 16.5 had
+   3161 bound): vtables and callbacks in every module blob are NULL. Cause: 785b18c0b made
+   `port_defined()` (port-gen-binds.py) return `(defs, data)`; `port-gen-uso.py` line 49 still does
+   `defined = pgb.port_defined(a.lib)`, so `nm in defined` is always false. Fix (agent-a):
+   `defined, _ = ...` and regenerate.
+2. **C++ virtual calls use the g++ layout** (vptr at +0, 4-byte entries); the objects hold a cfront
+   vptr at +0x28 with 8-byte {delta, fn} entries. On the boot path: SnowBoard_ctor `root->f()`,
+   app_runInit / app_runOneFrame `v3 / v4 / v15`, App_softReset `v12`. Needs a PORT spelling of
+   these calls through `VT_SLOT` (as the C callers do) or a donor-wide answer (16.6).
+3. **SnowBoard_ctor's vptr store** targets `stream_readS32_00000008 + 0x20` (a function on the port).
+4. **Stack canaries:** boot_checkStacks fatals; port_game_boot should write the canaries the way
+   boot_startThread_00066B64 does, into the array the checker reads (or the checker's region must be
+   aliased to bootup Bss).
+5. **osCicId** (`import_80000310`) and **osResetType** (`D_35360_X`) unresolved; App_softReset fatals
+   unless osCicId = 0x17D7.
+6. The ambiguous binds on this path (16.6): fs_gdl*, dma_writebackCache, GfxLib_init, App_softReset,
+   app_staticInit, SnowBoard_InitInstance, GameFlow_create / startMode / loadProcUso.
+7. Unknown: the "FLOW free blocks" heap check, the pad queue depth during boot, the `flags & 4` yield
+   loop.
+8. Byte order (17.7 item 3) and audio (15.6) as before; neither stops the boot by itself.
+
+## 18. M1/M2: byte order (run 620)
+
+agent-c run 620, on main 2a1ec167d. Commits on agent-c: 261bc1b15 (blob type map + swap hook,
+tools only) and 9bc3fa3e7 (game_libs reader swaps under PORT). Gate PASS before each (ROM
+byte-identical, 3288/3288). This section is uncommitted.
+
+### 18.1 USO data blobs: swap at blob-build time, by type (option a)
+
+Decision: **(a)**, a typed swap when the blob is built. Option (b), swapping at each read site,
+would mean editing thousands of loads through `D_00000000 + K`, and every C++ vtable / table walk.
+
+- **Generator:** `scripts/port-gen-blob-types.py [--report]` (needs `baserom.z64`, no build) writes
+  `port/gen/blob_types.tsv`: `module, section, offset, size, type, source`. It contains no ROM bytes.
+- **Hook:** `port/tools/blob_swap.py`. `gen-uso-blobs.py` calls `swap_section()` on each Data /
+  RoData section and incbins the swapped copy (`<out>.swapped/port_<mod>_<sec>.bin`).
+  - Runs typed u16 / u32 / f32 / u64 / f64 are reversed per element.
+  - u8, str, zero, unknown, conflict, ptr and audio stay as on the cartridge.
+  - CMake now depends on both files. agent-a: the only change to your tool is that hook call.
+- **Typing sources.** All of them come from the ROM's own USO records, so modules with no `src/`
+  are covered too:
+  - **access:** every HI16/LO16 TextReloc pair in every module's Text, with imports followed to
+    the exporter. The LO16 opcode gives the width (lb/lh/lw/lwc1/ldc1/ld and the stores).
+  - **field / index:** an `addiu %lo` base is followed forward through the function. Loads off
+    `base + k` type that field. Loads off `base + index` type one element, and the run is
+    extended to the next symbol or pointer target. Float runs stop at an implausible exponent or
+    at text: bootup RoData 0x2588 `"NaN\0Inf\0"` ends the powers-of-ten table.
+  - **ptr:** DataReloc / RoDataReloc words. port/uso writes them in host order, so they are never
+    swapped.
+  - **shape:** shape command streams (GRAPHICS 7.1). On the cartridge each command word is
+    `argc << 16 | op`, which makes the stream self-describing. Their arrays are typed too:
+    - op 27 verts: s16 x 3 per vertex;
+    - op 28 tris: PolyTri, u16 x 4;
+    - op 26 triList; op 32 remap: u16;
+    - op 34 normals: f32 x 3;
+    - op 9 vertex colours: u32;
+    - op 4: s8 x 3 per vertex (charsel 0x60CD8 = (0, -127, 0) x 4: byte normals);
+    - op 7 / 8: bytes.
+  - **mats:** GDL_MC material streams reached from op 29. The parseMats tokens are 100 / 101 / 0,
+    and each material is commands up to 0. A material's op 203 types its texture:
+    - texels stay **bytes**, because libultraship's Fast3D reads texels and TLUTs big-endian,
+      byte by byte;
+    - image records (`texFlags & 0x10`, 5 words) and CI records (4 words) are u32.
+  - **str:** printable runs of 4 or more bytes ending in NUL. **zero:** runs of 8 or more zero
+    bytes.
+  - **audio:** bootup Data 0x17D50-0x1A2E0, 0x1CB00-0x1CDE0 and 0x1D620-0x1E0D0. These are
+    excluded because `port_audio_swap_static` swaps them at run time (15.6).
+- **Coverage (1,121,552 blob bytes):**
+
+  | type | bytes | % |
+  |---|---:|---:|
+  | unknown | 585,197 | 52.2 |
+  | u8 (texels, byte arrays) | 323,464 | 28.8 |
+  | zero | 72,533 | 6.5 |
+  | u16 | 54,312 | 4.8 |
+  | str | 28,490 | 2.5 |
+  | ptr | 22,812 | 2.0 |
+  | u32 | 18,644 | 1.7 |
+  | audio | 13,088 | 1.2 |
+  | f32 / f64 | 2,240 / 768 | 0.3 |
+  | conflict | 4 | 0.0 |
+
+  So **47.8% is typed**. Code-module coverage is high:
+  - every proc USO is at 0-1% unknown, except titproc 26%, genproc 32% and game Data 33%;
+  - bootup RoData 8% unknown; bootup Data 34%;
+  - the boarder banks 4-12%; heli, charfir and charsps 0-3%.
+- **Unknown, by module:**
+
+  | module | unknown bytes | % of the section |
+  |---|---:|---:|
+  | charsel | 393 K | 98 |
+  | map5_data | 69 K | 96 |
+  | bootup Data | 64 K | 34 |
+  | gamegfx | 15 K | 80 |
+  | fire | 9 K | 96 |
+  | titproc | 5 K | |
+  | n64proc | 4.5 K | |
+
+  - **charsel:** 256x256 8-bit images, 0x200 TLUTs and 16-byte records {0x110, 0x100, image ptr,
+    TLUT ptr}, which genproc code loads, not a material stream. Texels need no swap, so leaving
+    them unknown (unswapped) is right. The records are 4 x 4 words, about 0.1% of the bytes.
+  - **map5_data:** the course PolyShape and its collision grid (op 35 collGrid; layout open,
+    ENGINE_CORE / SYSTEM_LAYER 7). Only 2 KB of shape arrays were found. The **course mesh is
+    the biggest correctness gap** for M3.
+  - **bootup Data 64 K:** game_libs tables reached only through pointers or C++ objects, such as
+    vtables (ptr) and the data of objects the static initialisers build.
+  - Known mis-typing: `osViModeTable` (bootup Data 0x2D71C, 0xD04 bytes) is typed u32 by an
+    index run. Its first byte, `type`, is a u8 and would move. The port's VI shim does not read
+    the table.
+- **Conflicts:** 4 bytes at bootup Data 0x1C0AC-0x1C0AF, read as a u32 and as a u8 at +3. They are
+  not swapped, and the reader must be fixed at the read site.
+- **Rerun** the generator whenever `port/gen/uso_blobs.tsv` changes (agent-a's port-gen-uso.py).
+  `--report` prints the per-module table and the conflicts.
+
+**Still to do (M2):**
+1. Type the charsel / gamegfx image records from the genproc readers.
+2. The map / collision format (needs COURSE 5).
+3. The skin / anim / node-list data inside the boarder banks. 4-12% of each bank is still unknown.
+4. Feed the C declarations of `kRo*` and `D_*` objects in `src/` in as a further source, by array
+   type and dims through aliases.ld. The ROM-access pass already catches every scalar they load.
+
+### 18.2 rom/*.bin files: swap in the readers (implemented for game_libs)
+
+| family | format | reader | treatment |
+|---|---|---|---|
+| parm streams (`board1-9`, `player*`, `racecol`, `selinfo`, `selwin*`, `1psel`, `2psel*`, `flare3/5`, `cam_ca`, `lookat_ca*`) | {tag char[4], size s32, int / float / quad / vec3}, ending with tag -1 | `Parms_load_00035C6C` (match_imports) and the per-class read slots | reader swap |
+| env (`map0N*_env`, `halfpipe_env`, `onemake03_env`) | {tag, size, op payload} records up to 0, then flags and clip words | `EnvSettings_load` (donor bootup_uso_ncc_7328.cpp) via `stream_readS32_*` | reader swap (bootup copies: to do) |
+| items / markers (`map0N_item` / `_mark`, ...) | ItemMgr stream: type tag, size, count, pos 3 x s32, parm stream | `ItemMgr_Load`, `ItemType_load`, `ColourItem_load`, `CourseMarker_readParms` | reader swap (the layout does not matter at the reader) |
+| `cam_info.bin` | numPaths, then CamPaths (Quad modes, keys of 0x38 bytes, all 4-byte fields), then lists | `cam_readParms_00001644`, `camPath_read`, `camKey_read` (game_uso) | reader swap (game_uso `stream_read*`: to do) |
+| `anims.bin` | {cmd, val} records; AnimKey 8 bytes; frame data s16 x 7 per node key | `AnimDataMgr_loadFile`, `AnimGroup_load`, `AnimData_load` | **at extraction**: bulk `fs_gdlReadFile` reads walked as s16 later; the stream describes itself |
+| `flowimgs.bin` | ImageFile {cmd: 1 = w, h; 2 = format; 4 = size + texels; -1 = end} | `ImageFile_load_00068990` | reader swap for the cmds (done: 681F4 / 68280 / 682BC); texels stay bytes |
+| `tricks.bin`, `version.bin` | 64-byte entries (name + mixed u16 / u32); AppVersion s32[17] + strings | `TrickTable_readEntry_0000C12C`, `fs_readRecord_00041F90` | at extraction, once the layouts are decoded |
+| shape assets in `mapN_data.uso` | USO Data | (18.1) | blob swap |
+
+- **No swap in `fs_gdlReadFile`.** It does not know field widths, and bulk reads have the same
+  sizes as the templates (AnimData keys: n = val x 8).
+- **The readers are a template copied 155 times.** Each copy reads 2 / 4 / 12 / 16 bytes through
+  `fs_gdlReadFile` into a scratch buffer and assigns it.
+- **Done (9bc3fa3e7):** the 51 game_libs copies that use the `CALL(fs_gdlReadFile)(&gSysLib, buf,
+  N)` form (`fs_gdlRead{Int,Float,Quad,Vec3}_*`) now call `PORT_BE_SWAP32S(buf, N)` under PORT
+  before the assignment. The macro lives in `port/include/port.h`, which every port TU
+  force-includes.
+- **Tag hazard: `fs_gdlReadInt_00035AA4` is left unswapped.** It is Parms_load's tag reader. Tags
+  are compared against `*(s32 *)"ied"` loads from USO Data, which stay unswapped (`str`). An
+  unswapped file tag compares equal on any host. The end marker -1 is the same in both orders.
+  `fs_read_00066404` is also left alone (use unknown).
+- **To do:** the FCALL / GCALL / XCALL copies:
+  - `bootup_uso.c`, `bootup_uso_o0_F1F0.c`, `bootup_uso_tail4.c`: `stream_read{S32,F32,Vec3,Quad,16}`;
+  - `game_uso.c`;
+  - the `_edd_ / _h2h_ / _mgr_ / _tit_ / _arc_ / _boarderN_` copies.
+
+  Same one-line insertion: `PORT_BE_SWAP32S`, and a 16-bit variant for `stream_read16_000089FC`.
+  Before swapping any of them, check whether its caller reads a tag with it: `stream_readS32_00005EF8`
+  in EnvSettings, and ItemMgr_Load's own 4-byte tag read must stay unswapped.
+
+### 18.3 Bitfield audit
+
+IDO allocates bitfields MSB-first, gcc / clang on x86 LSB-first. A bitfield word is a problem only
+when (i) it comes from cartridge data, or (ii) one access goes through the bitfield and another
+through masks, shifts or byte loads. If every access goes through the members, the word is
+consistent on any compiler, **as long as every view agrees**. That last condition is the catch:
+each audio flag word is redeclared in about 30 per-file local views. A reversal under PORT must
+therefore cover every view at once, or none.
+
+| struct (decl) | unit | data from | mixed access (evidence) | PORT treatment |
+|---|---|---|---|---|
+| `Sample` + 6 views (audio.h:136, post.c 6915 / 7061 / 3413 / 4074, ctx) | u32 | cartridge fonts | `GL2495C_*` (already PORT) | **done** (15.6 re-pack) |
+| `NoteSampleState` (audio.h:692 + ~8 views) | u32 / u8 | runtime; template `gDefaultNoteSub` in bootup Data (byte 0 bit-reversed in 15.6) | post.c:276 `*(u8 *)elem & 0xFF7F` (clears `enabled` as bit 7) | accessor: `0xFFFE` under PORT |
+| `SequencePlayer` (audio.h:419 + 9 views) | u32 (byte 0) | runtime | post.c:7646, 7949 `*(u32 *)p >> 31`; match_imports/AudioSeq_InitSequencePlayer.c:9-13 byte masks 0x80 / 0xDF / 0xF7 / 0xEF / 0xFE | **accessors**: keep the declarations; `AUDIO_FLAGBIT(n)` = `1 << (7 - n)` on IDO, `1 << n` on PORT; `>> 31` becomes `*(u8 *)p & 1` |
+| `SequenceChannel` (audio.h:472 + views) | u32 (bytes 0-1) | runtime | post.c:7953, 9726 `>> 31`; 9584-5 `(w << 9) < 0`; 9581 / 9618 `changes \|= 0x80`; 10392-3 `& 0xFF7F`, `\| 0x40` | accessors (same macro, byte 1 for `changes`) |
+| `SequenceLayer` (audio.h:547 + ~10 views incl. ctx `GlPooledFlags`, post.c:8707 plain `u8 bits0`) | u32 / u8 | runtime | post.c:7960 `>> 31`; 8732 `&= ~8`; 9623-7 `& 1`, `& 0xFFFE`; 10270-80 `\|= 0x80`, `&= ~0x40 .. ~0x01` | accessors |
+| `Stereo` union (audio.h:394 + 3 views) | u8 | **sequence script bytes** (cartridge) | 2BB7C:352 `asByte = cmd & 0x7F`; 2AD1C:176 `asByte = ScriptReadU8`; 273B8:88 | **bit-reverse the byte** at the 3 `asByte =` writes (`port_bitrev8`), or reversed declarations in all 3 views |
+| `AdsrState.action` (audio.h:632 + 4 views) | u8 | runtime | post.c:8192-4 `(f60 & ~0xF) \| 1`, 8223 `&= ~0x0F` | reversed declarations in all 5 views, or 2 accessor sites (`& ~0xF0`, `\| 0x10`) |
+| `Bf5B5D8` Mem block header (post0b.c:22679, used at 22681) | u32 | runtime heap | Mem_* whole-word masks `& 0xFFFFFF`, `>> 24`, `(x & 0xFF) << 24` | **reversed declaration** under PORT (`low:24; top:8`): every other access is whole-word |
+| `d14c_flags` (timproc_uso_b5.c:7629) | u32 | - | members never used (masks only) | safe |
+| kernel / rmon bitfields (kernel_000_c.c:145, kernel_014.c:16, kernel_022_d.c:92, 119) | - | - | excluded from the port (port/ultra) | n/a |
+
+None of the other bitfield structs is loaded from cartridge data. `include/libultra` and
+`include/match_imports` have no bitfields.
+
+**Riskiest, in order:**
+1. **Liveness tests always fail.** The `>> 31` reads of player / channel / layer `enabled` read
+   bit 7 of byte 3 on x86, so channels and layers are skipped or run when they should not.
+2. **Channel change flags.** Volume and pan updates follow unrelated bits.
+3. **Layer init.** `\|= 0x80` sets `notePropertiesNeedInit`, not `enabled`.
+4. **Stereo from script bytes.**
+5. **ADSR state nibble.** Envelopes never start or stop.
+6. **Mem block headers** (every heap): `Mem_setBlockType` corrupts block sizes. It is **not
+   audio-only**, and it is the first one to fix (M1 boot).
+
+**Limits:**
+- Not checked: every USO's code for byte loads of the Mem header type byte, and every
+  match_imports copy for further views of the audio flag words.
+- The accessor work is M4 (audio trusted), **except the Mem header, which is M1**.
