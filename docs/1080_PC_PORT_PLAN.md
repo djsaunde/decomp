@@ -76,10 +76,13 @@ These are the recommended defaults. Each one is a decision the user should confi
    command set, rendering through OpenGL or D3D11 / Vulkan. Do not hook `PolyShape_display` directly: the
    display-list path keeps the game code unchanged and gives one place to fix rendering. The first spike
    (M0) must confirm that Fast3D covers every command the game emits.
-3. **Audio: reuse a CPU implementation of the OoT audio ABI.** The driver is OoT's (1080_AUDIO.md, "state
-   for porters"). Ship of Harkinian already runs this exact synthesis-command ABI on the CPU. Keep the
-   sequence player and synthesis code from the decomp. Replace the RSP task with a CPU mixer that consumes
-   the same command list. Replace `osAiSetNextBuffer` with the host audio stream.
+3. **Audio: our own CPU implementation of the OoT audio ABI** (decided 2026-11-16). The driver is OoT's
+   (1080_AUDIO.md, "state for porters"). Keep the sequence player and synthesis code from the decomp.
+   Replace the RSP task with a CPU mixer, written from scratch in `port/audio/`, that decodes and executes
+   the game's own command list. Replace `osAiSetNextBuffer` with the host audio stream.
+   - **Licence:** the SoH / sm64-port mixer.c has no clear licence, so we do not copy it. It may be read
+     only to cross-check behaviour.
+   - **Graphics:** builds on libultraship (MIT), pinned.
 4. **USO system: static link** (USO_FORMAT section 13). One executable. `uso_load` / `uso_unload` become a
    registry of per-module init / fini. `CALL()` / `XCALL()` / `GL_DATA*()` / `INPUT_MGR()` become plain
    symbols under `PORT`. Mode-module Bss is re-zeroed when the module is "loaded", so its lifetime matches
