@@ -376,17 +376,20 @@ what the matching build does not compile, in the same way as the readability cen
   fields that hold pointers have no such hint (for example H2HWinsDisplay.race).
 
 Owners are the census owner() table (a / b / c / g / h, section 0). hdr = include/ headers. Snapshot at
-agent-a run 536 (main 999560745 plus that run's commits):
+agent-a run 549 (main 2acd57ec4 plus that run's commits; run 536 had A 484, B 171, C 32, D 497, H 49).
+Run 549 typed Node.name (const char *), Node.children (NodeLink *), Node.vptr (char *), Sprite.children
+and the skin.h SkinMgr / SkinAnim / SkinBone pointers; the vptr and name stores are most of the
+A* drop 387 -> 228 (`NODE(p)->vptr = (char *)&vtbl`). No retype so far has needed a `*(int *)&p->field` fallback.
 
 | pattern | a | b | c | g | h | hdr | total |
 |---|--:|--:|--:|--:|--:|--:|--:|
-| A: `(s32)&X` address -> int | 70 | 80 | 39 | 24 | 271 | 0 | 484 |
-| B: pointer expression -> int | 10 | 28 | 72 | 12 | 49 | 0 | 171 |
-| C: `*(int *)` load used as a pointer | 3 | 5 | 12 | 0 | 12 | 0 | 32 |
-| D: `*(T **)(p + K)` pointer at a fixed offset | 100 | 123 | 107 | 7 | 160 | 0 | 497 |
-| H: header field: int that holds a pointer | 0 | 0 | 0 | 0 | 0 | 49 | 49 |
+| A: `(s32)&X` address -> int | 68 | 60 | 25 | 9 | 161 | 0 | 323 |
+| B: pointer expression -> int | 10 | 27 | 72 | 11 | 38 | 0 | 158 |
+| C: `*(int *)` load used as a pointer | 1 | 3 | 12 | 0 | 7 | 0 | 23 |
+| D: `*(T **)(p + K)` pointer at a fixed offset | 81 | 75 | 64 | 4 | 61 | 0 | 285 |
+| H: header field: int that holds a pointer | 0 | 0 | 0 | 0 | 0 | 40 | 40 |
 
-A* (the `(s32)&X` is a store right-hand side): a 46, b 64, c 29, g 17, h 231; total 387.
+A* (the `(s32)&X` is a store right-hand side): a 44, b 42, c 15, g 2, h 125; total 228.
 
 Owners: the census owner() table (a / b / c / g / h); hdr = include/ headers (pattern H only).
 
@@ -394,33 +397,33 @@ Top 10 files (A+B+C+D):
 
 | file | A | B | C | D | total |
 |---|--:|--:|--:|--:|--:|
-| `src/game_libs/game_libs_post0b.c` | 48 | 25 | 5 | 119 | 197 |
-| `src/game_libs/game_libs.c` | 62 | 36 | 0 | 1 | 99 |
-| `src/bootup_uso/bootup_uso.c` | 37 | 0 | 1 | 41 | 79 |
-| `src/timproc_uso_b5/timproc_uso_b5.c` | 15 | 4 | 8 | 43 | 70 |
-| `src/bootup_uso/bootup_uso_90CC.c` | 55 | 0 | 4 | 4 | 63 |
-| `src/game_libs/game_libs_post.c` | 2 | 7 | 4 | 45 | 58 |
-| `src/game_libs/game_libs_post1b.c` | 32 | 3 | 0 | 4 | 39 |
-| `src/game_uso/game_uso.c` | 19 | 11 | 0 | 4 | 34 |
-| `src/timproc_uso_b5/timproc_uso_b5_4118.c` | 1 | 33 | 0 | 0 | 34 |
-| `src/bootup_uso/bootup_uso_ncc_55A0.cpp` | 28 | 0 | 0 | 0 | 28 |
+| `src/game_libs/game_libs_post0b.c` | 39 | 24 | 3 | 73 | 139 |
+| `src/game_libs/game_libs.c` | 45 | 34 | 0 | 0 | 79 |
+| `src/timproc_uso_b5/timproc_uso_b5.c` | 14 | 5 | 8 | 35 | 62 |
+| `src/bootup_uso/bootup_uso_90CC.c` | 44 | 0 | 4 | 4 | 52 |
+| `src/game_libs/game_libs_post.c` | 2 | 7 | 4 | 20 | 33 |
+| `src/timproc_uso_b5/timproc_uso_b5_4118.c` | 0 | 32 | 0 | 0 | 32 |
+| `src/game_libs/game_libs_post1b.c` | 21 | 3 | 0 | 2 | 26 |
+| `src/bootup_uso/bootup_uso.c` | 12 | 0 | 0 | 12 | 24 |
+| `src/bootup_uso/bootup_uso_tail3a_10C8C.c` | 18 | 0 | 0 | 1 | 19 |
+| `src/bootup_uso/bootup_uso_ncc_55A0.cpp` | 16 | 0 | 0 | 0 | 16 |
 
 Top 10 functions:
 
 | function | file | owner | sites |
 |---|---|--:|--:|
-| `SnowBoarder_ctor` | `src/bootup_uso/bootup_uso_90CC.c` | h | 63 |
-| `SelectWin_ctor` | `src/timproc_uso_b5/timproc_uso_b5_4118.c` | c | 34 |
+| `SnowBoarder_ctor` | `src/bootup_uso/bootup_uso_90CC.c` | h | 52 |
 | `ColourParms_ctor` | `src/game_libs/game_libs.c` | h | 33 |
-| `item_registerTemplates` | `src/bootup_uso/bootup_uso_ncc_55A0.cpp` | h | 28 |
+| `SelectWin_ctor` | `src/timproc_uso_b5/timproc_uso_b5_4118.c` | c | 32 |
 | `GameFlow_startMode` | `src/bootup_uso/bootup_uso_tail3a_10C8C.c` | h | 19 |
 | `CourseGadgetParms_ctor` | `src/game_libs/game_libs.c` | h | 17 |
-| `DNode_ctor` | `src/game_libs/game_libs_post1b.c` | b | 17 |
+| `item_registerTemplates` | `src/bootup_uso/bootup_uso_ncc_55A0.cpp` | h | 16 |
+| `DNode_ctor` | `src/game_libs/game_libs_post1b.c` | b | 16 |
 | `SelItemParms_ctor` | `src/timproc_uso_b5/timproc_uso_b5_ncc_2B74.cpp` | c | 15 |
-| `U64BGWall_func_00001A44` | `src/bootup_uso/bootup_uso_ncc_1A44.cpp` | h | 14 |
 | `SelectionMgr_setSplit_00001DB0` | `src/timproc_uso_b5/timproc_uso_b5.c` | c | 14 |
+| `GfxLib_hostioParms` | `src/match_imports/GfxLib_hostioParms.c` | a | 13 |
 
-Pattern H per header directory: `include/game` 15, `include/gdl` 34.
+Pattern H per header directory: `include/game` 17, `include/gdl` 23.
 
 Reading it: A and H are the bulk of the work, and both come from the same convention. Node / Parms /
 gadget fields are declared `s32` because the ctors store addresses into them through int-cast bases
