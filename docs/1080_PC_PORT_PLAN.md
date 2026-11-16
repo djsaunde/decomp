@@ -19,6 +19,11 @@ first; this plan does not repeat them.
 10. M0 results: extractor and audio
 11. M0 results: graphics coverage
 12. M0 results: source map and compile census
+13. M1: build skeleton
+14. M2 prep: libultraship patch series
+15. M1: audio mixer
+16. M1: link plumbing (CALL names, bound placeholder calls, data blobs / aliases, port/uso)
+17. M1: libultra shim and main loop
 
 ---
 
@@ -1024,3 +1029,832 @@ The multiple-definition symbols break down as:
 4. **Names:** give the 30 renamed `.cpp` donors their shipped names under PORT (`extern "C"` wrappers or
    `asm` labels).
 
+## 13. M1: build skeleton
+
+Run 608 (agent-a), on main a0e51fe6b. This builds on section 12. Files:
+- `scripts/port-gen-build.py` (generator);
+- `port/tools/cc-select.py` (compiler launcher);
+- `port/CMakeLists.txt`, `port/main.c` (empty `main`), `port/include/port.h`;
+- generated: `port/gen/sources.cmake`, `port/gen/tu/*.h`, `port/gen/excluded.tsv`;
+- `scripts/port-undefined.py`, which writes `port/undefined.txt`.
+
+src/ is untouched, and the gate passes.
+
+```
+scripts/port-sourcemap.py && scripts/port-gen-build.py
+cmake -S port -B <build> -G Ninja && cmake --build <build>      # -> libgame.a
+scripts/port-undefined.py <build>/libgame.a                       # selection check + port/undefined.txt
+```
+
+### 13.1 Per-function selection (12.3 step 1): at the assembly level, src/ untouched
+
+`port-sourcemap.py` now writes a 7th column `note` holding the rename / sub-symbol information.
+`port-gen-build.py` turns the source map into one forced-include header per translation unit that
+needs one: 153 of the 462 units, in `port/gen/tu/<src path with / -> __>.h`. Each header has:
+- `#pragma weak SYM` for every body this unit must not supply. gcc then treats the placeholder as
+  interposable, so it never inlines it, clones it or propagates IPA facts from it.
+- `/* port-drop: SYM */` directives. `cc-select.py` is set as `CMAKE_<LANG>_COMPILER_LAUNCHER`. It
+  compiles such a unit with `-S`, renames the unit's own definition of SYM to a local
+  `__port_dead_SYM`, drops its `.weak`, and assembles the result. Every reference in the unit keeps
+  the name SYM and binds at link time to the one shipped body. The dead copy is unreferenced, and
+  `--gc-sections` drops it. Units without a header compile unchanged.
+- `/* port-alias: NEW TARGET */` for the C++ renames, and `/* port-noinit */` / `/* port-local */`
+  (below).
+
+Why not the alternatives:
+- `PORT_SKIP_<fn>` guards in src/ would mean about 3400 edits.
+- objcopy cannot do it. `--strip-symbol` / `--remove-section` refuse a symbol that relocations
+  name, and `--redefine-sym` also renames the unit's references.
+
+| drop reason | bodies |
+|---|---:|
+| helper copy (`extra`: match_imports context headers, donor helpers) | 3110 |
+| host placeholder (`c`) | 295 |
+| an excluded function inside a kept unit (13.2) | 6 |
+| **total** | 3411 |
+
+The other two directive kinds:
+- **`port-local`:** the 1242 asm-processor `_asmpp_large_func*` stubs in the match_imports context
+  headers are made file-local. They cannot be dropped: gcc's ICF folds them into tail calls to one
+  another.
+- **Tentative definitions:** `gl_storage_66B64_threadRegion`, defined in 7 match_imports units, is
+  merged by `-fcommon`. This matches IDO's common-symbol semantics.
+
+**The 31 renames** (30 cfront-mangled C++ donors plus `intern`) become global aliases (`.set NEW,
+TARGET`). The generator finds TARGET by compiling the donor with g++ and matching the cfront name
+`meth__<n>Class...` against the demangled gcc symbols. A constructor maps to its C1 symbol, for
+example `__ct__1GFi` -> `_ZN1GC1Ei` = `CoolGadget_ctor`.
+- A mangled TARGET is made local. Several donors each define their own `Obj` class, so
+  `_ZN3Obj3runEv` appears in both `RcpMgr_service` and `ScreenWindow_display`.
+- The 4 `__sti__` static initialisers map to gcc's `_GLOBAL__sub_I_*`:
+  - `app_staticInit_000412E8`
+  - `Window_staticInit`
+  - `boot_staticInit_00006204`
+  - `SnowBoard_staticCtor_0000E9FC`
+
+  Their `.init_array` entry is removed (`port-noinit`), so they run when port/uso "loads" the
+  module (decision 4), not before `main`.
+
+### 13.2 What is compiled
+
+The source map has 3288 functions. The port compiles **2931 of them, from 462 files (243 C, 219
+C++)**. `port/gen/excluded.tsv` lists the 357 it does not compile (decision 6):
+
+| excluded | functions | provided by |
+|---|---:|---|
+| kernel segment (libultra core, USO loader, ROM fs, rmon) | 174 | port/ultra, port/uso, port/fs |
+| game_libs libultra copies (`gl_os*`, `__osPfs*`, `__ll_*`, ...) | 126 | port/ultra |
+| asm (GLOBAL_ASM .s) | 43 | port/ultra / libm (`sqrtf`, `bcopy`, cache ops) |
+| game_libs libc copies (`_Printf`, `gl_sprintf`, `memcpy`, `strchr`, ...) | 14 | host libc wrappers |
+
+The gu functions (`guMtxF2L`, `guOrtho`, `guPosition`, `fsin` / `fcos`) are kept, per 4.3.
+
+**Flags** (`port/CMakeLists.txt`):
+- common: `-m32 -malign-double -msse2 -mfpmath=sse -ffp-contract=off -fno-strict-aliasing -fno-pie
+  -fno-stack-protector -ffunction-sections -fdata-sections -DPORT -include port/include/port.h`;
+- C: `-std=gnu89 -fcommon`;
+- C++: `-std=gnu++98 -fpermissive -fno-exceptions -fno-rtti`.
+
+Notes on the flags:
+- `port.h` defines an empty `GLOBAL_ASM(x)`. CMake drops function-like `-D` definitions.
+- `-fno-stack-protector` is needed because Ubuntu's gcc otherwise adds `__stack_chk_fail` (534
+  references).
+- `-fno-pie` matches a `-no-pie` link.
+- `PORT_LINK=ON` adds the `tenshoe` executable: `port/main.c` plus `--whole-archive libgame.a` and
+  `--gc-sections`. It needs gcc-multilib, which this machine does not have yet.
+
+**Result (gcc 11.4, cmake 4.4.5 + ninja from a uv venv):**
+- **462 / 462 objects built, 0 compile failures**, giving `libgame.a`.
+- `port-undefined.py` checks the selection against the archive:
+  - all 2931 kept functions are present: 2897 are defined exactly once as globals, and 34 are
+    `static` in their source and are local or inlined (the `stream_read*` / `fs_gdlRead*_mgr`
+    readers);
+  - 0 kept functions are missing or defined twice;
+  - 0 excluded functions are defined;
+  - **0 global symbols are defined twice** (2920 globals).
+
+### 13.3 What libgame.a needs from outside: `port/undefined.txt`
+
+`port-undefined.py` computes the list with `ld -m elf_i386 -r --gc-sections --gc-keep-exported
+--whole-archive` (no 32-bit libc needed). Every exported symbol is a root, so the dead placeholder
+copies drop out. Each undefined symbol is listed with whether it is referenced as a call, as data,
+or both.
+
+| group | symbols | call / data |
+|---|---:|---|
+| USO / CALL plumbing: import and placeholder call targets (`gl_func_*`, `*_import_*`, `gl_ref_*`, `<seg>_func_*`) | 917 | 801 / 116 |
+| USO / CALL plumbing: match_imports binding names (`scripts/match-bindings-*.json` renames) | 603 | 264 / 339 |
+| data aliases (`undefined_syms_auto.txt` `= 0`, `D_*` / `DF_*` / `DS_*`, `*_vtbl_*`, per-site aliases) | 2125 | 0 / 2125 |
+| libultra os* | 3 | data (`gl_osViModeTable_*`, `gl___osActiveQueue_*` aliases) |
+| gu* | 0 | |
+| libc | 3 | `memcpy`, `memmove`, `memset` (calls) |
+| other: C++ cross-donor references | 40 | ctors of mirror classes such as `SnowChaseActor::SnowChaseActor(char*, char*, char*)` and `BB::BB(void*)` |
+| other | 8 | `glv_2a44`, the `tim_imp_*` / `trk_imp_*` import aliases, `timproc_uso_b5_func_06970C_i` |
+| **total** | **3699** | |
+
+What this shows:
+- **The game reaches libultra only through placeholders today.** `CALL(gl_osRecvMesg)` expands to
+  `gl_func_00000000`, so no `os*` call is visible in the object files. Counting the `CALL` / `XCALL`
+  names in the compiled sources gives the shim's real surface: **69 excluded functions**.
+  - 59 libultra:
+    - messages / threads: `gl_osSendMesg` / `RecvMesg` / `CreateMesgQueue` / `SetEventMesg` /
+      `CreateThread` / `StartThread` / `SetThreadPri` / `YieldThread`, plus the
+      `__osDequeueThread` / `__osPopThread` / `__osDispatchThread` asm;
+    - PI / EPI DMA, plus `osCartRomInit` / `osDriveRomInit`;
+    - SI / controller: `osContInit` / `StartReadData` / `GetReadData`, `osPfsInitPak` /
+      `osPfsIsPlug`, `osMotorInit` / `Start` / `Stop`;
+    - SP tasks: `osSpTaskLoad` / `StartGo` / `Yield` / `Yielded`;
+    - VI: `osCreateViManager`, `osViSetMode` / `SetEvent` / `SwapBuffer` / `Black` /
+      `SetSpecialFeatures` / `SetX/YScale` / `GetCurrentLine` / `GetCurrentField`;
+    - `osAiSetFrequency`, `osGetTime`, `osSetTimer`, `gl_osVirtualToPhysical`, `osInitialize`,
+      `gl_rmonPrintf`.
+  - 3 libc: `_Printf`, `gl_sprintf`, `memcpy`.
+  - 7 asm: `bcopy`, the cache invalidates, `__osRestoreInt`, `sqrtf`.
+
+  The other 1164 `CALL` names are game functions that the library already defines.
+- **Turning CALL into names is the next M1 step, and it is the plumbing work.** Decision 4 says
+  `CALL(f)` -> `f`. Measured with a forced-include `uso_call.h` replacement (`CALL(f) f`,
+  `XCALL(tok, f) f`): **136 of the 462 units then fail.**
+  - C++: 118 units. The callees are undeclared, because the NCC donors avoid `-I include`. Examples:
+    `mem_new`, `sys_fatal`, `dbg_printf`, `math_vec3Normalize`.
+  - C: 18 units, 157 errors. The errors are 90 "too many / too few arguments", 34 "conflicting
+    types", and 25 "void value not ignored": K&R placeholder calls against real prototypes, as the
+    section 13.2 caveat in USO_FORMAT.md predicts.
+
+  Fixing these needs PORT prototypes per callee, plus an `#ifdef PORT` in `include/uso_call.h`.
+  Once CALL expands to names, the 917 + 603 plumbing symbols mostly collapse into references the
+  library already defines.
+- **Data is the biggest group.** There are 2125 data aliases plus the data halves of the plumbing
+  groups. The game's initialised data lives in the asm data sections, which the port does not
+  compile, and every per-site alias is `= 0` in the matching link. Each alias needs a real
+  definition in its owning module, as USO_FORMAT 13.2 describes under "Linker aliases":
+  `uso-imports.py sites <module> --imports` names the owner.
+  - Option 1: emit the data sections as C / binary objects in M1, with the extractor providing the
+    initial bytes.
+  - Option 2: generate an alias table (`--defsym alias=owner+off`) from the USO relocations.
+
+### 13.4 Next steps (M1)
+
+1. **CALL -> names:** add `#ifdef PORT` to `include/uso_call.h`, and give the 118 C++ units the real
+   headers or prototypes under PORT. Then fix the 157 C prototype conflicts and re-run
+   `port-undefined.py`.
+2. **Data:** decide between data sections as objects and an alias table, then generate the
+   definitions for the 2125 aliases and the data-side plumbing.
+3. **Shim surface:** the 69 functions above, plus `memcpy` / `memmove` / `memset` from host libc.
+4. **C++ cross-donor references (40):** map each mirror-class constructor or method to the shipped
+   C symbol (`extern "C"` declarations under PORT), or alias it at link time.
+5. **Link:** once gcc-multilib is installed, build with `-DPORT_LINK=ON`. The link errors should
+   then equal `port/undefined.txt`.
+
+## 14. M2 prep: libultraship patch series
+
+> agent-b, run 611, 2026-11-16. The patches are in `port/third_party/libultraship-patches/` (README: the pin,
+> what each patch does, how it was checked). How LUS is pulled in, and its licence, are in
+> `port/third_party/README.md`.
+
+**Pin:** libultraship `759b13401cd6903daa67a00a753066f791622e78` (2026-09-02, the commit section 11 was
+measured against). Decision: a **git submodule** at `port/third_party/libultraship`, kept pristine, with the
+series applied by the port's CMake at configure time. `FetchContent` with `PATCH_COMMAND` is the documented
+fallback. The submodule is not added yet; the command is in `port/third_party/README.md`.
+
+### 14.1 The series (renderer changes 1-4 of 11.5)
+
+The four patches change only `src/fast/` and `include/fast/`, adding 260 lines and removing 10.
+
+| # | patch | 11.5 item | API for port/gfx |
+|---|---|---|---|
+| 1 | G_LINE3D for F3DEX 1.x | 1 | `gfx_set_target_ucode(ucode_f3dex_line3d)`: the F3DEX table with 0xB5 decoded as G_LINE3D. `GfxSpLine3D` draws a screen-space quad 1.5 + wd / 2 native pixels thick (the gbi.h definition), never culled |
+| 2 | 1-cycle blender reads the cycle 1 fields | 2 (invisible test only) | none. 0x0C4C3078 becomes a Z-only draw; the other 37 render words are unchanged (tested) |
+| 3 | deferred read-back | 3 | `gfx_readback_rgba5551(x, y, w, h, dst, bswap)`, `gfx_readback_depth_request(x, y)`, `gfx_readback_depth_get(x, y, &z)` |
+| 4 | texture-cache invalidation | 4 | `gfx_texture_cache_invalidate_range(addr, size)`, `gfx_texture_cache_delete(addr)` |
+
+**Read-back semantics (patch 3).**
+- A request is queued before `Run()` and served at the end of that `Run()`, after the frame is drawn and before
+  it is resolved or presented.
+- The data is therefore the frame just rendered, ready for the next update. That is one frame of latency, the
+  same as the N64, where a reader sees the last completed buffer (11.2).
+- The colour comes from the native-aspect centre of the game view, blitted down to 320x240 (nearest) and read
+  as RGBA5551. With `bswap` it is stored big-endian, like the N64 framebuffer image.
+- Depth is batched into one `GetPixelDepth` per frame. Its units put the far / cleared value at **0xFFFC**, so
+  Sun_measureVisibility's `== 0xFFFC` test works on the returned value with no N64 depth encoding, as long as
+  the PORT body compares the value it got back, not a byte-swapped buffer.
+
+**Port-side callers (PORT bodies, M2):**
+
+| site | call |
+|---|---|
+| ScreenThumbMat_grab | Read rows 58..217 (every 5th) and columns 32..287 (every 4th) through one `gfx_readback_rgba5551(32, 58, 256, 160, tmp, 1)` request, sampled on the CPU as before. Then `gfx_texture_cache_invalidate_range(pix, 0x1000)` |
+| Fader_buildTexture, Tv1Tmpl_stepPicture / blitFrame | One shared full-frame request, `gfx_readback_rgba5551(0, 0, 320, 240, fb, 1)`, per frame while either is live. The CPU sampling code is unchanged. Invalidate tex0 / tex1 and the two Tv1 screen textures |
+| Sun_measureVisibility | 9 x `gfx_readback_depth_request`; read last frame's answers with `gfx_readback_depth_get` (miss = treat as not visible) |
+| gfx_flushTexture | `gfx_texture_cache_invalidate_range(addr, size)`: the general hook at the osWritebackDCache site |
+
+### 14.2 Verification (run 611)
+
+What was checked:
+- `git am` of the series onto a fresh clone at the pin applies cleanly and reproduces the development tree.
+- `interpreter.cpp` compiles to an object with g++ 11.4 `-std=c++20 -Wall -Wextra` after each patch. There are
+  no new warnings against the unpatched file.
+  - The compile used local header-only copies of json, spdlog and ImGui, plus two stubs.
+  - LUS's real dependency set (SDL3, tinyxml2, ...) is not installed here.
+- `check_logic.cpp` (in the patch directory) tests copies of the new expressions:
+  - the blender test over all 38 render-mode constants;
+  - the G_LINE3D decode;
+  - the line thickness and parallelism under perspective (w != 1);
+  - the region clip and big-endian store;
+  - the invalidation range.
+
+What could not be checked:
+- Nothing was linked or rendered.
+- `DisplayListFactory.cpp` (patch 1 adds one `case` label) was not compiled, because tinyxml2 is missing.
+- No `-m32` C++ build: the host has no 32-bit libstdc++.
+
+### 14.3 Open items
+
+1. **What does real hardware do with 0xB5 under F3DEX 1.23?**
+   - LUS registers 0xB5 as G_QUAD for its F3DEX table, which is how the F3DEX tri microcodes read that opcode.
+     L3DEX, the line microcode, reads it as G_LINE3D.
+   - 1080 only ever loads F3DEX or F3DLP.Rej (GRAPHICS 5); no L3DEX setter exists. So on the N64,
+     gfx_emitLineBatch's packets may draw as quads (byte 24 = 0, v0, v1, wd / 2), that is, as garbage
+     triangles, or the line shapes may never be drawn in retail.
+   - This turns the 11.4 item "which objects draw G_LINE3D" into a gate for patch 1. Capture it on ParaLLEl-RDP:
+     - if lines appear, keep `ucode_f3dex_line3d`;
+     - if they never appear, select plain `ucode_f3dex` and drop patch 1;
+     - if they are drawn as quads on hardware, also select `ucode_f3dex` (faithful).
+2. **Line near clip.** GfxSpLine3D drops a line with an endpoint at w <= 0. Real L3DEX clips. Fix this only if
+   item 1 keeps the patch and a capture shows lines crossing the near plane.
+3. **Read-back orientation and alpha.**
+   - Row 0 = top was reasoned from the GL `invertY` flags, as in SoH's `gN64ResFrameBuffer` path. It was not
+     run, and D3D11 / Metal are unchecked.
+   - `ReadFramebufferToCPU` sets the 5551 alpha bit from the destination alpha. Where the game reuses a
+     read-back as an RGBA16 texture with alpha (ScreenThumbMat), the port may need to force bit 0 to 1.
+     Confirm against a capture.
+4. **Read-back cost.**
+   - The read is a synchronous `glReadPixels` of 320x240 at the end of the frame, only on frames that queued a
+     request.
+   - If profiling shows a stall, switch to a PBO ring. That moves to two frames of latency, still invisible for
+     a 64x32 thumbnail.
+   - Later optimisation: render ScreenThumbMat on the GPU through LUS's existing `RegisterFbTexture`
+     (11.2 table).
+5. **Threading.** Read-back results are written into game memory at the end of `Run()`. That is safe with the
+   single simulation thread of decision 5. A separate render thread would need a hand-off.
+6. **The other blender words (11.1):** the `P1 = MEM, B1 = 1` variants and the 26 + 17-word `use_alpha` /
+   `use_fog` check. Patch 2 only fixes the invisible test. Extend it once a capture shows which shapes use
+   these words.
+7. **Deferred renderer items 5-6 of 11.5** (the CPU overlay plane, the framebuffer registry for
+   Mat_fromFrameBuffer). They are not in this series.
+8. **Dependency licences.** LUS is MIT (two notices to ship; see `port/third_party/README.md`).
+   - Keep `ENABLE_SCRIPTING` off, because TinyCC is LGPL.
+   - prism-processor's licence is not yet checked.
+
+## 15. M1: audio mixer
+
+agent-c run 609. Code committed on agent-c (24289f7dc, plus a2c82424e for comments only; gate PASS on both); this section is uncommitted.
+It carries out decision 3: our own mixer, and no SoH / sm64-port code. SoH's mixer.c was read only to
+cross-check behaviour, and where it disagrees with 1080's ucode the ucode wins (15.3).
+
+### 15.1 What is in `port/audio/`
+
+| file | contents |
+|---|---|
+| `mixer.h` / `mixer.c` | `Mixer`: 4 KB DMEM image plus the ucode's non-DMEM state (SETBUFF in / out / count, codebook, loop address, filter count and coefficients, the envelope lanes and rates), a host `translate(addr)` for command-word addresses, and diagnostic counters. One `mix_*` function per opcode. The resample LUT is the 64 x 4 table from 1080's own ucode data image. |
+| `abi_decode.c` | `mixer_exec(w0, w1)` decodes one command with the bit layouts of 1080's builders (game_libs_post.c macros and AudioSynth_* wrappers, which are OoT's abi.h). `audio_abi_run(m, words, n)` walks a list. Opcode = `(w0 >> 24) & 0x7F`, as the ucode indexes it. |
+| `test_mixer.c`, `Makefile` | `make -C port/audio test` (C99, no dependencies, 64-bit host). |
+
+**Model.** DMEM is a byte array. s16 data in it is in host byte order (memcpy in and out), so the
+game's s16 buffers (AI buffers, reverb rings, ADPCM / resample / filter states, wave tables) move through
+LOADBUFF / SAVEBUFF unchanged. Byte streams (VADPCM frames, S8 samples) are read byte by byte and stay in
+ROM byte order. **Integration requirement:** codebooks and filter coefficients must be host-order s16, so
+the font loader swaps them (the test does this for the book it loads). Addresses are passed to
+`translate` whole: the ucode masks them to 24 bits, but a host pointer would not survive that.
+
+### 15.2 1080's aspMain, located and disassembled
+
+To check the uncertain opcodes I disassembled the game's own ucode (scalar ops with
+mips-linux-gnu-objdump, vector ops and LWC2 / SWC2 with a small decoder in the scratchpad).
+- **Text:** ROM 0xE16EDC, 0xF70 bytes, loaded at IMEM 0x1000. The splat blob
+  `game_libs_rsp_ucode_31DF8` starts 0xC bytes early (3 zero words), so `aspMainTextStart` =
+  game_libs 0x31E04. `AudioThread_UpdateImpl` uses it as both `ucode_boot` (size 0x1000) and `ucode`.
+- **Data image:** ROM 0xDBF730 = bootup Data +0x1D340, 0x2E0 bytes. It contains:
+  - DMEM 0x00 constants (0, 1, 2, -1, 0x20, 0x800, 0x7FFF, 0x4000);
+  - DMEM 0x10 the jump table;
+  - 0x40.. nibble masks, one-hot lane selectors, and the resample LUT at 0xE0.
+  The "7 aspMain variants" in tenshoe.yaml's bootup_uso_ucodes comment are gfx ucodes ("RSP SW Version
+  2.0D / 2.0H" with the SGI gfx team string). The audio data is this one.
+- **Dispatch:** at IMEM 0x1068: `lh v0, 0x10((w0 >> 23) & 0xFE); jr v0`. **The table has 24 entries
+  (ops 0-23).** Handlers are listed in 15.3. Op 16's handler (0x1780) is never emitted.
+
+### 15.3 Opcodes
+
+V = verified against the 1080 ucode handler; P = implemented from the documented ABI and the OoT usage,
+not yet checked against the ucode. "do-while" means the ucode always runs at least one block, so a
+count is rounded up to the block size and a 0 count still does one block (except where noted).
+
+| op | name | ucode | status | behaviour (where it is not obvious) |
+|---:|---|---|---|---|
+| 1 | ADPCM | 0x122C | P | 16 history samples written first (zero / loop state / saved state), then 32 output bytes per 9-byte frame (5-byte with flag 4); order-2 VADPCM, Q11, truncating `>> 11`, clamp |
+| 2 | CLEARBUFF | 0x1148 | V | count 0 = nothing; else 16-byte blocks |
+| 3 | UNK3 | 0x1EE8 | V | **not a no-op** (SoH: no-op). Per 16 samples, x = A[k] signed, y = A[8+k] **unsigned**: B[8+k] = low16(y·x) (VMUDN), B[k] = VMADN-clamp(2·y·x). VMADN-clamp: ACC[15:0] if ACC >> 16 fits s16, else 0 (negative) / 0xFFFF (positive). Do-while, 32 bytes |
+| 4 | ADDMIXER | 0x1DFC | V | saturating add; the 0x7FFF in w0 is ignored; do-while 64 bytes |
+| 5 | RESAMPLE | 0x14F0 | V (taps) | each tap is a VMULF ((2ab + 0x8000) >> 16), then **pairwise** saturating VADDs: sat(sat(t0+t1) + sat(t2+t3)). LUT row = fraction >> 10; step pitch·2 in Q16. State: 4 samples + fraction (32 bytes written back). History is written into DMEM before `in` (4 samples; flag 2: s0 s2; flag 4: each sample doubled) |
+| 6 | RESAMPLE_ZOH | 0x1E6C | V | byte position in << 16 \| accu, step pitch << 2, sample at (pos >> 16) & ~1; no state |
+| 7 | FILTER | 0x1CAC | P | flags > 1: count + 8 coefficients. Else 8-tap FIR in place with 32-byte state (8 history samples + last coefficients); coefficients = (old + new) >> 1; (Σ + 0x4000) >> 15 |
+| 8 | SETBUFF | 0x1178 | V | flags byte ignored |
+| 9 | DUPLICATE | 0x17C8 | V | writes **N** copies of 128 bytes, minimum 1 (SoH writes N + 1) |
+| 10 | DMEMMOVE | 0x11E4 | V | count 0 = nothing; forward copy in 16-byte blocks |
+| 11 | LOADADPCM | 0x1AA0 | P | count bytes of book |
+| 12 | MIXER | 0x1B30 | V | (2·out·0x7FFF + 2·in·gain + 0x8000) >> 16, clamp; no special case for gain -0x8000 (SoH has one); do-while 32 bytes |
+| 13 | INTERLEAVE | 0x118C | V | count = number of output s16 (L + R), do-while 8 |
+| 14 | HILOGAIN | 0x1C58 | V | in place at w1 >> 16 (w1 low half ignored): clamp((s·g) >> 4), g UQ4.4; do-while 32 bytes |
+| 15 | SETLOOP | 0x121C | V | |
+| 17 | INTERL | 0x182C | V | out[k] = in[2k], do-while 8 |
+| 18 | ENVSETUP1 | 0x1A1C | V | zeroes the whole volume vector; wet lanes = wet << 8 and that + rateWet |
+| 19 | ENVMIXER | 0x1880 | V | d = (s·vol) >> 16 XOR neg (bits 1 / 0 = -1); dry += d; w = (d·wet) >> 16 XOR (bit 3 → -4, bit 2 → -2); wet L / R += w (bit 4 swaps). The lanes hold vol for samples 0-7 and vol + rate for 8-15, and advance 2·rate per 16 samples. **The ucode doubles its rate registers in place** (`add s5,s5,s5`), so a second ENVMIXER without a new ENVSETUP1 ramps twice as fast; emulated. Count = samples, do-while 16 |
+| 20 / 21 | LOADBUFF / SAVEBUFF | 0x1A80 / 0x1A90 | V (fields) | (w0 >> 12) & 0xFF0 bytes |
+| 22 | ENVSETUP2 | 0x1A44 | V | |
+| 23 | S8DEC | 0x1B9C | P | as ADPCM, with byte << 8 |
+| 25 | UNK19 | none | V | **No table entry.** Op 25 reads table word 0x42 = 0x0F00 and jumps to IMEM 0x1F00, which is in the middle of op 3's loop, with whatever s2 / s3 / s4 / v28 / v29 the previous command left. That is undefined, so the port makes it a counted no-op (`n_unk19`) |
+
+Ops 0 (0x1F38, writes a trace record), 16 and 24+ are counted no-ops.
+
+### 15.4 Tests (`make -C port/audio test`)
+
+**147 checks pass, 0 fail** (gcc, x86-64).
+- **Hand vectors for every opcode:**
+  - saturation edges in ADDMIXER / MIXER / HILOGAIN;
+  - the VMUDN / VMADN clamps in op 3;
+  - envmixer negate / swap / ramp;
+  - DUPLICATE with 0 and 2 copies;
+  - resample, from zero history into a constant, and the half-speed row;
+  - ZOH;
+  - FILTER, load and crossfade;
+  - LOAD / SAVE, and an unmapped address.
+
+  Two of my first vectors were wrong by hand and were recomputed, not adjusted to fit. One of them
+  shows a real ucode effect: at half speed the pairwise VMULF rounding turns a constant 1000 into 1001 on
+  odd outputs.
+- **ADPCM:** a known 4-bit frame (zero book: the output is the nibbles; scale 2), a predictor book
+  (hand-derived 1, 2, ..., 3, 2), continuation from the saved state, 2-bit crumbs, and the loop flag.
+- **The decoder end-to-end:** a list of LOADBUFF / HILOGAIN / INTERLEAVE / SAVEBUFF words plus ops 25
+  and 16.
+- **A real sample:**
+  - The test reads the font table at bootup Data +0x1D620 and the sample-bank table at +0x1DFF0.
+  - Sample: font 0, instrument 1, codec ADPCM, 53298 bytes at bank 0 +0x4FD0, book order 2 x 2.
+  - It decodes 400 frames through the command list (LOADADPCM, then per 4 frames: LOADBUFF / SETBUFF /
+    ADPCM / SAVEBUFF).
+  - The output matches an independent reference VADPCM decoder in the test (0 mismatches). Peak 16695,
+    mean square 2.3e7: not silent, not clipped.
+- **Not run:** `-m32`. This host's gcc has no 32-bit libc headers. The code has no width
+  assumptions besides `uint32_t` addresses.
+
+### 15.5 Open questions (for the M4 emulator capture)
+
+1. **ADPCM (op 1) rounding.** The code uses the standard truncating `>> 11` with a 64-bit accumulator.
+   The ucode (0x122C) does it with VMUDN / VMADH chains. Disassemble the handler, or compare 1 frame
+   against an emulator.
+2. **FILTER (op 7)** averaging and rounding are unverified. Handler 0x1CAC is next to disassemble.
+3. **Op 3** is read straight off the disassembly. Its output (low 16 bits of a product) is a harsh
+   distortion, so confirm with a capture of a bookOffset-2 note, if the game has one.
+4. **Op 25:** does 1080 ever emit it (bookOffset 3)? If it does, the original's output depends on
+   stale RSP registers. Count `n_unk19` in a play-through.
+5. **RESAMPLE flags 2 / 4:** the history shapes are read off the ucode, but whether the stepping changes
+   is not. 1080's synthesis passes only 0 / 1 for the final resample. Check the reverb `resampleFlags`.
+6. **S8DEC (op 23)** and **LOADADPCM (op 11)** are not yet checked against handlers 0x1B9C / 0x1AA0.
+7. Fix the `game_libs_rsp_ucode_31DF8` comment and the tenshoe.yaml "7 aspMain variants" note (15.2).
+   These are owned by the readability side; I did not edit them.
+
+**Next (M4 integration):** call `audio_abi_run` from `AudioThread_UpdateImpl` under PORT in place of the
+OSTask. Use `translate = addr | 0x80000000` on the 32-bit build. Swap books / filters at font load, and
+SAVEBUFF into the AI buffer for the host stream (10.2).
+
+## 16. M1: link plumbing
+
+Run 612 (agent-a), on main e58ff9d67, commits f46b22b3d and cc6a576df on agent-a. The goal is a
+`port/undefined.txt` that holds only what the shim provides. src/ changes are `#ifdef PORT` only;
+the gate passes on both commits.
+
+### 16.1 CALL names under PORT (`include/uso_call.h`)
+
+- **C++ (the 219 NCC donors):** `CALL(f)` / `FCALL` / `GCALL` / `XCALL(tok, f)` expand to `f`.
+  `scripts/port-gen-decls.py <libgame.a>` writes `port/gen/decls_cpp.h`, which holds `extern "C"`
+  prototypes of the 243 callees the donors name. Every C++ unit force-includes it.
+  - **Source of each prototype: DWARF.** It comes from the shipped body's definition (the
+    sourcemap's unit wins over placeholder copies). Excluded shim functions get theirs from their
+    own sources, compiled once just for this. 3 are written by hand (`sqrtf`, `gl_sprintf`,
+    `gl_osSpTaskYield`).
+  - **ABI rules:**
+    - every pointer is `void *`;
+    - integer widths, float, double and long long are exact;
+    - K&R definitions get the promoted types;
+    - every prototype ends in `...`, because IDO-era callers pass extra arguments and i386 cdecl
+      ignores them;
+    - void callees are declared `int`, because donors read the v0 a void call leaves behind;
+    - by-value struct callers use `(...)`.
+  - **Units that declare a callee themselves:** 28 units get `-DPORT_NODECL_<name>`
+    (`port/gen/decls_skip.tsv`).
+- **C:** `f` is called through **the placeholder token's in-scope type**:
+  `(*({ extern __typeof__(tok) __port_call_N __asm__("f"); &__port_call_N; }))`. This is the type
+  the matched call was compiled against, so the arguments are passed as in the ROM. No prototype of
+  `f` is needed, and the 157 C prototype conflicts of 13.3 do not arise.
+  - **Implicit tokens:** some units rely on an implicit or block-scope `int tok()`. They get a
+    file-scope K&R `int tok();` in their tu header. `port-gen-build.py` adds it only when every
+    declaration of the token in that unit is exactly that.
+- **Source fixes (3 C++ donors, `#ifdef PORT`):**
+  - casts in 38C98 / 4D688;
+  - 34A78 calls `console_createSystemWin()` with no arguments. IDO passes its live `a0` through
+    `$a0`, so the port passes `a0` explicitly.
+- **Not detected by this scheme:** a C call with too few arguments compiles silently. Such a call
+  worked on N64 because the register still held a value (34A78 is one). The error list from the
+  naive `CALL(f) f` build (13.3: 90 "too many / too few") is the review list for M2.
+
+Result: **462 / 462 units build.** The excluded functions the library references are exactly the
+69 of the shim surface (13.3).
+
+### 16.2 Unnamed placeholder calls, bound per function from the ROM
+
+About 2000 call sites still spell a placeholder token without a CALL name, for example
+`timproc_uso_b5_alias(0x4F0)`, `func_00000000(self)` or `game_uso_func_055750(8)`.
+
+`scripts/port-gen-binds.py` runs after a full matching make:
+1. For every kept function whose shipped object is the ROM code (name-placeholder-calls' byte
+   guard), it resolves each jal reloc against a token the port leaves undefined, through the
+   module's TextReloc.
+2. It subtracts the CALL-named sites.
+3. A self-relocation through an address-pinned token (`gl_ref_00038174 = 0x38174`) resolves to
+   the function at that Text offset.
+4. If all of a function's remaining calls through one token reach one callee, it writes
+   `port-bind: FUNC TOK TARGET` into the unit's tu header. `cc-select.py` then renames TOK to
+   TARGET inside FUNC's assembly and its gcc clones.
+
+Results:
+- **1054 (function, token) pairs bound, covering 1915 sites** (`port/gen/binds.tsv`).
+- Left over (`port/gen/binds-left.tsv`):
+  - **104 ambiguous pairs.** One token reaches several callees, so these need CALL names: 83 are
+    `gl_func_00000000`, mostly in host units.
+  - **43 mid-entry jals.** About 30 are `Text+0x0` trampolines. The rest are libultra entry points
+    one or two instructions into a build symbol: `gl___osDisableInt+0x4`, `gl_osSetIntMask+0x8`,
+    `gl_osGetCount+0x8`, `gl_bzero+0xC`. These become shim entry points (`__osDisableInt`, ...).
+  - **7 sentinels**, which go to the module's Text+0 stub.
+
+Still unresolved call references:
+- `timproc_uso_b5_alias` (205): in the 4118 donor and in units whose functions gcc inlined, or
+  where the token is ambiguous;
+- `gl_func_00000000` (164): C++ donors' raw calls and the ambiguous pairs;
+- `gl2FB74_snd` (31), `glv_2838` (28), `gl_func_emit*` (44), `bu_cfa0_v` (19).
+
+Next: a C++ variant of the subtraction (per file), and binding sites that gcc inlined. Both are
+cheaper than naming the sites in the source.
+
+### 16.3 Measured: `port/undefined.txt` by group
+
+| group | 608 (13.3) | after 16.1 | after 16.2 |
+|---|---:|---:|---:|
+| plumbing: import / placeholder tokens (call / data) | 917 (801 / 116) | 664 (547 / 117) | **157 (40 / 117)** |
+| plumbing: match_imports binding names (call / data) | 603 (264 / 339) | 596 (257 / 339) | **346 (7 / 339)** |
+| data aliases | 2125 | 2213 | 2214 |
+| libultra os* + gu + libc (shim) | 6 | 74 | 76 |
+| C++ cross-donor (mangled) | 40 | 40 | 40 |
+| other | 8 | 8 | 1 (`glv_2a44`) |
+| **total** | **3699** | **3595** | **2834** |
+
+**Shim target list:** the 71 excluded names in `port/undefined.txt`.
+- These are the 69 of 13.3 (59 libultra, 3 libc, 7 asm) plus `osAiSetNextBuffer` and
+  `gl_osAiGetLength`. The binds found these two as real ROM callees.
+- Host libc must also provide `memmove` and `memset`.
+- The host hooks still to add are the mid-entry entries above.
+
+Data is now 92% of what is left (2214 aliases, plus 456 data-half plumbing symbols).
+
+### 16.4 Data: decision (implemented in 16.5)
+
+**Choice: (b), a variant of (a).**
+- **Blobs:** each module's Data / RoData / Bss becomes one host blob at the original layout
+  (`char <mod>_data[]` etc.). The extractor writes it from the ROM image (the module's own
+  sections, the same bytes the matching build links).
+- **Code references** to data aliases are bound **per (function, token) from the ROM HI16 / LO16
+  relocations**, exactly as 16.2 binds calls. The target is written as `<mod>_data+0xK` (gas
+  accepts `sym+off` operands), or as the import's symbol.
+- **Plain data symbols** (`D_*` / `DF_*` / `*_vtbl_*` with a single owner) get
+  `--defsym alias=<mod>_data+off` / `.set` in a generated assembly file.
+
+This reuses the proven reloc machinery: `uso-imports.py` already names every Data / Bss target.
+
+**Pointers inside the blobs are relocated at startup by port/uso**, which applies each module's
+DataReloc / RoDataReloc to its blob in memory, with the 32-bit host addresses. Why at startup
+rather than at link time:
+- The ROM reloc tables are the ground truth, and `uso_load`'s reloc pass is the reference
+  implementation.
+- Decision 4 already has port/uso re-initialise a mode module's Data / Bss on "load". The same
+  pass then restores pristine relocated data each time.
+- Link-time emission would need every blob split into per-word `.long sym+off` objects: more
+  generated code, and only useful for a 64-bit build. That build (M6) needs loader-side
+  deserialisation anyway.
+
+### 16.5 Data plumbing and port/uso (run 613)
+
+Run 613 (agent-a), on main af2525ad1, commit 5c0116e0b on agent-a. src/ untouched; gate PASS.
+
+```
+make                                                   # matching build (names, objects)
+scripts/port-gen-binds.py && scripts/port-gen-uso.py && scripts/port-gen-build.py
+cmake -S port -B <build> -G Ninja && cmake --build <build>       # libgame.a + libuso.a
+scripts/port-undefined.py <build>/libgame.a --extra <build>/libuso.a
+```
+
+**Binds and aliases (`scripts/port-gen-binds.py`).** Every reloc of a proven function against a
+symbol libgame.a does not define (the token universe now comes from `nm libgame.a`, not from
+undefined.txt, so a rerun is stable) is resolved through the module's TextReloc:
+- **Data** (HI16 / word; LO16 is the pair's second half): to `port_<mod>_<sec>+0xK`, K = the
+  Sym value (0 for a section-base Sym) + the token's matching-link value. The port asm keeps the
+  source's own addend, which is exactly what the ROM immediate holds beyond the token's value.
+- **jal:** the target is the Sym value + the instruction's field << 2. This resolves the
+  section-base self-relocations that 16.2 listed as `Text+0x0` mid-entries and most sentinels.
+- **Global aliases:** a token whose every site in every proven function (calls and data
+  together) reaches one target gets `tok = target;` in `port/gen/aliases.ld`, an implicit linker
+  script (the final link and port-undefined pass it to ld; gas `.set` cannot alias an undefined
+  symbol, it drops it silently). **3708 aliases: 1040 call, 2668 data.** Per-function binds
+  (`port-bind`) remain only for shared tokens: **121 pairs, 159 sites**.
+- **Mid-entry host hooks:** a jal into an excluded libultra copy binds to a host entry point
+  that port/ultra must implement: `gl_osSetIntMask_plus8` (4 sites + `gl_4DC44_word`),
+  `gl_osGetCount_plus8`, `gl_bzero_plusc`. (`gl___osDisableInt+0x4` no longer appears: those
+  sites were Text-base relocations.)
+- The C++ variant of the CALL-name subtraction is the same lexical scanner run on `.cpp` units.
+
+Left (`port/gen/binds-left.tsv`): 120 ambiguous (48 `gl_func_00000000`), 26 `unnamed` (targets
+in modules the build has no names for: nameent, viewrec, trnproc, and `Text+0x18` / `+0x718`
+callees), 15 unresolved, 1 sentinel.
+
+**Blobs.** `scripts/port-gen-uso.py` writes `port/gen/uso_modules.c` and
+`port/gen/uso_blobs.tsv` (names, sizes and offsets only). At build time CMake runs
+`port/tools/extract/extract.py` on `PORT_ROM` (default `../baserom.z64`; or `-DPORT_EXTRACTED=`
+an existing extract) and `port/tools/gen-uso-blobs.py`, which emits per section a read-only
+`port_<mod>_<sec>_init` (`.incbin` of the extracted section) and a zeroed writable
+`port_<mod>_<sec>` of the same size, plus `port_<mod>_bss`. 28 modules: the 25 code USOs with
+data, plus charfir / charsel / charsps, which code sites reference. 1.1 MB pristine, 1.4 MB
+writable.
+
+**Relocation table.** Each DataReloc / RoDataReloc R_MIPS_32 entry becomes `{offset, host
+address}`: `port_<mod>_<sec> + K` (K = Sym value + the word's addend), or a function name for a
+Text target. Counts: 3161 Text targets bound (vtables, callbacks), 707 Data, 496 RoData, 3 Bss;
+**1116 jump-table words** (`func+0xK` labels: the ROM's switch tables, never read by the host
+code), 143 Text targets in modules without port code (nameent 41, viewrec 35, heli 24, trnproc
+20, checkpoint 10, balloon 6, fire 5), 80 into data-only modules not kept (bgNtex, mapN_data,
+the rider banks), 14 unresolved Sym. Unbound words are written as 0.
+
+**port/uso** (`port/uso/port_uso.h`, `uso.c`): `port_uso_load(path)` looks the file name up,
+returns -0x13 if live / -0x14 if unknown (uso_load's codes), else copies `_init` to Data /
+RoData, writes the relocated words (host order: 32-bit host), zeroes Bss and runs the module's
+static initialisers (bootup: `app_staticInit_000412E8`, `Window_staticInit`,
+`boot_staticInit_00006204`, `SnowBoard_staticCtor_0000E9FC`, in Text order); returns the ROM
+module id. `port_uso_unload`, `port_uso_init` (loads bootup.uso). No libc headers (the machine
+has no 32-bit libc yet); `memcpy` / `memset` come from the host libc at link.
+
+**Byte order.** The blobs stay big-endian, as on the cartridge, except the relocated words
+(host order, since the code dereferences them). Every other multi-byte read of USO data needs
+the 4.4 swap; that is M2 work (a typed swap list per module).
+
+**Measured: `port/undefined.txt` (libgame.a + libuso.a + aliases.ld)**
+
+| group | after 16.2 | after 16.5 |
+|---|---:|---:|
+| plumbing: import / placeholder tokens | 157 | **20** (17 call, 3 data) |
+| plumbing: match_imports binding names | 346 | **5** |
+| data aliases | 2214 | **67** |
+| libultra os* + gu + libc (shim) | 76 | 75 (incl. the 3 `_plus` hooks) |
+| C++ cross-donor (mangled) | 40 | 40 |
+| other | 1 | 2 (`glv_2a44`, `gl_bzero_plusc`) |
+| **total** | **2834** | **209** |
+
+**Open issues found:**
+- **C++ objects defined twice.** libgame.a defines 17 data globals, mostly the objects the
+  static initialisers construct (`gGfxLib_412E8_a`, `gSysLib_412E8_i`, `gHostio_412E8_m`,
+  `gWindowDefaults_4E584_arr`, `gSnowBoard_func_0000E9FC_arg1`), and one unit defines
+  `D_00000000`. The game code reaches the same objects through the blob aliases, so the
+  initialiser and the readers see different memory. Fix: `port-drop` those data definitions
+  (cc-select) and alias them to the blob offset, like the tokens; and stop excluding the
+  defined `D_00000000` from the token universe.
+- **Unproven / inlined sites.** An alias is proven only on proven functions' sites. A token also
+  used in an unproven function (6 functions) or in a gcc-inlined copy follows the alias.
+- **Data references from data** (C initialisers naming a token) are not bound yet; they show in
+  the 67 data aliases.
+
+**Next:** the 120 ambiguous pairs need XCALL names in the source (gate-checked); the 40 C++
+cross-donor references; the 26 unnamed targets (modules with no port code: nameent, viewrec,
+trnproc, heli, balloon, fire, checkpoint have no src/ yet, a gap in the plan); the one
+sentinel left (GenCourse_ctor's `timproc_uso_b5_D_807EF230` -> genproc Text+0: the other 6 of
+16.2 were Text-base relocations and now bind); and the shim (port/ultra, agent-g) for the 75 + 3 hooks.
+
+## 17. M1: libultra shim and main loop
+
+agent-g run 610, branch agent-g. Files (all new, under `projects/1080-decomp/port/`):
+
+| file | what |
+|---|---|
+| `ultra/ultra.h` | the shim's API: the libultra calls (canonical names) and the port side (`port_ultra_init`, `port_vi_retrace`, services, SI pads, SRAM) |
+| `ultra/thread.c` | threads, the active-thread list, services, the pump, blocking waits, `osYieldThread` |
+| `ultra/message.c` | message queues, `osSetEventMesg` / event posting, `osSetIntMask` |
+| `ultra/vi.c` | VI on virtual time |
+| `ultra/pi.c` | PI / EPI DMA from the in-memory ROM image, SRAM save file |
+| `ultra/si.c` | controllers, controller pak (absent), rumble pak |
+| `ultra/ai_sp.c` | AI (host audio stream hooks), SP tasks (`rcpTask` hook) |
+| `ultra/misc.c` | boot globals, cache no-ops, `osVirtualToPhysical`, virtual time, timers, `_Printf` / `gl_sprintf` / `gl_bcopy` / `gl_bzero`, init |
+| `ultra/ultra-census.py` -> `ultra/provided.tsv` | what the port does with every libultra row of sourcemap.tsv, and the game bodies that call each one |
+| `ultra/test_ultra.c` | self-test of the shim (separate executable; no game code, no ROM) |
+| `host.h`, `host_headless.c` | the host layer (window / input / audio device / clock / files / log) and its headless implementation |
+| `main.c` | entry point, fixed-step scheduler (9.6), input poll, FP setup, stand-in frame |
+| `trace.h`, `trace.c` | trace logger: input record / replay, per-frame state dump |
+| `port_libc.h` | host libc access for port code (`PORT_LIBC_DECLS_ONLY`: prototypes only, for compile checks without i386 libc headers) |
+
+`port/main.c` replaces agent-a's stub `main` from e58ff9d67 (an add/add conflict when both land: take this one).
+Nothing else in the tree is touched; the matching build is unchanged.
+
+### 17.1 Model
+
+- **One host thread runs the simulation** (decision 5). N64 threads are never run as host threads.
+  `osCreateThread` fills the game's own OSThread (priority, id, state, `context.pc` / `a0` / `sp`, FCSR
+  0x01000800) and links it into `__osActiveQueue` (tail = priority -1), so `dbg_printThreads`
+  (`gl___osActiveQueue_34458_head`) still works.
+- **Services.** `port_ultra_register_service(entry, step, name)`: when the game starts a thread with that
+  entry, the pump calls `step(arg)` at every blocking point, highest priority first. A started thread with no
+  service is **parked** (logged, counted). Today every game thread is parked: idle (`boot_halt`), main,
+  RcpMgr, pad, fault. The main loop drives what they did (9.6.3).
+- **Blocking never deadlocks silently.** `osRecvMesg` / `osSendMesg` / `osJamMesg` with `OS_MESG_BLOCK` on an
+  empty / full queue go through `port_ultra_wait`:
+  1. run the services (`port_ultra_pump`); repeat while any makes progress (capped);
+  2. otherwise advance **one idle VI retrace** (what a blocked N64 thread waits for is the next interrupt:
+     the retrace message, a timer, ...) and retry;
+  3. after `maxIdleRetraces` (600 = 10 s of virtual time) report a **DEADLOCK** naming the queue; fatal
+     by default (`deadlockFatal`), else the call returns -1.
+
+  `osYieldThread` pumps; a yield loop with no activity at all (no message, event or DMA since the last
+  yield) advances idle retraces and ends in the same deadlock report. That catches the flag spins
+  (`gfx_waitRcpIdle`, `pad_waitIdle`) until their PORT restructure lands. Idle retraces are counted
+  separately (`PortUltraStats.idleRetraces`); in a correct port run they stay 0.
+- **Queues** keep libultra's ring arithmetic and the game's OSMesgQueue layout (`validCount` / `first` /
+  `msgCount`), because game code tests `validCount` directly. The thread lists in the queue stay NULL.
+- **Events**: `osSetEventMesg` table of 15; `port_ultra_post_event(e)` posts with NOBLOCK and drops when full,
+  as the interrupt handler does.
+
+### 17.2 Virtual time and devices
+
+- **Time**: `osGetCount` = retraces x 781250 (46.875 MHz / 60). The main loop does 2 retraces per step,
+  so during step N `osGetCount` = N x 1562500: the deterministic shim of 9.3. Nothing advances inside a
+  step. `osGetTime` is the same 64-bit count; `osSetTime` offsets it. Timers (`osSetTimer` / `osStopTimer`)
+  use the game's OSTimer next / prev and fire at retrace granularity.
+- **VI**: `port_vi_retrace()` latches the swapped buffer, posts the `osViSetEvent` message every N retraces,
+  and fires timers. `osViSwapBuffer` calls `host_frame_ready(fb)` (the Fast3D present in M2). `osViSetMode`
+  reports the mode width to the host; `osViBlack`, `SetSpecialFeatures`, `SetX/YScale` are stored.
+  `osViGetCurrentLine` = 0 (debug perf meter only); `osViGetCurrentField` = retraces & 1.
+- **PI**: libultra's address rule (`osRomBase | devAddr`, or `handle->baseAddress | devAddr`), then the
+  physical address picks the device:
+  - 0x10000000.. ROM (read-only; the big-endian .z64 image in memory, copied as-is, swapping stays in the
+    readers per 4.4);
+  - 0x08000000.. SRAM;
+  - anything else (64DD from `osDriveRomInit`) reads zeros and is logged once.
+
+  Every DMA completes at once and posts its OSIoMesg to the return queue, so the `osRecvMesg(BLOCK)` that
+  follows never waits. `osPiReadIo` returns the big-endian word as the CPU sees it.
+- **SRAM save** (fs_gdl kind 2): `app_initSystem` builds the handle (baseAddress 0xA8000000) and
+  `fs_gdlReadFile` / `fs_gdlWriteFile` DMA through `osEPiStartDma` with the running offset as `devAddr`.
+  The shim maps that to a 0x8000-byte image backed by the save file (`--sram`, default `1080.sram`),
+  rewritten after every write. A missing file is a zeroed SRAM: the Backup checksums reject it and the game
+  formats a new save.
+- **SI**: `input_poll()` (main.c, once per step) copies `host_read_pads()` into the SI. `osContStartReadData`
+  snapshots the pads and posts `OS_EVENT_SI` (the queue the pad thread registered); `osContGetReadData`
+  returns the snapshot, with `CONT_NO_RESPONSE_ERROR` for unplugged ports. `osContInit` reports
+  `CONT_TYPE_NORMAL` for connected pads. No controller pak (`osPfsInitPak` = `PFS_ERR_NOPACK`); a rumble pak
+  where the host can rumble (`osPfsIsPlug` / `osMotorInit`; `osMotorStart` / `Stop` -> `host_set_rumble`).
+- **AI**: `osAiSetFrequency` uses libultra's dacRate maths (32000 -> 32006 Hz). `osAiSetNextBuffer` ->
+  `host_audio_queue`, `osAiGetLength` -> `host_audio_buffered_bytes` (headless: 0).
+- **SP**: `osSpTaskStartGo` runs `PortUltraConfig.rcpTask(task)` synchronously (Fast3D in M2, the
+  `port/audio` mixer in M4), then posts `OS_EVENT_SP`, plus `OS_EVENT_DP` for `M_GFXTASK`. Yield is a no-op,
+  `osSpTaskYielded` = 0.
+- **Caches** are no-ops; `osVirtualToPhysical` is the identity (display-list and DMA addresses stay host
+  pointers, 32-bit build). `osSetIntMask` only stores the mask.
+- **Boot globals**: `osTvType` = NTSC, `osResetType` = cold, `osMemSize` = 4 MB, `osRomBase`,
+  `osAppNMIBuffer`, `osClockRate`, `osViClock`. The game reads `osTvType` at 0x80000300 under the names
+  `D_00000000_tvtype` / `gl_24378_osTvType`; both are aliases of `osTvType`.
+- **printf**: `_Printf` (IDO va_arg, uncompilable) is vsnprintf + the game's `prout` callback; `gl_sprintf` =
+  vsprintf; `gl_osSyncPrintf` / `gl_rmonPrintf` -> the host log.
+- **gl_ names**: the game calls most libultra functions under game_libs copy names. Each is a `PORT_ALIAS`
+  (gcc `alias` attribute) of the canonical function: `gl_osRecvMesg`, `gl_osCreateThread`, ...,
+  `gl_26214_osAiGetLength` / `gl_26214_osAiSetNextBuffer` / `gl_26214_osGetCount` (AudioThread_Update's
+  private names), `gl___osActiveQueue_34458_head`.
+
+### 17.3 Coverage (`port/ultra/provided.tsv`)
+
+`ultra-census.py` takes the libultra rows of sourcemap.tsv: game_libs functions at offset >= 0x69E04
+(`osSendMesg`), `src/libultra/*.s`, the mixed hosts post1b2*, post1c, post2b*, and os / __os / gu names. It
+finds the game bodies that call them by preprocessing every selected game body with `CALL(f)` / `FCALL(f)` /
+`GCALL(f)` / `XCALL(t, f)` defined as `f`.
+
+| action | rows | meaning |
+|---|---:|---|
+| shim | 67 | port/ultra defines it |
+| decomp | 9 | compile the decomp body (portable C): `guOrtho`, `guOrthoF`, `guMtxF2L`, `guMtxL2F`, `guMtxIdentF`, `gl_guMtxIdent`, `guPosition`, `guPositionF`, `fsin`; `fcos` is a game_libs o2 row anyway (9.5: never host libm) |
+| host | 3 | host libc: `memcpy`, `strlen`, `sqrtf` (use `-fno-math-errno` so it is `sqrtss`, the same IEEE result as `sqrt.s`) |
+| drop | 90 | libultra internals no game body calls (`__osPfs*`, `__osSi*`, `__ll_*`, the exception / dispatch asm, `_Litob`, ...) |
+| MISSING | 0 | |
+
+**53 libultra functions are called by game bodies, and all 53 are provided.** By group:
+- messages / threads: `gl_osCreateMesgQueue`, `gl_osSendMesg`, `gl_osRecvMesg`, `gl_osSetEventMesg`,
+  `gl_osCreateThread`, `gl_osStartThread`, `gl_osSetThreadPri`, `gl_osYieldThread`,
+  `gl___osGetCurrFaultedThread`;
+- PI: `gl_osCreatePiManager`, `gl_osPiStartDma`, `gl_osEPiStartDma`, `gl_osPiRawStartDma`, `gl_osPiReadIo`,
+  `gl_osPiWriteIo`, `gl_osCartRomInit`, `gl_osDriveRomInit`, `gl_osEPiLinkHandle`;
+- SI: `gl_osContInit`, `osContStartReadData`, `gl_osContGetReadData`, `osPfsIsPlug`, `osPfsInitPak`,
+  `osMotorInit`, `gl_osMotorStart`, `gl_osMotorStop`;
+- VI: `osCreateViManager`, `osViSetMode`, `osViSetEvent`, `osViSwapBuffer`, `osViBlack`,
+  `osViSetSpecialFeatures`, `gl_osViSetXScale`, `gl_osViSetYScale`, `osViGetCurrentLine`,
+  `osViGetCurrentField`;
+- SP / AI: `osSpTaskLoad`, `gl_osSpTaskStartGo`, `osAiSetFrequency` (`osAiSetNextBuffer` / `osAiGetLength` /
+  `osGetCount` through the `gl_26214_*` aliases);
+- misc: `gl_osInitialize`, `osGetTime`, `gl_osVirtualToPhysical`, `gl_osInvalDCache`, `gl_osInvalICache`,
+  `_Printf`, `gl_sprintf`, `gl_rmonPrintf`, `gl_bcopy`;
+- decomp / host: `guOrtho`, `guMtxF2L`, `fsin`, `memcpy`, `sqrtf`.
+
+The shim also provides calls that RcpMgr / the audio thread make through names the scan does not see:
+`gl_osSpTaskYield` / `Yielded`, `gl_osJamMesg`, `gl_osGetThreadPri`, `gl_osDestroyThread`, `gl_osSetTimer`,
+`osSetIntMask`, `osWritebackDCache(All)`, `gl_osGetCount`, `gl_osSyncPrintf`, `osContStartQuery` /
+`GetQuery`, `osStopThread`, `osJamMesg`.
+
+### 17.4 Not covered yet
+
+1. **Calls spelled as bare placeholders.** Mid-entry `UNNAMED` calls (`gl_func_00000000(...)` with a
+   comment naming `osSetIntMask` = `gl_osSetIntMask+0x8`, `osWritebackDCache(All)`, `bzero` = `gl_bzero+0xC`)
+   in `AudioHeap_*` / `Audio_*Cache` (game_libs_post.c) and `app_initSystem`. The shim has all of those
+   functions, but the call sites need names before they can bind (section 16 plumbing). The kernel-named
+   `bzero` is host libc's.
+2. **Data the game reads from libultra's side:** `gl_osViModeTable_42938_rec` / `gl_osViModeTable_44B78_modes`
+   (the VI mode table in game_libs Data; it comes from the data plan, and the shim only reads `width` from the
+   chosen mode).
+3. **Game-side PORT changes the shim is waiting for** (not in port/, owned by the integration work):
+   - `app_run` split into `app_runInit` / `app_runOneFrame` (9.6.2), and `port_game_boot()` (boot_main's
+     manager setup + `SnowBoard_ctor` + `app_runInit`). main.c references them **weak** and runs a stand-in
+     frame while they are absent.
+   - `gfx_waitRetrace` -> `rcp->retraceCount++`, `gfx_end`'s retrace spin removed (9.6.3). Unchanged, they spin
+     on a counter only the parked RcpMgr thread advances: the shim reports that as a deadlock.
+   - Parked threads: the RcpMgr thread's work (gfx / audio tasks) becomes direct calls through `rcpTask`;
+     the pad thread's request / reply becomes `input_poll` plus a direct `osContStartReadData` /
+     `GetReadData` in `pad_requestGlobal` / `pad_waitIdleGlobal`; the fault thread is dropped. Alternatively a
+     thread can get a service step, if its loop is split into "handle one message".
+   - The trace hooks: `port_trace_pad()` in `pad_update` after `pad_decodeButtonMap_00034CC8`,
+     `port_trace_frame_end(SysLib.frameCount)` at the end of `app_runOneFrame`, `port_game_frame_count()`,
+     and a strong `port_trace_collect()` for the RaceProcess / rider / camera / DataManager / `retraceCount`
+     fields. The weak default fills only the GameFlow state (`gInputMgr` +0x40 / +0x34) and the
+     `sys_randf` state (`gl_ref_00021E04`).
+4. **The kernel's own libultra** (174 kernel rows) is not needed: the kernel is replaced as a whole
+   (port/uso, port/fs).
+5. **Determinism with real devices:** with an SDL host, `osAiGetLength` reports real buffered bytes, so the
+   audio driver's sample counts depend on wall time. Trace runs use the headless host. If audio moves to its
+   own host thread (decision 5), `osGetCount` there must read a retrace snapshot taken at the step boundary,
+   not the live counter.
+6. **Not implemented** (the game does not call them): controller pak file ops, 64DD, `osViModeTable`
+   interpretation beyond the width, `osSpTaskYield` semantics, interrupts.
+
+### 17.5 main.c and the trace logger
+
+- **Scheduler** (9.6.1-2): `step()` = `input_poll()` -> `app_runOneFrame()` (or the stand-in frame) -> 2 x
+  `port_vi_retrace()`. Real-time mode accumulates host time and runs up to 4 catch-up steps per host frame,
+  then drops the backlog, then `host_present()` and sleeps. The headless host runs the steps back to back
+  (`--realtime` paces it). `--authentic` uses 1001/30000 s. `--frames N` stops after N steps; a replay
+  stops after its last recorded frame.
+- **FP**: MXCSR FTZ | DAZ, round to nearest, exceptions masked, set once on the simulation thread (9.5).
+- **Trace format** (`trace.h`): text lines, floats as IEEE hex, so a port trace and an emulator trace diff
+  exactly:
+  - `I frame pad replayFrame held rawX rawY` (record: written; replay: read and injected);
+  - `F frame have=.. flow=.. race=.. rand=.. rt=.. vi=.. el=.. cam=.. r<i>=...`. The `have` bits say which
+    groups the collector filled.
+- **Usage**: `1080 [--rom baserom.z64] [--sram 1080.sram] [--frames N] [--record in.log] [--replay in.log]
+  [--trace state.log] [--authentic] [--realtime]`.
+
+### 17.6 Verification
+
+- **Compile check:** every file compiles with `gcc -m32 -malign-double -msse2 -mfpmath=sse -ffp-contract=off
+  -std=gnu99 -O2 -Wall -Wextra -DPORT -DPORT_LIBC_DECLS_ONLY -Iinclude -Iport -c`, against the game's
+  libultra headers (offset asserts on), with 0 warnings apart from the headers' known "variably modified"
+  ones. The analysis machine has no i386 libc, so nothing 32-bit links here.
+- **Behaviour:** a 64-bit build with the header offset asserts neutralised (scratch copies only) is enough
+  to test the logic. `test_ultra` PASSes:
+  - queue ring order, `osJamMesg`, full / empty NOBLOCK;
+  - a blocking receive satisfied by the `osViSetEvent` message after exactly 2 idle retraces, with
+    `osGetCount` = 2 x 781250;
+  - a service-fed blocking receive (3 pump rounds, 0 idle retraces);
+  - the active-thread list (re-create without duplicates, destroy unlinks);
+  - deadlock reporting after `maxIdleRetraces`;
+  - PI ROM DMA plus the message, `osPiReadIo` = 0x80371240;
+  - SRAM write / read-back through an 0xA8000000 handle, persisted and reloaded from the file; ROM write
+    refused;
+  - timer expiry at the 3rd retrace;
+  - `osAiSetFrequency(32000)` = 32006;
+  - SI read through the `OS_EVENT_SI` queue; rumble pak present / absent per port.
+
+  `main` with the real ROM and the stand-in frame: 100 steps, 200 retraces, 0 idle, 0 deadlocks. Then
+  `--record` followed by `--replay` gives byte-identical state traces.
+- **Matching build:** untouched (port/ only); gate PASS before commit.
+
+**For the CMake (agent-a):**
+- Port sources: `port/main.c`, `port/host_headless.c`, `port/trace.c`, and `port/ultra/{thread,message,vi,
+  pi,si,ai_sp,misc}.c`.
+- `port/ultra/test_ultra.c` is its own executable (shim + `host_headless.c`).
+- Exclude every `provided.tsv` row with action shim / host / drop from libgame.a; keep the `decomp` rows.
+- The `PORT_ALIAS` names (`gl_*`) must not also be defined by libgame.a.
