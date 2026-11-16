@@ -118,3 +118,28 @@ exacts, no NM wraps. Matched: fire 5/7, balloon 9/11, checkpoint 10/17, heli 3/2
   both give frame 0x30 and a filled slot (best 74%). The fire ctor 0 (inlined ItemType base +
   two `Colour::set(r, g, b, a) / 255.0f` inlines, divides not folded) reaches 78%: the target
   reloads 255.0f for the alpha dividend where cfe / NCC reuse the divisor register.
+
+## snoweffects.uso progress (agent-h run 621)
+
+- 58 / 106 functions EXACT, 1 NM wrap (0x9E10, 98.27: item / head colouring swap). Commits on
+  agent-h: 3e41f58f4, 6055e92bd, 07fa47f12, ca7cd7fd1, 2bb0df5fc.
+- **Four TUs in one Text.** Each TU repeats the static fs_gdlReadFile reader helpers (int / float /
+  quad / vec3 at 0xCC, 0x3D70, 0x7E20, 0x9250; static, so in-TU calls are resolved `jal` words) and
+  ends with its Parm read methods (tag into a local, value at +0x10). TU ends: 0x3D64 (3-word pad),
+  0x7E1C and 0x924C (1-word pads), 0xA900. The pads are all-zero `SUFFIX_BYTES_FORCE` on the TU's
+  last function plus `TRUNCATE_TEXT 0xA900` (`SNOW_SUFFIX` in the Makefile).
+- Calls to the module's own **global** functions (0x0, 0x3EE4, 0x535C, 0x64B8, 0x6B28, 0x718C,
+  0x9328) are blank reloc'd `jal 0`: spell them `CALL(snoweffects_uso_func_X)`, or through a typed
+  0-pinned alias when floats are passed (`gl_func_00000000_snow_hit`, `gl_func_00000000_snow_3ee4`).
+  0x0 itself (Vec3 dot) can be called directly.
+- **Compiler:** most small functions match as IDO 7.1 cfe -O2 C, but the module is C++: 0x9F44
+  only matches under NCC (inline `Parm<T>::get()` keeps the parm base pointer; Vec3 user
+  operator=), donor `src/snoweffects_uso/snoweffects_uso_ncc_9F44.cpp`. The DL builders (0x40B4:
+  B6 / B7 / B8 packets through ctx->dl) are the `c->next()` NCC family (game_libs_ncc_59E80.cpp).
+- Classes seen: SnowPool (Node + items[0x58] / count +0x3C / max +0x40, vtable slot 11 after
+  init), SnowRing cursors at +0x58..+0x70 (0x46BC / 0x535C / 0x53E8), two ColourItem-based
+  ItemType creates (0x7D8C / 0x91BC = edd_ItemType_create_000003BC twins), an SNode subclass
+  (0x9704 display with blend colour at +0x288, 0x973C loadData with Parms at +0x240).
+- Open: 0x3EB0 (13 words: ten float zeros where the last four use a second `mtc1 zero` register;
+  not reproduced by cfe or simple NCC inline / double variants), 0x70C0 (RoData constant init, needs
+  21 `(char *)&D_00000000 + K` reads), 0x4714, 0x40B4 (NCC), and every function above 60 words.
