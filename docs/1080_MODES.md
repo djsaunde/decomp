@@ -1696,6 +1696,36 @@ Next (H1):
 - RoomModifier_display (NM) on SELWIN / SelItemsMgr members: dispItems doFlags bit 4.
 - gen_createCamera_0000283C (11).
 
+### Run 564 (agent-c): canScroll item walks, RaceSprite stat bars, vtable walks, match_imports
+
+4b447e239 on agent-c (base 04a1501e8; hand edit, no renames; gate PASS 3288/3288, ROM identical,
+the three source checks 0 mismatches). All 420 b5 / game_libs_post / match_imports objects,
+matching and NON_MATCHING, identical to the pre-run build by `objdump -d -r`, `-r` and `-s`.
+- **SelectWin_canScrollPrev / Next:** `itemsMgr->lists[stage]` and `items[i]->enabled`
+  (Prev keeps its shifted cursor: `((SelItemList *)cursor)->items[0]`). The array-index forms
+  give the same `addu base, scaled` operand order as the old flat arithmetic.
+- **SelItem_drawStatBar / drawStatBarRight:** b5.c includes gdl/race.h (not edited) for
+  RaceSprite / RaceSpriteImage: `dp = (char *)((RaceSprite *)obj)->image; dw =
+  ((RaceSpriteImage *)dp)->width`. The objB blocks hold the image in dw and the width in dp;
+  swapping the two locals swaps v0 / v1, so they keep `dw = *(int *)&((RaceSprite *)objB)->image`.
+- **Vtable walks:** CommonInfo_loadData (VT_SLOT(vt, 10) = SelItemsMgr_loadInfo, the mgr as
+  `delta + (char *)p1`), SelItemsMgr_loadData / loadInfo (VT_SLOT 8 / 11 on lists[i]),
+  SelItemList_loadData / loadInfo (SELVT base[8] / loadInfo on items[i]); NODE(v1)->vptr.
+- **match_imports BoardList_createItem:** NODE vptr / name / parent / unk04, GEOMMODE() =
+  SelPolyGeomMode.geomMode for the seven d550 aliases. The multi-statement lines must stay on one
+  line each: splitting them moved three loads / stores in the schedule ("native linked body
+  changed"; IDO's scheduling follows source line numbers).
+- **match_imports CourseItem_drawLabel_0000C98C:** SELITEM / SELWIN_VIEW members (the
+  C98CObject / C98CContext views left the context header), INPUT_MGR(import_80020098).backup /
+  nextFlowMode (game/input.h included by the .c). jny keeps `(unsigned int)`: the old field
+  was u32 and the signed add swaps t1 / t2. The b5.c NM body got the same INPUT_MGR reads.
+- **Census / port-audit:** see 1080_AUDIO.md run 564 (owner c 267 -> 202; D 36 -> 10).
+
+Next:
+- SelectWin_commitSelection (2 D, the E6C00 macro: its operand orders are levers),
+  gen_createScene (B), SelBoard_display / SelCourseMap_display (D: import_80087DA8 + 0x70).
+- SelectWin_display (8 raw sites).
+
 ### Run 561 (agent-c): plain Node stores, typed sprite / colour parameters, SelectWin_update members
 
 897eb38ee + 7f07b45df on agent-c (base 75a598f4d; hand edits, no renames; gate PASS 3288/3288 before

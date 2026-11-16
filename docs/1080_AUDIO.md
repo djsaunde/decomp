@@ -937,6 +937,48 @@ matching and NON_MATCHING, identical by `objdump -d -r`, `-r` and `-s`).
 - **Next:** port-audit `--owner c` for audio: AudioSeq_SeqChannelSetLayer (match_imports, 6),
   AudioSynth_LoadAuxBufferC / AudioLoad_RelocateFont (2 each), snd_SoundObjUpdate.
 
+### Run 564 (agent-c): SequenceLayer instOrWave / portamento, SndLevelRamp, sequenceFontTable
+
+4b447e239 + 389e48643 on agent-c (base 04a1501e8; hand edits, no renames; gate PASS 3288/3288
+before each commit, ROM identical, the three source checks 0 mismatches). All 420
+timproc_uso_b5 / game_libs_post / match_imports objects, matching and NON_MATCHING, identical to
+the pre-run build by `objdump -d -r`, `-r` and `-s` (.mdebug excluded).
+- **SequenceLayer:** the 24-bit `rest` bitfield is now `u8 unk_01; u8 instOrWave; u8 unk_03`
+  (u8 members pack into the u32 bitfield container's spare bytes, as SequencePlayer.state already
+  does); `Portamento portamento` at 0x20 (the struct moved above SequenceLayer). Asserts added.
+- **Audio_InitSyntheticWave(Note *, SequenceLayer *):** OoT's body on members (instOrWave,
+  channel->instOrWave, playbackState.harmonicIndex, sampleState.harmonicIndexCurAndPrev).
+- **AudioSeq_SeqLayerProcessScriptStep1:** ObjFlags2AB34's b3 / b7 are continuousNotes /
+  notePropertiesNeedInit (same u32 container, same bytes); note->playbackState.wantedParentLayer;
+  portamento.mode.
+- **AudioSeq_InitSequencePlayerChannels:** CHANNEL_SLOT(cursor) = the shifted
+  SequencePlayer.channels[0]; typed seqPlayer / layers stores (NULL for the int 0: same bytes).
+  Audio_SequencePlayerProcessSound / Audio_SequenceChannelProcessSound read their shifted cursors
+  the same way (channels[0] / layers[0]).
+- **SndLevelRamp (audio.h, 0x14):** game_libs Data sym1443 @0x1C0C0 (found with
+  `scripts/uso-sym-oracle.py baserom.z64 0xD9FE28 <section offset>`; game_libs section offset =
+  ROM - 0xDD0A6C, so splat 0x2F2AC is 0x43918): target / current / count / frac / mode, from
+  snd_RampInit (now `(SndLevelRamp *, target, count)`), snd_RampTick and snd_SetLevelRampTarget.
+  The match_import snd_SoundObjUpdateChannel's `D_00000000 + 4` / `+ 0x10` reads are
+  `gSndLevelRamp.current` / `.mode`, a view macro over the unchanged D_00000000 sentinel (the
+  native-port binding keys on the symbol, so no rename).
+- **AudioLoad_GetFontsForSequence** returns `u8 *`; both reads are
+  `((AudioContext *)gAudioContext_233A0)->sequenceFontTable` (the array view keeps the one
+  materialised base).
+- **AudioSynth_LoadAuxBufferC:** `ReverbRingBufferItem *e`. **AudioLoad_RelocateFont:** the drum
+  list is read as u32 offsets; the SFX `soundOffset = (u32)(((SoundEffect *)fontData[1]) + i)`
+  copy must stay (without it the function loses a register and one instruction).
+- **aud_AllocSampleCacheTemporary / Persistent:** SampleCacheEntry members.
+- **MCamera_doCommand:** NodeMsg.arg.payload is the command cursor; the pick is stored as
+  `*(int *)&((MCamera *)o)->target = val`. MCamera_ctor: NODE(b)->name.
+- **Census / port-audit (owner c):** raw sites 267 -> 202 (game_libs_post.c 127 -> 95,
+  timproc_uso_b5.c 93 -> 60; BoardList_createItem's 20, owner a, -> 0). port-audit `--owner c`
+  A 4, B 10 -> 7, C 7 -> 1, D 36 -> 10 (57 -> 22).
+- **Next:** MCamera_hostioParms (A + B), cam_createDefault (2 D: the o + 0x3C holder), the
+  snd_SoundObjUpdateChannel tableC330 / C3B0 u32 bases (load-bearing, see run 561),
+  AudioThread_WaitForAudioTask (+0x53C8), Audio_NotePortamentoInit (the inline struct copy is
+  the match), AudioSeq_SeqLayerProcessScriptStep4 (o2_2B09C).
+
 ### Run 561 (agent-c): LoadReverbSamples, InitTable, GetSampleBank
 
 85b7a0491 on agent-c (hand edit; gate PASS 3288/3288, checks 0 mismatches; game_libs_post.c.o and
