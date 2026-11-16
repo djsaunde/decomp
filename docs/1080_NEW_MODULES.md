@@ -499,6 +499,18 @@ No renames.
       under mp72 gets the table but scores 73.5 %.
     - Next: tune under mp72 (jump table + mul by 2.0). Pin .rodata NOLOAD at 0x7C
       (`.heli_uso_B08_jtbl`, as trnproc 10), or use a donor `_rodata` pin.
+- **0xB08 compiler (agent-g run 647): MIPSpro 7.2.1 edg is required.** IDO 7.1 NCC (EDG 2.19) never
+  emits a jump table: probes with 8, 13 and 40 dense cases (int, unsigned, with or without default)
+  all give beq chains, and no matched `*_ncc_*.cpp` donor that has a switch contains a `jr` other than `jr ra`.
+  So the target's 8-entry table rules NCC out. The mp72 draft is at 73.7 % (frame 0x170). NCC on the same
+  source gets 77.1 %, because mp72 CSEs `&pp` (sp+356) into a3 while the target and NCC
+  rematerialise it at each use. Slot map (target <- mp72): the operator= by-value temp is
+  252 <- 140, mpos is 232 <- 268, the op- temp is 212 <- 124, dir 180 <- 84, ang / s 164 / 168 <- 240 / 244,
+  sa 148 <- 224, key / key2 280 / 272 <- 296 / 292. In the target the temps sit between the
+  outer named locals and the later ones. Declaration-order and block-scope hill climbs (750 evals)
+  moved the score by less than 0.1. `Vec3 vel = ...` direct-init is worth +1 (74.65).
+- 0x8A8 under NCC with a Vec3 class reaches 97.5 % at best, below the cfe NM at 99.4. One zero web is
+  shared, frame 0x20 vs 0x28.
 - Classes: HeliItemType (0x54, ItemType + body / blade PolyShapes +0x48 / +0x4C, Sprite +0x50),
   Heli (0x174 QNode, vtable Data+0xCA88, start position +0x108, flight state +0x114..+0x170),
   HeliRotor (0x118 QNode, spin speed +0x108, axis +0x10C), two 0x40 marker ColourItem creates.
