@@ -338,6 +338,31 @@ No renames.
     come out product-first. Next: NCC donor with the RoData floats as literals (`<func>_rodata` pin, as
     0x27A8) and `x += v.x * s` member statements.
 
+- Run 649 (agent-h, commits cdd4bb7de dfc76a980, no renames): +4 NM (objdiff 98.8-99.2 %), 0 exact.
+  NON_MATCHING-only NCC donor `src/snoweffects_uso/snoweffects_uso_ncc_nm.cpp` (`SNOW_NM_FUNCS`, spliced on
+  build/non_matching only; the name-placeholder-calls gate only maps matching-build splices, so NM donors
+  call `gl_func_00000000` with a comment, not `CALL(name)`).
+  - **0x15D0 / 0x1A18 / 0x1E60 / 0x2310 are texture-sprite inits** (one shape): name (+0xC), a 20-packet DL
+    context at +0x2C (gfx_newDLContext + reset), PipeSync, w = h = 32 / 32 / 64 / 8 at +0x34 / +0x38, the stock
+    2.0I gDPLoadTextureTile (I8 / I8 / IA8 / I8 of Data+0x6FD8 / 0x6BD0 / 0x5AC0 / 0x73E0, mask 5 / 5 / 6 / 5),
+    gSPTexture, cycle / persp (/ textfilt / dither on 1E60), render mode, combine, prim colour, depth source,
+    EndDL. 0x2310 first sets floats +0x98..+0xCC (RoData+0x8 at +0xA4, pin `snow_ro_8`) as separate
+    statements (chained assignments shift the edg inline-temp numbering and swap head / n colours).
+  - **Lever:** gfx_resetDLContext as a void-typed alias (`gl_func_00000000_snow_reset`): an int-returning
+    call defines v0 in the first packet's live unit, so the inline next() context temp (u = 8 units,
+    coloured first) cannot take v0 (lines 36 % -> 82 %). Left: per-packet pointers rotate a1 / a2 where the
+    target has a2 / a3 (live-unit layout again, as 0x4188). 0x1E60 is 91 % lines but 301 words (the target
+    fills the jr ra delay slot with the sp restore, ours does not; dropping a packet does not change it),
+    so it is a draft in the donor, not spliced (a size change shifts 0xA8D0 past TRUNCATE_TEXT and the
+    gate fails).
+  - **0x4374** = basis rebuild (90 % lines): end points (+-len, 0, 0) and the origin through the world
+    matrix (+0x30), dir = a - b normalized (+0x114, copy at +0xFC), cross(dir, camera +0x3B0, dir), +0x108 =
+    camera +0x318 normalized, virtual slots 14 / 15. operator- through an inline `set()` (all subs before the
+    stores), by-value `operator=(V3)` (the aggregate copy + field-wise store), vcall arg `(int)d + (int)t`.
+    Left: the operator- temps 8 bytes low (frame 152 vs 160).
+  - Not reached: 0x270, 0xC90, 0x28E0, 0x39C4, 0x47D4, 0x4E5C, 0x559C, then 0x4188 / 0x97C.
+    Tools: /tmp/claude-1000/agent-h/r649/ (dis.py annotated target, cf.sh compile + diff, tex4.py, t43h.cpp).
+
 ### snoweffects.uso 0x6000+ (agent-e run 639)
 
 - +2 EXACT (commit feb67fb6a on agent-e): 0x8C60 and 0x9FE8, both IDO 7.1 NCC. Own donor
@@ -481,6 +506,41 @@ No renames.
     24 (`multu`) and homes three words between `col` and `buf`), DD4 (results), 13C4, 188C;
   - nameent 760 (entry ctor), 9BC, E44 (input, 435 words);
   - 1778 (t-ring order of the spilled mask reload) and 2F4 (object / vtable v1 / v0) NM residuals.
+
+## trnproc.uso / nameent.uso progress (agent-c run 643)
+
+- **trnproc 40 / 40 EXACT; nameent 20 / 21 EXACT + 9BC NM (286 / 290).** Commits on agent-c:
+  56c15842e, 50651595a (trnproc), aa6b242d1, 2eff5f3a0, aad000a81 (nameent); 3479 -> 3487.
+- **Both modules are C++.** Every remaining function went EXACT only under IDO 7.1 NCC, as
+  per-module donors `src/trnproc_uso/trnproc_uso_ncc.cpp` and `src/nameent_uso/nameent_uso_ncc.cpp`
+  (REPLACE_FUNC_BODY over empty host placeholders; Makefile TRN_NCC_DONOR / NE_NCC_DONOR):
+  trnproc B78, DD4, 13C4, 1778 (was NM), 188C; nameent 2F4 (was NM), 760, E44. The edg tells
+  seen here: an `a[n++] = v` index kept in its own register at every store (13C4; cfe
+  strength-reduces), the `&` left operand evaluated first (1778), a virtual call with the object
+  in v1 and the vtable in v0 (2F4), float divisions `r / 255.0f` that stay at run time because
+  they pass through an inline `set()` (DD4, 760: a Colour class with `set255(int..)`).
+- **Float literals in a USO donor:** write the real literal (`0.8f`); the splice renames the
+  donor's `.rodata` reloc to `<func>_rodata`, pinned in undefined_syms_auto.txt at
+  (target RoData offset - donor .rodata offset). Donor .rodata is in file order with no
+  cross-function merging (trnproc B78 0x20 / DD4 0x20; nameent 760 0x0 / E44 0xC). Real literals
+  are what let uopt hoist the loads out of DD4's loop (f22 / f24); 0-pinned load symbols cannot.
+- **USO address with an addend that edg would fold** (B78's second sprite table, Bss+0xF0, indexed
+  `[v - 32]`): a separate symbol pinned at the address (`trn_sprites_F0 = 0xF0`) keeps
+  `v * 24 - 768` apart from the `addiu 240`. That `* 24` is `multu` by s8 = 24, a hoisted loop
+  constant, once the `!= 255` test comes first.
+- **Typed 0-pinned aliases of the blank import:** `gl_func_00000000_void` (frees v0 after a void
+  callee: 188C, B78, E44), `ne_input_getStickX` (float return), `ne_gui_drawSpriteScroll`
+  (float scale arguments; through `...` they would be promoted to double).
+- **Frame words:** NCC -O2 keeps a word for every named local that is assigned (even dead), in
+  declaration order from the top; unreferenced locals get none. A dead one-element store
+  (`scratch[0] = 0;`) is a code-free frame word (13C4, 2F4, E44). Read the layout with `-g3`
+  `.mdebug` local symbols (vfp offsets; temporaries do not appear).
+- Text end pads: nameent now uses the trnproc mechanism (all-zero SUFFIX on E44 + TRUNCATE_TEXT
+  0x1510), since the spliced object is no longer the INCLUDE_ASM layout.
+- Open: nameent 9BC (display), NM 286 / 290 through an NM-only splice. Every instruction
+  matches except the two scale spill slots, 4 bytes high: the target has one more named word above
+  them and one fewer edg temporary (a named `c = name2[i]` in the first loop plus one dead
+  scratch word reaches 288 / 290, leaving only the loop-1 spill slot at 0x60 vs 0x64).
 
 ## heli.uso progress (agent-g run 632)
 
