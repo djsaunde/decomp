@@ -827,6 +827,46 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   them and one fewer edg temporary (a named `c = name2[i]` in the first loop plus one dead
   scratch word reaches 288 / 290, leaving only the loop-1 spill slot at 0x60 vs 0x64).
 
+### snoweffects.uso 0x6000+ (agent-e run 668)
+
+- No new exacts. Commit cef4d891c on agent-e: gate PASS (3553 / 3579, exact set unchanged).
+- **0x64B8 spliced as an NM (94.3 %, 404 words and frame 344 = target).** The two-word excess was the
+  reloaded spawn point. Two changes fix it:
+  - read u into block locals before the lerp (`float x = u.x, y = u.y, z = u.z; u.x = (vF0.x - x) * r + x;`);
+  - store pos and vel through `p->pos.set(u.x, u.y + f178, u.z)` and `p->vel.set(n.x, n.y, n.z)`. With set(),
+    edg evaluates all the arguments before the stores, so the lerped values are forwarded.
+  - Left: the edg temp slots (the second `operator*` result sits above the first in the target), and the
+    target materialises `&t->vFC` for the scale (`addiu v0,a1,252`). These had no effect: `me(&vFC)`, a
+    reference / pointer local, a free or float-first `operator*`, a `set()`-style `mul`, a precomputed scale.
+    A by-value `mulv(SV, float)` copies v318 (wrong).
+- **0x6B28 decoded whole and spliced as an NM (90.8 %).**
+  - Sequence:
+    - the game flags `snow_game_6B28 + 0x8C & 0x820000` pick RoData+0x58..+0x68 (with 26.0f) or +0x6C..+0x7C
+      (with 41.0f) for +0x1B4 / +0x1C4 / +0x1B8 / +0x1B0 / +0x1C0 / +0x1BC;
+    - `+0x1C8++` when cam f348 > 20, +0x80 != 0 and on != 1;
+    - with the flags and cam s9A0 == 97: `if (0 < f1D8 && 0 == cam fA20) c1CC = 3; f1D8 = cam fA20`;
+    - then, if c1CC != 0 or (on >= 2 and cam state == 97): c1CC = 3 when c1C8 >= 7 (state 97), c1C8 = 0 on
+      state 97, c1CC-- if nonzero, copy the cam colour, a void call, and spawn when 0 < c1CC < 3.
+  - Spawn: `n = v318 * f1C4; n += v3B0 * f1B8`; pool +0x9C (alloc / oldest); `s = |speed|`,
+    `if (s < 0.5) s = 0.5f` (a double compare); `u = vF0 + vFC * (f3C * 2.0f * s)`; the same lerp as
+    0x64B8. Colour bytes are copied one by one. Fields: 0x40 = sizeVel f1B0, gravity f1B4, decay f1BC,
+    alphaVel f1C0, size = unk3C = 1.0, fadeAt = life = alpha = 256.
+  - End: `if (+0x80 == 0) +0x1D0 = cam state`.
+  - Frame lever: frame 232 = target once `float s` is declared at function scope (before `col`) and
+    `float x, y, z` at the top of the `p != 0` block. Named locals that are used take their home there;
+    unused ones take none.
+  - Left: 357 words vs 358 (the same `&vFC` materialisation), and the inner temp slots are 4..12 bytes off.
+    The shorter splice passes the gate.
+- **0x7960** (still 99.8 %): the dead `while (0)` ref-multiplier (with uses of a named zero, or a dead
+  |speed|) only spills `ang`. An inline `fab(x)` moves |speed| to f14 and speed to f12, but the zero stays in
+  f2. The zero and the |speed| ranges share the basic block of the speed compare, so they interfere at block
+  granularity.
+- **0x9E10**: as NCC (frame 32), the body differs from the target only in the a1 / a2 swap (26 / 30 words).
+  These did not change it: the arguments `&head->unk00`, `head + 0` or a copy local; inline attach() members;
+  a 2-arg call. Only a real third parameter `N *a2` gets the variable into a2 (it adds home stores, so it is
+  not the source).
+- Not reached: 0x718C, 0x9328.
+
 ### nameent.uso 9BC + snoweffects below 0x6000 (agent-c run 655)
 
 - **nameent 21 / 21 EXACT** (agent-c f56621038; 3539 / 3579). 9BC's two scale spill slots were one edg
@@ -867,6 +907,42 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   - Left: frame 504 vs 520 (the temps' order) and float colouring.
   - Splicing it needs `snow_ro_10 = 0x10`. The body must stay <= 793 words, or 0xA8D0 passes TRUNCATE_TEXT and
     the gate fails.
+
+### snoweffects.uso 0x28E0 / 0xC90 (agent-c run 667)
+
+- **0x28E0 NM spliced: 74 -> 88.9 % (objdiff), frame 520 as the target** (commit 1d2827e48 on agent-c; gate PASS,
+  3554 / 3579, no renames). Body 792 words. Three levers:
+  - `SnowV3d &last = self->lastCam;` (a reference local) and `cam - last`. The target hoists `addiu t4,s1,152` out of
+    the loop and spills it to the frame bottom across the randf call. A direct `self->lastCam` operand folds into
+    `lwc1 152(s1)`. Effect: 74 -> 76.
+  - operator- returns a constructed `SnowV3d(a.x - b.x, ...)` (a ctor added to SnowV3d) and `+=` takes a const
+    reference. This gives the target's store / copy schedule for the op- chain. Effect: -> 78.
+  - **Code-free uses keep values computed early:** `if (cz) {} if (cy) {} if (cx) {}` right after the three
+    camera-space coordinates. Without them uopt sinks cy / cz into the branch blocks of the wrap tests, but the
+    target computes all three before the first compare. Effect: -> 88.9 (mnemonics 87.5 -> 95.1).
+    - The reverse order (z, y, x) is +0.7 over x, y, z.
+    - Only one or two of the three: 80-82.
+    - Not this: `if (cx || cy || cz) {}` (81.7), `if (cx + cy + cz) {}`, `do {} while (0)`, `if (1) {}`,
+      `while (0) { cx += 1; }`, function-scope cx..cz.
+    - A struct local `SnowV3d cp` (81.3) stays partly in memory.
+  - Left:
+    - c and halfW lose their s2 / f30 homes and spill. The target also keeps &gGfxLib in s3. The extra `if`
+      blocks lengthen their live ranges, which lowers their priority.
+    - The temps' slot order inside the frame. Target, top-down: += param, op* param, op- return, op- r, 4 words,
+      op* return, op* r. Ours puts the op* / += copies lower.
+    - `__V` ctor temps show up in the `-g3` .mdebug list as named locals of the block. A const-ref `+=` puts its
+      bound temp first in the loop block, at vfp-212.
+- **0xC90 frame 400 reached in a draft, not committed** (/tmp/claude-1000/c667/keep/cq9.cpp).
+  - With these, every key slot lands where the target has it: m -104, halfW / halfH -108 / -112, v -180, scaled
+    return -196, scaled r -208, bottom spill -312.
+    - Hoist inv, k, h2, hgt, sx, sy, wid, x0 to function scope above m (w stays in the loop block, right after v).
+    - Add a dead `int scratch[9]; scratch[0] = 0;` after p.
+    - Drop the three float parameters of `scaled()`: read the scale words inside the inline.
+  - Cost: the in-inline scale loads change the schedule (objdiff 82.85 -> 80.7, mnemonics 92.1 -> 90.2).
+  - With the scale parameters kept (cp9.cpp), the frame is 416 and r sits 3 words low; objdiff stays at 82.85.
+  - objdiff's fuzzy score did not move with frame offsets in any C90 probe.
+  - The target also uses s3 for the hoisted &return-temp (sp+204) and `ra` as a scratch register; ours does not.
+- **0x270 not worked this run** (still NM 245 / 260, objdiff 99.7).
 
 ## heli.uso progress (agent-g run 632)
 
