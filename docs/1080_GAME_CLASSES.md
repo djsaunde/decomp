@@ -1511,3 +1511,32 @@ Tv1Tmpl.unk64 / model retyped (envobj.h). Census game_uso raw / accessor 4 / 21 
 
 **Next:** the B274 donor slot (find another escaping local to hold r at 60); scanSegments' placement-new spelling;
 match_imports/Sun_display.c to modelView[3] (a).
+
+## 34. Run 580: the last raw offsets in game_uso and the bootup donors (phase close)
+
+Census owner g (game_uso + the bootup C++ donors) before: 15 raw sites (game_uso 6, bootup donors 9); after: 0
+unjustified (13 converted, 2 annotated `RAW:`). Every base below is proven by `uso-data-sites.py sites FUNC` (the
+reloc's Sym + K); every changed .o is objdump-identical (text / data / rodata, relocs).
+
+- **CFA0 `CTX + 0x98` / `+ 0x108` identified:** CTX (gGfxLib_cfa0_ctx, pin 0x254) relocates to GfxLib (sym154)
+  +0x254 = **curWindow**, so +0x98 = `Window.drawDistFov[0]` (the class-0 draw distance at the current fov, compared
+  with the probe distance: `changed`) and +0x108 = `Window.displayMask` (passed on as Window_display does).
+  Spelled `CTX_WIN(c)->drawDistFov[0]` / `->displayMask` (gdl/window.h by relative path).
+- **func_0000023C = &gGfxLib + 0x23C** in every bootup reloc seen: +0x18 = curWindow (1304C Fader_display:
+  `GFX_1304C->curWindow->dl`), +4 = mainWindow (E740: `((VO *)GFX_E740->mainWindow)->buf()`, the frame buffer).
+  `GFXLIB(func_0000023C - 0x23C)` keeps the target's symbol + addend.
+- **7328 EnvSettings_load:** func_00000008 + 0x34 = GameFlow (sym272) +0x3C `gameMode`; func_0000029C + 4 = GfxLib
+  +0x2A0 = `fog.colour[3]` (the fog alpha set to 1.0 in game modes 6 / 11, with clipFar 800).
+- **E800 SnowBoard_ctor:** func_00000008 + 0x20 = gSnowBoard (sym326) +0x28, the cfront vptr: `SNOWBOARD_E800->vptr`.
+  The `func_000000NN` pins are not objects: the same name reaches different Syms in different functions.
+- **F81C:** F0Struct.ptr44 -> `game` (GameFlow.game). Its +0x114 (the process window) stays raw:
+  `RAW: unknown-object` (no struct for the game world object yet).
+- **63B4 MapProp_display:** `bu_63b4_c57c + 0x34` is RoData+0x5B0, an f32 constant: `RAW: data-table`.
+- game_uso: Sun_ctor's PMF = `kPmf_Sun_measureVisibility` (Data 0x840); `kRoF_3000_FC` (SnowAI_aimAlongSegment)
+  and `kRoF_28555_1F4` (RiderAnim_update_0000D204) in game_uso_data.h (value claims checked).
+- **SnowAI_steer:** `parms.nts + 16` = SnowBParm.value. The member form swaps f6 / f8; `*(float *)&p->value` is exact.
+- **B3C `*(char **)((char *)ob + 0)`:** `ob[0]` and `*(char **)&ob[0]` are forwarded by edg (different code);
+  `*(char **)(char *)ob` is not, and is exact (no offset left).
+- Port-audit A/B leftovers annotated `RAW: byte-lock` (scanNodes / scanSegments link carriers, the
+  `(unsigned)&b1 / &b4` casts: dropping them moves `addiu sp,244` (tried), MemberCallback_invoke's PMF dispatch,
+  B274's `int gi / di` copies).

@@ -491,6 +491,15 @@ path instead of editing the casts one by one. Pattern D disappears as raw offset
 All counts are for compiled code only, from READABILITY_PLAN.md section 0 (census) and section 12
 (closing summary). Throughout, the ROM is byte-identical and all 3288 functions are exact.
 
+**The USO system on PC:** USO_FORMAT.md section 13 (run 577) is the porting recipe: one static
+executable, `uso_load` / `uso_unload` as a registry of per-module init / fini, `CALL()` / `XCALL()` /
+`GL_DATA_STR()` / `INPUT_MGR()` mapped to plain symbols under a `PORT` flag, module state lifetime
+across mode switches, the duplicate-symbol hazards and a checklist.
+
+**Raw struct offsets:** since run 577 every raw `*(T *)(p + K)` / accessor site left is either a field
+or carries a `RAW: <keyword> <reason>` tag (READABILITY_AGENT_RULES.md); the dashboard's "justified"
+table counts what is still UNJUSTIFIED per owner.
+
 **Named and typed.**
 - **Functions.** 3203 of 3270 non-sentinel functions have a real name (98.0%). The 19 remaining
   `func_<addr>` placeholders are all in bootup_uso. 48 functions have weak `<Kind>_func_<addr>` names,

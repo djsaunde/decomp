@@ -21,6 +21,7 @@
 - [10. Function map](#10-function-map)
 - [11. Open questions](#11-open-questions)
 - [12. Kernel naming: k_ aliases and the libultra/rmon map](#12-kernel-naming-k_-aliases-and-the-libultrarmon-map)
+- [13. Porting the USO system to PC](#13-porting-the-uso-system-to-pc)
 
 ---
 
@@ -398,3 +399,163 @@ rmon handlers still carry private packet typedefs (kernel_018_b/f/g, 022_e/f/g, 
 054*): convert them the same way. Watch field widths: `KKThreadStatus.why` is s16, and the word
 at +0x10 that StopThread tests is `status.flags`.
 
+
+## 13. Porting the USO system to PC
+
+(agent-a run 577.) How a PC port replaces the dynamic module system. Sources: sections 1, 2, 6, 8
+and 9 above, include/uso.h, include/uso_call.h, include/gdl/sysapi.h, include/game/input.h,
+`scripts/uso-imports.py`, and the bodies named below (all exact in the matching build).
+
+### 13.1 What a USO is at runtime
+
+A `.uso` is a relocatable module: an Info / directory record, a Sym table, Text / Data / RoData
+reloc sections and the Text / Data / RoData / Bss payloads (sections 3-7). The kernel loader
+(kernel_000.c, section 9) does four things with it:
+
+1. **Load.** `uso_load("device/file")` finds the module's slot in `gUsoModuleSlots[135]`
+   (`UsoModuleSlot`, include/uso.h), runs `uso_initSlot`, sets `gUsoModules[id] = slot` and
+   `uso_loadSections` reads every section from ROM into the device heap. Bss is cleared, not read.
+2. **Relocate.** Over every live module: `uso_bindLocalSyms` adds the section base to each kind-2 /
+   kind-4 Sym value, then `uso_relocateSections` patches the R_MIPS_26 / HI16 / LO16 / 32 sites.
+3. **Bind imports.** `uso_bindImports` copies a kind-1 Sym's value from the exporting module's Sym
+   entry (`gUsoModules[info >> 4]`). A missing exporter marks the slot (`unk99`) and counts a miss;
+   the pass runs over all modules, so loading the exporter later resolves the pending imports.
+4. **Unload.** `uso_unload` clears `inUse` / `gUsoModules[i]`, then `uso_unrelocateSections` and
+   `uso_unbindImports` on every other live module, so their sites that pointed into the
+   unloaded module go back to unresolved.
+
+The entry call is `uso_callEntry`: `Sym[gUsoEntryIndex].value` of `gUsoModules[gUsoEntryModule]`
+is called with `&gUsoCtx` (the kernel boots bootup.uso this way, section 10).
+
+**Who depends on it (game side).** Everything goes through the SysApi table (`gSysApi`,
+include/gdl/sysapi.h), whose `usoLoad` (+0x40) / `usoUnload` (+0x44) / `usoPreLoad` (+0x74)
+slots are the loader's services:
+
+- `app_loadUso(&gSysLib, path)` / `app_unloadUso(&gSysLib, path)` (game_libs_post0b.c) call
+  `SYSAPI->usoPreLoad` + `SYSAPI->usoLoad` / `SYSAPI->usoUnload` and `sys_fatal` on a negative
+  result ("usoLoad() error loading file %s: %d", "cant unload %s (%d)").
+- **Mode switches.** `GameFlow_startMode` maps `InputMgr.nextFlowMode` to a mode module and
+  `GameFlow_loadProcUso_000117FC` (bootup_uso_o0_117FC.c) swaps it: if the new path differs from
+  `InputMgr.procUsoPath` (+0x2C) it unloads the old module, calls `app_freeAllOfType(3)`, then
+  loads the new one with heap mode 3 (`app_setHeapMode(3)`, `app_setCurrentHeap(&gSnowBoard, 1)`)
+  and stores the path. The mode modules are n64proc, titproc, h2hproc, mgrproc, timproc, arcproc,
+  trkproc, eddproc (each enters through `<pfx>_procMain`; 1080_MODES.md "Entry points").
+- **Extra modules for the flow.** `game_loadUso` / `game_unloadUso` (bootup_uso_o0_118E4.c) keep a
+  `FlowUso {handle, next}` list at `InputMgr.usoList` (+0x130) for modules loaded alongside the
+  mode (callers: bootup_uso_o2_6808.c, and game_libs_o0_8AE4.c, which loads paths from a pool
+  table); `game_unloadUso` / `GameFlow_unloadUso_00011A34` unload them. The `app_launch*` helpers
+  load genproc / nameent / viewrec (1080_MODES.md).
+- `boot_reloadMainUso` / `boot_usoLoadFatal` ("cant reload mainuso %d") in game_libs
+  (game_libs_post1b.c, game_libs_ido53_669AC.c).
+
+`scripts/uso-imports.py list` prints every module with its id (bootup.uso = 0, the audio banks
+1-3, the board / rider data modules 4-12, boarder1-5 13-17, gui 18, the procs 19-28, game.uso ...); `imports <module>` shows
+what each one binds.
+
+### 13.2 Recommended PC strategy: one static executable
+
+- **Link every module statically.** Each `src/<segment>/` becomes ordinary C in one program. The
+  decomp already builds every segment from C; what a port drops is the VRAM-0 placeholder linking.
+- **`uso_load` / `uso_unload` become a registry.** Keep the names (paths) as keys and map each to a
+  per-module record `{ const char *path; void (*init)(void); void (*fini)(void); }`. `usoLoad(path)`
+  looks the path up, runs `init` (reset the module's state, 13.3) and returns a fake slot id >= 0;
+  `usoUnload(path)` runs `fini`. Install them in the SysApi table so `app_loadUso` /
+  `app_unloadUso` / `GameFlow_loadProcUso_000117FC` keep working unchanged. The mode entry becomes a
+  table of `<pfx>_procMain` pointers keyed by flow mode (1080_MODES.md "What a PC port replaces").
+- **Import binding becomes direct symbol references.** The source spells every cross-module or
+  self-relocated reference with a zero placeholder plus a documented name. In a port those macros
+  expand to the name instead. A sketch, under a `PORT` build flag:
+
+  ```c
+  #ifdef PORT
+  #define CALL(f)          f            /* uso_call.h: gl_func_00000000 on N64 */
+  #define FCALL(f)         f            /* func_00000000 */
+  #define GCALL(f)         f            /* game_uso_func_00000000 */
+  #define XCALL(tok, f)    f            /* per-site alias token (gl_func_00000000_send ...) */
+  #define GL_DATA_STR(off, text) ((char *)(text))   /* gl_data.h: the literal is the real data */
+  #define INPUT_MGR(sym)   gGameFlow   /* the port's one InputMgr definition: every token is it */
+  #endif
+  ```
+
+  The names are trustworthy: the readability gate re-proves every `CALL(X)` against the ROM's
+  R_MIPS_26 relocs (`name-placeholder-calls.py check`), every `INPUT_MGR(tok)` against relocs into
+  bootup Bss 0xF8 (`gameflow-import-sites.py check`) and every data alias / `GL_*` claim
+  (`uso-data-sites.py check`). Two caveats:
+  - A raw `GL_DATA(off)` / `GL_BSS(off)` / `&D_00000000 + K` (a section offset with no object
+    name) has no PC meaning: each must become a named object first. The dashboard's "Data sites"
+    table counts what is left, and `uso-data-sites.py` plans the conversions.
+  - Placeholders are K&R (unprototyped) calls; a port needs a prototype per callee, and the
+    argument types at the sites (names passed as `int`, 1080_PORTING_GUIDE section 8) must be
+    widened to pointers.
+- **Linker aliases.** The per-site alias macros of gl_data.h (`#define gInputMgr D_00000000`,
+  `sStr_*`, `kRo_*`) exist only so the N64 build emits the placeholder relocation; in a port each
+  alias is a real definition in the module that owns the object (the owner is the Sym entry's
+  section: `uso-imports.py sites <module> --imports` names it).
+
+### 13.3 Module state and its lifetime
+
+- **bootup.uso is always resident.** It is the only module on the "mainuso" device (section 2),
+  loaded at a fixed address by the kernel at boot, and never unloaded. Its Text is game_libs +
+  bootup_uso, so everything in them (InputMgr / GameFlow at Bss 0xF8, gSysLib, gSnowBoard, the
+  heaps, gGfxLib, the pad thread, the audio driver, gSysApi) lives for the whole run: in a port,
+  ordinary globals.
+- **Other modules are reloaded from ROM.** `uso_load` re-reads Text / Data / RoData and clears Bss,
+  so a module's Data is back at its ROM initial values and its Bss is zero every time it loads.
+  A mode USO is unloaded and reloaded on each mode change (`GameFlow_loadProcUso_000117FC`), so
+  its module-local statics never survive a mode switch; a module reloaded with the same path is
+  NOT reloaded (the path compare), so its state survives a restart of the same mode.
+- **What persists across mode switches** is what lives in bootup.uso: the InputMgr fields
+  (nextFlowMode, choices, `session` / `backup` save pointers, replay buffers), gSnowBoard and the
+  heaps other than type 3. Heap type 3 allocations are the mode's (`app_freeAllOfType(3)` before
+  the next load).
+- **Port rule.** For every non-resident module, the registry `init` must restore its Data to the
+  initial values and zero its Bss (keep a pristine copy of the initialised statics, or move them
+  into a per-module state struct that `init` re-initialises), and `fini` must not free bootup-owned
+  objects. Without that, a port behaves differently from the N64 on the second entry to a mode.
+
+### 13.4 The `+0x400` kernel rule disappears
+
+The kernel is linked at 0x80000000 but runs at +0x400 (section 1), so kernel symbols are spelled by
+pinned link addresses (`func_8000XXXX`, `D_8000XXXX`, the `k_` prefixed SDK names, section 12) and
+`UsoHook` slots hold runtime addresses (include/uso.h). On PC there is no load offset and no kernel
+loader: the hooks are ordinary function pointers (or the registry above), the pinned aliases in
+`undefined_syms_auto.txt` are not needed, and the kernel's libultra / rmon code is replaced by the
+port's platform layer.
+
+### 13.5 Duplicate-symbol hazards
+
+On the N64 each module is a separate namespace (only Sym exports are visible, by module id), so the
+same function or class can exist in several modules. Linked into one program these collide:
+
+- **Cross-module twins.** game_libs and bootup_uso each define a TimeGadget (`TimeGadget_ctor` in
+  game_libs.c, `TimeGadget_ctor_00013D40` in bootup_uso_tail4.c); the mode procs repeat skeletons
+  (`*_procMain`, the `Process_*` / DataManager subclasses); timproc_uso_b1 / b3 / b5 share sources.
+  The readability phase already keeps names ROM-wide unique (a duplicate global makes ld segfault):
+  a recurring class gets a segment-qualified form or an address suffix, and module prefixes
+  (`edd_`, `n64_`, `tim_`, `trk_` ...) separate the per-mode copies. Keep those names in a port.
+- **Placeholder sentinels.** `gl_func_00000000`, `func_00000000`, `game_uso_func_00000000`,
+  `D_00000000` and the per-site alias tokens are the same symbol in many modules; under `PORT` they
+  must expand away (13.2) or the link merges unrelated objects.
+- **Static (file-scope) duplicates** are fine; check `nm` of the port for duplicate globals after
+  each module is added.
+
+### 13.6 Checklist
+
+1. Build every `src/<segment>/` (kernel excluded) as host C with `-DPORT`; drop INCLUDE_ASM and
+   the NON_MATCHING-only paths per 1080_PORTING_GUIDE.
+2. Define `CALL` / `FCALL` / `GCALL` / `XCALL` / `GL_DATA_STR` / `INPUT_MGR` / `GAMEFLOW` as in 13.2;
+   declare prototypes for every callee they name.
+3. Turn every remaining `GL_DATA(off)` / `GL_BSS(off)` / `&D_00000000 + K` into a named object
+   (dashboard "Data sites"; `uso-data-sites.py` plans).
+4. Replace the gl_data.h linker aliases by real definitions in the owning module.
+5. Write the module registry: path -> `{init, fini}` for every module `uso-imports.py list` shows
+   with code (procs, gui, boarderN, game, genproc ...); data-only modules (audio banks, course and
+   rider data) become files read by the host.
+6. Install `usoLoad` / `usoUnload` / `usoPreLoad` (and the other SysApi slots the kernel fills:
+   memory range, file services) in the SysApi table before `boot_entry_00066C30`.
+7. Make each non-resident module's statics resettable (13.3); verify a mode left and re-entered
+   starts from the same state as a first entry.
+8. Map the flow modes to `<pfx>_procMain` (GameFlow_startMode / 1080_MODES.md).
+9. Resolve duplicate globals (13.5); keep the ROM-wide unique names from renames.tsv.
+10. Drop the kernel (loader, `+0x400` pins, PI DMA `fs_romRead`) for a host file layer that serves
+    "rom/..." paths from extracted files.

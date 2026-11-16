@@ -1186,6 +1186,24 @@ Next:
 - agent-g: EnvSettings +0x3C bgBox (above), then game_createMap's D site.
 - agent-b: whether to embed GdlParmBase and convert post1b's 13 `->type` stores.
 
+### Run 581 (agent-h): raw-site closeout for owner h (165 -> 0 unjustified)
+
+Commits on agent-h (base 01b36397d), each gated PASS (3288/3288, ROM identical, verify-blocks 6/6, 6089 named calls /
+0 mismatches, uso-data-sites 0, INPUT_MGR 0); all 1278 .o (matching + NON_MATCHING) identical by objdump -d -r -z +
+.data/.rodata: 7d7b08a3e (conversions), b465fd4ca (conversions, `*(T *)&` lever), 492250b32 (RAW: comments only).
+
+- **ProcessHead / PROCESS()** (modeproc.h): the bootup Process head, +0x2C fadingOut, +0x30 paused, +0x38 padState,
+  +0x48 pauseMenu. TitleDemoProcess carries fadingOut / pauseMenu.
+- **GuiSpriteTable** (guimenu.h): titproc Bss 0 (the ROM reloc target of every titproc D_*_A / import_00263D30 site);
+  menuOwner at +0xA8 is the process the tit_menu* callbacks fade out.
+- **RaceGate** (course.h, agreed with agent-g): +0x5C x, +0xC8 flags (bit 0 = pass on the left).
+- **VT_SLOT works in the -O0 embedded-assignment dispatch bodies**: `VT_SLOT(m, n).fn(VT_SLOT(m = NODE(a0)->vptr, n).delta + a0)`
+  gives the same bytes as the raw `(*(fn *)(m + 0xC + 8n))(*(short *)((m = ...) + 8 + 8n) + a0)` form.
+- gui_centerAt_000102A4 needs `*(float *)&` / `*(int *)&` on rowHeight / numRows (plain members reorder the lwc1).
+- Left (justified): 28 data-table, 29 unknown-object, 7 donor-mirror, 3 byte-lock. Next struct candidates: PointsGadget
+  +0x80 / +0x84 / +0xA0 (TrkDataManager_init), RaceProcess.unk524 object (+0x60 state), ScreenWindow +0x70 / +0x1B8,
+  BGBox +0x3C, U64BGWall cfg.
+
 ### Run 567 (agent-h): TitleDemoProcess pointer fields, vptr / name stores, item structs, the 116C +0xA8 store
 
 Commit fb7f786e1 on agent-h (base 664b7a58e), gated PASS (3288/3288, ROM identical, verify-blocks 6/6, 6089

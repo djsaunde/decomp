@@ -1133,3 +1133,18 @@ TextWin_printf / sys_sprintf align idioms, Window_hostioParms (1); census b:
 MemberCallback_invoke_* (7 / 5 x4, the Cfront member-callback struct is game/sun.h, area g: a
 shared gdl one needs a distinct name), BaseLight_ctor (5, Parm stores wait for gadget.h),
 CMod_callbackInvoke_000551E0 (5).
+
+## 26. Run 578 (agent-b): raw-offset closeout for post0b / post1b*
+
+Owner-b raw `*(T *)(p + K)` sites (census): 200 -> 108 converted-to-field 92, and the 108 left
+all carry a same-line `/* RAW: <reason> */` (unknown-object 77, data-table 20, byte-lock 7,
+donor-mirror 4). Same-line placement keeps line numbers (the MemberCallback recipes are
+statement-layout sensitive).
+- Cfront vtable calls now spell `VT_SLOT(vt, N).fn / .delta` everywhere in these files: delta at
+  vt + 8 + 8N, fn at vt + 0xC + 8N. Byte-identical in every site tried (16 call sites).
+- New / extended header types: `ColourItem` (item.h, 0x3C: Node, next at +0x2C, rgb[3] at +0x30),
+  `MemHeap.size` (+0x28; gMainHeap is 44 bytes).
+- Left for later (biggest unknown-object groups): the Cfront pointer-to-member callback record
+  (MemberCallback_invoke family, 31 sites; {obj +4, s16 delta +8, s16 vslot +0xA, fn/vt-off +0xC}),
+  gSysLib (0x28-byte system-services object, +0x14 frame counter, +0x1C message queue), MCamera
+  (+0x14C fov), CamMan / Spinner / SeekNode structs.

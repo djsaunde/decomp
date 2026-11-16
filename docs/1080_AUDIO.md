@@ -361,6 +361,22 @@ SET_CHANNEL_MASK (6 / 0x60). Port-author section added above (layers, game API, 
 The 0x2Dxxx..0x31xxx snd_* names keep their suffixes: only the command words are known, not
 their game meaning.
 
+**Run 579 (agent-c), raw-offset close-out.** Owner c went from 108 raw struct-offset sites to 55,
+all 55 justified (`/* RAW: <keyword>: ... */`). Converted 53 (all byte-identical in both builds):
+the AudioContext load-status arrays, numSequences (`*(unsigned short *)&ctx->numSequences`),
+seqPlayers[i].skipTicks, specId, resetTimer / resetStatus, externalPool; SynthesisReverb
+left/rightRingBuf through REVERB_AT in Load/SaveRingBufferPart, and LoadAuxBufferC's 0x05 packet
+through the `*(T *)&REVERB_AT(rec)->field` lever (the plain member read re-ranks; this does not);
+InitSequencePlayers' cursor as `((AudioContext *)p)->sequenceLayers[-1]` (p runs one layer
+ahead); new `AudioHeapInitSizes` (audio.h); Instrument / Drum / AudioSlowLoad / Portamento /
+VibratoState / AudioListItem / SequenceChannel / SequenceLayer fields; GfxLib.frameTime, DmaSlot.busy,
+Node.parent; genproc SelVEntry slots, SelItemInfo.pos, SelectWin curItem / fade,
+SelItemsMgr.lists. Left (justified): 38 data-table (RoData constants, section-relative words /
+tables in the match_imports and the edg donors), 10 unknown-object (D_2DE24_b +0xC, the cue-queue
+record, gen_createScene's three game_libs imports, the import_000A5D38 display object, ...),
+6 donor-mirror (SelectWin_update's placeholder body), 1 byte-lock (InitSequenceChannel's
+`changes` byte: the bitfield-store form emits an lbu RMW).
+
 ## Next
 
 1. Model more of SequenceLayer / SequenceChannel (the 27E24 / 28604 / 291C0

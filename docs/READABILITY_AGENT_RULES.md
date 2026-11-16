@@ -28,6 +28,15 @@
   - Keep make at about -j8.
   - Never `make -n`.
   - Budget 70–85 minutes.
+- **`RAW:` justification (run 577):** every raw struct-offset site left in compiled code (a `*(T *)(p + K)` cast or an offset-accessor use such as `FW(p, K)`) must be converted to a field or justified. A site is justified when its line, or the line just above it, carries a comment `RAW: <keyword> <reason>`. Keywords:
+  - `byte-lock`: every typed spelling changes the bytes; name the lever (e.g. "spelled self->numNodes the beql operands swap");
+  - `data-table`: a read from a data table, pool, stream or section-base offset, not a struct;
+  - `unknown-object`: the object's type is not proven / declared yet (say what is known);
+  - `nm-only`: a NON_MATCHING reference body;
+  - `donor-mirror`: a C++ donor that cannot include the C header.
+  - For a run of sites, put the full reason above the first and end the others with `/* RAW: <keyword> (as above) */`.
+  - Check with `scripts/readability-census.py --no-build --unjustified --owner <you>` (lists `file:line function`). The dashboard shows raw total / justified / UNJUSTIFIED per owner and per file.
+  - A tag is the last resort: try the field first. A cast-to-struct `((T *)p)->field` usually compiles identically to the raw cast, and `*(int *)&p->field` keeps the name when the member type changes the bytes.
 - **Docs:** update your area doc /home/danjs/code/decomp/docs/1080_<AREA>.md (uncommitted).
 - **Report:**
   - counts
