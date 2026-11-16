@@ -868,3 +868,30 @@ relocations.
   (romAddr 0x10 / size 0x14 / medium 0x18 / cachePolicy 0x19 after a 0x10 header, OoT's
   AudioTable) and tbl + 2 is the header's unkMediumParam. It can take audio.h's AudioTable
   directly. Save65EE4 (post1b) can become FsStream (owner b).
+
+### Run 539 (agent-c): C++-safe audio.h, Audio_InitNoteFreeList donor, AudioLoad_SyncLoad, layer ProcessSound fields
+
+Commits on agent-c (base dc60769de), each gated PASS (3288/3288, ROM identical, placeholder and
+gameflow checks 0 mismatches). Every build/ object, matching and NON_MATCHING, is identical to
+the pre-run build by `objdump -d -r -s` (.mdebug excluded).
+- c1477208b: **audio.h and libultra/os_message.h / os_thread.h / os_task.h** wrap their
+  `&((T *)0)->f` offset asserts in `#ifndef __cplusplus`, so edg donors can include audio.h.
+  **game_libs_ncc_28A68.cpp** (Audio_InitNoteFreeList) is on AudioContext.noteFreeLists /
+  numNotes / notes and Note.listItem (u.value, prev), with CALL(Audio_InitNoteLists) /
+  CALL(AudioSeq_AudioListPushBack). The byte offset `off` stays because NCC keeps the source
+  operand order. **Gotcha:** edg resolves `#include "libultra/os_thread.h"` (inside
+  os_message.h) only with `-I include`, so the donor's Makefile block adds
+  `$(GAMELIBS_28A68_DONOR): NCC_CFLAGS += -I include`. Any other edg donor that includes
+  audio.h needs the same line. **game_libs_o2_23914.c** (AudioLoad_SyncLoad) uses AudioTable,
+  `&tbl->entries[a1]` and header.unkMediumParam. The member form gives the same tbl-first
+  addu as the old int-sum spelling.
+- d2a98a59f: **SequenceLayer** gains pan 0x05 (u8), notePan 0x06 (s8), freqScale 0x30,
+  velocitySquare 0x38 and noteFreqScale 0x44. Audio_SequenceChannelProcessSound's layer loop
+  is OoT's (noteFreqScale = freqScale * the channel freq, noteVelocity = velocitySquare *
+  appliedVolume, notePan = (pan * (0x80 - panChannelWeight) + channel->pan) >> 7), and
+  `enabled` reads as the bitfield. Kept as they were: the byte-0 bit-0 test, and the
+  FW(arg0, 0x30) pan addend (the run 530 lever).
+- **Census:** game_libs_post.c 181 + 16 -> 177 + 6. game_libs segment 1100 -> 1090 raw.
+- **Next:** post.c's top functions by raw count (run the census `--top`). Channel byte 0x1
+  (`*(u8 *)(arg0 + 1)`, the channel change bits) is still raw in ProcessSound. Save65EE4
+  (post1b, owner b) can become FsStream.

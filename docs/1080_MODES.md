@@ -1355,3 +1355,39 @@ Next (H1):
 - gen_createVRBox (21), gen_buildRoom (15), SelItem_drawStatBar / Right (12 / 14).
 - The C++ donors (C310 34, BDEC 20, 8AFC 13, 2B74 11, 32C8 10) including select.h by relative
   path (the edg mirror exists). Not started this run.
+
+### Run 539 (agent-c): Node child-attach idiom, GenRoom world roots, stat bars, the five edg donors on select.h
+
+df4eecbf4 and addf6fb8e on agent-c (hand edits, no renames; each gated PASS 3288/3288,
+placeholder and gameflow checks 0 mismatches). Every build/ object, matching and NON_MATCHING,
+is identical to the pre-run build by `objdump -d -r -s` (.mdebug excluded).
+- **Child-attach idiom** (b5.c, _8FC8 macros, _D884, _DF14): `list_append(&NODE(p)->children, c);
+  if (NODE(c)->parent) NODE(c)->unk04 = 1; NODE(c)->parent = (int)p;`. **Trap:** in
+  SelectWin_ctor (b5.c and _4118) the `spA8 + 0x14` stores are on 0x18-byte SelParm records, not
+  Nodes, so a blind regex on `+ 0x14` is wrong there. Convert only inside the idiom.
+- **GenRoom / GenCamera world roots:** GameFlow.game is the WorldRegistry (game/course.h).
+  GenRoom world / unk30 / unk34 and GenCamera world / unk04 / unk08 are renamed to
+  bg / fg / mainGame (bgRoot 0x84, fgRoot 0x80, mainGame 0x8C), read through WORLDREG().
+  SelItemsMgr / SelItemList cfg2C / parent / cfg34 are the same three words (CommonInfo copy)
+  and can take the same names next.
+- **Stat bars (3A4C / 3C8C):** arg7 is the SelectWin. The offsets are its Parms values cox / coy /
+  clx / cly / cff / cdf. The sprite derefs (`+0x10` image, `+0x20` s16 width, which looks like
+  an ImageFile) are left raw because the sprite type is unproven.
+- **The edg donors** C310 / BDEC / 8AFC / 2B74 / 32C8 include select.h, with no lever needed:
+  - C310 is on SelBoardItem / SelBoardModel (lit, spin) and SelectWin cc[0..4] / cc[7].rgba,
+    ysp, numPlayers;
+  - BDEC uses scene->view->originY, hxp / hyp, unk4A0 (an alpha scale: `denom * unk4A0` is the
+    sprite alpha);
+  - 8AFC (named RoomModifier_resetScale, but `scr` is a SelectWin) walks
+    itemsMgr->lists[g]->items[i] and calls vtable slot updateHighlight;
+  - 2B74 / 32C8 build each parm at &SELF->field through SelParmI / F / V3.
+- **Census:** timproc_uso_b5.c 208 + 70 -> 156 + 49. Segment 355 -> 220 raw. C310 34, BDEC 20 and
+  8AFC 13 are now 0; 2B74 51 -> 3 and 32C8 38 -> 2. Owner c 923 -> 667.
+
+Next (H1):
+- SelItemsMgr_ctor (_8FC8, 64: its ADD macros' FP / FW parm writes), LevelList / CourseList
+  createItem (27 / 26), SelectWin_ctor (_4118, 113: the SelParm records via PI / PF / PV
+  as in 2B74).
+- 8AFC's name: RoomModifier_resetScale_00008AFC takes a SelectWin. Rename it with
+  rename-symbol.py once the role is settled.
+- SelectWin.unk4A0 -> an alpha name (BDEC and the other draw slots multiply 255 by it).
