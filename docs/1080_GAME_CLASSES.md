@@ -31,6 +31,10 @@
 - [23. Run 516: SnowBoarder and ShpNode on DNode](#23-run-516-snowboarder-and-shpnode-on-dnode)
 - [24. Run 523: game_uso raw sites, GameFlow import, AnimDataMgr_lookup](#24-run-523-game_uso-raw-sites-gameflow-import-animdatamgr_lookup)
 - [25. Run 528: WorldRegistry.map, C++-safe rideranim.h, game_uso int-index sites](#25-run-528-worldregistrymap-c-safe-rideranimh-game_uso-int-index-sites)
+- [26. Run 532: RiderAnim state fields settled, donors on headers, GameFlow.winVariant](#26-run-532-rideranim-state-fields-settled-donors-on-headers-gameflowwinvariant)
+- [27. Run 538: game.uso data sites in uso-data-sites.py, RiderAnim state PMFs named](#27-run-538-gameuso-data-sites-in-uso-data-sitespy-rideranim-state-pmfs-named)
+- [28. Run 543: bootup C++ donors on headers, game.uso strings / tags / constants](#28-run-543-bootup-c-donors-on-headers-gameuso-strings--tags--constants)
+- [29. Run 551: bootup donors 485C / 11B5C / 7328, game.uso RoData constants, U64BGWall_display](#29-run-551-bootup-donors-485c--11b5c--7328-gameuso-rodata-constants-u64bgwall_display)
 
 ---
 
@@ -1270,3 +1274,45 @@ six donors + headers), 5e22d234a (tool change: uso-data-sites.py const-table / v
 
 **Next:** the next C++ donors (485C 11, C234 10, B1B4 8, 11B5C / 7328 7); envobj.h / guimenu.h C++ guards with
 their owner (h) for 55A0 / FC28; the remaining game_uso Data words (0x548 node table, 0x1098.. rumble records).
+
+## 29. Run 551: bootup donors 485C / 11B5C / 7328, game.uso RoData constants, U64BGWall_display
+
+Census (compiled code, casts / accessor uses): bootup_uso 185 / 37 -> 172 / 27, game_uso 33 / 21 -> 7 / 21;
+C++ donors 378 -> 353 sites (73 -> 70 files with any); weak names 50 -> 49. Commits on agent-g (base 1149e6ece):
+d4f813c35 (hand edit: three donors), 16e056df7 (tool change: uso-data-sites.py), b27516760 (tool output: 26
+constants + 26 respelled sites), 6adcf7dea (pure rename). The gate passed on the tree before each batch was
+committed. ~/.local/bin/mips-linux-gnu-objdump showed identical .text and relocs for each changed donor .o, and
+identical -dr / -s output for bootup_uso.c.o in both the main and non_matching builds.
+
+- **55A0 / FC28 after the coordinator's landing:** 55A0 has 5 sites left (DROOT +0x34 and the n2 / n3 / n4 node
+  records it builds). FC28 has 8, all PauseMenu_create's two colour quads at GuiMenu +0x4C / +0x5C. They need
+  `f32 selColour[4]` / `rowColour[4]` in place of guimenu.h's `unk4C[0x20]` (h's header).
+- **485C Mountain_display:** `Mountain *` (course.h) plus the root alias as `CamWindow *` (->cam->mnode.world[3] =
+  the eye). gGfxLib.worldScale has to stay base + offset (`GFX_WORLDSCALE(i)`). Every member spelling
+  (`.worldScale[i]`, `*(float *)&->worldScale[i]`, a `GfxLib *` local, base + offsetof) either folds 0x128 into
+  the lui / addiu pair or re-bases each load. The `*(int *)&p->field` lever does NOT cover a member of a global
+  ARRAY object read at constant indices.
+- **11B5C** input_pauseRacePads / unpauseRacePads are on GAMEFLOW() (0 left). **7328** EnvSettings_load is on
+  ENVSET() (needs course.h before envobj.h under C++). The `func_00000008 + 0x34` read is GameFlow.gameMode
+  (alias value 8 + 0x34 = 0x3C), so INPUT_MGR() would change the addend.
+- **uso-data-sites.py:** GSITE_RE now also accepts per-site zero aliases `D_<hex>_<name>` (SnowAI_ctor's
+  D_44F4_iter*, 43D8's D_43D8_fmin / fmax); the reloc placeholder must still be that token. `const-table --write`
+  now keeps the lines an earlier --write generated. Before this fix a second --write rewrote the block with only
+  the new constants, which dropped all 79 old ones. -FLT_MAX is now named kRoF_mFLT_MAX_<K>.
+  `--uso game selftest` already failed on main ("USO_FORMAT.md census changed?" in the bootup half); this run did
+  not touch that, and the gate does not run it.
+- **SnowAI_ctor:** the 24 parm-default RoData floats are named (kRoF_m10000_9C .. kRoF_m100000_F8). Still left:
+  the 41 tag-pointer reads `*(char **)(&DB + 0x6E8 + 4 * IDX)`, which are inside the INIT_ITER macro and reach
+  Data object sym102 (+0x110..), not a section base.
+- **U64BGWall_display** (was U64BGWall_func_00001A44): it sits in vtable slot +0x1C (display) of Data 0x6648,
+  which U64BGWall_ctor stores as its vptr. The body is guPosition(rot 0x2C / 0x30 / 0x34 in degrees, 1, eye *
+  worldScale) followed by gSPDisplayList(+0x38). game_createBGBox calls `U64BGWall_ctor(0, tex, 0, 90, 0)` ...
+  `(0, tex, -90, 0, 0)`, so envobj.h's `mesh` / `arg30` / `arg34` are really rotX / rotY / rotZ (s32 degrees), and
+  `unk38` is the display list the ctor builds. That header is h's, so the fix goes to h. Once fixed, the donor's 4
+  sites can switch over.
+
+**Next:** C234 SnowBoarder_procColl (10 sites). Its collision-world global `*(s32 *)&D + 0x84` and
+gInputMgr_c234_g8 + 0x2C need their owners proven first, and the frozen-home levers make the body fragile.
+After that: B1B4 (Bb4Bank's ctor stores are class-local W() / H(), so it needs a real class), 76F4 Tv1_display
+(the 0x88 Tv1 instance has no struct yet), CAE8, and the game_uso 0x548 node table and 0x1098 rumble records
+(not started this run).

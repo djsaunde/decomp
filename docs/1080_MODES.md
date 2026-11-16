@@ -955,6 +955,43 @@ meaning; ColourParms_ctor (game_libs.c, 85) can now be written on RaceColourParm
 (the TimPauseBss twins in b3 / arcproc); MGRRaceProcess_drawIntro (match_import) colour pairs; the largest
 remaining functions (task 6 not reached): mgr_initMatchRace_00000700, MgrNameEntry_drawCongrats, tit_procMain.
 
+### Run 552 (agent-h): ModeFlowProc, MgrCourseList, C++-safe race / modeproc / nameentry headers
+
+Commits on agent-h (base 2acd57ec4), each gated PASS (3288/3288, ROM identical, 6089 named calls / 0 mismatches,
+uso-data-sites 0, INPUT_MGR 0; every touched .o identical by objdump -d -r -z plus .data / .rodata, non-empty
+dumps, matching and NON_MATCHING): 72024ebc1 (MgrCourseList / ModeFlowProc, initMatchRace donor), b9504de6d
+(GameFlow_startMode), acc008c00 (tit_procMain), 657d8737a (headers C++-safe), 3d1445bda (mgr NCC donors),
+0e1472b74 (ColourParms_ctor), cabb03c91 (MGRRaceProcess_drawIntro). All hand edits; no renames.
+
+- **ModeFlowProc** (game/modeproc.h) = GameFlow.flowProc, the per-mode entry object: GameFlow_startMode allocates
+  8 or 0xC (flow modes 2 / 3 / 5) and the inlined ctor cascade stores the base vtable (bootup Data 0xC550) and
+  the mode's vtable at +4 (`vptr`, void *); it then calls VT_SLOT(vptr, 0) = `<pfx>_procMain(this + delta,
+  state)`. +0 is the record session (<pfx>_openSession stores it: tit / mgr / arc), +8 the course list.
+- **MgrCourseList** (0x3C, mgr_openSession's mem_new(0x3C)): retries, idx, count, courses[6], riders[6]. riders
+  0..3 = mgr_pickRivals, [4] = GameFlow.playerRider, [5] = the boss 5 / 6 / 7 by options->seqStep; procMain's
+  race state reads `list[idx + 3]` / `list[idx + 9]` (courses / riders). MgrRace.courseList is still s32 (the
+  drawIntro `count == idx + 1` member form swaps registers; mgr onRaceOver's int-array form is a lever).
+- **C++-safe headers**: gdl/race.h, game/modeproc.h, game/nameentry.h guard their `&((T *)0)->f` asserts and
+  include relatively ("node.h", "../gdl/race.h"); under C++ race.h forward-declares BackupSession instead of
+  including gdl/backup.h (not agent-h's; its asserts are C-only), so a donor cannot reach `session->modes`.
+  The three mgr NCC donors (700, 23FC, 2B7C) now include modeproc.h / nameentry.h. game/input.h's C++
+  `struct RaceTracker` mirror would now clash with race.h in a donor that includes both (owner: decide whether
+  the mirror goes).
+- **Colours**: MgrNameEntry_drawCongrats's credit glyph colours are RaceColourParms ctt / cnm / ccl / clg values;
+  mgr_drawResults uses the RS / NR / AD pairs, drawIntro RN / CS. ColourParms_ctor's 32 sub-object addresses are
+  `&((RaceColourParms *)arg0)->pair[RACECOL_*][0 / 1]` / ctt..clg.
+- tit_procMain's a0 is the titproc ModeFlowProc (session->ghost for the vs-ghost states); the five game_init
+  results use the Node child-attach idiom.
+
+Census before -> after: owner h raw sites 511 -> 361; all raw casts 1599 -> 1500, accessor uses 282 -> 220.
+mgr_initMatchRace 51 -> 0, MgrNameEntry_drawCongrats 32 -> 0, tit_procMain 32 -> 1 (GameFlow +0x8C, an unnamed
+pad of game/input.h), GameFlow_startMode 22 -> 2, mgr_drawResults 22 -> 6 (session modes, GameFlow.dataMgr),
+MGRRaceProcess_drawIntro 14 -> 2.
+
+Next: the trk / arc pause-Bss twins (TimPauseBss in b3 / arcproc, not reached); port audit pattern A (only
+ModeFlowProc.vptr done); MgrRace.courseList -> MgrCourseList * where the bytes allow; ask the input.h owner for
+a name at GameFlow +0x8C (titproc stores 0x820000) and about the C++ RaceTracker mirror; SnowBoarder_ctor (13).
+
 ### Run 533 (agent-h): WinsDisplay, TreeTmpl, RaceSprite, RaceEntry score, GameFlow alias sites
 
 Commits on agent-h (base 90d27efd3), each gated PASS (3288/3288, ROM identical, 6012 named calls / 0
@@ -1477,3 +1514,51 @@ Next (H1):
   SelectionMgr_update (12). SelCharacter_display (B624, 12).
 - RoomModifier_display_0000117C calls SelectWin_dimOtherItems on its field_38[field_34].
   RoomModifier may be a SelectionMgr-side name too, so check it.
+
+### Run 548 (agent-c): SelCharAnim, SelCharModel animTimer / visible, the b5.c display / state8 / placeholder sites
+
+Commits on agent-c (base 2acd57ec4), each gated PASS (3288/3288, ROM identical, placeholder /
+data-site / GameFlow checks 0 mismatches). Every b5 / match_imports object that includes select.h,
+matching and NON_MATCHING, is identical to the pre-run build by `objdump -d -r`, `-r` and `-s`
+(.mdebug excluded).
+- 4780413dc (hand edit):
+  - **select.h SelCharAnim** = SelCharModel.anim: an AnimPlayer (0xB0) + `keyHit` (0xB0). Its
+    onKey (SelCharAnim_vfunc10_0000ABB4 = vtable slot 10) sets keyHit and parks eventKey at
+    ANIM_NO_KEY; every CharacterItem anim change clears keyHit (eventKey -1000, or 2 on confirm).
+  - **SelCharModel.unk134 -> visible** (SelCharacter_display: 1 when the model faces the camera
+    and is drawn, else 0). **animMode -> animTimer**: the 8 / 0x10 / 0x20 values set by
+    onStageLeave / confirm / unfocus are frame counts. Display keeps updating the model while
+    animTimer or focused is set, counts animTimer down, and at 0 a pending keyHit restarts the
+    idle anim (animSet, 0, 2, 2, 1).
+  - SelCharacter_display (ncc_B624): the donor's local Obj mirrors SelCharModel (edg sees no gdl
+    headers). 12 -> 1 raw (the RoData f64 compare).
+  - SelectionMgr_setSplit / SelectionMgr_update placeholders in b5.c (rodata only; the splice
+    drops their text): `stateNames[i]` / `dbl[8..9]` and `fv` / `dv` pointers. The same rewrite
+    of SelectWin_update_00005FC0's placeholder grows it 0xEC -> 0xF0 and loses a trailing
+    alignment nop in timproc_uso_b5.c.o, so it was reverted. **The ROM check still said OK**:
+    compare the .o, not only the ROM, for placeholder edits.
+  - SelectWin_display: scene->view height / originY, parms.tpy.value, the stage table as an
+    array, `parms.cc[5] / cc[6] / cc[8] / c12 / cc9 / c11 .rgba` arguments.
+    **Lever:** `originY + parms.tpy.value` as plain members swaps the two lw;
+    `*(int *)&SELWIN(arg0)->parms.tpy.value` keeps the order.
+  - SelectWin_state8: the other window's busy, owner->zoomWin and eventFlags via
+    `*(int *)&member` (run 525 left the first two raw because the plain members swap their
+    registers); curItem[stage]; itemsMgr->lists[2]->items; parms.cwt.value. 13 -> 0. The
+    select.h "eventFlags stays raw" note may now be obsolete for the other state functions
+    too (untested there).
+- 5f8e36979 (**pure rename**): RoomModifier_applyScale_0000896C -> **SelectWin_setGlobalFade_0000896C**.
+  Its argument is a SelectWin (RoomModifier_display passes wins[count]), and it stores fade * 0.4
+  into a genproc global. **RoomModifier_display_0000117C is not misnamed**: its a0 is the
+  RoomModifier node (ctor 10EC, vtbl 0x3E4, windows at 0x38 / 0x3C, index 0x34 reset by update).
+  Per window render it calls setGlobalFade / dimOtherItems on that window, then shows that
+  window's DispItems (`itemsMgr->dispItems` +0x18 doFlags |= 4) and hides the other's.
+- **Census:** timproc_uso_b5 segment 179 raw + 90 accessor -> 140 + 61; timproc_uso_b5.c
+  156 + 49 -> 117 + 31. Owner c 453 -> 375 (with the audio commit).
+
+Next (H1):
+- _8FC8's last 18 (the gPolyGeomMode / f8fc8_* flag-word chain, CommonInfo +0x2C = this,
+  the FF(import_80807FB8, ...) RoData reads).
+- port-audit `--owner c` top: SelectWin_ctor (_4118, 34, pattern B), SelItemParms_ctor (2B74, 15),
+  SelItemInfo_ctor (32C8, 11), SelectionMgr_finish (6), Course / LevelList_createItem (6 each).
+- RoomModifier_display (NM) on SELWIN / SelItemsMgr members: dispItems doFlags bit 4.
+- gen_createCamera_0000283C (11).

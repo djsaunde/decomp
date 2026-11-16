@@ -899,3 +899,41 @@ HostIO objects; the clip-row element header with PolyShape_func_00043584 (+0x4C.
 MorphPoly_updateColours and Window_setDefaults (10 each), ScreenWindow_allocBuffers and
 gfx_submitFrame_0004CDB0 (9), then BaseLight_ctor / LightTarget_display / coll_markZeroWeight (8).
 BallRotator.input could become GdlInput * (ballrot.h would include pad.h).
+
+## 21. Run 550 (agent-b): NodeListState.skinMgr, Mat clip rows, GfxLib views, GdlInput, FsStream
+
+Census: all raw `*(T *)(p+K)` 1599 -> 1593 (match_imports 203 -> 197; owner b 366 -> 366: the
+converted sites were NM / `a0[K/4]` index forms the census does not count). One hand-edit commit
+(no renames); matching and NON_MATCHING objects byte-identical, gate PASS.
+
+- **Spliced functions.** skin_cmdSkinMgr, gfx_beginView_00046BC4 and BallRotator_func_00036224
+  are built in BOTH builds from their native ports in src/match_imports/ (REPLACE_FUNC_BODY);
+  the `#ifdef NON_MATCHING` body in post0b / post1b is never linked. Convert the port (it is the
+  real source); bind-native-relocations.py refuses the build ("native linked body changed") if the
+  port's bytes move, which is a free byte check. A port can include gdl headers after its
+  context_*.h (nodelist.h, gfxlib.h, window.h, pad.h: no typedef clashes); change the context's
+  prototype to `struct X *`. In the NM reference body, name callees in comments only: the
+  name-placeholder-calls check cannot prove CALL() names in a spliced function.
+- **NodeListState +0x18 skinMgr**: the SkinMgr node command stores its SkinMgr in self and
+  parent (ProcNodeList clears it). The Bss 0x41700 table (`gProcNodeList_41700`, gl_data.h) is the
+  4-slot SkinMgr table (MAX_SKIN_MGRS) indexed by the slot argument; ProcNodeList clears its 4 words.
+  The macro deserves a rename (gSkinMgrs_41700) and a corrected comment.
+- **Mat = ncc_493AC.cpp's clip-row Elem.** PolyShape_init iterates the shape's mats (+0x84) and
+  per material: lightDL 0x60 (PolyShape_allocLightDL, geomFlags 0x2000), triDL 0x6C
+  (gGfx->staticDL; 0 if no triangle used it), triStart 0x8A, rowStart 0x80, rowGfx 0x7C (0x100
+  bytes when GFX_FLAG_MAPPARMS: the triDL Gfx count at the end of each grid row), minCut / maxCut
+  = the first / last row with triangles. PolyShape_func_00043584 is the Mat reset (unk84 = 1,
+  unk4C = 1, minCut = -1, DLs cleared, rowGfx allocated). The edg Elem in ncc_493AC.cpp could
+  now be spelled on these names (pool levers: check bytes).
+- gfx_callStaticDL_00044540(int *start, DLContext *dl): G_DL into gGfx->staticDL at Gfx *start;
+  `*(int *)&self->gfx.cur->base` is a byte lever (plain member swaps t6 / t8).
+- gfx_beginView: `&s0->unk138` with `[1]` (renderFlags) must stay; `&s0->renderFlags` changes bytes.
+- BallRotator.input is `struct GdlInput *`; in the port `*(int *)&((PadCtl *)ap)->held` is a byte
+  lever (plain `->held` changes bytes).
+- post1b fs_piXfer_00065EE4's records are FsStreams (gdl/dma.h): hdr, data, end, size, and the
+  words read back from hdr / hdr + 4 land in wrPos / rdPos.
+
+Next: rename gProcNodeList_41700 -> gSkinMgrs_41700 (and PolyShape_func_00043584 -> Mat_reset_00043584);
+the HostIO objects; MorphPoly_updateColours and Window_setDefaults (10), ScreenWindow_allocBuffers
+and gfx_submitFrame_0004CDB0 (9); then port-audit --owner b top: DNode_ctor (17), gfx_endDL (10),
+BaseLight_hostioParms (9).

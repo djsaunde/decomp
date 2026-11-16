@@ -917,3 +917,22 @@ matching and NON_MATCHING, identical by `objdump -d -r`, `-r` and `-s`).
 - **Next:** AudioThread_GetLayerSamplesLeft (7: gAudioContext_275F4 + a0 * 0x160 is
   seqPlayers[a0]; the header notes ring levers on the operand names), cam_createDefault (8),
   then post.c `--top`.
+
+### Run 548 (agent-c): AudioThread_GetLayerSamplesLeft, cam_createDefault
+
+0dd4b14fb on agent-c (hand edit; gate PASS 3288/3288, checks 0 mismatches; game_libs_post.c.o,
+matching and NON_MATCHING, identical by `objdump -d -r`, `-r` and `-s`).
+- **AudioThread_GetLayerSamplesLeft:** `&((AudioContext *)gAudioContext_275F4)->seqPlayers[a0]`
+  (the alias extern kept) -> channels[a1] -> layers[a2] -> note. It returns
+  `tunedSample->sample->loop->end - note->synthesisState.samplePosInt` (0 when any link is
+  disabled or null, the layer's bit3 (bit 27) is clear, or the note now plays another layer:
+  `note->playbackState.parentLayer != layer`). The `word >> 31` enabled tests and the
+  `flags << 3 << 1` bit-27 test keep their matched spellings. No lever needed: the typed
+  player base folds 0x2D00 into the loads the same way.
+- **cam_createDefault_00033228:** the new MCamera is attached with the Node child-attach idiom
+  (`&NODE(lst)->children`, parent, unk04). The owner's 0x0C / 0x10 / 0x28 / 0x3C stay raw: 0x28
+  takes the camera, so the owner is not a Node, and its class is still unknown (Node_def in
+  post0b is its sibling).
+- **Census:** game_libs_post.c 163 -> 153; game_libs segment 714 -> 704 raw.
+- **Next:** port-audit `--owner c` for audio: AudioSeq_SeqChannelSetLayer (match_imports, 6),
+  AudioSynth_LoadAuxBufferC / AudioLoad_RelocateFont (2 each), snd_SoundObjUpdate.
