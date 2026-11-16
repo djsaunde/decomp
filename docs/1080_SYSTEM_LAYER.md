@@ -18,6 +18,7 @@
 - [10. Run 462: RaceProcess base, app_launchGenProc, full-range sweep](#10-run-462-raceprocess-base-app_launchgenproc-full-range-sweep)
 - [12. Run 482: named-object wave (vtables, libultra globals, per-site aliases)](#12-run-482-named-object-wave-vtables-libultra-globals-per-site-aliases)
 - [13. Run 491: system objects, gSysApi, path tables](#13-run-491-system-objects-gsysapi-path-tables)
+- [14. Run 598: kernel global names (runtime `_rt` aliases, strings, MMIO)](#14-run-598-kernel-global-names-runtime-_rt-aliases-strings-mmio)
 
 ## 1. String-xref method
 
@@ -432,3 +433,33 @@ All of these are in include/gdl/gl_data.h; READABILITY_PLAN 9.1.6 has the full l
 - **gNodeGlobals** (Sym 550) is the 40-slot Node register file used by the doCommand opcodes 0x66 / 0x67.
 - **USO path tables:** gProcUsoPaths (genproc / nameent / gamegfx / charsel / charsps / charfir / charmap),
   plus the board / boarder / player path tables used by SnowBoarder_loadBoardModel / func_0000CAE8.
+
+## 14. Run 598: kernel global names (runtime `_rt` aliases, strings, MMIO)
+
+agent-a run 598, commits 2a3c986b6 (pure rename, 80 names) and 39cf68235 (hand edit). Run 603 closed the
+last 9 `D_` globals ROM-wide (49ede6ef6 pure rename, add85fa64 hand edit).
+
+- **The kernel runs at link + 0x400.** Every pinned `D_8000XXXX` that kernel code uses is a RUNTIME
+  address. To resolve one, read the ROM (ROM = runtime - 0x7FFFF400) or take the symbol linked at
+  runtime - 0x400. A value that is a function's runtime address is named `<fn>_rt`:
+  - the uso_init hook table: uso_unload_rt, uso_printVersion_rt, uso_addrToModule_rt, uso_printModules_rt,
+    fs_openFile_rt / readChecked_rt / closeFile_rt / seek_rt / tell_rt, uso_findDataSection_rt,
+    uso_getErrno_rt, uso_returnZeroF_8000149C_rt;
+  - thread entries: __osDevMgrMain_rt, pimgr_ramromMain_rt, __rmonIOhandler_rt;
+  - the exception vectors that osInitialize copies: __ptExceptionPreamble_rt (0x80003280), and
+    __osExceptionPreamble_rt (0x80003270);
+  - gUsoSectionNames_rt (0x8000A2A0 = runtime func_80009EA0, the section-name table).
+- **__osExceptionPreamble_rt is a hand-added pin, not a rename.** exceptasm.s has a linked `alabel
+  D_80003270` inside __osException. rename-symbol.py would rename that label and keep the C refs as the
+  alias. So kernel_000.c / kernel_000_ido53_2530.c spell the new pin, and the label keeps its D_ name.
+- **Strings** are named by content plus address (sStr_/sFmt_<words>_<addr>). The kernel_026 block holds them
+  at link addresses: "mainuso", "Text Reloc", "USO: UnCompress %d to %d\n", and so on. kernel_000 / 1EC8 /
+  mp72 code reads the same strings through their runtime copies (+0x400), which get the same content
+  name with the runtime suffix (sFmt_USO_UnCompress_80009F84 / _8000A384).
+- **USO module slots** (0x9C bytes each): gUsoModuleSlot0InUse (+0x98), gUsoModuleSlot1/2/3,
+  gUsoModuleSlot0Name (+0x72), gUsoModuleSlotsEnd / ...EndName, gUsoModulesEnd, and
+  gUsoSectionBytesSym / TextReloc / DataReloc (gUsoSectionBytes[1..3]).
+- **MMIO:** gPiDramAddrReg / gPiCartAddrReg / gPiRdLenReg / gPiWrLenReg / gPiStatusReg (0xA4600000..0x10,
+  PI_*_REG) and gSpStatusReg (0xA4040010).
+- Left tagged: D_80009E9C (`UNNAMED: unknown-role`, an unreferenced word).
+- game_libs libultra: gl_tmp_task (0x41710) is _VirtualToPhysicalTask's static OSTask_t (run 603).
