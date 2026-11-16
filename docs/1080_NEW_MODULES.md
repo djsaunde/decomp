@@ -371,6 +371,37 @@ Commits on agent-b: 3d2acf56d (checkpoint 45C), 200bd12fd (snoweffects 5FD4 / 61
   - 0x4C0: the main-rotor zero colours f2 where the target has f0, because the tail rotor's
     RoData+0x58 scale web takes f0 first. Moving the scale chain above the main euler call fixes
     the colour but not the load position. Zero spellings and chains (63 combinations) don't change it.
+- **0xB08 Heli update (agent-g run 642), decoded, not committed** (best 77.1 %, under the 80 %
+  NM threshold). Drafts are in /tmp/claude-1000/agent-g/b08_keep/ (c1.cpp is the NCC version).
+  - Structure: the course state is bootup Bss+0xF8 +0x138, and the player is
+    `**(state + 0x44)`, position +0xA0. The mode is +0x170 when that is set, else +0x16C.
+    The +0x16C path:
+    - player state +0xA54 == 6 calls 0x980 and sets +0x170 = 8;
+    - the "mrk" type (Data+0xCBAC) slot-12 virtual gives the nearest marker into +0x168;
+    - the marker advances to the next one (+0x2C) while next+0x38 < player z;
+    - +0x16C = marker +0x3C.
+  - The 8-way switch dispatches through a jump table at RoData+0x7C. Table order 1..8 =
+    E04 FA4 C74 CAC ED0 1130 D68 C5C; the RoData payload sits at heli_uso_pre.bin +0x44.
+    Mode 2 calls ItemMgr_queryType (Data+0x7768, tag Data+0xCBB0, &pos) and eases the
+    target 0.2 per frame toward the marker.
+  - Tail:
+    - dir = target(+0x114) - pos(+0xDC); dist = sqrt(dir^2) * gGfxLib+0x128;
+    - normalise dir and the heading +0x138, then slerp the heading by t = +0x164 (acosf / fsin);
+    - speed +0x154 against +0x150 / +0x158 / +0x15C / +0x160; pos += heading * speed;
+    - yaw +0x14C (atan2s, wrap at pi, clamp 0.3, x0.06), roll +0x144 (side . dir * -1.5,
+      x0.07 smoothing), pitch +0x148 (fwd . vel / 200 + fwd.y * 0.1, x0.2, clamp pi/8);
+    - three quatRotateAxisAngle calls about z / x / y, then QNode_update.
+  - **It is C++.** The target multiplies by 2.0 with `mul.s` (cfe and cfront C strength-reduce
+    `x*2` to `add.s`, edg does not), and it has the edg Vec3 temp chains (op- result ->
+    return temp -> by-value operator= param).
+    - cfe C draft: 66 %.
+    - The same C compiled with NCC: 71 %. With a Vec3 class (by-value operator=, operator-,
+      operator*, operator+=), 77 % and the frame is exactly 0x170.
+    - NCC lowers the switch to a beq chain, but the target has a jump table. That is the
+      MIPSpro 7.2.1 edg rule (tools/ncc721.sh, run cpp first for includes). The same C++
+      under mp72 gets the table but scores 73.5 %.
+    - Next: tune under mp72 (jump table + mul by 2.0). Pin .rodata NOLOAD at 0x7C
+      (`.heli_uso_B08_jtbl`, as trnproc 10), or use a donor `_rodata` pin.
 - Classes: HeliItemType (0x54, ItemType + body / blade PolyShapes +0x48 / +0x4C, Sprite +0x50),
   Heli (0x174 QNode, vtable Data+0xCA88, start position +0x108, flight state +0x114..+0x170),
   HeliRotor (0x118 QNode, spin speed +0x108, axis +0x10C), two 0x40 marker ColourItem creates.
@@ -391,6 +422,24 @@ Commits on agent-b: 3d2acf56d (checkpoint 45C), 200bd12fd (snoweffects 5FD4 / 61
     f20) is a separate constant web: `(float)0` int-cast literal.
 - NM wraps spell the raw placeholder tokens: the named-call check cannot prove CALL() sites
   whose build path is INCLUDE_ASM.
+
+## viewrec.uso progress (agent-a run 641)
+
+- +16 EXACT (3497 -> 3511 on the agent-a base, gate PASS). Commits: c78cdd709 (2088 / 2190 / 2468,
+  22A8 via NCC), 2ce0b79bb (718 / 8C8 / 11B4 / 12D4), 36e749b51 (1748 / 1A08 / 1B4C / 1D64 / 29B0 /
+  2D9C; NM 2AE4 / 2C08 / 2FC0), 7bdce250e (2D0 near-match parked in the donor).
+- **cfe sorts switch cases, edg (NCC) keeps the source order.** A compare chain out of value order
+  (2D0: 0x10000, 0x20000, 0x2000, 0x4000, 0x8000) means the function is edg. That is how 0x2D0
+  was identified as NCC; it reaches 4/274 words there (only the loop counter's spill slot).
+- ctor recipe under edg: children attached through an inline MEMBER `addChild` (a free inline
+  function or a function-scope `c` colours the child into s2), the Fader via a block-scope child.
+- Row callbacks whose Text reloc addend is 0 (0x1A08) need 0-pinned `_ref` aliases, as trnproc 3A8;
+  the real symbol links to its USO offset and breaks the ROM (vcmp of the .o does not show it).
+- More separate sprite statics: sVrLabels_318, _3F0, _540 (a fixed index needs its own symbol
+  when the target keeps &sprite in a0 for both the call and the .image load).
+- Open below 0x3000: 0x0 / 0x1068 / 0x1488 / 0x18D4 (old NM residuals, not reworked this run),
+  0x2D0 (spill slot), 0x266C (74%, INCLUDE_ASM; `old` in t9 vs v0 shifts case 1; try NCC),
+  NM 0x2AE4 / 0x2C08 / 0x2FC0 (single v0/v1 or t-reg swaps).
 
 ## viewrec.uso progress (agent-a run 638)
 
