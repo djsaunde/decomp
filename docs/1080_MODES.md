@@ -54,6 +54,114 @@ manager (`input_checkPressed`) and bootup's sound events. Each call goes through
 Each one loads into the HostIO Parms records that select.h names. A port can keep the module
 as-is on top of a gdl port. Or it can rewrite the screen against SelectWin.out[] and the item ids.
 
+## State for porters: mode USOs, race flow, GUI menus, title / attract, boot module (agent-h run 576, final wave)
+
+Scope: everything in area H except the select screens (genproc, previous section). That is bootup.uso's
+game-side code (bootup_uso*.c), game_libs.c / game_libs_tail.c (the race process base, RaceTracker, the HUD
+gadgets, Backup), and the mode modules titproc, h2hproc, arcproc, mgrproc, timproc (b1), trkproc (b3), plus
+the module-skeleton notes for eddproc / n64proc / gui. All functions in these segments are exact; the
+`*_00000000` sentinels are the only unnamed symbols. Census at the end of the phase (run 576): 171 raw
+`*(T *)(p + K)` sites left in area H (220 before this run, 231 before run 572), 20 of them in
+bootup_uso.c, 17 in titproc, 14 each in game_libs_tail.c and mgrproc, 10 / 8 in trk / tim, 9 arc, 7 h2h.
+
+### What is typed
+
+| header | types | what they cover |
+|---|---|---|
+| include/game/input.h | `InputMgr` (= GameFlow), `InputPad` (= PadCtl), `FlowUso` | the flow object at bootup Bss 0xF8: flow mode, procMain states, player rider / board / course / level choices, pads, the session / save pointers, replay buffers, the music request. Every mode module imports it as one symbol (`INPUT_MGR(sym)` / `GAMEFLOW(p)`) |
+| include/game/course.h | `WorldRegistry`, `WorldCourse`, `WorldPlayer`, `RaceGate`, `CourseItemTmpl` | the "World Registry" the game_setup* functions fill: og / fg / bg / eg roots, MainGame node, the two lights, the course map, players[8], camera windows |
+| include/gdl/race.h | `RaceProcess` (+ `RaceProcessVt`, 38 slots), `RaceTracker` (= `DataManager`), `RaceEntry`, `TimRace`, `TimDataManager`, `RaceSprite`, `RaceColourParms` | the race process base (game_libs 0x6900..) and the race-progress / HUD object (game_libs 0xC784). RaceEntry.gate / gateA / gateB are `struct RaceGate *` since run 576 |
+| include/game/modeproc.h | `ArcRace` / `MgrRace` / `H2HRace`, `ArcDataManager` / `MgrDataManager` / `H2HDataManager` / `TrkDataManager`, `ArcCourseList` / `MgrCourseList`, `ModeFlowProc`, `H2HWinsDisplay`, `GameDemoProcess`, `TitleDemoProcess`, `MainLogo`, `KeyMessage`, `WhiteFader` | the per-mode subclasses and the title / attract objects |
+| include/game/guimenu.h, modemenu.h, nameentry.h | `GuiMenu`, `GuiRow`; `MenuProcess`, `TimMenu`; `NameEntry`, `ModeNameEntry`, `MgrNameEntry` | the pause / post-race / mode menus (rows with a callback at +0x90, stride 40) and the initials entry |
+| include/gdl/gadget.h, include/game/fader.h, include/gdl/hud.h | `Gadget` and the Time / CountDown / Points / Cool / Course / Boards / TrickPoints gadgets, `PointsPopup`, the gadget Parms (over `GdlParmBase`), the Fader | the 2D HUD (hud_add<X>Gadget builds them under the RaceTracker) |
+| include/gdl/backup.h | `Backup`, `BackupSession`, `BackupOptions`, `BackupCourse` / `BackupCourseRecord`, `BackupArcade`, `BackupGhost`, time / score entries | the 0x8000-byte SRAM image and the per-mode record session |
+
+Every struct has offset asserts for C builds (the `#ifndef __cplusplus` blocks; edg rejects them). The
+headers are C++-safe so the NCC donors can include them.
+
+### Entry points
+
+- **Boot** (PORTING_GUIDE 2.1): kernel `uso_load`s bootup.uso, `boot_entry_00066C30` -> `boot_main_00066850`
+  (threads, pad thread) -> `App_main` -> `SnowBoard_InitInstance` (rom/version.bin, rom/anims.bin) ->
+  `GameFlow_create` (the InputMgr object; gui.uso, rom/flowimgs.bin) -> `GameFlow_startMode` -> `app_run`.
+- **Mode start.** `GameFlow_startMode` maps `InputMgr.nextFlowMode` (bootup Data 0xC450 table: 0 N64DEMO,
+  1 TITLEDEMO, 2 HEAD2HEAD, 3 MULTIGAMERACE, 4 TIMEATTACK, 5 ARCADEMODE, 6 TRICKMODE, 7 TRAINING, 8 EDITORS)
+  to a `ModeFlowProc`, `GameFlow_loadProcUso_000117FC` loads the mode .uso, and the module's 1-slot entry
+  object calls `<pfx>_procMain(app, state)` (tit / n64 / h2h / mgr / arc / tim / trk / edd). procMain is a
+  switch over `InputMgr.procState` (+0x40) that loops until a state launches something: a select screen
+  (`app_launchGenProc(app, players, 7, stageBit)`), a race (`app_createGame_*` + `<Mode>Race_ctor` +
+  `app_runProcess`), name entry (`app_launchNameEnt`), the replay viewer (`app_launchViewRec`), a menu
+  process or the QuitProcess. The per-module state lists are in H2 (runs 460, 466).
+- **Race build.** `game_init` -> `game_setupMode(registry, gameMode, arg)`: the TrickTable ("rom/tricks.bin")
+  under bg, the geometry-mode bits, then `game_setupSolo` / `VsGhost` / `Replay` / `VsCpu` / `Vs2P` /
+  `Empty` / `DemoSolo` / `DemoRace` / `DemoSplit` (riders, pads, cameras), `game_createLights` (ambient /
+  infinite / shadow lights + the LightTarget) and `game_createMap` (course scene). `InputMgr.gameMode`
+  (+0x3C) keeps the GAME_MODE value.
+- **Per frame.** The running Process is a Node: `Process_update` calls slot 12 (`*_handleInput`) while not
+  fading, updates the children, and calls slot 11 when the fade ends; `Process_display` draws the scene and
+  then slot 13 (`*_drawGui`). For races, `RaceProcess_handleInput` runs the phase machine (`unk4E0`: 0
+  delay, 1 countdown, 2 racing, 3 finished, 4 / 5 other ends, 7 over) and dispatches the 38 vtable slots
+  (onPause 16, onCountdownStart 17, onRaceOver 20, onEndTimerDone 21, onPauseSelect 25, drawIntro 29, ...;
+  names in H2 run 471). The RaceTracker (DataManager) updates the timer and progress, runs
+  `RaceTracker_passCheckpoints` (checkpoint hits reported through vtable +0x60 / +0x64) and
+  `RaceTracker_passGates` (fork gates: `RaceTracker_onGateCleared` / `onGateMissed`, +2000 score per
+  bonus) and feeds the gadgets; each mode's `<Mode>DataManager_update` adds its HUD logic.
+- **Mode transitions.** Menu rows and pause rows write `InputMgr.procState` / `nextProcState` /
+  `thenProcState` (or, on the title menu, `nextFlowMode` +0x34) and start a fade; when the fade ends,
+  `Process_exit` returns to GameFlow, which re-enters procMain (same module) or `GameFlow_restart_000116C8`
+  / `GameFlow_startMode` (new module).
+- **Title / attract.** titproc's procMain state 0 sets `InputMgr.titleFlags` (flag bits choose the
+  overlays) and runs a GameDemoProcess: a RaceProcess subclass (0x6C8) that plays an attract race
+  (`game_setupDemo*`, ghost input) under the title overlays: MainLogo, the pulsing KeyMessage
+  ("press start" sprite), the title menu (`menuState` 0 logo, 1 menu, 2 language) and a WhiteFader.
+  TitleDemoProcess (0x78) is the same overlay set on a plain Process with a timed state machine.
+  `InputMgr.demoIndex` picks the next demo. The title menu rows (`tit_menu*`) write `nextFlowMode`.
+  n64proc (flow mode 0, N64DEMO) is the other attract module.
+
+### What stays raw, and why
+
+- **Matching levers.** Spellings documented next to each body: K&R `int` / `char *` parameters and locals
+  that carry register allocation (passGates's `e = arg0; arg0 = 0;` split, tit_procMain's
+  `d = (int)&import_00020098`, the Tim / Trk ctors' `char *`), `*(int *)&p->field` where the member form
+  changes bytes, distinct extern aliases of one import (`D_2DA4_obj` / `_rd`, the `*_cfg` geometry-mode
+  aliases) that keep separate %hi / %lo pairs, `if (1) {}` / volatile pads, and the -O0 donors' extern-struct
+  module globals (tim / trk main's `TimProcState`). Changing them changes bytes, so they stay.
+- **Fields of classes defined outside the area.** RaceGate +0x5C / +0xC8 (checkpoint.uso is not split),
+  SnowBoarder child objects (+0x818 / +0x81C), the TitleDemoProcess's game_libs objects, the gGfxLib
+  sub-objects. They are read raw at the one or two sites that touch them.
+- **Pool and import reads.** RoData float pools pinned as symbols (`kRo_*`, `bu_b520_k*`) and
+  `(char *)&D_00000000 + K` import addends (the relocation carries the offset); a port reads these as
+  constants or as the named field of the imported object.
+- **NM-only and edg donors.** RaceTracker_findGates / passCheckpoints NM bodies keep `FW()` (not compiled
+  in the matching build); edg donors see gdl bases as bytes.
+- **Not yet named:** the `unk*` / `pad*` fields in InputMgr (0x70..0x88), RaceEntry 0x2C / 0x44 / 0x50 /
+  0x5C, RaceProcess's state words, and the mode-specific tails of the DataManagers (they agree on nothing
+  past 0xB8).
+
+### What a PC port replaces
+
+- **USO loading.** `GameFlow_loadProcUso_000117FC` / `GameFlow_unloadUso_00011A34` (`InputMgr.procUsoPath`,
+  `usoList`), `app_loadUso`, `game_loadUso`, and the `app_launch*` helpers that load genproc / nameent /
+  viewrec. Link every mode statically and make the entry object a table of `<pfx>_procMain` pointers keyed
+  by flow mode. Cross-module calls go through `CALL(name)` / `gl_func_00000000` placeholders that this repo
+  names; a port binds them to the named function directly. The RaceProcess / Process / DataManager
+  vtables are Cfront tables (`VT_SLOT`, this-adjust deltas): either keep them as function-pointer structs
+  or make the classes real C++ with the slot names from H2.
+- **Save data.** Backup (backup.h) reads and writes the SRAM image through `fs_gdl*` kind 2. The mode code
+  only sees `InputMgr.backup` / `.session` (`Backup_openSession` per mode, `*_closeSession`) and
+  `InputMgr.options` (BackupOptions: unlocks, levels, cheat marks). Replace the SRAM path with a file
+  holding the same 0x8000-byte image; keep or drop the checksums.
+- **Controller.** The pad thread (`pad_threadLoop_00066EEC`) fills PadCtl objects (`InputMgr.pads[]`,
+  `racePads[]`); the modes read them with `input_checkPressed / Held / Released` and riders through
+  `RiderInput` (stick floats, held / pressed bits, stick direction). Replays are recorded / played back as
+  InputFrame streams (`InputMgr.recordBuf`, `replayData[2]` / `replayLen[2]`, `pad_startRecord` /
+  `pad_startPlay`), so a port must feed host input into the same PadCtl fields for ghosts and demos to
+  stay deterministic. Rumble goes through `pad_updateMotor_00067084`.
+- **2D.** The HUD, menus and title screens draw with gui.uso (fonts, sprites over the resource manager,
+  fill rects); replace the gui_* emitters, or keep them on an F3DEX interpreter.
+- **Data files** the modes load: rom/version.bin, rom/anims.bin, rom/flowimgs.bin, rom/tricks.bin, the
+  per-mode sprite / font images opened through `gui_spriteLoad`, and the gadget Parms records.
+
 ## H2. Mode / process modules: titproc, h2hproc, arcproc, mgrproc, eddproc, n64proc, gui, boarder1-5 (agent-h run 460)
 
 > agent-h run 460, branch agent-h on 8239918e8: efb3336fb (78 names) and 16f7cbcb8 (110 names), both pure
@@ -1008,6 +1116,24 @@ Next: ask agent-b for GfxLib fields fog (0x294, FogParms), worldMtx (0xE8), unk1
 meaning; ColourParms_ctor (game_libs.c, 85) can now be written on RaceColourParms; trk / arc row callbacks
 (the TimPauseBss twins in b3 / arcproc); MGRRaceProcess_drawIntro (match_import) colour pairs; the largest
 remaining functions (task 6 not reached): mgr_initMatchRace_00000700, MgrNameEntry_drawCongrats, tit_procMain.
+
+### Run 576 (agent-h): RaceEntry gates, passGates / RaceTracker_ctor, game_createLights / setupMode, tim / trk main
+
+Commits 1ea9d605b and fc787d5bc on agent-h (base ef0d6b540), all hand edits, no renames. Clean rebuild:
+all 1268 .o files (matching and NON_MATCHING) dump-identical to the base (objdump -d -r -z + .data /
+.rodata, non-empty), ROM OK, cfe warnings identical apart from line numbers. Gate PASS: 3288/3288,
+verify-blocks 6/6, 6089 named calls / 0, uso-data-sites 0, INPUT_MGR 0.
+
+- race.h: RaceEntry gate / gateA / gateB are `struct RaceGate *` (forward-declared; course.h unchanged).
+- RaceTracker_passGates over RaceTracker / RaceEntry / RaceGate; the register levers (`e = arg0; arg0 = 0`,
+  the `e | arg0` call argument, `if (tmp) {}`) are kept. Gate +0x5C / +0xC8 stay raw (not in course.h).
+- RaceTracker_ctor's clear loop: `RACE_ENTRY_AT(t, v1)[0..3].rider / flags`.
+- game_createLights: `BaseLight.parms.col[0..3]`. game_setupMode (in-unit body and the o2_2DA4 donor):
+  `WORLDREG()->bgRoot`, `NODE()->parent / unk04`, the geometry-mode alias as `int[]`.
+- SnowBoarder_limitSpeed: `RiderInput.held`; tim_main / trk_main (-O0 donors): `NODE(s0v)` attach.
+
+Census raw sites: h 220 -> 171. Next: SnowBoarder_ctor (5, bootup_uso_90CC.c), game_createMap (5; the
++0x3C site waits on agent-g's EnvSettings.bgBox), titproc's TitleDemoProcess game_libs objects.
 
 ### Run 572 (agent-h): gadget.h parms over GdlParmBase, RaceProcess.name, this-adjusts, BackupOptions defaults
 
