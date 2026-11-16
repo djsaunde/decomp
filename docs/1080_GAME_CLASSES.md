@@ -35,6 +35,7 @@
 - [27. Run 538: game.uso data sites in uso-data-sites.py, RiderAnim state PMFs named](#27-run-538-gameuso-data-sites-in-uso-data-sitespy-rideranim-state-pmfs-named)
 - [28. Run 543: bootup C++ donors on headers, game.uso strings / tags / constants](#28-run-543-bootup-c-donors-on-headers-gameuso-strings--tags--constants)
 - [29. Run 551: bootup donors 485C / 11B5C / 7328, game.uso RoData constants, U64BGWall_display](#29-run-551-bootup-donors-485c--11b5c--7328-gameuso-rodata-constants-u64bgwall_display)
+- [30. Run 555: U64BGWall fields, Tv1, ScreenThumbMat, input.h on race.h, GameFlow.titleFlags](#30-run-555-u64bgwall-fields-tv1-screenthumbmat-inputh-on-raceh-gameflowtitleflags)
 
 ---
 
@@ -1316,3 +1317,44 @@ gInputMgr_c234_g8 + 0x2C need their owners proven first, and the frozen-home lev
 After that: B1B4 (Bb4Bank's ctor stores are class-local W() / H(), so it needs a real class), 76F4 Tv1_display
 (the 0x88 Tv1 instance has no struct yet), CAE8, and the game_uso 0x548 node table and 0x1098 rumble records
 (not started this run).
+
+## 30. Run 555: U64BGWall fields, Tv1, ScreenThumbMat, input.h on race.h, GameFlow.titleFlags
+
+Census (compiled code, casts / accessor uses): bootup_uso 151 / 27 -> 136 / 22, game_uso 7 / 21 (unchanged);
+C++ donors 230 -> 211 sites (67 -> 65 files with any). Commits on agent-g (base e10de4848): fa101a552 (hand edit:
+input.h), 9b8e2ff8c (hand edit: envobj.h + five donors), 67822c50a (pure rename). Gate PASS before each commit
+batch; every changed object (donors, titproc_uso_5DC.c.o, bootup_uso.c.o main + non_matching) dumped with
+~/.local/bin/mips-linux-gnu-objdump -dr / -s (non-empty) and identical to the pre-run build.
+
+- **NCC donors have no header dependencies in the Makefile:** after a header edit, `rm` the donor .o's before
+  `make <obj>`, or the comparison runs against the stale object (it "passes").
+- **envobj.h U64BGWall:** rotX / rotY / rotZ (s32 degrees, ctor args 2..4) and displayList (+0x38, the Gfx list
+  the ctor builds). 1A44 U64BGWall_display takes `U64BGWall *self` (needs course.h before envobj.h). 4 -> 0.
+- **envobj.h Tv1** (0x88 instance from Tv1Tmpl_create): the SNode layout spelled flat (edg cannot include
+  gdl/mnode.h), C-asserted `sizeof(Tv1) == sizeof(SNode)` plus pos / radius offsets. 76F4 Tv1_display on it: the
+  cull query's int words are `*(int *)&self->pos[0]` / `[1]`; 6 -> 0.
+- **ScreenThumbMat** (was "Bb4Bank"): B1B4's lazily built object is a Mat subclass. Bb4Base = BaseMat
+  (BaseMat_init_000517E4 ctor, BaseMat_vtbl Data 0x20640), Bb4Mid = Mat (Mat_vtbl 0x1FBEC), own vtable at Data
+  0x8440 (inside the span gl_data.h attributes to SnowBoarder_vtbl): slot 0 = ScreenThumbMat_grab_0000E740 (renamed
+  from SnowBoarder_grabScreenThumb_0000E740), then BaseMat_hostioParms, Mat_print, gfx_decodeMatCmd,
+  BaseMat_vslot4. The registry `{tbl[5]; n}` at gGfxLib + 0x148 is GfxLib.frameStartCbs / nFrameStartCbs, so
+  gfx_start refreshes the 64x32 RGBA16 texture (texels = mem_new(0x1000), WRAP_S | WRAP_T, geomFlags 0x402C4B)
+  every frame. The ctor stores are BaseMat fields now; the class names stay Bb4* because `__vtbl__7Bb4Bank` etc.
+  are pinned symbols.
+- **C234 SnowBoarder_procColl (10 -> 6):** Bss+0x50 = gCourseColl (the CollShape *); its +0x84 reads (4) are
+  CollShape.shape but gdl/coll.h is C-only (includes gdl/node.h by -I path, unguarded asserts) - needs its owner.
+  gInputMgr_c234_g8 is pinned at 8 and its reloc is GameFlow + 0x34, so `if (nextFlowMode != 2)` (the light
+  easing is skipped in flow mode 2) is spelled `INPUT_MGR(gInputMgr_c234_g8[-8]).nextFlowMode`. Left: Data
+  0x8A78 (the by-value 4-byte arg, just before "Player Pos Reset"), Data sym302 (+0x7768, 4 bytes, unnamed) and
+  the returned record's +0x30 position.
+- **CAE8 SnowBoarder_reset (6 -> 1):** shade[4], riding, localUp.z = 1, flags = initFlags, SNOWB_FLAG_20. Left: the
+  node name +0xC (the DNode mirror has no Node fields) and the s16 table at +0x8C6 indexed by board.
+- **input.h** includes ../gdl/race.h under C++ (the RaceTracker prefix mirror is gone); C++ includers need the full
+  s16 / f32 typedef line (11E00 had only s32).
+- **GameFlow +0x8C = titleFlags:** only store is tit_procMain state 0 (0x820000 = bits 23 | 17, the
+  GameDemoProcess_ctor flag layout). No load in any built object: write-only.
+
+**Next:** game.uso Data: the 0x548 node table, the 0x1098 rumble records, SnowAI_ctor's 41 INIT_ITER tag-pointer
+reads (not started this run); C234's +0x84 once coll.h is C++-safe (ask its owner); 55A0 / FC28 still wait on
+envobj.h / guimenu.h fields from h.
+

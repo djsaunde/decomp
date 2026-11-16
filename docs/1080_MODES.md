@@ -955,6 +955,43 @@ meaning; ColourParms_ctor (game_libs.c, 85) can now be written on RaceColourParm
 (the TimPauseBss twins in b3 / arcproc); MGRRaceProcess_drawIntro (match_import) colour pairs; the largest
 remaining functions (task 6 not reached): mgr_initMatchRace_00000700, MgrNameEntry_drawCongrats, tit_procMain.
 
+### Run 556 (agent-h): pause-menu Bss twins, GuiMenu colours, MgrRace.courseList
+
+Commits on agent-h (base e10de4848), each gated PASS (3288/3288, ROM identical, 6089 named calls / 0
+mismatches, uso-data-sites 0, INPUT_MGR 0; every touched .o identical by objdump -d -r -z plus .data /
+.rodata, non-empty dumps, matching and NON_MATCHING): **55455c3b2 (pure rename: the pause-menu Bss
+aliases)**, 18e76bb85 (GuiMenu selColour / rowColour, MgrCourseList pointers), d2c447b61 (Arc / MgrRace.dataMgr pointers, TimPauseBss.proc). The rest are hand edits.
+
+- **Pause-menu Bss pair** (tim / trk / arc): the menu process's handleInput / update stores
+  `MENUPROC(a0)->menu` (the GuiMenu) and `a0` (the menu process itself, not the race) into its own
+  Bss, then calls the row callback; the rows Process_stop the GuiMenu, set GameFlow.procState
+  (`gInputMgr_procState_40`, bootup Bss+0xF8 + 0x40) and Process_fadeOut the menu process. tim (b1)
+  and trk (b3) use Bss+0x208 / +0x20C (`sTimPauseMenu_208` / `sTimPauseProc_20C`, one symbol pair
+  shared by both), arc Bss+0x70 / +0x74 (`sArcPauseMenu_70` / `sArcPauseProc_74`); the per-site
+  aliases are `s{Tim,Trk,Arc}Pause{Menu,Proc}_<site>`. TimPauseBss.race is really the TimMenu
+  process (field renamed `proc`). h2h's H2HPauseBss is different: +0 is the race (onPauseSelect).
+- **GuiMenu.selColour / rowColour** (+0x4C / +0x5C, f32 rgba): PauseMenu_create's 119/117/229/255
+  and 192/194/229/255 over 255; PauseMenu_display (o0_10540, local Quad540 q4C / q5C) copies one
+  of them into colour (+0x3C) per row. The FC28 donor now uses them (agent-g owns it).
+- **MgrRace.courseList / MgrDataManager.courseList** are `MgrCourseList *` (MGRRaceProcess_ctor /
+  mgr_DataManager_init take it as such). mgr_pauseRetry uses courses[0], onRaceOver's state 4
+  courses[idx + 1] (the next course), the ctor retries. mgr_loadSprites needs
+  `*(int *)&q->count == *(int *)&q->idx + 1` (the plain member form swaps t6 / t7); drawIntro and
+  its match_import keep the `(char *)` + offset form noted in run 552.
+- **ArcRace.dataMgr / MgrRace.dataMgr** are ArcDataManager * / MgrDataManager * (port-audit pattern H;
+  the ctor stores cast the mem_new result; the existing `(char *)` / DATAMGR() reads are unchanged).
+
+Census before -> after: owner h raw sites 338 -> 337, all raw casts 1406 -> 1405 (this run was mostly names and
+pointer types, which the census does not count); port-audit pattern H in agent-h headers 7 -> 5 (the two
+dataMgr fields); the 14 gl_ref_ / D_ pause aliases are now named.
+
+Next: race.h pattern H (RaceProcess.parent, TimRace.dataManager -> RaceTracker *, RaceTracker.vptr /
+owner); the gadget.h GdlParm.type / GdlParms.name / Gadget.label1-2 pointer retypes (55 pattern-A sites
+in SnowBoarder_ctor alone; this touches agent-b's post1b and snowboarder.h's own GdlParmF, so it needs
+coordination); H2HRace.dataMgr; the H2HRaceProcess_onPauseSelect / mgr o0_19C pattern-D sites
+(menu->rows[cursor].arg); SnowBoarder_ctor (13 raw). Since main 0b77ceb96, Node.vptr / name
+take `(char *)` / `(const char *)` casts, not `(s32)`.
+
 ### Run 552 (agent-h): ModeFlowProc, MgrCourseList, C++-safe race / modeproc / nameentry headers
 
 Commits on agent-h (base 2acd57ec4), each gated PASS (3288/3288, ROM identical, 6089 named calls / 0 mismatches,
