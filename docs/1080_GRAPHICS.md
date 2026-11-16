@@ -1281,3 +1281,21 @@ rebuild (1466 objects incl. bound ELFs); gate PASS. Census owner a: data-table 3
   changes 32 lines. Only the index form `((f32 *)me(..))[12]` matches, and it names nothing.
 - Left (owner a): data-table 18 = agent-g's mode files (BoardList / CharacterList / KeyMessage / Sun /
   n64proc / SelectWin / RaceTracker); byte-lock 2 = 4BAF4.
+
+## 32. Run 595 (agent-b): game_libs weak names 36 -> 1
+
+Pure rename a08b510e8 (35 names, evidence in the commit message) + comment commit 1566596c9; gate PASS on
+both. Vtable slot meanings proven on the way (useful for the remaining `unk` work):
+- **Node slot 9** = setAnimPose (anim_blendPose calls it; MNode / QNode override). Slots 7 / 8 = saveData / loadData.
+- **ItemType slots** 12 findNearest(pos, skip) (ItemMgr_queryType), 13 getItemPos(item, out), 15 findNextByZ(ref)
+  (Colour / SNode only). ColourItem's `rgb[3]` at +0x30 is read as a position by slots 12 / 13 / 15.
+- **App slot 14** = onPreNmi: RcpMgr_ctor registers event 14 (OS_EVENT_PRENMI) as message 108; RcpMgr_service
+  sets RcpMgr +0x48 (rcp.h `unk48[0]`, could become `preNmi`) and app_run then calls slot 14. bootup's
+  `SnowBoard_vslot14` is the override (starts a Fader): it could be renamed SnowBoard_onPreNmi.
+- **Mat_vtbl** (0x1FBEC) slot 0 onFrameStart (gfx_start), slot 4 draw(shape) (PolyShape_display); GfxObj_vtbl
+  (0x20400) slot 0 displayAll; ScreenWindow slot 12 drawScene (Window_display); PolyShape slot 10 copyMatDL,
+  slot 12 makeEdgeVtxs.
+- `{0, fn, 0}` Data records naming a no-arg function are edg static-init entries: Window_staticInit,
+  CMod_staticInit (same as app_staticInit_000412E8).
+- BinFile slots 1 acquire / 2 release / 3 invalidate (BinFileMgr_getAcquire / getRelease / forEach).
+- Left: RcpMgr_func_0004DB38 (tagged `UNNAMED: unknown-role`: varargs-style return-1 stub, no reloc anywhere).

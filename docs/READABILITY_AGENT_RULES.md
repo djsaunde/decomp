@@ -37,6 +37,14 @@
   - For a run of sites, put the full reason above the first and end the others with `/* RAW: <keyword> (as above) */`.
   - Check with `scripts/readability-census.py --no-build --unjustified --owner <you>` (lists `file:line function`). The dashboard shows raw total / justified / UNJUSTIFIED per owner and per file.
   - A tag is the last resort: try the field first. A cast-to-struct `((T *)p)->field` usually compiles identically to the raw cast, and `*(int *)&p->field` keeps the name when the member type changes the bytes.
+- **`UNNAMED:` justification (run 594):** every unnamed thing left in compiled code must be named or justified: a raw placeholder call (`gl_func_00000000(...)` / an address token, not CALL-named), a placeholder or weak function name (`func_<addr>`, `<segment>_func_<addr>`, `<Kind>_func_<addr>`, `<Kind>_vfnN_<addr>` ...), and a `D_<addr>` global. It is justified when its line, or the line just above it, carries a comment `UNNAMED: <keyword> <reason>`: the call site's line; the function definition's name line; for a `D_` global any compiled line that spells it (put it on the extern / definition). Keywords:
+  - `no-reloc`: the call has no relocation to resolve (say what the jal is);
+  - `sentinel`: an address-0 placeholder that must stay;
+  - `data-base`: a symbol that doubles as a USO data base;
+  - `unknown-role`: the evidence doesn't determine a name (say what is known);
+  - `mid-entry`: the callee is an entry point inside a build function (`f+0xK` in the ROM TextReloc, e.g. `gl___osExceptionPreamble+0x630`) with no symbol of its own; name the entry in the reason.
+  - Check with `scripts/readability-census.py --no-build --unnamed-unjustified [--kind calls|functions|globals]` (lists `file:line name [kind]`). The dashboard shows named / unnamed / justified / UNJUSTIFIED per category.
+  - A tag is the last resort: run `scripts/name-placeholder-calls.py plan --write` first (it proves calls per site, and through the donor for REPLACE_FUNC_BODY hosts), and name globals with `rename-symbol.py`.
 - **Docs:** update your area doc /home/danjs/code/decomp/docs/1080_<AREA>.md (uncommitted).
 - **Report:**
   - counts
