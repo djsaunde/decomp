@@ -937,3 +937,43 @@ Next: rename gProcNodeList_41700 -> gSkinMgrs_41700 (and PolyShape_func_00043584
 the HostIO objects; MorphPoly_updateColours and Window_setDefaults (10), ScreenWindow_allocBuffers
 and gfx_submitFrame_0004CDB0 (9); then port-audit --owner b top: DNode_ctor (17), gfx_endDL (10),
 BaseLight_hostioParms (9).
+
+## 22. Run 553 (agent-b): gSkinMgrs, Mat_reset, MorphPoly.colours, WindowDefaults, ScreenWindow DLs, HostIO parms
+
+Census (owner b raw struct-offset sites): 366 -> 327 (post0b 337 -> 298, post1b 26). port-audit
+--owner b: 184 -> 155 (A 79 -> 71, B 27 -> 13, D 75 -> 68). Two rename commits (one tool, one
+macro-only hand edit) and three hand-edit commits; every commit gated, all matching and
+NON_MATCHING objects identical in section bytes, relocs and sizes (only .mdebug moves).
+
+- **gSkinMgrs_41700** (was gProcNodeList_41700): Bss 0x41700 is SkinMgr *[MAX_SKIN_MGRS = 4]
+  indexed by the skin slot (skin_cmdSkinMgr stores, skin_cmdSkinAnim / SkinShape read,
+  ProcNodeList clears, SnowBoarder_ctor copies 0 / 2 / 1). The gl_data.h name is a `#define`, so
+  rename-symbol.py refuses it ("not a symbol"): macro renames are hand edits and stay out of
+  renames.tsv; the per-site linker aliases (`_5591C_z*`, `_90cc_fz`) do go through the tool.
+- **Mat_reset_00043584** (was PolyShape_func_00043584). ncc_493AC.cpp's `Elem` is now `Mat` with
+  material.h's member names (edg codegen unchanged by struct / member names).
+- **MorphPoly.colours** (+0xC4, `u8 *`): RGBA per vertex; MorphPoly_updateColours copies RGB into
+  cn[0..2] of the static DL's GdlVtx rows vtxStart + i, then clears it. Byte lever:
+  `*(int *)&g->vtx.cur->base` (plain `->base` reorders an sll / lh).
+- **WindowDefaults** (post0b, above App_main): gWindowDefaults' 0x40-byte layout (clear, width,
+  height, originX/Y, near, far, flags, projType, clearColour). App_main and Window_setDefaults use
+  it. Window_setDefaults' flags copy must stay a 1-word struct copy (Q1E760); a plain int copy
+  reorders 13 insns. Its vcall is Window vtable slot 10 (VT_SLOT), as in ScreenWindow_allocBuffers.
+  gl_data.h defines gWindowDefaults twice (lines 64 and 201, same expansion); one could go.
+- ScreenWindow_allocBuffers: the 4-byte slot walk as SCRWIN(p)->startDL / setupDL / bgDL[0].
+- gfx_submitFrame_0004CDB0(ScreenWindow *): oneFrameDL[fbIndex], marks, curBg->frameStart;
+  packets via `*(char **)&DLCTX(o)->gfx.cur` / DLBUF.
+- gfx_endDL: checks 2-6 through `DLBuf *b`; the second append's int carrier q must stay.
+- BaseLight_hostioParms(BaseLight *): no int casts (pointer args to the K&R CALLs; the
+  hostio_addFloat alias prototyped with pointer params, float min / max).
+- dnode.h: DNodeParms.name `const char *`, GdlParmV3.type `void *`.
+- gdl/backup.h and gdl/coll.h are C++-safe (offset asserts under `#ifndef __cplusplus`; coll.h
+  includes "node.h" relatively).
+
+Next: GdlParm / GdlParmF.type -> `void *` and GdlParms.name -> `const char *` in gadget.h. That
+removes DNode_ctor's 13 remaining `(int)&` stores, but game_libs.c (29 sites) and
+bootup_uso_90CC.c (43) store into them too (area h), so it needs either a coordinated change or
+h's sign-off. Then BasePolyShape_avgTriColour (6), gfx_submitFrameTask_000469A8 /
+gfx_newDLContext (5), coll_markZeroWeight_0003C7A4, ItemMgr_spawnItem; census b top: BaseLight_ctor,
+LightTarget_display (8). The HostIO device object itself (gHostio, Bss 0x3C768, 8 bytes;
+HostioDev_vtbl) is still untyped.
