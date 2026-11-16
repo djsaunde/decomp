@@ -237,6 +237,42 @@ No renames.
   course*3*16 spellings, and the 0x3364 levers (do-while, `show = 1` after the call).
 - **Not started:** 0x3878 (records draw, 431 lines) and 0x3F24 (erase-select pad handling, 272 lines).
 
+### agent-b run 662: viewrec.uso 0x319C EXACT; 0x3878 residual traced to as1 liveness (3554 / 3579, +1 exact)
+
+Commits on agent-b: 436d6097c (319C), a45f3ccaf (episode). No renames. Gate PASS.
+
+- **0x319C (course scores page) EXACT, cfe C**, from the run-657 target-length draft in four steps. The
+  colouring trace (h414 instrumented uopt `-Wo,-zdbug:5` + `h384/t/lre.py` + `h414/t/ord.py`, on a standalone
+  copy of the function) shows uopt colouring saved registers in priority order (num / den), lowest free s-register
+  first:
+  - **Emission-free refs reorder the s-registers.** `y = y * 1` inside the loop adds two weighted refs (+20 num;
+    `y = y`, `y += 0` and `(y + 34) - 34` fold earlier and add nothing). y then outranks i and show, but also
+    self (s1). `self = (ViewRecScreen *)((s32)self * 1)` in the loop lifts self back above y. `course = course * 1`
+    after the 0x1488 call lifts course (2.17 -> 2.5) above the hoisted course*48 (2.2), giving course s7 and
+    course*48 s8.
+  - **The void alias on the 0x2D9C call** drops the dead $v0 def that forbade v0 for e->score (v1 -> v0).
+  - **as1 order: source-line groups.** `show = 1` moved after the GetScore statement fixes the loop head
+    (`or a1,s3` before `addiu s4,1`). The preheader order (`sll s8,4` before `or s3,zero`) needs `i = 0; do {`
+    on ONE line. A `.s` oracle showed no permutation of the preheader instructions reproduces the target
+    when each sits under its own `.loc`, so this is line grouping (MATCHING_SUMMARY section 7), not ugen order.
+- **0x3878: the residual is as1 liveness at the `selFade > 0` side exit, and it can be reproduced at the `.s`
+  level with `.livereg` alone.** OR-ing the bits for $21 / $22 / $23 (r, the constant 1, the constant 2) into
+  the FIRST `.livereg` after `$45` (the gui_setColor call in the `selFade < 1.0f` block) gives the target
+  word-for-word (only the reloc-addend false diffs remain). All three bits are needed (each alone: 11 -> 9).
+  ugen sets a callee-saved bit in a call's `.livereg` when uopt keeps that LR live across the call (see the
+  0x0800800E mask at the grid loop's spriteRefresh, where s0 = a holds across it). So the target's uopt kept
+  r / 1 / 2 live past that call, with no read left in the final code.
+  - Tried (no gain): `.loc` regrouping of the if-body (9 layouts); an unreferenced label splitting the if-body
+    (bb35 is still pulled); `bne $21,..; $L:` branch-to-next reads at `$45` (as1 deletes them before the xbb
+    liveness: still pulled).
+  - The C route is a code-free late use of r and of the two constants after that call. The kit CDXCV
+    zero-byte copy guard does not exist under mp72 edg: `char c[0]` and `char c[]` are rejected, and an empty
+    struct copies 1 byte (lbu / sb, +16 words, and r spills). Next: a C++ construct that uopt keeps as a use
+    but ugen / as1 emit nothing for. Or find which uopt LR shape extends the constant-1 / constant-2 ranges:
+    agent-a's while(0) ref multiplier, or a second loop after the if that reuses r and the bounds.
+  - Scratch: `w38/` (`t38.sh` mp72 compile + ad.py, `.s` oracles lv*.s / z*.s / n*.s / m*.s). The `sa.sh` /
+    `dz.sh` cfe colouring harness for 319C is under agentb/ too.
+
 ### agent-b run 657: viewrec.uso 0x4354 EXACT; 0x3878 / 0x319C analysed (3545 / 3579, +1 exact)
 
 Commits on agent-b: 741fe25d8 (4354), 867b60986 (episode). No renames. Gate PASS.
@@ -492,6 +528,32 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   - Not reached: 559C, 1E60, 4374 / 4E5C frames, 97C. Tools: r660/cf2.py (NCC compile + diff with
     function-relative branch targets), gen.py / s3.py / s6.py (15D0 phantom greedy), s41.py / mk42.py (4188 packet
     kinds and phantom counts), pk.py (packet-pointer register sequence).
+
+- Run 666 (agent-h, commits e7d64733b EXACT, 7a43984e0 NM only, no renames): +1 EXACT, 3554 / 3579.
+  - **0x4E5C EXACT** (moved to the matching donor snoweffects_uso_ncc.cpp). The code already matched, only the frame
+    did not (192 vs 216). Three levers: the inline point transform declares its results **z, y, x**
+    (`float nz, ny, nx;`, then the assignments in x, y, z order), so the spilled z temp sits at vfp-28; agent-e's
+    0x8D70 push shape (a named `push = hit * -d` in each if-block, member operator*, += by const reference);
+    one `{ int sc[4]; sc[0] = 0; }` after the first push. The placement came from a one-block search script
+    (r666/sc.py: every statement position x 1-6 words, scored by diff lines, about 0.06 s per compile).
+  - **0x4374 NM** (40 -> 16 diff lines): the frame is now 160 with every slot right. Changes: no `pa` / `pb`
+    pointer locals, the z, y, x transform, and one scratch word in operator- before `return r`. Left: the
+    operator- return-temp address (sp+0x74) is scheduled into a1 at entry, where the target computes it in v0
+    right before the copy. A `const SnowBV3 &d = a - b` binding is much worse (97).
+  - **0x47D4** (draft r666/t47.cpp: 416 vs 414 words, 350 diff lines, was 605). Single copy `dv = cam->v318`,
+    u154 read once, `hits <= 0` arm order. The open part is FP colouring. In the instrumented uopt
+    (iu/tr.sh, F=snoweffects_uso_func_000047D4) the callee range costs 12.25 per register, alpha's
+    caller-range cost is 3.0 (two calls), so alpha takes f18 and is spilled around the calls. The 5.0f
+    constant is two LRs: bb14-17 (the hits test) and bb18-19 (after the 46BC call). In the target, alpha is in f22
+    and one 5.0 LR runs across the call into f20; the target also reloads 5.0 on the bne-97 arm. No effect from:
+    literal / variable / `const` / `static const` 5.0; four spellings of the hits condition; `lim` assigned in both
+    arms; an `if (5.0f) {}` use. Next: find what pushes alpha's caller cost above 12.25, or what makes the 5.0
+    LR live through the call block.
+  - 0x559C read, not decoded. It is a lit textured strip draw: a stack BaseMat (mem_new / this == 0
+    protocol, Data+0x20640 vtable, BaseMat_init_000517E4); gfx_emitLights; then a per-slot loop. The loop
+    covers world-scale vertex positions (+0.5 trunc), alpha clamp, G_VTX 0x04 packets, and per-slot texture
+    loads from the Data+0x588 table (FD18 / F518 / E6 / F4 / E7 / F518 / F2 packets, w = h = 32 at
+    +0xA8 / +0xAC). Not started: 15D0 family / 4188, 1E60, 97C.
 
 ### snoweffects.uso 0x6000+ (agent-e run 639)
 
@@ -888,6 +950,56 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
 - NM wraps spell the raw placeholder tokens: the named-call check cannot prove CALL() sites
   whose build path is INCLUDE_ASM.
 
+## heli.uso (agent-g run 663)
+
+- **+1 EXACT (3553 -> 3554), +1 NM, gate PASS each, no renames.** Commits on agent-g: 1a0c5a1c7 (0x4C0
+  exact), bdac204b7 (0xB08 NM 80.2). heli: 25 / 26 exact, 0xB08 the last.
+- **0x4C0 (Heli ctor), cfe C, exact.** The residual was the tail block's colouring: zero web f2, scale f0
+  (target: zero f0, scale f2). Fix: read the RoData+0x58 scale FIRST into a block-scope float, then
+  `if (1) {}`, then the stores. That lowers the scale LR's uopt priority below the zero's (the target also
+  loads 0x58 first). The remaining store order came from a 720-order hill climb over the store groups
+  (B4, B8, BC, scale x3, zero x2, 1.0; BC must precede the scale stores). Calls are CALL() / XCALL().
+- **0xB08 NM: NCC donor `src/heli_uso/heli_uso_ncc_nm.cpp`** (Makefile HELI_NM_DONOR, non_matching build
+  only, as snoweffects). 77.2 -> 80.2 with three levers:
+  - RoData floats as **literals** (each site has its own pool word: 5000, 3000 x3, 0.2 double, 0.001,
+    100000, pi, 2pi, -pi, 2pi, -0.3, 0.07, 0.3, -pi/8, 0.06, 0.1, 0.2f, pi/8 at +0x9C..+0xFC). The 0.2 lerp
+    factor is loaded once in the target; the per-site extern aliases reloaded it after each store.
+  - **Frame:** one dead 4-byte local between player and toTgt (target word at sp+348); `Vec3 vel` declared at
+    its use. Target slots: pp 356, player 352, toTgt 336, dir 324, dist 320, vel 308, side 296, key 280,
+    key2 272, operator= temp 252, mpos 232, t 208, ang 168, s 164, old 152, sa 148, fwdAx 100, axZ 84,
+    axX 72, axY 60 (the old c1 comments). The NCC donor still has the temp at 140 and key / key2 at 304/300.
+  - the marker test `*(int *)(p + 0x2C) != 0`: the target loads the link twice (t1 for the test, v0 after).
+- **0xB08 match (MIPSpro 7.2.1) findings:**
+  - The target has no helper call around the switch (the jump table is inline), so the "NCC body + 7.2.1
+    switch helper" split does not apply: it stays one compiler, mp72.
+  - The same source under mp72 is 75.6. **mp72 already reproduces the target's two separate
+    `addiu tX,sp,252` per case** (one per by-value operator= temp copy; NCC CSEs it into one register).
+    That makes mp72 the right front end on this point too.
+  - The mp72 residual that matters is `&pp`: mp72 hoists `addiu a3,sp,356` into the prologue (and
+    rematerialises it after each call), the target computes it inside each case. Passing 0 instead of
+    `&pp` to the marker virtual call still hoists, so the case copies alone drive it. Micro tests
+    (switch + by-value operator=, pp member-wise init, inline `think(Vec3 pp)` wrapper, explicit-ctor
+    param) all hoist too.
+  - **Lever (mp72 75.6 -> 77.3, `b08_keep/mp72_p2.cpp`): declare pp WITHOUT a constructor call.** With
+    `Vec3 pp;` the user default ctor `Vec3() {}` takes `&pp` at the declaration, and uopt keeps that address
+    web in a3 for the whole function. As an anonymous POD struct (`struct { float x, y, z; } ppr;`, used as
+    `*(Vec3 *)&ppr`), every case rematerialises `addiu tX,sp,356` like the target, and the vcall passes
+    `addiu a1,sp,356` directly. A Vec3 with no constructors at all also does it, but its op- / op* return
+    temps then move the frame (72.9).
+  - Next mp72 residual: tg / ps (self+0x114 / self+0xDC). The target (and NCC on the same source)
+    rematerialise both at the end of every case and spill ps across the case-2 call (`sw a2,52(sp)`); mp72
+    computes them once at the join. Not moved by: `&member` spellings, a HeliS member struct, assigning
+    them at the top of the function, `if (1) {}`, reordering, edgcpfe without `-O`. The uopt dump
+    (`-zdbug:5` via ido-static-recomp-dump, scratch `ncc721d.sh`) is in r663/dumpm and dumpn for comparison.
+  - Not levers: `-Olimit` (below 200 uopt skips the function), edgcpfe `--long_lifetime_temps` /
+    `--short_lifetime_temps` (accepted, no change), operator= by reference with an inner copy
+    (`Vec3 v = r;` gives one slot per expansion, target has one shared slot).
+  - mdebug `-g3` frames (scratch `mdl.py`) differ from `-g0` under both edg front ends (temps move), so
+    read the target slot map from the code instead (`smap.py`: target -> ours sp offsets on aligned rows).
+- Scratch: /tmp/claude-1000/agent-g/r663/ (x5.cpp = NCC 80.2 source, x5p.cpp = preprocessed for mp72,
+  ncc721x.sh = ncc721.sh with extra `FEX` front-end flags, smap.py / sdiff.py; drafts kept in
+  /tmp/claude-1000/agent-g/b08_keep/ncc_x5.cpp and mp72_p2.cpp).
+
 ## heli.uso (agent-g run 658)
 
 - **+2 EXACT (3541 -> 3543 on the agent-g base, gate PASS each), no renames.** Commits on agent-g:
@@ -974,6 +1086,33 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   Bss+0x50 pointer goes in s4 before the vertex-count test. There is also a v0/v1 pair in the ambient
   compare and the second walk's mask constants (-2 / -3 / -5 hoisted into s2..s4). Scratch:
   /tmp/claude-1000/agent-a/w654/a/best_A10C.cpp. 0x7FE0 is not started.
+
+## snoweffects.uso 0xA10C / 0x7FE0 (agent-a run 665)
+
+- **0xA10C NM, objdiff 99.04 %** (commit 08d2e259b on agent-a, gate PASS, no renames). New NON_MATCHING-only
+  donor `src/snoweffects_uso/snoweffects_uso_ncc_nm_a.cpp` (the run 661 draft file, moved), Makefile
+  `SNOW_NM_A_DONOR` / `SNOW_NM_A_FUNCS`. Run 661's "74 %" was a word count; objdiff already gave the
+  draft 96.8 %, and 7FE0 79.0 %. Measure with `objdiff-cli diff -1 expected/...c.o -2 x.o -o - --format
+  json FUNC` (`match_percent` of the function); scratch /tmp/claude-1000/agent-a/w665/fz.py.
+- **The item copy is a CSE temp, not a second variable.** The target loads cur->data into one register
+  (first test, calls) and copies it to another (stores; walk 2 reloads flags at the first join because
+  the test load used the other base). Read the item as `it.get()` in the first test and as the named
+  `SItem *item = it.get();` everywhere else: uopt CSEs the two loads into a temp and the named item becomes
+  its copy. 405 / 405 words, 150 -> 73 words off.
+  - Two named pointers always coalesce (`x = item`, chained `x = item = ...`, reference, inline `this`).
+  - A named copy survives only if its source is killed before the copy's last use
+    (`SItem *x = item; ...; item = 0; x->flags = 4;`), as in IDO_CODEGEN "cse-reread-copy-vs-coalesce".
+    That costs a frame word the target does not have: frame 184 vs 176.
+  - Left: the temp is v0 here; the target keeps it in s1 across the first call (walk 1 passes it to both
+    calls). Also left: the s-register numbering that follows from that, next()'s v1 vs v0, and n8 at sp+120 vs sp+112.
+- **A donor body must be exactly the target's length, even NM-only.** REPLACE_FUNC_BODY shifts the later
+  functions of the non_matching object. With 0x7FE0 at 811 / 800 words, the exact 0xA8D0 dropped to
+  41.7 % and the gate failed.
+- **0x7FE0: 79.0 -> 85.5 % with a by-value `TV &operator=(TV o)`.** The target copies `t->mid` into the
+  param temp as words (lw / sw through a3), then member-wise as floats. It is now 811 / 800 words (was
+  789), so it is not spliced. Frame-only levers (dead scratch arrays to reach 384) leave the fuzzy score
+  unchanged (79.05). Next: the remaining instruction-count difference. The diff starts at the |speed|
+  compare (`bc1tl` + `mtc1 zero,$f24` x2 in the target) and the per-point Vec3 temp chains.
 
 ## snoweffects.uso 0xA10C / 0x7FE0 (agent-a run 661)
 
