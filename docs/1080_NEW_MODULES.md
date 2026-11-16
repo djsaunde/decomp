@@ -90,3 +90,31 @@ of a function (a secondary entry), and jumptable targets (RoData relocs).
   (docs/MATCHING_WORKFLOW.md) for edg-only codegen.
 - Data / RoData stay in the `_pre` bins; a function that needs its data matched against real
   relocs follows the existing mode-USO pattern (`uso-data-sites.py --uso <m>`).
+
+## Decomp status (agent-b run 622)
+
+3318 / 3577 after four commits on agent-b (f1df76db5, ea6f0b8a2, c0efb75a5, a8ff0ed81): 30 new
+exacts, no NM wraps. Matched: fire 5/7, balloon 9/11, checkpoint 10/17, heli 3/26, trnproc 3/40.
+
+- **Compiler: IDO 7.1 cfe -O2, as for game_uso.** The course objects are libgdl C++ (cfront
+  `this == 0` allocating ctors, vptr at +0x28, 8-byte `{s16 delta, s16, fn}` vtable entries) but
+  every member matched so far compiles from plain C in the module's own `.c`; no NCC donor yet.
+- **Cross-USO templates are byte-identical** (.word for .word) across these modules: the gdl
+  file int / float / Vec3 readers and writers (game_libs `fs_gdlWriteVec3_00037D48`,
+  `fs_gdlWriteInt_0003D000`; game_uso `stream_readVec3_000001D4`, `stream_readS32_00000280`).
+  Hash the `.s` words against matched functions first (heli 0/3C/AC and trnproc 268/2A4/338 were
+  found that way); viewrec / nameent had none.
+- **Spelling notes.** Local calls (`jal 0x60` in the ROM) are plain C calls to the module's own
+  function; the .o holds 0 in the field and the link fills it (gate ROM check confirms).
+  A RoData-base float (`lwc1 $f4, 0x1C(at)`) needs a different zero symbol from the Data-base
+  vtable store in the same function, or uopt shares one `lui/addiu` (balloon 140 uses
+  `gl_data_00000000`). `hostio_addFloat` takes floats in a3 / sp+0x10: call it through the typed
+  alias `gl_func_00000000_ff`. hostioParms with the Node name: read `self->name` into a local
+  first to get the target's `lw a1,12(a0)` before the s0 copy (balloon 32C).
+- **Open: the template "create" shape** (fire 148, balloon 47C, likely checkpoint 6F0 / 7F4 /
+  8E8): `new X(tmpl->sprite)`, a virtual handleMsg(19) through the vtable slot at +0x28, then a
+  list link. The target keeps the new object in v1 (v0 reused for the vtable), frame 0x38 with
+  the message at sp+0x2C, and leaves the `jalr` delay slot empty; cfe and NCC (real class + new)
+  both give frame 0x30 and a filled slot (best 74%). The fire ctor 0 (inlined ItemType base +
+  two `Colour::set(r, g, b, a) / 255.0f` inlines, divides not folded) reaches 78%: the target
+  reloads 255.0f for the alpha dividend where cfe / NCC reuse the divisor register.
