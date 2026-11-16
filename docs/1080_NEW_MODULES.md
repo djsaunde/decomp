@@ -238,3 +238,34 @@ Matched: fire 7/7, balloon 11/11, checkpoint 13/17 (E0 NM 99.97%; 2AC, 45C, 58C 
     f20) is a separate constant web: `(float)0` int-cast literal.
 - NM wraps spell the raw placeholder tokens: the named-call check cannot prove CALL() sites
   whose build path is INCLUDE_ASM.
+
+## viewrec.uso progress (agent-a run 630)
+
+- 15 / 61 EXACT, 9 NM wraps. Commits on agent-a: 83815e438, 93bf4f8b3 (3391 / 3577).
+- **Every jal is a reloc'd `jal 0`**, local calls included: spell all of them `CALL(name)`.
+  NM bodies use plain `gl_func_00000000(/* name */ ...)`; the placeholder-call check only reads
+  the matching build, where an NM function is INCLUDE_ASM and has no relocs.
+- **Bss statics are separate objects.** Each access has its own `lui`, and a static that is
+  stored and then reused has its address folded into the `addiu` (`addiu v0,v0,0x87C; lw 0(v0)`).
+  `(char *)&D_00000000 + K` cannot give that: uopt keeps `&sym` and the K apart. So each static is
+  an extern pinned at its Bss offset in undefined_syms_auto.txt (sVrSprites 0x0, sVrLabels 0x1F8,
+  sVrPrimColour 0x858, sVrEnvColour 0x868, sVrMenu 0x878, sVrProc 0x87C, sVrScreen 0x880).
+  objdiff ignores relocated fields, so check the bytes with the pins applied (or the ROM). Gui
+  Bss+0x8 (gui_setEnvPrimColor arg 0) is `&D_00000000` with no offset.
+- Text ends at 0x55B0 with one zero word after 0x55A4: all-zero SUFFIX plus TRUNCATE_TEXT.
+- **NCC donor** `src/viewrec_uso/viewrec_uso_ncc.cpp` (multi-function, `VIEWREC_NCC_DONOR`):
+  0x1664 needs edg's virtual-call lowering (object in v1, vptr in v0). Add further C++ functions to
+  the same file plus a `REPLACE_FUNC_BODY +=` entry.
+- Open:
+  - 0x0..0x214, the six screen switches: the target does `or v1,v0,zero; lw v0,40(v0)`, one move
+    longer. Not reproduced by cfe, plain NCC `sVrScreen->start()` or an inline setter.
+  - 0x290, the colour init: four `lui at` pairs over 0x858..0x874. This is as1 sharing `%hi` within
+    one file-local static (IDO_CODEGEN kit LX), so it needs an NCC donor over a `static` object.
+  - 0x2F1C: NCC `Colour(255,175,44,255) / 255.0f` is 1 word off. The target reloads 255.0f into a
+    separate dividend register, the same open problem as fire's ctor.
+  - 0x1488 (frame 0x28) and 0x2F1C (frame 0x38) both have an 8-byte gap below the sprite slot at
+    sp+0x1C, which looks like an edg temp.
+  - 0x14DC: sprite loop, sVrLabels[57 - i].
+  - 0x1068 / 0x18D4: v0 / v1 swaps.
+  - Untried: 0x2D0 (process ctor: mem_new 0xE0 / 0x50 / 0x2C, the cfront alloc chain), the sprite
+    tables 0x718 / 0x8C8, and every function above 0x1A08 not listed above.
