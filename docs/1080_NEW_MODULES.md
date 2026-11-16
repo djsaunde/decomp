@@ -237,6 +237,41 @@ No renames.
   course*3*16 spellings, and the 0x3364 levers (do-while, `show = 1` after the call).
 - **Not started:** 0x3878 (records draw, 431 lines) and 0x3F24 (erase-select pad handling, 272 lines).
 
+### agent-b run 657: viewrec.uso 0x4354 EXACT; 0x3878 / 0x319C analysed (3545 / 3579, +1 exact)
+
+Commits on agent-b: 741fe25d8 (4354), 867b60986 (episode). No renames. Gate PASS.
+
+- **0x4354 (erase pad handling) EXACT, cfe C** (was the 84 % NM). The only change: the `snd_postEvent(5)` before
+  the switch goes through the void alias `XCALL(gl_func_00000000_vrv, snd_postEvent)(5)`. The int return left a
+  dead $v0 def at the call, which pushed the switch value into v1 and the reloaded proc into a2. Without it, the
+  switch value takes v0 and the proc v1. The same body under mp72 with the alias is also word-exact, so the
+  front end was never the issue.
+- **0x3878 (erase draw, mp72 draft): the 14-word residual is as1 xbb, not uopt.** In ugen's `.s` (run ugen with
+  `-l x.s` on the ncc721 intermediates), the `selFade > 0` test block B is `l.s; li.s; c.lt.s; bc1f`, and the
+  if-body C is `move s5,0; move v0,0; la v1,sVrLabels_3F0; sw v0,84; sw v1,80; li s7,2; li s6,1`. With `-noxbb`,
+  everything stays in C. Our as1 pulls `la` + `move s5` + both `li` into B's c.lt.s stall (instrumented as1
+  `/tmp/claude-1000/h410/as1/as1i`: CUR bb33, cand bb34 -> insts 1, 3, 4, 7, 8). The target pulled only the `la`.
+  - `.s` oracle results: reordering C (5 orders), moving the `la` into B, an extra label at C's head, and
+    `.alias` / `.noalias` in C all still pull. **A read of `$21` at the bc1f target `$45` (s5 live-in at the off-path
+    successor) stops the `move s5` pull** (ndiff 11 -> 9). So the target's as1 saw s5 / s6 / s7 as live-in at the
+    after-if block, or rejected them for another I5 / C3 reason.
+  - The function has more than one loop, so the xbb candidate cap is 100: the kit CDXCV empty-block trick cannot
+    reach it.
+  - C variants tried (all ndiff 11 = the base, or worse): goto / `0.0f <` / `if (1) {}` / while / r declared in
+    the block / `int r` in the for / `j <= 1` / `1 == phase` / `r != 4` / pre-increments; `sVrLabels[42 + ...]`,
+    2-D arrays, row pointers, `g = sVrLabels_3F0` before the if, an inline grid helper, and a volatile 2.
+  - Next: find a C construct that leaves s5 / s6 / s7 live at the after-if block (a code-free use after the if,
+    which needs uopt to keep the LR); or read as1i's I5 path set for bb34 to see which reject the target took.
+  - Scratch: `v3878/`, `ncck.sh` (ncc721 that keeps its intermediates; `AS1OPT`, `UOPTX`), `asm.sh` (as0 + as1i
+    oracle), `ad.py` (aligned mnemonic diff), all under agentb/.
+- **0x319C (course scores draw) is still INCLUDE_ASM. There is a target-length draft** (agentb/vr319C_best_d2.c,
+  114 words). It is the run-646 body (struct-indexed `&rec[course]` and `.scores[i]`; `show = 1` before the
+  GetScore call) plus a code-free `if (1) {}` as the first statement inside `if (show)`. That stops uopt hoisting
+  `&col` into s8, so course*48 gets s8 and `&col` is rematerialised (`addiu t9,sp,116`), as in the target. Left:
+  an s-register permutation (target y s2 / i s3 / show s4 / course s7 / course*48 s8; ours y s4 / i s2 / show s3 /
+  course s8 / course*48 s7) and `e->score` in v1 instead of v0. The off / char-pointer spellings of the first
+  course*48 are byte-identical to the base.
+
 ### agent-b run 651: viewrec.uso 0x3000..0x47FF + ctors 0x4854 / 0x5200 (3526 / 3579, +3 exact)
 
 Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episodes). No renames.
@@ -558,6 +593,31 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   Parm's name copy has its own word. Frame 224 vs 168.
 - Not started (no time this run): 0x64B8, 0x718C, 0x7FE0, 0xA10C, 0x6B28 (whole bodies), 0x8D70.
 
+### snoweffects.uso 0x6000+ (agent-e run 659)
+
+- **0x8D70 EXACT** (commit fe29e6fde on agent-e, 3545 -> 3546; NCC donor in `snoweffects_uso_ncc_e.cpp`,
+  pin `gl_func_00000000_snow_52d4`). The run 645 draft had every instruction; only the frame was wrong
+  (144 vs 168). From `-O0 -g2` .mdebug, each if-block holds a named `SV push = n * -d;` above the
+  operator* result, with `+=` taking a const reference. Two dead scratch stores, each in a block of its
+  own, fill the 8- and 12-byte gaps above the two if-blocks: `{ int sc[2]; sc[0] = 0; }` before the
+  first if and `{ int sc2[3]; sc2[0] = 0; }` before the second probe. These are agent-c's run 643 lever
+  placed by agent-a's run 648 block-order rule.
+- **0x7960** (draft 212 / 219, `ncc_drafts/snoweffects_nm_e.cpp`). The same two levers make the frame
+  exact (176): one scratch block before the side-point code, one after the second xform. Left: the
+  zero / |speed| FP swap. The target has zero in f12 and |speed| in f2; ours is the reverse. The
+  instrumented uopt (`/tmp/claude-1000/h414/u/out/NCC ... -Wo,-zdbug:5`, then `h384/t/lre.py` +
+  `h414/t/ord.py`) shows the |speed| LR (pri 2.0) picked before the split zero-constant piece (pri 0.33).
+  No effect from: fabs as an inline, member or reference; `>=`, `0.0f >` or int 0 spellings; a named
+  zero (const-propagated); d reused for |speed|; a member dot. `if (1) {}` splits cost ang its f20 home.
+- **0x9328** (draft): `if (&n) {}` in the ParmF ctor body moves the Parms `this` from s1 to a1 with the
+  target's sp spills (register- and offset-normalised 213 / 247, up from 188). Still missing: a second
+  name word per Parm. The target stores each name twice: a per-Parm word (0xD8 / 0xD4 / 0xA0 / 0x9C /
+  0x98), then the pooled 0x84 copy that goes to a2. Tried: a non-POD PName (passes by address); an
+  identity inline (gives one shared pool word); an inline GdlParmBase ctor (adds this == 0 checks).
+- **0x9E10** (cfe NM 26/30). With head passed twice, `(item + 0x10, head, head)`, the beqz + delay-slot
+  copy shape appears, but the registers are reversed (head in a1, copy in a2).
+- Not reached (budget): 0x64B8, 0x6B28, 0x718C (whole-body decodes).
+
 ## trnproc.uso / nameent.uso progress (agent-c run 631)
 
 - trnproc 28 / 40 EXACT, nameent 17 / 21 EXACT + 1 NM (0x150, 41/45 words). Commits on agent-c:
@@ -723,6 +783,39 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
 - NM wraps spell the raw placeholder tokens: the named-call check cannot prove CALL() sites
   whose build path is INCLUDE_ASM.
 
+## heli.uso (agent-g run 658)
+
+- **+2 EXACT (3541 -> 3543 on the agent-g base, gate PASS each), no renames.** Commits on agent-g:
+  2a7328dcc (0x8A8), c0c734d95 (0x980), b4968b0ec (0x4C0 NM 90.7 -> 91.2). heli: 24 / 26 exact.
+- **0x8A8 (flight-state reset), NCC donor** `src/heli_uso/heli_uso_ncc.cpp` (Makefile HELI_NCC_DONOR,
+  REPLACE_FUNC_BODY over an empty placeholder). Three levers:
+  - **edg folds `(float)0` into 0.0f.** For a separate zero constant web, use an int local:
+    `{ int z = 0; h->off.x = z; ... }`. The conversion is folded later, in uopt, so the zero stays
+    its own web (mtc1 zero f8).
+  - **Frame:** a dead `{ int scratch[2]; scratch[0] = 0; }` **nested block at the end** puts its
+    words below the inline temps (frame 0x20 -> 0x28, look temp at sp+12). Declared at function
+    scope, it goes above the temps instead, which is agent-a's block rule.
+  - **Line grouping:** the off block must sit on one source line. Split over four lines, the 2000
+    load schedules after the zero (99.4 instead of 100).
+- **0x980 (hem marker placement), cfe C:**
+  - The first iterator result goes through its own local `r` (v0, then `item = r` copies it to
+    v1), as the loop's later results do.
+  - cfe gives every declared local a home in declaration order, nested-block ones last. The
+    `-O2 -g3` .mdebug dump (`/tmp/claude-1000/c418/py/mdsym.py`) showed where they landed.
+    Declaring type / item above the Vec3 temp t, with padB 4, puts t at sp+0x24 in the 0x58 frame.
+- **0x4C0 residual, read in the `-Wo,-zdbug:5` uoptlist** (tools/ido-static-recomp-dump cc):
+  - The (float)0 zero is one const LR across the main- and tail-rotor blocks (6 uses / 2 BBs,
+    adjsave 2.5).
+  - The tail's scale chain value (`c0 = c4 = c8 = RO58`) is a cfe temp LR with adjsave 4. It
+    interferes, so it is coloured first and takes f0; the zero gets f2 in *both* blocks.
+  - With three separate loads (a float extern pinned at 0x58), the zero gets f0 in both blocks,
+    but the loads reload after each store (alias), so that is not the fix.
+  - No help from these (cfe and NCC): zero spellings; `if (1) {}` / `if (x) {}` splits;
+    code-free compare uses; reusing the scale variable for another value; edg `set(a, b, c)` /
+    `set1(s)`. Next: a scale value with priority below 2.5 that is still one load, or a zero LR
+    with more counted uses.
+- **0xB08** not reworked this run. The NCC draft is still 77.2, the mp72 one 74.7.
+
 ## viewrec.uso progress (agent-a run 654)
 
 - +3 EXACT (3530 -> 3533 on the agent-a base, gate PASS each): 0x266C (commit e24e1cb5d), 0x1488
@@ -755,6 +848,60 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   - Levers that may help the parked NMs: the void alias fits a v0/v1 swap after an int-returning call;
     `h = 0` fits a pseudo needing v0 earlier; the zdbug:5 colouring read fits arg-register swaps (nameent
     2F4 / trnproc 1778 if they are a0/a1 or v0/v1 residuals). Not attempted: owners are active.
+
+- **Re-scope (coordinator):** snoweffects 97C / 9E10 left to agent-h / agent-e (nothing committed for
+  them). New scope: snoweffects 0x7FE0 and 0xA10C (own donor snoweffects_uso_ncc_a.cpp, not created yet).
+- **0xA10C (snow light update), first NCC draft, not landed.** Callees and data come from
+  `scripts/uso-imports.py sites snoweffects`: 9768, PolyShape_getVertex / getNormal8, 9FE8,
+  ItemMgr_findType (keys Data+0xA78 / +0xA7C), 9884 / 9BE8 / 9C48, flag Data+0xA30, Bss+0x40 / +0x50,
+  RoData+0xF4. The body decode is complete: 16-word matrix copy src+0x70 -> tgt+0x2C, colour parm copy
+  +0x124 -> tgt+0x288, ambient-parm dirty check, per-vertex light colours (255 clamp, u8 store), two
+  ItemType walks. Levers found so far:
+  - The clamp loop as `for (j = 0; j < 3; j++) { float *f = &col.x + j; ... }` (a pointer loop is unrolled
+    x4).
+  - The colour zeroed through an inline member `col.set(0, 0, 0)` (direct stores fold `0 + x`).
+  - The ambient added component-wise, re-reading `t->ambient->v.get()` each time.
+  - The iterator as a class with an inline next() (an array iterator is promoted to s-registers).
+  - The ItemMgr keys passed as `*(SKey *)(D_00000000 + 0xA78)` by value (the edg by-value temps give
+    the target's homes 148 / 172 and the 176-byte frame).
+  - The normal bytes in a nested block (the target has them at sp+0x70).
+  Left: 193 of 405 words. Most are s-register numbering: self is s5 in the target (s3 here), and the
+  Bss+0x50 pointer goes in s4 before the vertex-count test. There is also a v0/v1 pair in the ambient
+  compare and the second walk's mask constants (-2 / -3 / -5 hoisted into s2..s4). Scratch:
+  /tmp/claude-1000/agent-a/w654/a/best_A10C.cpp. 0x7FE0 is not started.
+
+## snoweffects.uso 0xA10C / 0x7FE0 (agent-a run 661)
+
+- No exacts, no NM wraps (both below 80 %). Commit 123ff873b on agent-a: NCC drafts in
+  `src/snoweffects_uso/ncc_drafts/snoweffects_nm_a.cpp` (not built; callees by real name so the
+  placeholder-call check skips it). Scratch: /tmp/claude-1000/agent-a/w661/ (var.py variant runner,
+  mn.py register-blind shape diff, sd.py shape diff listing, md.sh -g3 slot dump, iu/tr.sh colouring trace).
+- **0xA10C: 193 -> 150 words off; the frame now matches** (-O2 -g3 slots equal to the target:
+  key2 temp vfp-4, key1 temp -28, col -40, iterators -76 / -88). Levers:
+  - The second ItemType walk's `type` at function scope (no block): its by-value key temp becomes the
+    first frame word (sp+172). The first walk not in its own block puts its key temp at sp+148.
+  - `SKey(int)` ctor for the key argument gives the target's `sw a1, K(sp)` arg-temp store
+    (`*(SKey *)p` by value gives none; a named key local adds an addiu / sw pair).
+  - `c` / `i` at function scope; the ambient Parm bound once, `const SParm<SVec> &a = t->ambient->v;`
+    before the compare (`a.get().x` reads), with the copy reading `t->ambient->v.get()`: gives the
+    target's amb-first compare loads and the single parm-pointer CSE.
+  - With these, self is s5 as in the target (Bss+0x40 / +0x50 colour s3 / s4).
+  - 1/127 at RoData+0xF4 as a literal hoists into the loop preheader as in the target (needs a
+    `_rodata` pin in a donor).
+  Left: (1) the parm pointer copy colours a0 -> v1 (target v1 -> s1: the copy is callee-saved, so its
+  LR must reach a call or share a variable with `c`; a `c`-reuse probe lost a frame word); (2) the normal
+  bytes at sp+120 vs sp+112 (one more word in the loop-body block; moving the +0x50 pointer local did
+  not move it); (3) both walks lack the target's item copy (data in s1 for tests / calls, item in s0
+  for stores; `it.get()`, ref, named copy, `item = next()` probes all fail); (4) walk 2 forwards the
+  flags value where the target reloads +0x234 after each `&=` store.
+- **0x7FE0 decoded whole** (trail emitter update; the structure is in the draft's comment): speed from
+  the camera lean, the s ramp (+0x1A4 / +0x1A8 / +0x1AC), 0x4374, 0x46BC -> +0x74, 0x4714 with a float
+  4th arg (mfc1 a3: needs a typed alias), then per point of the write row: position (mode 2 copy or
+  lerp), velocity terms through edg Vec3 temp chains (op* result -> return temp sp+244 -> by-value
+  operator= param sp+188), w[1..3], vtx s/t and the cam colour bytes (signed `char` stores: trunc.w.s,
+  not the unsigned cvt sequence). First draft 789 / 800 instructions, frame 320 vs 384. Next: the
+  named Vec3 locals' slots (target 336 / 324 / 312 / 300 / 284 / 272 / 100), the in-loop 64.0f, the
+  p.x spill at sp+48.
 
 ## viewrec.uso progress (agent-a run 648)
 
