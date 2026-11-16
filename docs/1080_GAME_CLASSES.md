@@ -30,6 +30,7 @@
 - [22. Run 512: last placeholder calls, parm builders, field names](#22-run-512-last-placeholder-calls-parm-builders-field-names)
 - [23. Run 516: SnowBoarder and ShpNode on DNode](#23-run-516-snowboarder-and-shpnode-on-dnode)
 - [24. Run 523: game_uso raw sites, GameFlow import, AnimDataMgr_lookup](#24-run-523-game_uso-raw-sites-gameflow-import-animdatamgr_lookup)
+- [25. Run 528: WorldRegistry.map, C++-safe rideranim.h, game_uso int-index sites](#25-run-528-worldregistrymap-c-safe-rideranimh-game_uso-int-index-sites)
 
 ---
 
@@ -1111,3 +1112,45 @@ objdump -dr identical.
 **Next:** a C++-safe rideranim.h (mirror like snowboarder.h) so D204 / D9CC / the other NCC RiderAnim donors can drop
 FW / FF on `arg0`; the `a0[K / 4]` forms; GameFlow +0x7C (with input.h's owner); name the data-symbol sites
 (Pair2 state tables) once the data-alias tooling covers game_uso.
+
+## 25. Run 528: WorldRegistry.map, C++-safe rideranim.h, game_uso int-index sites
+
+Census (compiled code, casts / accessor uses): game_uso 125 / 212 -> 115 / 87 (owner g 337 -> 202);
+game_uso.c 107 -> 97, D9CC 6 / 89 -> 6 / 1, D204 1 / 23 -> 1 / 4, F13C 0 / 12 -> 0 / 3, F060 0 / 9 -> 0 / 2,
+10A0C 0 / 4 -> 0 / 2. No compiled `a0[0xNN / 4]` int-index site is left in game_uso.c (comments only).
+Commits 4d78ff5ee, 974491915, 2ba08a6da, ef44c768b, 792e449ab, 592f06809: all hand edits (no renames.tsv
+lines), every changed object objdump -dr identical, gate PASS before each.
+
+- **WorldRegistry.map** (course.h, 0x98, `struct MapProp *`): game_createMap's result (agent-h run 524).
+  WORLD_MAP(w) now lives in course.h as `WORLDREG(w)->map`; the local guarded copies in bootup_uso.c /
+  game_libs_tail.c are gone and bootup's game_init store is `WORLDREG(g)->map = (MapProp *)m`.
+- **rideranim.h is C++-safe**: a `__cplusplus` branch with same-directory includes, an AnimPlayer mirror of
+  gdl/anim.h (Node base opaque) and the ANIM_* constants; asserts are C-only; RA(p) is in the header. Donors
+  include it after the s32 / f32 typedef line (copy D9CC's). D9CC, D204, F060, F13C, 10A0C use it.
+- **RiderAnim per-frame dispatch is on 0xC8.** D204 (RiderAnim_update) calls the PMF at +0xC8 every frame
+  (`struct H : A { pad2[200 - 44]; PM pm; }`), i.e. the field rideranim.h calls `nextState`, while
+  setState (D5F8) stores +0xC0 together with the key that onKey waits for. So 0xC8 is the running state
+  handler and 0xC0 the one entered at the key; the field names (state / nextState) may be the wrong way round.
+  Not renamed this run: check AnimPlayer onKey (vtable slot 10 of RiderAnim) before swapping.
+- **New / renamed fields:** RiderAnim.holdFrames (0xE6, was unkE6: statePreJumpHold counts it against the jht
+  parm, statePreJump clears it), SnowAI.lastMarker (0x78, was unk78: the marker updateMarker found last),
+  SunParms / LensFlareParms .head (was unk04). course.h ColourSubItem (0x40): the ColourItem subclass the three
+  game_ItemType_create factories build (vptr import_8006ED80, +0x3C cleared).
+- **The Sun / LensFlare "8-byte {vptr, 0} headers" are the inlined Parms base**: {name, list head}, name =
+  "Parms" (Data 0xD54) / "LensFlare::Parms" (Data 0xD78). Written as SunParms / LensFlareParms .name / .head.
+- **Byte notes (all verified):** `CamPath.keys[i]` / `CourseCam.paths[i]` in a loop strength-reduce to the old
+  walking word pointer, and `keys[cnt + 1] = keys[cnt]` keeps camPath_read's base-first addu. CourseCam's list
+  loop does not: indexing lists[i] after the read call rebuilds the pointer from i (extra sll / addu), so it
+  keeps a walking `int *p` written `((CourseCam *)p)->lists[0]`. In F060 / F13C the second held test must read
+  `*(u32 *)&input->held` (edg reloads; a plain second member read is CSEd). MemberCallback_invoke's virtual
+  branch keeps `*(int *)(pair + 2)` for pmf.b (the member read reorders the block). `&rider->flags` replaces
+  the startTimeout / startFinish `(char *)p + 0xA58` pointer bumps with the same bytes.
+- **Left in game_uso (115 casts):** about 100 data-symbol sites (Pair2 PMF tables, parm tags, doubles, the
+  SnowAI_ctor D_44F4_iter* reads), cam_pickResultView's GameFlow +0x7C (input.h pad7C, not my header),
+  savedMax, MemberCallback's pmf.b, the D204 GameFlow import reads (input.h is C-only), rider +0x3DC (a
+  SnowBoarder pad) in D9CC, and the camPath_read rotMode `a0 + new_var` lever.
+
+**Next:** settle state / nextState (onKey); the remaining NCC donors on their headers (10694 RiderAnim_stateRide 21
+and the F6D4 / E35C byte-offset views on rideranim.h; 57D8 SnowAI_update 19 on snowai.h, which needs the same
+C++ treatment; B750 LensFlareElem_draw 17 on sun.h); a C++ mirror of the GameFlow fields in input.h (with its owner)
+so D204 / B3C can drop the import offsets; name SnowBoarder +0x3DC.

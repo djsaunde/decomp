@@ -912,6 +912,50 @@ SnowBoarder, +0x800 input; InputPad +0x34 unnamed; the shared q temp is a lever)
 (game_libs_o2_3430.c FW forms -> TPOINTS / POPUP); bootup_uso.c SnowBoarder_update (14) and the Tmpl
 helpers; mgrproc MGRRaceProcess_drawIntro (9) / mgr_DataManager_update (7); h2h_createPauseMenu (4).
 
+### Run 529 (agent-h): SnowBoarder_ctor, TitleDemoProcess_handleInput, TrkDataManager, Tree, H2HWinsDisplay
+
+Commits on agent-h (base cf7d7758f), each gated PASS (3288/3288, ROM identical, 6012 named calls / 0
+mismatches; every touched .o, donors included, identical by objdump -d -r -z in the matching and NON_MATCHING
+builds): 644be219e (SnowBoarder_ctor + snowboarder.h), 953cb325a (titproc 116C), 7fa0c2d82 (TrkDataManager),
+6b2b8fbe4 (Tree), c83d3217b (H2HWinsDisplay). All hand edits; no renames, no renames.tsv lines.
+
+- **SnowBoarder_ctor** (bootup_uso_90CC.c cfe donor, 309 -> 13 raw, the rest are data / list-walk reads):
+  the 50 parm cascades write `PARMF(p)->type / value / unk14` (gdl/gadget.h, reached through dnode.h);
+  **twt, bdm, cdm are int parms** (type Data 0x8060, defaults 25 / 10 / 15: `PARM`); the two Parms heads
+  `PARMS()->name / unk04`; rider fields via SNOWB(arg0); child attach / vptr via NODE(); the trail emitters'
+  draw is VT_SLOT(vt, 10); the "lighttarget" node is a LightTarget (mask, scale, unk108); the 0x878 member's
+  vptr is COLLOBJ()->vptr. The donor now includes common.h / snowboarder.h / coll.h / light.h instead of
+  private typedefs. Whole-file mechanical conversion kept every statement on its own line (as1 orders
+  equal-ready instructions by source line) and was byte-identical first time.
+- **snowboarder.h additions** (agent-g's header, additive only): 0x868 dispTrails / 0x86C dispSpray / 0x870
+  trails (Node names "DispTrails" / "DispSpray" / "Trails"); 0x878..0x8B8 is a 0x40 **CollObj built in
+  place** (coll_boxCtor_0003CAA0): collHitMask 0x88C / collCategory 0x88E (4 / 2 with flags & 8, else 5 / 1),
+  and prevPos / prevVel are its pos / vel; 0x8BC initFlags (arg7 | 0x4800, SnowBoarder_reset copies it back
+  into flags); 0x904 board (s16 ctor arg 3).
+- **titproc 116C** (MIPSpro donor, 93 -> 2): edg can't take the gdl headers' asserts, so the donor carries
+  layout mirrors (TitleDemoProcess, WhiteFader, GuiMenu cursor / rows, Node vptr + VT_SLOT, DataManager
+  entries[0].finished). `GUIMENU(v1)->rows[cursor].arg` is byte-identical under MIPSpro too.
+- **TrkDataManager** (modeproc.h, 0xE0): TimDataManager-shaped tail + 0xD8 ghostReplayMode (loadData 1;
+  update mirrors entries[1].rider's PadCtl replayMode, a 1 -> 0 edge sends sendEntryLoseResult(this, 1)).
+  `race` is `char *`; **byte lever**: the first three shownScore-arm raceState reads were int-typed loads
+  and are written `*(int *)&TRKDATAMGR(arg0)->race` (all-pointer loads let IDO merge the arms).
+- **Tree** (envobj.h, 0xC8) = SNode + CollCylinder at 0x88. Tree_handleMsg (msgs 7 / 19) copies snode.pos
+  into coll.obj.pos; TreeTmpl_create sets snode.scale 10, coll vptr, coll.obj.flags |= 1. envobj.h includes
+  gdl/coll.h now.
+- **H2HWinsDisplay** (modeproc.h, 0x9C; H2HRace.postMenu): Node, race 0x2C, menu 0x30 (GuiMenu, unk30 =
+  font), fader 0x34, sprites[4] 0x38, frame 0x98. h2h_createPauseMenu and onTimeout's fader wait use it.
+
+Census (readability-census.py) before -> after: bootup_uso 667 -> 362, titproc_uso 175 -> 84, h2hproc_uso
+88 -> 68, timproc_uso_b3 79 -> 54; owner h 1541 -> 1100; all raw casts 4336 -> 3895. Top files:
+bootup_uso_90CC.c 309 -> off the list, titproc_uso_mp72_116C.cpp 93 -> 2, h2hproc_uso.c 71 -> 51,
+timproc_uso_b3.c 71 -> 46, bootup_uso.c 143 -> 134.
+
+Next: h2h_WinsDisplay_display / update (NM bodies) on H2HWinsDisplay; TreeTmpl (arg0 + 0x40 shape, +0x48);
+TrkDataManager_update's entries + 0x20 / 0x30 and points94 + 0x18 / 0x78 (PointsGadget fields; check the
+int-typed-load levers first); arcproc_tail1 (42), bootup_uso_tail4 (24), MGRRaceProcess_drawIntro (9) were not
+reached; the gGfxLib +0x254 / +0x130 sites wait for agent-b's GfxLib struct; SnowBoarder_ctor's remaining
+reads are GameFlow / InputMgr data sites (agent-a's aliases).
+
 ### Run 524 (agent-h): Parms ctor fields, WorldRegistry map / players, restart chain, PointsGadget_update donor
 
 Commits on agent-h (base 57b2ad9b3), each gated PASS (3288/3288, ROM identical, 5457 named calls / 0

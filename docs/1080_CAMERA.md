@@ -150,3 +150,6 @@ is an orbit / pan controller. Neither is used for the race view.
   the rider node list (docs/1080_GAME_CLASSES.md section 20).
 - Run 488: MCamera_ctor, CamFollow_ctor and CamDirector_ctor store their vptrs through the gl_data.h `_vtbl` aliases.
 - The RiderCam fov tables (bu_4948_t16 / t8, k0 / k1 / klo / khi) are not resolved to RoData addresses.
+- Run 528: camPath_read_00000724 and cam_readParms_00001644 are on CamPath / CourseCam members (keys[i],
+  paths[i]); only CourseCam's list loop keeps a walking word pointer (`((CourseCam *)p)->lists[0]`), since
+  lists[i] there rebuilds the pointer from i after the read call. docs/1080_GAME_CLASSES.md section 25.
