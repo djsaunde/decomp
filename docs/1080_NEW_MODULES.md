@@ -274,6 +274,34 @@ Commits on agent-b: 3d2acf56d (checkpoint 45C), 200bd12fd (snoweffects 5FD4 / 61
   diffs. The target spills the attach parameter at sp+0x2C, but the parent test and the unk04 store go
   through the new-result register s0), and every function above 60 words.
 
+- Run 644 (agent-h, no commits, no exacts): findings for the next pass.
+  - **0x4188 (3 diffs) is a live-unit boundary, not a priority tie.** Instrumented uopt
+    (`/tmp/claude-1000/h414/u/out/NCC -Wo,-zdbug:5`, then h384/t/lre.py + h414/t/ord.py; wrapper
+    /tmp/claude-1000/agent-h/iu/tr.sh) shows packets 1-2 fill live unit 0 and unit 1 starts right before
+    packet 3's `&buf[n]` result. The target's packet-3 a3 needs that result defined in unit 0 and stored in
+    unit 1 (then it is forbidden v0 / a0 from packets 1-2, a1 from the parameter, and v0 from packet 4).
+    Removing ANY one store from packets 1-2 gives exactly that layout, so the original packets 1-2 carry one
+    fewer counted memory op than ours. Flat (all 3-6 diffs): `if (1) {}` at every 1-3 statement positions,
+    next() body spellings, put()/Gfx::set()/pk() emitters, comma / chained stores, named and reused
+    packet locals, `& 0` phantoms via t (edg folds them: no unit effect), the header's two-local next()
+    on 0-2 packets with 0-2 pad words. Next: find a code-identical spelling of packet 1 or 2 with one fewer
+    ucode memory op (try a gbi macro with a `(Gfx *)` cast pkt, `*g = gfx_const` struct copies, a
+    file-static `Gfx` template copied by value).
+  - **0x97C**: a manual permuter scratch (`nonmatchings/p97`: minimal base.c, cc compile.sh, target.o
+    assembled from the .word .s with ~/.local/bin/mips-linux-gnu-as and glabel / endlabel / nonmatching
+    macros; run with /home/danjs/code/decomp/.venv/bin/python, which has toml) plateaus at score 25 in
+    2 x 100 s (that is the 2-word swap). The NCC SnowV3 draft (/tmp/claude-1000/agent-h/t97.cpp) is
+    11 diffs, worse than the C.
+  - **0x39C4** = SnowFall fill: unk98[3] = camera pos * worldScale (scale loaded first), then for
+    i < this->unk40 (+0x40): p = alloc(this); if (p) { d = randf*100, a = (randf-.5)*60,
+    b = (randf-.5)*60; pos = unk98 - camRotT[2]*d; pos += camRotT[1]*b; pos += camRotT[0]*a; unk38 1,
+    unk40 0, unk44 0, unk3C 1, unk24 RoData+0x14, unk28 -1, unk2C randf*360, vel.x / vel.z (randf-.5)*0,
+    vel.y -(randf*2.5)-1, accel.y 0, accel.x / .z (randf-.5)*RoData+0x18 / +0x1C, unk34 / 50 / 54 0,
+    col 251,251,251,0, unk30 256; count++ }. cfe draft (/tmp/claude-1000/agent-h/se_39c4_draft.c):
+    shape right, but pinned RoData externs get hoisted into s4-s6 (frame 104 vs 88) and the `+=` adds
+    come out product-first. Next: NCC donor with the RoData floats as literals (`<func>_rodata` pin, as
+    0x27A8) and `x += v.x * s` member statements.
+
 ### snoweffects.uso 0x6000+ (agent-e run 639)
 
 - +2 EXACT (commit feb67fb6a on agent-e): 0x8C60 and 0x9FE8, both IDO 7.1 NCC. Own donor
@@ -304,6 +332,39 @@ Commits on agent-b: 3d2acf56d (checkpoint 45C), 200bd12fd (snoweffects 5FD4 / 61
     above it) and the `or s0,v0` placement.
   - **0x9E10** (NM 98%): NCC inline attach() reproduces the target's a2 -> a1 copy but swaps item / head
     (a2 / v1 vs v1 / a2); cfe forms give no copy (4 diffs). Not landed.
+
+### snoweffects.uso 0x6000+ (agent-e run 645)
+
+- +3 EXACT on agent-e (3499 -> 3502): 43f357ec5 0x9C48 (cfe C), a0d94b6a5 0x9768 (NCC donor in
+  snoweffects_uso_ncc_e.cpp), cfb37324f 0xA760 (cfe C). 9f171435a: 0x9E10's NM body is better (26/30).
+  No renames (renames cancelled by the user).
+- **0x9C48** (flicker colour pass): timer +0x238 / period +0x2C4 / step +0x23C over a sequence from
+  the pointer table at Data+0x958[+0x2AC] (0 pin `snow_flickerTbl_958`); brightness / 255 scales each
+  vertex's alpha into an int k, `rgb += colour(+0x288) * k`, clamped to 255, into the mesh colours
+  (+0x50) at vertex +0xAC[i], then MorphPoly_applyUpdateList. Levers: `(unsigned int)` on the alpha
+  (the target's cvt fix-up), `int k` with `r += c * k` (from 64 diffs to 8), and a typed struct
+  (SnowGlow) in place of `char *` offsets puts the `vals` load before the step load.
+- **0x9768**: a pointer local for the copy (`SnowVec3 *p = &t->pos; t->drawPos.x = p->x; ..`) gives the
+  x, y, z load order (agent-g's heli lever). `const V3 &a = t->pos` works too. Named float locals
+  colour f0 / f2 / f12, and a struct copy or a temp gives the z-first order. New 0 pin
+  `snowDirtyFlag_A30` (Data+0xA30; 0x9F44 and 0xA10C store to it too).
+- **0xA760** is cfe C, not NCC: the hud_findMarkers_000029F8 iterator macro. Frame: the iterator is
+  **block-scoped inside `if (type)`**, so it sits below the struct-argument copy of the by-value key;
+  one `char padA[8]` sits between the key and the iterator. `item = it[0]->data;` comes before tests
+  that read `it[0]->data` again (the target's v0 -> s0 copy). Pins: `snow_itemMgr`, `snow_gGfxLib`,
+  `gl_func_00000000_snow_cull`.
+- **0x9E10** NM 26/30: `if (head != 0)` on the local gives item v1 / head as the target. Left: the
+  target loads head into a2 and copies it to a1 in the beqz delay slot.
+- **0x8D70** (168 words; two CollShape probes through 0x52D4 for the +0x120 / +0x12C points, pushing
+  each back by -d * normal when 0 < d < +0x15C; +0x148 = -dot(+0x114, +0x108); +0xD4 = +0xC4): NCC,
+  best 40 diffs (76 %, not wrapped). Draft: /tmp/claude-1000/agent-e/draft_8D70_ncc.cpp. It uses
+  `SV operator=(SV)` by value, `operator+=(SV)` by value, and an operator* that builds `SV r` through
+  `set()`. The instruction stream is right apart from colouring. The residual is the frame: target
+  168, draft 144. Target slots: n 0x9C, shared temp 0x84, if-1 r 0x60 / param 0x70, if-2 r 0x28 /
+  param 0x34. So each if has its own by-value parameter word (the draft shares one) and 4- / 8- /
+  32-byte unused words. Next: find which inline shape materializes per-expansion parameter words
+  (MATCHING_SUMMARY §5; the -O0 -g2 mdebug oracle names them).
+- Not started: 0x64B8, 0x6B28, 0x718C, 0x7960, 0x7FE0, 0x9328, 0x9884, 0xA10C.
 
 ## trnproc.uso / nameent.uso progress (agent-c run 631)
 
