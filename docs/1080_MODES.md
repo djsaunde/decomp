@@ -1268,3 +1268,28 @@ Next (H1):
   offsets; they can include select.h now (the edg path has SelVEntry / SelItemVtbl, no MNode).
 - gen_createCamera's Window flags (+0x78, the `if (1)` lever) and clearColour (+0xDC same-line
   store lever) stay raw.
+
+### Run 535 (agent-c): GenSelectChar, GenScene cameras, initLabels
+
+7910d265e on agent-c (hand edit; gate PASS 3288/3288, placeholder and gameflow checks 0 mismatches;
+every b5 C / C++ object identical to the pre-run build by `objdump -d -r`, data and relocations,
+matching and NON_MATCHING).
+- **select.h `GenSelectChar` (0x58)**: a 0x50 Process base (the ctor's inlined base ctors allocate
+  0x50 / 0x2C; the +0x10 child list gets the SelItemsMgr(s), the SelectionMgr and the Fader),
+  **twoPlayer 0x50** (0 when the ctor's player count, gen_createScene's a1, is 1, else 1: one
+  SelItemsMgr vs two), unk54. GenSelectChar_initLabels_00000778 takes `GenSelectChar *self`.
+- **Lever (initLabels):** the 48 n reads are spelled `*(int *)&self->twoPlayer`. A plain member
+  load recolours the t-registers from the 0x14 group to the end. So does a
+  `((GenSelectChar *)arg0)->` macro with the char * param, and so does swapping the `g + n * 2`
+  operands. The address-deref form keeps the target's. Dropping the cast on
+  `*(int *)&import_8002022C` (already `extern int`) also recolours, so leave it. import_8002022C
+  is bootup Bss+0x28C (READABILITY_PLAN 9.1.11). Its label-id use (g * 5, g * 12, g + 8,
+  g + 0x23) suggests a language / region index, but that is not proven, so it stays unnamed.
+- **GenScene.cam / cam2 are `GenCamera *`.** gen_createScene: cam2's view gets
+  `unk1B8 = cam->view`. +0x1B8 is past Window (0x144), so the view is a ScreenWindow (cast there).
+- **Census:** timproc_uso_b5.c 259 + 70 -> 208 + 70; timproc_uso_b5 segment 406 -> 355 raw.
+
+Next (H1):
+- gen_createVRBox (21), gen_buildRoom (15), SelItem_drawStatBar / Right (12 / 14).
+- The C++ donors (C310 34, BDEC 20, 8AFC 13, 2B74 11, 32C8 10) including select.h by relative
+  path (the edg mirror exists). Not started this run.

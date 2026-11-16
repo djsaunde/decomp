@@ -828,3 +828,43 @@ relocations and `objdump -d -r`).
   (libultra/os_message.h) in audio.h and check the other includers first, then replace
   gl_26214_Ctx / AudioTask / OSTask_t with AudioContext / AudioTask (field renames: t -> task,
   msgQueue -> taskQueue).
+
+### Run 535 (agent-c): o2_26214 fold, NoteInitForLayer / AllocNoteFromActive, the non-audio post.c bodies
+
+Four hand-edit commits on agent-c (base 4bd1f80f4), each gated PASS (3288/3288, ROM identical,
+placeholder and gameflow checks 0 mismatches). After the last gate's clean build all 1278 objects
+(matching and NON_MATCHING) are identical to a pre-run build by `objdump -d -r`, data sections and
+relocations.
+- 78a42aad8: **audio.h** includes libultra/os_message.h; `curAudioFrameDmaQueue` (0x16BC) is an
+  `OSMesgQueue`. No other includer declares OSMesgQueue / OSThread / OSMesg itself, and none
+  touches the member (DmaSampleData / InitMesgQueues in game_libs_post.c keep their own views).
+  **game_libs_o2_26214.c** (AudioThread_UpdateImpl) now uses AudioContext / AudioTask / OSTask_t
+  from audio.h (t -> task, msgQueue -> taskQueue); the five local typedefs are gone.
+- 7a1de52ec: **SequenceLayer** gains note 0x2C, noteVelocity 0x40, tunedSample 0x4C and the byte-0
+  bits in OoT's order. bit3 and notePropertiesNeedInit (bits 4 and 7 from the MSB) are proven by
+  Audio_NoteInitForLayer; stopSomething / continuousNotes / ignoreDrumPan / bit1 are OoT's names
+  only. Byte 0x02 (OoT `u8 instOrWave`) is inside the u32 bitfield container, so it stays a byte
+  read. **Audio_NoteInitForLayer** matches OoT's body field for field. The local Gl28E94Desc /
+  Gl28E94Xf views are replaced by SequenceLayer / NoteSampleState, which have the same u32
+  containers. **Audio_AllocNoteFromActive** = OoT's (pool releasing / active,
+  layer->channel->notePriority, playbackState priority / wantedParentLayer). Neither needed a
+  lever.
+- d9cb403a6 (the non-audio bodies, include/gdl/dma.h): **FsStream** (0x40) = gFsStream0/1/2, the
+  record fs_piXfer_00065EE4 sets up (post1b keeps its local view Save65EE4, owner b). Fields:
+  stage[8] (unaligned-head bounce buffer), wrPos 0x8, rdPos 0xC, handshake 0x10, committed 0x14,
+  data 0x24, hdr 0x28 (the PI header address; not `base`, which is a macro in fs_bufWrite_334E8),
+  end 0x2C, size 0x30, unk34. The three fs_buf* bodies use `FsStream *g`. **Lever:** the end
+  tests must be spelled cursor first (`g->wrPos == g->end`). As members, end-first loads +0x2C
+  before the cursor, and the cast form did the opposite. MCamera_ctor is on game/camera.h MCamera
+  plus gdl/node.h Node (vptr / name / flags). sys_fatalHaltLoop is on gdl/console.h ConsoleMgr
+  (input 0x34, unk38, the Node vtable slot-2 call through VT_SLOT) and gdl/pad.h PadCtl (the
+  0x80 record pad_open fills: held / pressed / released).
+- **Census:** game_libs_post.c 313 + 16 -> 181 + 16; game_libs segment 1258 -> 1126 raw.
+  Per owner: c 1147 -> 1063, and the post.c non-audio bodies are counted under a (1182 -> 1083).
+- **Not done (time):** ncc_28A68 (Audio_InitNoteFreeList, 6). It is an edg donor, and audio.h
+  is not edg-safe: common.h / os_task.h / os_message.h / os_thread.h and the audio.h asserts all
+  use the `&((T *)0)->f` form, so they need `#ifndef __cplusplus` guards first, as select.h
+  has. o2_23914 (AudioLoad_SyncLoad, 7): the table entry is an AudioTableEntry
+  (romAddr 0x10 / size 0x14 / medium 0x18 / cachePolicy 0x19 after a 0x10 header, OoT's
+  AudioTable) and tbl + 2 is the header's unkMediumParam. It can take audio.h's AudioTable
+  directly. Save65EE4 (post1b) can become FsStream (owner b).

@@ -1154,3 +1154,46 @@ lines), every changed object objdump -dr identical, gate PASS before each.
 and the F6D4 / E35C byte-offset views on rideranim.h; 57D8 SnowAI_update 19 on snowai.h, which needs the same
 C++ treatment; B750 LensFlareElem_draw 17 on sun.h); a C++ mirror of the GameFlow fields in input.h (with its owner)
 so D204 / B3C can drop the import offsets; name SnowBoarder +0x3DC.
+
+## 26. Run 532: RiderAnim state fields settled, donors on headers, GameFlow.winVariant
+
+Census (compiled code, casts / accessor uses): game_uso 114 / 83 -> 108 / 21 (owner g 197 -> 129). Commits on
+agent-g (base 90d27efd3): 07d308feb (field swap), **9639698d3 (pure rename)**, eb41c7354, 4487fe8a2,
+b37639091, 036f25cb8, 1b0a83cc2, 272e1c843. Every changed object objdump -dr / .data / .rodata identical; gate PASS
+before each commit.
+
+- **RiderAnim state / nextState were swapped; now `queuedState` (0xC0) / `state` (0xC8).** Evidence: the RiderAnim
+  vtable (game.uso Data 0x115C, read from the ROM Data section + Data relocs; slot fn = vtable + 8 * slot + 0xC) has
+  D438 at +0x5C, the slot AnimPlayer calls as onKey (game_libs_post1b.c: +0x58 delta / +0x5C fn). D438 disarms
+  eventKey / blendEvent and copies 0xC0 into 0xC8; RiderAnim_update (D204) runs the PMF at 0xC8 every frame.
+  Pure rename commit (4 renames.tsv lines): RiderAnim_reset_0000D438 -> RiderAnim_onKey_0000D438,
+  setNextState_0000D5BC -> enterState_0000D5BC (writes the running state now), setState_0000D5F8 ->
+  queueState_0000D5F8 (writes queuedState and arms the key, -1 = at blend-in end), clearNextState_0000D5DC ->
+  clearState_0000D5DC. Other vtable slots: 2 display D634, 3 update D204, 8 readParms D418.
+- **SnowBoarder.riding (0x3DC):** 1 from SnowBoarder_reset, stateRide, stateRideDeep; 0 when D9CC starts a hit /
+  crash anim. No .s loads +0x3DC from a rider (write-only).
+- **C++-safe headers:** snowai.h (same-directory include, C-only asserts), sun.h (plus a Sprite mirror of
+  gdl/sprite.h), input.h (InputMgr already compiled under edg; added a RaceTracker prefix mirror with hudFlags and the
+  RTF_* bits, since gdl/race.h is C-only). Donor include recipe unchanged: the s32 / f32 typedef line, then
+  `#include "../../include/game/<h>.h"`.
+- **Donors on headers:** 10694 stateRide (21 -> 3), 10840 stateRideDeep, F6D4 / E35C (byte-offset view macros gone),
+  57D8 SnowAI_update (19 -> 0), B750 LensFlareElem_draw (17 -> 4; params named elem / sprite / sunPos / dir / fade),
+  D204 (GameFlow course / dataMgr->hudFlags via INPUT_MGR; the running state read as `PMF(RA(a3)->state)`, the H pad
+  struct gone), F060 / F13C child() on rider->input.
+- **GameFlow +0x7C = `winVariant`:** RaceProcess_leave (flow modes 4..6: 1 -> victory seq variant 2) and
+  cam_pickResultView (win -> result view 11); RaceProcess_reset clears it. No other store found in any built object
+  (scan: sw imm 124 in every function that references a GameFlow token) - the setter may be in a mode USO through a
+  register base; open.
+- **LensFlareElem.flags** LFELEM_FLAG_*: 1 squared fade, 2 size *= fade, 4 pos += fade * 400, 8 use fade (else 1.0).
+- **Byte notes:** 57D8 needs `(u32)rider->controller == 2` (the s32 compare colours the const 2 into a2 and loses the
+  branch-likely delay fills). `*(T *)&obj->field` (address form) keeps the bytes where the plain member read moved
+  them: SnowAI_scaleRiderMax savedMax, 591C self->level. MemberCallback pmf.b reads as `((Pair2 *)pair)->b`. 591C's
+  `*(float *)((int)axis_src + 16)` (rider->parms.nts.value) still moves the code as a member: kept raw.
+- **Left in game_uso (108 casts / 21 macro uses):** data-symbol sites (Pair2 PMF records `AT(PM, &D_807FFxxx, K)`,
+  RoData doubles / floats, the SnowAI_ctor D_44F4_iter* reads, 6FA8 Handle pointers, 43D8 FLT_MAX pair),
+  B3C's `*(char **)((char *)ob + 0)` store (edg lever), 591C axis_src, the vtable-entry reads in MemberCallback_invoke,
+  and NON_MATCHING-only bodies (not counted).
+
+**Next:** name the data-symbol sites (the Pair2 state table 0xDB0..0xF60 as per-state PMF aliases, so
+`AT(PM, &game_uso_D_807FF4B0, 0xEC0)` reads as the state it enters; needs uso-data-sites.py support for game_uso);
+find GameFlow.winVariant's setter; bootup's SnowBoarder_reset `I(0x3DC)` (agent-h) can use rider->riding.
