@@ -14941,6 +14941,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
 - [post0b kit IV (agent-c 2026-10-17, run 105): two global loads issue in source order only when their statements share ONE line (48184 EXACT); a value colours by VARIABLE identity, so park a stream cursor in the int local another arm uses (4E96C EXACT); every block-local pointer temp reserves a frame home (+8 frame from two `{ int *t = ...; }`); a function-scope temp reused for a later sub-object shares its spill slot; m2c `s32 *p + 0x2C` bodies scale every offset x4](#post0b-kit-iv-run105) -- _check frame size and spill-slot offsets against the target first; they name the local set._
+- [Field conversion: `*(int *)&p->f` lowers like the raw `*(int *)((char *)p + K)` read (the int-load lever): use it where the member spelling recolours fp regs, swaps loads or merges arms, also for float / pointer fields read as int (agent-h run 533 / 541: TrkDataManager_update, CountDownGadget / BestGadget alpha, CoolGadget, Parm cascades)](#field-conversion-int-addr-of-member)
 - [Field conversion: `(*p).f` lowers like the raw read where `p->f` swaps operands or renumbers temps (agent-a run 531: snd_SoundObjUpdate, __rmonReadMem / WriteMem / RunThread)](#field-conversion-star-dot-spelling)
 - [Field conversion flips commutative operand order: a raw `*(T *)(p + K)` deref and the equivalent struct field load are ordered differently by cfe inside one `a OP b`, so a byte-safe field conversion sometimes needs the operands swapped (agent-b run 500: ConsoleMgr_scrollDown, CollObjMgr_update, BasePolyShape_genNormals)](#field-conversion-commutative-operand-swap)
 
@@ -68971,3 +68972,24 @@ in a3 for 30 `*(s32 *)(cb + K) = ...` stores; `UsoCtx *cb; cb->f = ...` colours 
 base and name the field with a constant offset: `#define CTX(f) (*(s32 *)(cb + (s32)&((UsoCtx *)0)->f))`
 compiles identically (the offsetof form folds to the same constant).
 
+
+<a id="field-conversion-int-addr-of-member"></a>
+## Field conversion: `*(int *)&p->f` keeps the raw read where `p->f` changes the code (agent-h run 533)
+
+A fourth fix next to `(*p).f`, for raw reads whose TYPE differs from the field's: spell the read
+`*(T *)&p->f` with the raw read's type T. Under IDO 7.1 cfe, `*(int *)&p->field` builds the same tree
+as the raw `*(int *)((char *)p + K)` (an indirect load through an address expression), NOT the member
+tree of `p->field`. So it is byte-identical wherever the raw form was, even at sites where the plain
+member spelling (or a `(s32)&D` / value cast) recolours the fp registers, swaps two loads, or lets uopt
+merge two switch arms. Cases (all objdump -d -r identical in the matching and NON_MATCHING builds):
+- TrkDataManager_update: the entry floats passed as ints to the course gadget
+  (`*(int *)&entries->pct / posX / progress`) and the first three shownScore-arm `raceState` reads
+  (`*(int *)&TRKDATAMGR(a0)->race`; with the `char *` member read IDO merged the arms);
+- CountDownGadget / TimeGadget / BestGadget alpha (an f32 field moved as an int word);
+- CoolGadget `m[0] + xps`;
+- the Parm cascades' `*(char **)&PARM(m2)->type = &D` stores (the field is an int tag).
+Not equivalent: `(s32)p->f` (a value conversion: cvt / trunc for floats), and `(int)&D` stores (the
+store tree changes). A related operand-order rule: `entry->score != finalTime` and
+`finalTime != entry->score` emit the two loads in opposite order; write the field whose load comes first
+on the left. Some arms still need the raw base: TrkDataManager_update arm 3 keeps
+`fl = (int *)entries; fl[8]` (an array index through a local is a different tree again).

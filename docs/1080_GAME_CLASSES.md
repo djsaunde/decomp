@@ -1237,3 +1237,36 @@ plan). Gate PASS before each; every changed object objdump -dr identical.
 **Next:** the other game.uso data (Parms name strings 0xD54 / 0xD78, parm-tag words, RoData doubles) as
 checked constants (a `"text"` / value claim in the comment, like GL_DATA_STR); the bootup ncc donors
 (D900 41, 55A0 40, CFA0 39, 1A44 24, FC28 24, 4948 18, now owned by g) on snowboarder / gdl headers.
+
+## 28. Run 543: bootup C++ donors on headers, game.uso strings / tags / constants
+
+Census (compiled code, casts / accessor uses): bootup_uso 311 / 134 -> 237 / 67, game_uso 79 / 21 -> 33 / 21;
+C++ donors 828 -> 684 sites (83 -> 81 files with any). Commits on agent-g (base 9f341164f): e4006e31e (hand edit:
+six donors + headers), 5e22d234a (tool change: uso-data-sites.py const-table / value claims), 53f11baf3 (tool output:
+79 constants + 79 respelled sites). Gate PASS before each; every changed object (main and non_matching) dumped with
+~/.local/bin/mips-linux-gnu-objdump -dr / -s (non-empty) and identical.
+
+- **Donors on headers:** D900 SnowBoarder_handleMsg 41 -> 0 and CFA0 SnowBoarder_display 39 -> 2 (snowboarder.h,
+  `self` typed `SnowBoarder *`; CFA0's position words passed as int args read as
+  `*(int *)&st->dnode.vqs.trans[i]`); 4948 RiderCam_update 18 -> 2 (camera.h RiderCam + rider->dnode.vel; the mode
+  compares stay unsigned via `*(unsigned *)&obj->mode`); 1A44 24 -> 4 (gdl gfxlib / window / dlctx + camera.h:
+  curWindow->dl, gfx.cur / mtx.cur, worldScale[], CamWindow cam->mnode.world[3]); FC28 24 -> 11 and 55A0 40 -> 28
+  (NODE(p)->vptr / ->name; onQuit's call through VT_SLOT(p, 11) keeps its -O0 DAG-share bytes).
+- **snowboarder.h:** shade[4] (0x9E8, groundColor / 2 / 255 + alpha 112 / 255 for a gfx colour call), unkA40
+  (display's context query result), unkA44 (1 on the lit path).
+- **C++-safe gdl headers:** node.h and window.h offset asserts under `#ifndef __cplusplus`; window.h includes
+  "node.h" by relative path under __cplusplus (donors build without -I include).
+- **uso-data-sites.py `--uso game const-table [--write]`:** names the strings (kStr_<text>_<K>: "Parms" groups incl.
+  Data 0xD54 / 0xD78 "LensFlare::Parms", class names, assert texts), 3-letter parm tags (kTag_<tag>_<K>) and the
+  float / double constants a site casts (kRoD_0p1_158 = RoData f64 0.1, kRoF_FLT_MAX_110, kDataF_60_1098); the type
+  comes from the site's own `*(f64 *)` / `AT(double, ..)` cast. `check` verifies the value claim (`"text"`,
+  `f32 V`, `f64 V`) bit-exact against the section bytes. The block between the const-table markers in
+  game_uso_data.h is generated; `spell --write` then respells the sites.
+- **Left:** 1A44's a0 +0x2C..0x38 (int position + DL word: does not fit envobj.h's U64BGWall mesh / arg30, so the
+  owner class is doubtful); FC28 QuitProcess +0x44 / 0x48 and PauseMenu colours / locked (guimenu.h is C-only, h's);
+  55A0's TreeTmpl / Tv1Tmpl fields (envobj.h is C-only, includes dnode.h / coll.h by -I path); game_uso data sites
+  without a cast type (D204 `F(&D_00000000, 0x1F4)`, the pi at RoData 0x90) and the "?" sites whose placeholder
+  token does not match the reloc's (macro-built: Sun_display, CourseMarkerTmpl_create, SnowAI_ctor).
+
+**Next:** the next C++ donors (485C 11, C234 10, B1B4 8, 11B5C / 7328 7); envobj.h / guimenu.h C++ guards with
+their owner (h) for 55A0 / FC28; the remaining game_uso Data words (0x548 node table, 0x1098.. rumble records).

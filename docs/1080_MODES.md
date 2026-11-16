@@ -912,6 +912,49 @@ SnowBoarder, +0x800 input; InputPad +0x34 unnamed; the shared q temp is a lever)
 (game_libs_o2_3430.c FW forms -> TPOINTS / POPUP); bootup_uso.c SnowBoarder_update (14) and the Tmpl
 helpers; mgrproc MGRRaceProcess_drawIntro (9) / mgr_DataManager_update (7); h2h_createPauseMenu (4).
 
+### Run 541 (agent-h): GfxLib sites, RaceColourParms, EnvSettings.fallingSnow, pause-callback Bss
+
+Commits on agent-h (base 5f5cf425b), each gated PASS (3288/3288, ROM identical, 6050 named calls / 0
+mismatches, 87 INPUT_MGR uses / 0 mismatches; every touched .o identical by objdump -d -r -z, non-empty dumps,
+matching and NON_MATCHING): 0cad1b3c6 (GfxLib sites), 9c0890bce (RaceColourParms), 7868a8165
+(identifications), **6bc074744 (pure rename: func_00007620 -> EnvSettings_setSnow, import_8001FFC0 ->
+gEnvSettings_6808)**, ee74f55a2 (mgr / h2h / tim alias + Bss sites). The rest are hand edits.
+
+- **GfxLib** (agent-b's gdl/gfxlib.h, now included by bootup_uso.c with gdl/window.h): BGBox / EnvSettings_display
+  write `curWindow->win.flags` bit 2 and `win.clearColour` (BGBox draws while the fog alpha is low, else
+  clears with the fog colour), EnvSettings_display `win.near / far`; Fog / Snower_display use
+  `worldScale[2] * camera world[3][2]`. **GfxLib +0x294 is the scene FogParms** (every `gGfxLib_*_src` alias is
+  pinned at 0x294; FogParms_emit / lerp take it; gfxlib.h still has unk294[6]); +0xE8 is a 4x4 matrix
+  game_initDdm sets to diag(worldScale) (unk0E8[16]); +0x160 is a table SnowBoarder_ctor fills (unk160);
+  +0x1C4 flags bit 3 = the map has parms (game_createMap, alias pinned at 0x188 + 0x3C). The per-site
+  aliases pinned at nonzero values (0x23C, 0x240, 0x1FC) keep their spelling: Tv1Tmpl's `[6]` is curWindow,
+  Fader_buildTexture's root is mainWindow, U64BGWall's E68_MGR is staticDL. Both Tv1 and Fader call VT_SLOT
+  11 of a window (Fader indexes the result as the frame buffer). BOOT_SELF_PTR is gone.
+- **RaceColourParms** (gdl/race.h): RaceProcess 0x50..0x4D8 is the ColourParms ColourParms_ctor builds
+  (head 8, 14 P / E RGBA pairs: rd, 32, go, gl, ls, rt, to, rn, rs, nr, ad, cs, gr, dw, then ctt / cnm /
+  ccl / clg; loaded from rom/racecol.bin). The old colour[6] were parm values; the arc / mgr result screens'
+  +0x260 / +0x284 and +0x380 / +0x3A4 are pair[RACECOL_RN] and pair[RACECOL_CS]. The mode ctors pass
+  `&RACEPROC(o1)->colours`.
+- **EnvSettings.fallingSnow** (+0x40): gEnvSettings is bootup Bss+0x20 (game_createMap stores the ctor result;
+  SnowTmpl_create / Snower_display pass it). FallingSnow_create skips nextFlowMode 8 (EDITORS) and attaches
+  to game->egRoot (gInputMgr_74e8_g / _h both relocate to InputMgr, pinned at +8 / +0xF0). Snower parms
+  `rng` (zone depth) / `sta` (the value given to EnvSettings_setSnow).
+- **CourseCamItem** (envobj.h): the "cam" item CamDirector_update polls; pos 0x30, kind 0x3C; RiderCam_command's a2.
+- **MemberCallback_invoke_00007BF4**: a cfront PMF {s16 delta, s16 index, fn / vptrOff} (local CbPmf_7BF4;
+  sun.h's MemberCallback has a Pair2).
+- **Pause-callback Bss**: h2hproc Bss +0 / +4 and timproc b1 Bss +0x208 / +0x20C hold the race and its pause
+  menu for the menu-row callbacks (H2HPauseBss / TimPauseBss). mgr onEndTimerDone's `_b` / `_c` tokens are
+  GameFlow (level, nextProcState); gameflow-import-sites.py check does not count those uses (28 of 33 in
+  mgrproc_uso.c), so the proof is the uso-imports.py reloc listing.
+
+Census (readability-census.py) before -> after: owner h 834 -> 768; all raw casts 2382 -> 2317; bootup_uso 311
+-> 261, h2hproc 24 -> 14, mgrproc 65 -> 62, timproc b1 18 -> 16; bootup_uso.c 107 -> 56.
+
+Next: ask agent-b for GfxLib fields fog (0x294, FogParms), worldMtx (0xE8), unk160 table and the 0x1C4 bit 3
+meaning; ColourParms_ctor (game_libs.c, 85) can now be written on RaceColourParms; trk / arc row callbacks
+(the TimPauseBss twins in b3 / arcproc); MGRRaceProcess_drawIntro (match_import) colour pairs; the largest
+remaining functions (task 6 not reached): mgr_initMatchRace_00000700, MgrNameEntry_drawCongrats, tit_procMain.
+
 ### Run 533 (agent-h): WinsDisplay, TreeTmpl, RaceSprite, RaceEntry score, GameFlow alias sites
 
 Commits on agent-h (base 90d27efd3), each gated PASS (3288/3288, ROM identical, 6012 named calls / 0
