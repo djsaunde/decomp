@@ -215,10 +215,69 @@ Commits on agent-b: cf4671b3b (E0, 58C, 2AC EXACT), 85ae105dd (episodes), f8fdf2
   - NCC `c->next()` packets (0x40B4): `Gfx *next() { int n = dl->count++; Gfx *g = &dl->buf[n]; return g; }`
     gives v1 = context, v0 = head. Shared class header `src/snoweffects_uso/snoweffects_ncc.h`, donor
     `snoweffects_uso_ncc.cpp`, list `SNOW_NCC_FUNCS` in the Makefile.
+- Run 635 (agent-h, commits 26a45c247 2a2fcfa1a, renames 46edeea35): +7 EXACT, 3399 / 3577:
+  0x718 SnowPool_remove, 0xA7C SnowPool_spawn, 0x3620 SnowFall_copyCamRot, 0x374C
+  SnowFall_buildFrustum, 0x544C SnowRing_update (cfe C); 0xB44 SnowPool_update and 0x27A8
+  SnowFall_moveFlakes (NCC donors in snoweffects_uso_ncc.cpp). NM: 0x97C SnowPool_spawnRandom (63 / 65,
+  the p reload after the first sys_randf sits one slot above the mul.s). 27 renames (reader / Parm
+  read families, SnowPool / SnowFall / SnowPlane). Range split: agent-h < 0x6000, agent-e >= 0x6000.
+- Levers found in run 635:
+  - **The particle code is C++:** `pos += vel` integrations only schedule like the target through a
+    user `SnowV3::operator+=` (NCC), C's three statements put y before z (0xB44, 0x27A8).
+  - **Loop-invariant float literal** (`lui at; lwc1 f,K(at)` hoisted above the loop, K = RoData
+    offset): a pinned extern / `&D + K` is not hoisted (aliasing). Write the literal in an NCC/cfe
+    donor and pin `<func>_rodata = K` (0x27A8: 0.0015f at RoData+0xC). RoData+0 is -0.02f (0x97C
+    gravity), dumped with uso-imports.py's Module(rom, 0x9023aa, ..).secs['RoData'].
+  - Calls to in-module globals with a float argument need a typed 0 alias, or the K&R double takes
+    the outgoing-arg area +8 (gl_func_00000000_snow_35b0, 0x374C).
+  - 0x374C: `pl++` inside the call argument gives the target's spilled first pointer plus the s0
+    walker; one unused `int pad;` moves the spill slot to sp+0x34; signed `(char *) diff / 16`.
+  - 0x544C: the outer counter bump between `j = 0` and the inner for (`for (k = 0; k < n;) { ..
+    j = 0; k++; for (; j < ..`).
+  - 0x718: a `last` local for the compare (CSE of the first copy), frame from `int pad[2]; Vec3 t;
+    int pad2[2];`.
+  - sys_randf `* 2.0f` keeps mul.s as `r * 2` (int 2); `(0, 10.0f) + r * 2` puts the constant first.
+- Leads (below 0x6000): 0x4188 (DL setup: E7 / BA001402 / B900031D / FC409881 packets, guMtxIdentF,
+  guMtxF2L into Bss+0, G_MTX 0x01020040 with osVirtualToPhysical, BA001001 / BA001301 / BB000001):
+  NCC with `next() { return &dl->buf[dl->count++]; }` (no named locals: each named inline local takes a
+  frame word), `if (1) {}` after packet 3 and `int pad[2]; (void)pad;` after the matrix is 3 diffs (packet
+  3's slot register v0 vs a3). Draft in the run-635 report. 0x5FD4 is the 0x6144 / 0x6248 shape (ctor
+  with inlined child `new`), leave with agent-b's pair. 0x97C: try a permuter on the 2-word swap.
 - Open: 0x6144 / 0x6248 (`new` of an SNode-derived child with an inlined base ctor (this == 0
   protocol), attached to the groups at +0x238 / +0x234, then virtual slot 10 (arg 8 / 16). Best NCC: 15
   diffs. The target spills the attach parameter at sp+0x2C, but the parent test and the unk04 store go
   through the new-result register s0), and every function above 60 words.
+
+### snoweffects.uso 0x6000+ (agent-e run 639)
+
+- +2 EXACT (commit feb67fb6a on agent-e): 0x8C60 and 0x9FE8, both IDO 7.1 NCC. Own donor
+  `src/snoweffects_uso/snoweffects_uso_ncc_e.cpp` + header `snoweffects_ncc_e.h` (includes agent-h's
+  `snoweffects_ncc.h`), Makefile `SNOW_NCC_E_FUNCS` block at the end of the Makefile.
+- **0x8C60** = SnowRing_draw (0x40B4) twin in the third TU with a 4th packet (B9 SetOtherMode_L
+  0x031D / 0x404A50; B7 is 0x2205 here). The target colours the first append ctx v0 / head v1 /
+  count a0 (the opposite of 0x40B4): first append `me(me(t->dl))->nextr()` (two zero-code inline
+  levels + unnamed-index append), the rest an inline `put(w0, w1)` emitter. A random per-site search
+  over ~15 append spellings (scratch script, 100 s) found it; greedy alone plateaued at 5 diffs.
+- **0x9FE8** = a light's colour contribution: bootup Bss+0x3C168 is gGfxLib (scale Vec3 at +0x128, the
+  camera root at +0x254, as balloon_uso_ncc_1A8.cpp); v = pos (+0x5C) field-wise, `v *= scale`, n = v,
+  normalize(n), d = dot(module Bss+0x50, n); d > 0 adds d * colour (+0x288, the Parm<Colour> value of
+  SnowTarget) to *out. Frame / slot levers: declare both Vec3 locals up front and assign `n = v`
+  (`Vec3 n = v` puts n 8 bytes low); reach the scale through `Vec3 *gp = ..; const Vec3 &g = *gp;`
+  (frame 0x48 -> 0x50 and the separate lui/addiu base).
+- Open, best so far:
+  - **0x9768** (SnowTarget dirty check, 71 words): if colour.rgb / f98 / f9C / drawPos differ from
+    the parm values and pos, flag (Data+0xA30, 0 pin) = 2 and copy them (9F44's copy set). NCC, 4 diffs:
+    compare `t->pos.x != t->drawPos.x` order matches; only the drawPos copy loads come out z, y, x
+    (target x, y, z in f4 / f6 / f8). Tried: statement orders (120 perms), temps, reference / pointer
+    locals, me() per component, user / default operator=, set(): all z-first.
+  - **0xA760** (cull pass over the ItemType named by Data+0xA80: `ItemMgr_findType(*D_bu_776C, Key)`,
+    Key by value (sw a1 to sp+0x5C and the 4(sp) home), Iter {cur, nxt} walk, cam_isSphereInView(root,
+    3, pos, 0, 0.0f) sets f234 |= 4 when f22C && f2AC): 14 diffs. Key as `Key k; k.w = *(int *)..`,
+    `while (it.next())` with the body reading `it.get()` (cur->obj) three times gives the right
+    instruction stream; left: Iter slot at sp+0x50 vs target sp+0x44 (12 bytes of unexplained locals
+    above it) and the `or s0,v0` placement.
+  - **0x9E10** (NM 98%): NCC inline attach() reproduces the target's a2 -> a1 copy but swaps item / head
+    (a2 / v1 vs v1 / a2); cfe forms give no copy (4 diffs). Not landed.
 
 ## trnproc.uso / nameent.uso progress (agent-c run 631)
 
@@ -243,12 +302,49 @@ Commits on agent-b: cf4671b3b (E0, 58C, 2AC EXACT), 85ae105dd (episodes), f8fdf2
   gui_spriteInit), A2C, B78 / DD4 (HUD draw), 1098, 13C4, 16C8, 1778, 188C (update), 1A98; nameent
   2F4 (board draw), 5B4, 760 (entry ctor), 9BC, E44 (input, 435 words).
 
+## trnproc.uso / nameent.uso progress (agent-c run 636)
+
+- trnproc 35 / 40 EXACT + 1 NM, nameent 17 / 21 EXACT + 1 NM (report.json; run 631's nameent
+  count was 2 high). Commits on agent-c: ed668e58f,
+  12b3ee9ec, bcba1ad57, 6e1684c8e, 2152c5e83 (3432 -> 3441).
+- New exacts: trnproc 10 (procMain), 3A8 (ctor), 6CC, A2C, 1098, 16C8, 1A98; nameent 150
+  (was NM), 5B4. NM: trnproc 1778 (32/37), nameent 2F4 (84/89).
+- **USO C switch table at RoData+0:** pin the unit's `.rodata` NOLOAD at VMA 0 in tenshoe.ld
+  (`.trnproc_uso_10_jtbl`, the arcproc 240 recipe). Only the table may live in that .rodata:
+  float literals go through 0-pinned per-load symbols (`trn_ro_20` .. `trn_ro_2C`, addend =
+  RoData offset; RoData pads the table to 0x20, so C literals would land 0x14 too low).
+- **procMain:** every GameFlow access as inline `*(int *)((char *)&D_00000000 + off)` keeps &D
+  CSE'd in s1 (a named base local is const-propagated into `lui at; sw`).
+- **Void-typed placeholder alias** (`trn_func_00000A2C_v`, `ne_func_00000000_v`) on a call whose
+  int result is dead frees v0: the ctor's vtable base and nameent 150's phase then colour v0.
+- **Function addresses passed as data** (the pause-row callbacks) are Text relocs with in-place 0:
+  spell them through 0-pinned `_ref` aliases, or the ROM gets the linked address.
+- ctor: the TrnDataManager +0xB4 = 17 store goes through the reused `o1` local (TrkRace's
+  per-arm o1 form); a dedicated InputMgr alias (`trn_gInputMgr`) for the dataMgr store.
+- Open:
+  - trnproc B78 (lesson HUD: NM draft at ~37 %, the target multiplies the sprite index by a held
+    24 (`multu`) and homes three words between `col` and `buf`), DD4 (results), 13C4, 188C;
+  - nameent 760 (entry ctor), 9BC, E44 (input, 435 words);
+  - 1778 (t-ring order of the spilled mask reload) and 2F4 (object / vtable v1 / v0) NM residuals.
+
 ## heli.uso progress (agent-g run 632)
 
-- 21 / 26 EXACT, 2 NM wraps (0x3F4 99.0, 0x4C0 90.7). Commits on agent-g: 2a7e04130, feedcaf7e
-  (exacts), 403bded79 (NM wraps). Open: 0x8A8 (flight-state reset leaf, store scheduling), 0x980
-  (walks the "hem" ItemType's items for id 8), 0xB08 (943-word update: fsin / atan2s / acosf path
-  flight).
+- 22 / 26 EXACT, 3 NM wraps (0x4C0 90.7, 0x8A8 99.4, 0x980 94.7) after run 637 (agent-g
+  922cfde7a 0x3F4 exact + 0x8A8 NM, 4bff028e9 0x980 NM). Open: 0xB08 (943-word update: fsin /
+  atan2s / acosf path flight, not started).
+  - 0x3F4: read the axis through a `HeliVec3f *` temp (`x = a->x, y = a->y, z = a->z`). That
+    colours x f0 / z f12 with the target's z, y, x load order; direct member reads colour the
+    first-loaded value f0 whatever the statement order (630 orders probed).
+  - 0x8A8: the +0x120 zero is a second constant web, spelled `(float)0`. Written before the 400 / 2000
+    stores it colours f8 (right) but schedules first; written after, 400 takes f8. A statement-move
+    hill climb plus 7 zero spellings found nothing better.
+  - 0x980: the ItemMgr pointer is bootup Data+0x776C (alias heli_itemMgr). The loop is the
+    hud_findMarkers_000029F8 cursor / next iterator. The RoData+0x78 add only hoists into the
+    preheader when it goes through a float local in a hand-rotated do-while. Residual: the first
+    iterator result goes to v1 directly where the target uses v0 plus a copy.
+  - 0x4C0: the main-rotor zero colours f2 where the target has f0, because the tail rotor's
+    RoData+0x58 scale web takes f0 first. Moving the scale chain above the main euler call fixes
+    the colour but not the load position. Zero spellings and chains (63 combinations) don't change it.
 - Classes: HeliItemType (0x54, ItemType + body / blade PolyShapes +0x48 / +0x4C, Sprite +0x50),
   Heli (0x174 QNode, vtable Data+0xCA88, start position +0x108, flight state +0x114..+0x170),
   HeliRotor (0x118 QNode, spin speed +0x108, axis +0x10C), two 0x40 marker ColourItem creates.
@@ -269,6 +365,35 @@ Commits on agent-b: cf4671b3b (E0, 58C, 2AC EXACT), 85ae105dd (episodes), f8fdf2
     f20) is a separate constant web: `(float)0` int-cast literal.
 - NM wraps spell the raw placeholder tokens: the named-call check cannot prove CALL() sites
   whose build path is INCLUDE_ASM.
+
+## viewrec.uso progress (agent-a run 638)
+
+- +10 EXACT this run (3465 -> 3475 / 3577); NM wraps left: 0x0, 0x1068, 0x1488, 0x18D4. Commits on agent-a: c6d9f5ab1 (0x84 / E8 / 14C / 1B0 /
+  214), e9e330aa3 (2F1C), c4e361e09 (290), 9cf297c32 (1588), 3024308a7 (14DC), bde715149 (4698).
+- **Screen switches** (0x84..0x214): cfe C, `Node *s = sVrProc->field; sVrScreen = s;` then code-free
+  `if (sVrScreen) {}` on BOTH sides of the slot-10 call (`VR_SHOW_SCREEN`). The tests count as uses
+  of &sVrScreen (base materialised in a1) and split the screen into a v1 copy with the vptr in v0.
+  Found by a 792-variant brute force; one-sided levers give only part of the shape.
+- **0x0 stays NM**: same show part, but the target keeps &sVrProc in v0 for the two loads after the
+  0x1A08 call while the load before it is a plain `lui t8; lw`. 3k lever placements (if-tests,
+  locals, volatile, NCC) never gave the tail CSE without also materialising the pre-call load.
+- **Indexed sprite runs are separate statics.** A variable index into a run (0x2F1C from 0x378,
+  0x1588 from 0x48 / 0x108 / 0x7B0) folds the run start into the reloc; `&arr[i + K]` never does
+  under cfe or NCC (uopt keeps K apart; `&arr[K - i]` does fold, which is why 0x14DC's
+  sVrLabels[57 - i] works). New pinned externs sVrLabels_378, sVrSprites_048, sVrSprites_108,
+  sVrLabels_7B0.
+- **0x2F1C**: the fire-ctor lever (local `d = 255.0f`, INT numerators) gives the separate 255.0f
+  dividend register; the "8-byte gap" was declaration order (col first).
+- **0x290**: NCC donor over `static float sPrimColour[4], sEnvColour[4]` with one block-scope
+  reference per store gives the one-`lui at`-per-pair shape (kit LX); `.bss` reloc renamed to
+  viewrec_uso_func_00000290_bss, pinned 0x858.
+- **0x4698**: unused declared cfe locals still take frame homes (frame / home offsets fixed by
+  `s32 unused; ... s32 unused2[3];`); the GameFlow import needs its own 0-pinned symbol
+  (gInputMgr_vr4698) or uopt CSEs it with the gui import &D_00000000 into s0.
+- Open: 0x1488 (frame 0x28 is reachable with a pad / extra local, but the target schedules
+  `sw a2` before the jal and the sprite spill in its delay slot; every spelling tried gives the
+  reverse), 0x1068 / 0x18D4 (v0 / v1), 0x2D0 ctor, 0x718 / 0x8C8 sprite tables, and the bodies
+  above 0x1A08 not listed as exact.
 
 ## viewrec.uso progress (agent-a run 630)
 
