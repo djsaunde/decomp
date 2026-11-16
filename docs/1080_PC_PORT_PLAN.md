@@ -1309,6 +1309,7 @@ What could not be checked:
 ## 15. M1: audio mixer
 
 agent-c run 609. Code committed on agent-c (24289f7dc, plus a2c82424e for comments only; gate PASS on both); this section is uncommitted.
+Run 616 (wiring, byte order, gWaveSamples[8]) is 15.6.
 It carries out decision 3: our own mixer, and no SoH / sm64-port code. SoH's mixer.c was read only to
 cross-check behaviour, and where it disagrees with 1080's ucode the ucode wins (15.3).
 
@@ -1419,12 +1420,107 @@ Ops 0 (0x1F38, writes a trace record), 16 and 24+ are counted no-ops.
 5. **RESAMPLE flags 2 / 4:** the history shapes are read off the ucode, but whether the stepping changes
    is not. 1080's synthesis passes only 0 / 1 for the final resample. Check the reverb `resampleFlags`.
 6. **S8DEC (op 23)** and **LOADADPCM (op 11)** are not yet checked against handlers 0x1B9C / 0x1AA0.
-7. Fix the `game_libs_rsp_ucode_31DF8` comment and the tenshoe.yaml "7 aspMain variants" note (15.2).
-   These are owned by the readability side; I did not edit them.
+7. ~~Fix the `game_libs_rsp_ucode_31DF8` comment and the tenshoe.yaml "7 aspMain variants" note~~: done in
+   run 616 (c948e5bf5, 76dfd2c78).
 
 **Next (M4 integration):** call `audio_abi_run` from `AudioThread_UpdateImpl` under PORT in place of the
 OSTask. Use `translate = addr | 0x80000000` on the 32-bit build. Swap books / filters at font load, and
 SAVEBUFF into the AI buffer for the host stream (10.2).
+
+### 15.6 Wiring: driver + mixer, byte order, gWaveSamples[8] (run 616)
+
+agent-c run 616. Commits on agent-c: c948e5bf5 (comments only), 76dfd2c78 (port/audio glue, swaps, PORT hooks).
+Gate PASS before each (ROM byte-identical, 3288/3288). This section is uncommitted.
+
+**Driving it (`port/audio/port_audio.{c,h}`).**
+- `port_audio_frame()` = one VI retrace of audio, i.e. what RcpMgr_service's 'd' case does for audio.
+  It calls `AudioThread_UpdateImpl()` (the donor body the port compiles) and, when that returns a task,
+  runs the task's Acmd list (`data_ptr`, `data_size / 8` commands) through the mixer at once.
+  **Call it once per retrace: 2 per 30 Hz step** (section 10.2: 60 Hz, 1 update per retrace, specUnk4 = 1).
+- Running the list immediately instead of one retrace later gives the same samples. The update fills
+  `aiBuffers[curAiBufIndex]` and queues the buffer of two updates ago. The CPU never reads synthesized
+  data, and every DRAM state the list writes (ADPCM, resample, filter, reverb rings) is read only by the
+  next list.
+- **Delivery:** the game's own `osAiSetNextBuffer(aiBuffers[(cur + 1) % 3], len * 4)` reaches
+  `host_audio_queue` through the shim (17.2). There is no extra hook. The headless `osAiGetLength` = 0
+  makes every buffer 560 frames (the clamp).
+- **Addresses:** the builders store `OS_K0_TO_PHYSICAL(p)` = p - 0x80000000. So the mixer's translate is
+  `addr + 0x80000000` (mod 2^32). That is not `| 0x80000000`, which 15.5 said: an OR is wrong for a host
+  pointer below 0x80000000.
+- **For agent-g (RcpMgr):** call `port_audio_frame()` where `snd_AudioUpdate` was, and do not also start
+  the audio task. If RcpMgr still calls `osSpTaskStartGo` with it, the `rcpTask` hook should call
+  `port_audio_rcp_task_is_audio(task)` and drop the task when it returns 1.
+- **For agent-a (CMake):** add `port/audio/{mixer,abi_decode,audio_swap,port_audio}.c` to the port
+  sources (not libgame.a's excluded list). `port_audio.c` uses `port_bootup_data` (uso_modules.c) and
+  `port_ultra_cfg` (ultra_int.h).
+
+**gWaveSamples[8]** (game_libs_o2_26214.c, PORT): `port_audio_noise_base() + (audioRandom & 0xFFF0)`.
+- The buffer is a copy of the ROM bytes after `AudioThread_Update`. AudioThread_Update is at game_libs
+  0x261F4; game_libs VRAM 0 = ROM 0xDE50D8, so the copy starts at ROM 0xE0B2CC. It is 0x10000 + 20 x 0x800
+  bytes, converted to host s16, so the noise samples have the N64's values.
+- Without a ROM image it is an LCG fill.
+- AudioSynth advances the pointer by `numSamplesToLoad * 2` elements per noise note (OoT's spelling),
+  hence the 40 KB tail.
+
+**Byte order (`port/audio/audio_swap.{c,h}`).** Byte streams stay as they are: sequences, VADPCM frames,
+and S8. On the US ROM there is no PCM16 sample data (codecs: 504 ADPCM, 147 small ADPCM). Every
+multi-byte field the driver or the mixer reads is converted once, where it enters RAM. Each swapped
+field goes into a set, so a shared sample, book or envelope swaps once.
+
+| where | hook (PORT) | fields |
+|---|---|---|
+| every font load (sync, async, preload: all go through AudioLoad_RelocateFont before anything reads the font) | `port_audio_swap_font` at the top of `AudioLoad_RelocateFont` | drum / sfx list offsets, instrument offsets; Drum / Instrument envelope offsets; TunedSample `sample` offset + f32 `tuning`; Sample word 0 (**re-packed to host bitfield order**), `sampleAddr`, `loop`, `book`; AdpcmLoop start / end / count / pad + `predictorState[16]` (only when count != 0: a non-looping loop record is 0x10 bytes); AdpcmBook order / numPredictors + `order x npred x 8` s16; envelope points {s16 delay, s16 arg} up to the first delay <= 0 |
+| bootup Data, once | `port_audio_swap_static` at the top of `AudioLoad_Init` | +0x17D50 wave tables s16 (8 x 256, gWaveSamples[0..7]); +0x18D74 / 0x19174 bend f32[256] x2; +0x19574 gPitchFrequencies f32[128]; +0x19794 gDefaultEnvelope; +0x197E4 gHaasEffectDelaySizes u16[64]; +0x19868 zero book; +0x198E8 / 0x19AE8 / 0x19CE8 headset / stereo / default pan f32[128]; +0x19EE8 filter s16[16][8], +0x19FE8 gLowPassFilterData s16[31][8], +0x1A1D8 gHighPassFilterData s16[15][8]; +0x1A2D0 sEnvMixerOp + 3 Haas dest words; +0x1CC10 gAudioSpecs (8 x 0x38: u32, 4 x u8, ptr, u32, u32, u16, 8 x u32) and their ReverbSettings (0x12: u8 u8 u16 x4 s8 pad u16 s16 s16; targets from the spec relocs); +0x1CDD0 gAudioHeapInitSizes; the AudioTables at +0x1D620 (fonts, 30), +0x1DA40 (sequences, 90), +0x1DFF0 (sample banks, 13); +0x1D810 gSequenceFontTable u16 offsets; gDefaultNoteSub byte 0 (bit-reversed: MSB-first enabled / needsInit -> LSB-first) |
+
+- **Sample word 0.** Re-packing for the host compiler's bitfield order puts codec in bits 0-3, medium in
+  4-5, unk_bit26 in 6, isRelocated in 7 and size in 8-31 (gcc / clang, little-endian). Then every
+  bitfield view declared MSB-first for IDO reads it correctly unchanged: include/audio.h `Sample`,
+  `gl_258C0_Sample`, `Desc25BFC`, `Desc258`, and the reverb's fake sample `gl_21498_Bits`. SoH's way
+  (bswap32 + reversed declarations) would need every view edited.
+- The one raw shift / mask reader is `AudioLoad_SlowLoadSample`. Its expressions now go through
+  `GL2495C_MEDIUM / CODEC / SIZE` macros, which expand to the original text off PORT (gate PASS).
+- `AUDIO_SAMPLE_*` (audio_swap.h) are the host-order accessors.
+
+**Not covered, for the M2 typed swap list (4.4 / 16):**
+- the audio functions' **RoData** constants read through pinned externs: 22 `kRo*_Audio*` names in
+  aliases.ld (`Audio_AdsrUpdate`, `Audio_BuildSyntheticWave`, `AudioHeap_InitAdsrDecayTable`, ...), and
+  `gl_24378_rodata + kRoF_maxTempo{Pal,Mpal,Ntsc}`. These need a type (f32 / f64) per entry. C float
+  literals are not affected, since gcc emits them itself.
+- bootup Data 0x1A2E0..0x1A2F0 (4 words `7fffd001 ...`, no symbol yet) and 0x1CDE0..0x1D340 (u16 table,
+  `0540 0540 ...`): who reads them is unknown.
+- **The general bitfield problem** (not audio data): a runtime bitfield word that one TU reads through a
+  bitfield view and another through masks or byte loads disagrees on a little-endian host, because the
+  views are declared MSB-first for IDO. The audio driver's runtime flag words (SequencePlayer /
+  SequenceChannel / SequenceLayer / NoteSubEu bitField0) have several per-TU views. They have not been
+  checked for mask or byte-load readers yet. This needs an audit per struct before audio is trusted (M4).
+- The M2 swap-list owner must **exclude** the ranges above; a second swap would undo them.
+
+**Tests.** `make -C port/audio test ASSETS=<extract dir>` (64-bit):
+- `test_mixer`: 147 checks.
+- `test_audio_swap`: **263 checks, 0 failures**, on the real ROM data:
+  - spec 0 = 32000 Hz / 20 notes / 3 players / 2 reverbs, and spec 4 = 24000 Hz;
+  - the reverb records;
+  - pitch ratios increasing up to entry 117, where OoT's table also wraps to the octave below;
+  - pan volumes in [0, 1];
+  - the default envelope {1, 32000} {1000, 32000} {-1, 0};
+  - filter rows;
+  - all table entries inside their USO;
+  - all 30 fonts swapped (29513 fields; 651 samples, 404 books, 651 loops, 517 envelopes, field set
+    never full), then walked in host order: every sample inside its bank, ADPCM books of order 2,
+    loops start <= end, tunings in (0, 16), every envelope terminated, and the audio.h-style bitfield
+    view equal to the `AUDIO_SAMPLE_*` accessors;
+  - font 0's sample decoded by the mixer straight from the swapped codebook = the reference decoder on
+    the ROM bytes (400 frames, 0 mismatches).
+- Compile check, port flags (`-m32 ... -DPORT`): port/audio/*.c clean (`-ffreestanding` plus a
+  string.h stub for mixer.c on this machine). `game_libs_post.c` (with its tu header) and
+  `game_libs_o2_26214.c` compile, and their objects reference `port_audio_swap_font` / `_static` /
+  `port_audio_noise_base`.
+- **Not done: a headless driver + mixer render of a sequence.** The driver cannot run on a 64-bit host:
+  fonts hold u32 pointer slots that RelocateFont fills with host pointers, and the builders cast pointers
+  to u32. It needs the 32-bit link (agent-a's CMake, plus an i386 libc, which this machine lacks). Once
+  `game` links: `snd_Init` + `AudioLoad_Init`, start sequence N with the audio command queue, call
+  `port_audio_frame()` 2 x frames times, and capture `host_audio_queue`. The `PortAudioStats` counters
+  (`badAddr`, `unknownOps`, `unk19`) are the first checks.
 
 ## 16. M1: link plumbing
 
@@ -1643,6 +1739,89 @@ trnproc, heli, balloon, fire, checkpoint have no src/ yet, a gap in the plan); t
 sentinel left (GenCourse_ctor's `timproc_uso_b5_D_807EF230` -> genproc Text+0: the other 6 of
 16.2 were Text-base relocations and now bind); and the shim (port/ultra, agent-g) for the 75 + 3 hooks.
 
+### 16.6 Link readiness (run 614)
+
+Run 614 (agent-a), on main 9a58fab11, commits 2d64d8459, 51248853d and 6799f5dc7 on agent-a. src/
+untouched; gate PASS on each.
+
+**CMake.** `port/CMakeLists.txt` builds `libultra.a` (port/ultra) and the `porthost` objects
+(`main.c`, `host_headless.c`, `trace.c`). With `PORT_LINK`, `tenshoe` links game + uso + ultra
+whole-archive plus `aliases.ld` and `-lm`, and `test_ultra` (shim + headless host) is its own
+executable. Without `PORT_LINK` the shim and the host compile with `PORT_LIBC_DECLS_ONLY`, so the
+`undefined` target checks the whole link (`--extra libultra.a --extra-objects <porthost>`) on a
+machine with no 32-bit libc. Every `provided.tsv` shim / host / drop row was already in
+`excluded.tsv`.
+
+**Shim names win.** `port-gen-binds.py` never aliases a name the shim defines with `PORT_ALIAS`
+(`gl_26214_os*`, `gl___osActiveQueue_34458_head`); `port-undefined.py` refuses an `aliases.ld`
+name that an input also defines. **The `_plus` entry points are gone:** a jal into an excluded
+libultra `.s` copy at exactly its leading alignment padding is the function itself
+(`gl_osSetIntMask+0x8`, `gl_osGetCount+0x8`, `gl_bzero+0xC` -> the shim's `gl_osSetIntMask` /
+`gl_osGetCount` / `gl_bzero`).
+
+**Static-initialiser objects.** The B / D objects libgame.a defines are tokens too. 7 resolve to a
+blob (`port/gen/dropdata.tsv`): `gGfxLib_412E8_a`, `gSysLib_412E8_i` / `_l`, `gHostio_412E8_m`,
+`gWindowDefaults_4E584_arr`, `gSnowBoard_func_0000E9FC_arg1`, and the `D_00000000` that
+bootup_uso_ncc_6204 defined, which every `D_00000000` reference in the port had bound to. cc-select
+`port-dropdata` renames the definition to a local `__port_dead_SYM`, and the name is aliased or
+bound to the blob. The 2 C rodata objects (`mgrproc_uso_rodata_credits`,
+`game_uso_B274_original_rodata_prefix`) stay port-owned: read-only, and already host-order.
+
+**Per-addend data binds.** A data token that reaches several objects in one function is bound per
+addend: `port-bind: FUNC TOK+N TGT`, where N is the ROM site's full addend (HI16 << 16 + the paired
+LO16, read from the REL `.o`). This gives 228 pairs. A data reference into Text (a callback address)
+takes its function from the addend, and the port spelling cancels the addend (`f-N`). These were
+silently wrong before: dbg_printf's prout pointed at bootup `func_00000000` instead of
+`dbg_printfSink`.
+
+**Bug fixed:** cc-select's bind regex never matched `$tok`, the AT&T immediate. Every data bind of
+an address taken as an immediate (`pushl $tok+N`, `movl $tok, ...`) had been left unbound since
+16.5.
+
+Other fixes: the last sentinel (GenCourse_ctor's `timproc_uso_b5_D_807EF230` =
+`timproc_uso_b5_func_00000000`) now binds, `_Znwj` = cfront `__nw__FUi`'s target (`mem_new`), and
+gamegfx's Data is now a blob (29 modules).
+
+**Measured: `port/undefined.txt` (libgame + libuso + libultra + porthost + aliases.ld)**
+
+| group | 16.5 | 16.6 |
+|---|---:|---:|
+| plumbing: import / placeholder tokens | 20 | 19 |
+| plumbing: match_imports binding names (incl. `D_00000000`, 538 refs) | 5 | 5 |
+| data aliases | 67 | 24 |
+| shim (os* / gu / libc) | 75 | 0: the shim, or host libc |
+| host libc / libm (`fopen`, `vsnprintf`, `memcpy`, `sqrtf` ...) | | 26 |
+| unreferenced (only in sections `--gc-sections` drops; not link errors) | | 27 |
+| weak hooks (`app_runOneFrame`, `port_game_boot`, `port_game_frame_count`, `gInputMgr`) | | 4 |
+| C++ cross-donor (mangled) | 40 | 39 |
+| other | 2 | 1 (`glv_2a44`) |
+| **total** | **209** | **145** |
+
+**Still blocking a 0-undefined link: 88 symbols** (19 + 5 + 24 + 39 + 1).
+- **Ambiguous pairs that need source names** (`port/gen/binds-left.tsv`):
+  - `gl_func_00000000`: 48 functions, 392 sites;
+  - `D_00000000`: 56 functions, 222 sites, where two objects share one addend in a function;
+  - `timproc_uso_b5_alias`: 6 functions, 176 sites (SelectWin_ctor alone has 69);
+  - and about 10 single pairs.
+
+  These need XCALL / per-site alias tokens in the source, which the gate checks. Not started this
+  run.
+- **`D_00000000` beyond those 222 sites (538 refs in all):** unproven functions (6) and gcc-inlined
+  copies of bound functions. The bind follows the function label, not the inlined body. Next: bind
+  inlined copies per (caller, token, addend) from the callee's own bind.
+- **39 C++ cross-donor references:**
+  - 18 `_ZTV*` vtables of mirror classes. The ROM vptr store names a blob vtable
+    (`MNode_vtbl_40070_vta` in the matching `.o`), so alias `_ZTVx = blob - 8`. This is only
+    correct if the donors' virtual calls read the cfront layout, which is an M2 question.
+  - 21 constructors / methods. Pair them with the matching `.o`'s calls, by order within the
+    function.
+- **`unnamed` (26):** targets in modules with no port code (nameent, viewrec, trnproc, heli,
+  balloon, fire, checkpoint) and ucode Text addresses (`D_4D16C_a`, `gl_26214_aspMainTextStart`).
+  The ucode ones belong to the RSP / Fast3D side (M2).
+- **Side note for the game-side owners:** game_libs_ncc_40070's `operator new` calls
+  `dbg_printThreads(n)`, a misnamed placeholder for `mem_new`, so QNode_ctor references
+  `dbg_printThreads` three times.
+
 ## 17. M1: libultra shim and main loop
 
 agent-g run 610, branch agent-g. Files (all new, under `projects/1080-decomp/port/`):
@@ -1787,7 +1966,8 @@ The shim also provides calls that RcpMgr / the audio thread make through names t
 2. **Data the game reads from libultra's side:** `gl_osViModeTable_42938_rec` / `gl_osViModeTable_44B78_modes`
    (the VI mode table in game_libs Data; it comes from the data plan, and the shim only reads `width` from the
    chosen mode).
-3. **Game-side PORT changes the shim is waiting for** (not in port/, owned by the integration work):
+3. **Game-side PORT changes the shim is waiting for** (not in port/, owned by the integration work).
+   **Done in run 615, see 17.7**; the list below is what was asked for:
    - `app_run` split into `app_runInit` / `app_runOneFrame` (9.6.2), and `port_game_boot()` (boot_main's
      manager setup + `SnowBoard_ctor` + `app_runInit`). main.c references them **weak** and runs a stand-in
      frame while they are absent.
@@ -1821,7 +2001,9 @@ The shim also provides calls that RcpMgr / the audio thread make through names t
 - **FP**: MXCSR FTZ | DAZ, round to nearest, exceptions masked, set once on the simulation thread (9.5).
 - **Trace format** (`trace.h`): text lines, floats as IEEE hex, so a port trace and an emulator trace diff
   exactly:
-  - `I frame pad replayFrame held rawX rawY` (record: written; replay: read and injected);
+  - `I frame pad replayFrame held rawX rawY` (record: written; replay: read and injected). `held` is
+    the decoded 32-bit PadCtl.held word as hex8 (input log v2, run 615; v1 had a u16 and lost START,
+    0x40000);
   - `F frame have=.. flow=.. race=.. rand=.. rt=.. vi=.. el=.. cam=.. r<i>=...`. The `have` bits say which
     groups the collector filled.
 - **Usage**: `1080 [--rom baserom.z64] [--sram 1080.sram] [--frames N] [--record in.log] [--replay in.log]
@@ -1858,3 +2040,78 @@ The shim also provides calls that RcpMgr / the audio thread make through names t
 - `port/ultra/test_ultra.c` is its own executable (shim + `host_headless.c`).
 - Exclude every `provided.tsv` row with action shim / host / drop from libgame.a; keep the `decomp` rows.
 - The `PORT_ALIAS` names (`gl_*`) must not also be defined by libgame.a.
+
+### 17.7 Game-side PORT changes (run 615)
+
+agent-g run 615, branch agent-g, commits bf1d11808 (port/ only) and 094182c10 (src/, all under
+`#ifdef PORT`). Gate PASS on both (ROM byte-identical, 3288/3288, 0 source-check mismatches). Compiled
+with the port CMake flags (`ninja` on the six touched units, 0 new warnings) and main.c / trace.c with
+the 17.6 command.
+
+**Rule for new PORT functions.** They name callees directly, never through `CALL()`: the gate's
+`name-placeholder-calls.py check` pins every `CALL(X)` to a ROM relocation of its function, and a new
+function has none. For the same reason they never use `D_00000000 + K`: port-gen-binds binds a
+placeholder per function from the ROM TextReloc, so in a new function it binds to nothing. They
+reach bootup.uso globals through the blobs instead: `port/include/port_game.h` has
+`PORT_GAMEFLOW` (Bss 0xF8), `PORT_PADDEV` (0x3A4E8), `PORT_GFXLIB` (0x3C168), `PORT_SYSLIB`
+(0x3C740), `PORT_RANDSTATE` (Data 0x21E04), and the debug label strings are
+`port_bootup_data + K`, the same words.
+
+| change | where | what |
+|---|---|---|
+| app_run split | `game_libs_ncc_34EB4.cpp` | `app_runInit(sys, app)`: the `sys_imin`, hostio check, `flags &= ~1`, the pre-loop Update, `snd_PlayPlayer0Seq0`, one RcpMgr drain. `app_runOneFrame()`: `pad_portFrame` -> `pad_update` per pad -> pre-NMI hook (v15) -> the `flags & 4` yield -> gfx_start / Update / Display / gfx_end with the same profiling labels -> `snd_FrameUpdate` -> `RcpMgr_portDrain` -> `frameCount++` -> one-shot callback -> `port_trace_frame_end(frameCount - 1)`. The unreachable outer-loop v13 is dropped. app_run itself is unchanged and uncalled |
+| App_main | `game_libs_post0b.c` | ends in `app_runInit(gSysLib_415A4_s6, self)` instead of `app_run`, so the boot chain returns |
+| `port_game_boot` | `game_libs_ncc_34EB4.cpp` | registers `RcpMgr_portStep` as the service of the RcpMgr thread (entry `D_4D468_a2 = RcpMgr_update`), calls `port_uso_init` (weak) and `boot_main_00066850(0)` -> SnowBoard_ctor -> App_main -> `app_runInit`; logs if app_runInit was not reached |
+| `port_game_frame_count`, `port_game_retrace_count` | same | SysLib.frameCount, RcpMgr.retraceCount |
+| retrace | `game_libs_post0b.c` | `gfx_waitRetrace`: `rcp->retraceCount++`. `gfx_end`: the "a retrace since gfx_start" spin becomes one increment when the count still equals gfx_start's (`D_44EDC_g`). The counter keeps 2 per frame |
+| RcpMgr thread | `game_libs_ncc_4D688.cpp` | `RcpMgr_portDrain(mgr)`: every pending SysLib.msgQueue message through run()'s switch, NOBLOCK, re-entry guarded; run()'s entry state (`preNmi` = 0, ...) on first use. 'e' / 'f' / 'g' / 'h' / 'l' as run(). **'d'** calls `port_audio_frame()` (once per VI retrace, as `snd_AudioUpdate` ran), forwards to `m44` NOBLOCK on every other one, and no longer counts retraces or reads pads; the audio-task yield / resume path is gone. The chain is synchronous: `osSpTaskStartGo` runs `rcpTask` and posts 'e' / 'f' at once, so one drain takes 'h' -> startTask -> 'e' -> next task ... to idle |
+| RCP waits | `game_libs_post0b.c` | gfx_end's two queue / idle spins and `gfx_waitRcpIdle` drain instead of yielding; a wait the drain cannot advance calls `port_rcp_stuck` (main.c: log + fatal) |
+| pad thread | `game_libs_post1b.c` | `pad_portDrain(dev)`: pad_threadLoop's switch per pending message (5 stop motors, 1 rumble + `osContStartReadData`, 2 `osContGetReadData` + `pad_initMotors`, readDone). `pad_portFrame()`: drain, `pad_request_000671E4`, drain = one completed read per frame before pad_update (the N64 read every other retrace = once per frame). `pad_waitIdle_00067220` drains instead of yielding |
+| input trace hook | `game_libs_o2_675A4.c` | in pad_update right after `pad_decodeButtonMap_00034CC8` (port != 0): `port_trace_pad(port - 1, frameCount, replayFrame, &held, &rawStickX, &rawStickY)`, before mirroring and the game's own replay block |
+| state collector | `game_uso.c` | strong `port_trace_collect`: flow (`procState`, `nextFlowMode`), rand, rt always; while game.uso is loaded (port/uso registry): el = `dataMgr->elapsed`, race = `dataMgr->owner->raceState / flags`, riders = `dataMgr->entries[i].rider` as SnowBoarder (`dnode.vqs.trans`, `vqs.quat`, `dnode.speed`, `anim->state.b`), cam = GameFlow.game +0x108 window's MCamera (`mnode.world[3]`, target `world[3]` or eye + lookDir * 10) |
+| host hooks | `port/main.c` | `rcpTask` dispatches M_GFXTASK -> `port_gfx_task` (weak no-op; Fast3D, M2), M_AUDTASK -> `port_audio_task` (weak no-op); weak no-op `port_audio_frame` (agent-c's strong one replaces it) |
+
+main.c's weak references (`port_game_boot`, `app_runOneFrame`, `port_game_frame_count`) now have
+strong definitions in libgame.a (nm: `T` in game_libs_ncc_34EB4.cpp.o); with `--whole-archive` the
+stand-in frame is no longer used. New undefined symbols libgame.a takes from the executable:
+`port_trace_pad`, `port_trace_frame_end`, `port_audio_frame`, `port_rcp_stuck`
+(port/main.c, port/trace.c), `port_ultra_register_service`, `port_ultra_log` (shim), `port_uso_find`,
+`port_uso_isLoaded`, `port_uso_init` (weak) (libuso.a), `port_bootup_bss` / `port_bootup_data`
+(blobs). **For the CMake:** game_uso.c includes `../../port/trace.h` and `../../port/uso/port_uso.h`
+by relative path; nothing new to add to the source lists.
+
+**Trace caveats.**
+- `animState` is the RiderAnim state PMF's function word: a host address on the port, a ROM address
+  in an emulator trace. Map both to names (nm of the port binary, the ROM symbol table) before
+  diffing.
+- GameFlow.dataMgr / .game are never cleared when a race ends, so the race groups are only read
+  while game.uso is loaded. If game.uso stays loaded between races (title demo -> race), those reads
+  can follow freed heap; confirm the module lifetime in M3, or clear dataMgr under PORT in the race
+  dtors.
+- Frame numbering: both hooks use SysLib.frameCount at frame start (`F` lines carry the frame that
+  just ran). main.c's replay stop (`frameCount > last recorded frame`) matches.
+
+**What still blocks a headless boot once linking works** (in boot order):
+1. **No SysApi.** `gSysApi` (bootup Bss 0x416A0) points at the kernel's SysApi; nothing on the port
+   fills it. boot_main reads `usoWarnNum` / `usoErrNum` / `memStart` / `memEnd` and stores six hooks;
+   the game then calls `usoLoad` / `usoUnload` (-> port/uso), `heapNew`, `symLookup`, `dmaRead`,
+   `tempAlloc`, ... A port SysApi (kernel replacement: heap region, port/uso, ROM fs) has to exist
+   before `port_game_boot`; it fits in port_game_boot or a `port/kernel.c`.
+2. **No port/fs.** `fs_gdlFileInfo` / `fs_gdlRead*` and `dma_read` of named files (SnowBoard_ctor
+   reads the audio seq / wave / bank sizes first) need the ROM file system (17.4.4 names it; it does
+   not exist yet). SRAM is done (17.2).
+3. **Byte order.** The blobs stay big-endian except the relocated words (16.5); every boot-time read of
+   USO data (parm files, tables, the VI mode table) needs the 4.4 swap list. Until then values are
+   wrong, not missing.
+4. **Link plumbing left from 16.5:** the 17 C++ objects defined twice (static initialiser and blob
+   alias see different memory: gGfxLib_412E8_a, gSysLib_412E8_i, ...; the boot touches all of them),
+   the unit that defines `D_00000000`, the 120 ambiguous per-function binds (GfxLib_init is one:
+   its `gl_func_00000000` sites and the `D_445AC_ga / gb` window size), and data references from data.
+5. **Audio.** `port_audio_frame` is a stub: no audio frames run. Whether `snd_Init` or the first
+   sequence load waits on the audio driver (an `osRecvMesg(BLOCK)` the shim would report as a
+   deadlock) is for agent-c's wiring to show.
+6. **32-bit libc** (gcc-multilib) on the analysis machine, to link at all.
+7. Harmless, noted: GfxLib_init measures `frameTime` across one `gfx_waitRetrace`, which no longer
+   advances virtual time, so it reads 0 and prints the "zero v frame time" debug line (only
+   `sys_timeInFrames` reads it, with no game caller); the pad and fault threads stay parked (counted
+   in `parkedThreads`); hostio stays off (its flag word is 0).
