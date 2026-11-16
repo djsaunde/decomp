@@ -237,6 +237,41 @@ No renames.
   course*3*16 spellings, and the 0x3364 levers (do-while, `show = 1` after the call).
 - **Not started:** 0x3878 (records draw, 431 lines) and 0x3F24 (erase-select pad handling, 272 lines).
 
+### agent-b run 670: viewrec.uso 0x3878, how ugen builds `.livereg`, and what the residual needs (no new exact)
+
+No commits. 3878 is still at ndiff 11 (426 words; the target has 427, with the extra nop in the c.lt.s slot).
+
+- **How ugen builds a call's `.livereg` mask** (read in the recomp `ugen.c`, `f_eval` around `L42d828`). At the
+  `mst`, ugen walks forward over the ucode nodes until the call (`cup` / `icuf` / ...). Every register store
+  (`str mtype=R`) in that window ORs its register's bit into the mask. Separately, `| 0xE` is always added
+  (gp / sp / s8). Callee-saved registers that are merely live across the call are NOT marked (s4 = self never is).
+  A bit appears only when uopt placed a register-variable store between the `mst` and the `cup`. Example: the
+  grid's `a = 255` (source: after `spriteRefresh`) is hoisted into that call's window, which gives `0x0800800E`.
+  Toy repros: w70/lr2.cpp, lr3.cpp. Use `ugen -d` on `<obj>.mp721.O` to see the post-uopt tree (w70/dump.sh).
+- **as1 facts, from `.s` oracles on w38/base.s** (inserted right before the first `.livereg` after `$45`):
+  - Dead defs of s5 / s6 / s7 with no bit are deleted, and the pull still happens (mm4).
+  - Defs with the bits set are kept (+3 words, mm3).
+  - Any **READ** of $21 / $22 / $23 there gives the target word-for-word, even with no bits: self-moves (mm5),
+    dead moves into temps `move $8,$21` (mm7), or into other s-registers (mm8). as1 computes the xbb liveness
+    first and deletes the dead reads afterwards. So the target needs either `str R21/22/23` in setColor's
+    `mst..cup` window that emits no code, or any dead read of those registers between `$45` and that jal.
+- **Why uopt-visible uses can't do it:** r (and the constant-1 / constant-2 LRs) are undefined on the B -> `$45`
+  path. Any use that uopt sees at or after `$45` therefore makes uopt home r (`sw $21,96(sp)` at the grid exit,
+  `lw $21,96(sp)` at `$45`) or re-load the constant (`li $23,1` at `$45`). Those are DEFS at `$45`, so the pull
+  stays legal. Seen with `if (r) {}` before or after the call, `switch (r) {default:}`, `if (r == 1) {}`, the kit
+  CDXCI compound-twice tests (`if (r*2+j != r) {} if (r*2+j != j) {}`, also with `self->gridY` and `r + 2`), and
+  kept-dummy inline parameters (`setColK(r, j, ..)` with `z0 = z0;`, which costs frame words only).
+- **Inert (byte-identical to the base):** `r = r;`, `r = 0; j = 2;`, `r = r * 1;` (before or after the call),
+  `while (0) { r++; }`, `if (0) { r = r + j; }`, and `keep1(r)` (frame +8 only).
+- A yes / no `for (r = 0; r < 2; r++)` loop is not unrolled by uopt (397 words). The target's two explicit
+  59 / 60 blocks are written out in the source.
+- **Next:** find a ucode shape that puts a register store into the setColor window and emits nothing:
+  `str R84 <- lod R84`, i.e. two LR pieces with the same colour. Candidates are a uopt LR split (the target uses
+  all nine s-registers) or an edg pool word shared with r. Or find a value r / j / 1 / 2 that IS defined on the
+  B path. Neither the first loop's i (s0, not s5) nor any earlier constant qualifies in the target's colouring.
+- Scratch: w70/ (`var.sh name ANCHOR REPL` = variant + ndiff + first `.livereg` after the `selFade < 1` test;
+  `ugl.sh` = compile + ugen listing; `dump.sh`; the mm*.s oracles; the lr*.cpp toys).
+
 ### agent-b run 662: viewrec.uso 0x319C EXACT; 0x3878 residual traced to as1 liveness (3554 / 3579, +1 exact)
 
 Commits on agent-b: 436d6097c (319C), a45f3ccaf (episode). No renames. Gate PASS.
@@ -554,6 +589,31 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     covers world-scale vertex positions (+0.5 trunc), alpha clamp, G_VTX 0x04 packets, and per-slot texture
     loads from the Data+0x588 table (FD18 / F518 / E6 / F4 / E7 / F518 / F2 packets, w = h = 32 at
     +0xA8 / +0xAC). Not started: 15D0 family / 4188, 1E60, 97C.
+
+- Run 671 (agent-h, commit 325817be1 on agent-h, no renames): +1 EXACT (0x4374), 3557 / 3579.
+  - **0x4374 EXACT** (moved to the matching donor snoweffects_uso_ncc.cpp, sharing 4E5C's SnowBasis / SnowBCam /
+    SnowBV3, plus a by-value operator= and a free operator-). The run-666 residual was a **live-unit** effect:
+    the instrumented uopt (iu/tr.sh) showed the result-temp address constant K-44 (sp+0x74) coloured in the same
+    unit as the &t->b subtraction loads (e1450 = v0), so v0 was forbidden and it took a1, scheduled up to entry.
+    An `if (1) {}` in operator- after the subtraction ends that unit, and the address takes v0 as in the target.
+    The frame then drops to 152; a dead `{ int sc[2]; sc[0] = 0; }` anywhere after the first normalize restores 160.
+  - **0x47D4** (draft r666/t47.cpp, 350 lines): the `* 1` lever on alpha / lim (any position) is 338 at best, and
+    alpha is still caller-saved. Root cause, found from the target's loop: the target has **8 FP LRs in the loop**:
+    w.x CSE f2, w.y / w.z CSE f0 (uopt-coloured), f f12, (float)i f14, zero f16, 1.0 f18. That leaves no free
+    caller-saved FP register, so alpha goes to f22 and lim to f20. Ours has no uopt LR for the w.x / w.y loads
+    (x.lr: M-116 / M-112 `sv=true`, not candidates; their reuse is a ugen tree temp), so f / i take f0 / f2 and
+    alpha gets f18. Same code with no change: `+=`, `w.x + ..` first, dx / wx temps in blocks, member lerp().
+    Worse: a free lerp() by value (669), f computed before `w = P` (413 words, 571). Next: find a spelling where
+    w is not a M-variable (the target copies P to w with lw/sw, so w is still an aggregate copy), e.g. w as the
+    by-value parameter of an inline emit(), or the lerp via a reference to points[..].pos.
+  - **15D0 / 1A18** (NM, not landed): the `* 1` lever on the packet pointer **inside** the gbi macro (`Gfx *_g =
+    (Gfx *)(pkt); _g = (Gfx *)((int)_g * 1);`) at sites 3 (tile LoadTile... 4th sub-packet of the texture tile),
+    9, 11, 12 (counting PipeSync = 0, the 7 tile sub-packets 1-7, then the gDPWord packets) gives 15D0 66 -> 42 and
+    1A18 70 -> 46 diff lines. The same `* 1` inside next() or on the pkt expression does nothing, and neither does
+    `t * 1` / `t->dl * 1` at any statement. What's left is still the hidden a1 from packet 3 on (target a2 / a3 where
+    ours has a1 / a2). Tools: r671/p15d.py (per-site N0 / N1 macro variants plus greedy), p15e.py (0/1/2 local
+    search), ins2.py (insert a snippet at each line).
+  - 0x559C / 0x1E60 were re-scoped to agent-b (559C was not started).
 
 ### snoweffects.uso 0x6000+ (agent-e run 639)
 
