@@ -37,6 +37,7 @@
 - [29. Run 551: bootup donors 485C / 11B5C / 7328, game.uso RoData constants, U64BGWall_display](#29-run-551-bootup-donors-485c--11b5c--7328-gameuso-rodata-constants-u64bgwall_display)
 - [30. Run 555: U64BGWall fields, Tv1, ScreenThumbMat, input.h on race.h, GameFlow.titleFlags](#30-run-555-u64bgwall-fields-tv1-screenthumbmat-inputh-on-raceh-gameflowtitleflags)
 - [31. Run 558: Tv1Callback, game.uso marker tags / rumble patterns / parm tags, the C234 marker query](#31-run-558-tv1callback-gameuso-marker-tags--rumble-patterns--parm-tags-the-c234-marker-query)
+- [32. Run 563: C234 CollShape.shape, SnowBoarder.boardBin, Sun / CourseMarker data constants, pattern H](#32-run-563-c234-collshapeshape-snowboarderboardbin-sun--coursemarker-data-constants-pattern-h)
 
 ---
 
@@ -1401,3 +1402,49 @@ gate passed on the tree before each commit; `--uso game check` 0 mismatches.
 item.h C++-safe; ask its owner); CAE8's 0x8C6 table. Then the census donor table for g's files: game_uso B750 (4
 accessor), 10694 / E35C / F6D4 (3), 10840 / 10A0C / F13C / 6FA8 (2). Also the remaining "?" game.uso sites
 (Sun_display, CourseMarkerTmpl_create's tag words +0x6B0 / +0x6C4).
+
+## 32. Run 563: C234 CollShape.shape, SnowBoarder.boardBin, Sun / CourseMarker data constants, pattern H
+
+Census (compiled code, casts / accessor uses): bootup_uso 124 / 19 -> 120 / 19, game_uso 4 / 21 (unchanged), ROM-wide
+1252 / 130 -> 1245 / 130; C++ donors 194 -> 190 sites (62 -> 61 files with any). Port audit: H 14 -> 9 (A 286, B 81,
+C 19, D 218 unchanged). Commits on agent-g (base 953efeb95): 28f4408ee (hand edit: C234 / CAE8 / snowboarder.h),
+5ddb61fce (hand edit: game_uso_data.h + Sun_display respell), 87d756f76 (hand edit: pattern H). No renames. Gate PASS
+before each commit; `--uso game check` 0 mismatches.
+
+- **All-object check without .mdebug:** a clean HEAD build vs a clean edited build (main + `make
+  non_matching_objects`, 1268 .o) can be compared with `objdump -dr -s` only after dropping the `.mdebug` /
+  `.comment` contents: edg donors embed per-compile ids and timestamps there (`__edg_..._6afaf927`), so two builds of
+  the SAME source differ. .mdebug also carries line numbers, so adding a line to a donor shows up there only (the
+  linked ROM never contains .mdebug). Keeping the donor's line count (C234 merged a two-line comment) keeps even
+  that identical.
+- **C234:** `#define COURSE_COLL (*(CollShape **)&gCourseColl)` + gdl/coll.h by relative path; the four +0x84 reads
+  are `COURSE_COLL->shape`. 0 sites left.
+- **snowboarder.h boardBin (0x8C8, s16[10]):** no ctor store touches 0x8C8..0x8DB. SnowBoarder_readParms
+  (bootup_uso.c, h's) reads a stream count n and then n s16s at 0x8C8; SnowBoarder_reset's `lh 0x8C6(st + board*2)`
+  is boardBin[board - 1] (board is 1-based), so nothing overlaps `character`. CAE8 is on
+  `RIDER(st)->boardBin[RIDER(st)->board - 1]` (same bytes). 10 is the span to `camera`, not a proven count.
+  readParms could use `SNOWB(a0)->boardBin` (h).
+- **game_uso_data.h, hand constants** for the "?" sites (token differs from the reloc's, so const-table / spell
+  skip them): kRoD_0p98_120 / kRoD_0p7_128 / kRoD_0p3_130 / kRoD_0p1_138 (Sun_display: hidden above 0.98, fade
+  eased over 0.7..1.0 / 0.3, drawn above 0.1), kStr_CourseMarker_Parms_6B0, kTag_wid_6C4 / kTag_ext_6C8 /
+  kTag_flg_6CC, kVtbl_IntParm_410 (DataReloc 0x41C = game_readIntParm_000039F8; the float / vec3 / quad parm
+  vtables are 0x3C8 / 0x3E0 / 0x3F8). Respelled: match_imports/Sun_display.c and the NON_MATCHING Sun_display /
+  CourseMarkerTmpl_create bodies in game_uso.c. CourseMarkerTmpl_create.c (a) can switch its 0x6B0 / 0x6C4 /
+  0x6C8 / 0x6CC / 0x410 / 0x3C8 sites to these names.
+- **Pattern H (5 of g's 8):** sun.h Sprite.children (void **), envobj.h Tv1.next (struct SNode *), TreeTmpl.next
+  (struct ItemType *), course.h ColourSubItem.vptr and CourseMarker.vptr (char *). Each verified alone by a clean
+  rebuild + all-object diff. Left: CourseParm / CourseFParm .vptr and WorldRegistry.vptr. Retyping them makes cfe
+  warn (712 / 709) at stores in other owners' files: CourseMarkerTmpl_create.c 42 / 51 / 60 (a), bootup_uso.c 1115
+  / 4685 / 4695 (h). They need those `(s32)` / `(int)` casts changed to `(char *)` at the same time.
+- **Donor table (B750 / 10694 / E35C / F6D4 / 10840 / 10A0C / F13C, 21 accessor uses):** every site except B750's
+  three is `AT(PM, &tok, kPmf_X)` or `AT(double, &tok, kRoD_X)`. That is the documented game_uso_data.h spelling: a
+  per-site zero token plus a named K. There is no raw offset left to name. Respelling it as `*(PM *)(&tok + K)` would
+  only dodge the census regex, so it was not done. Census should not count AT uses whose offset is a k* constant.
+  B750's `AT(float, (int)&import_8005C1A8 + 0xA0, 0x30..0x38)` writes a vec at import_8005C1A8 + 0xD0
+  (gGfxLib_8005C108 + 0x170 if the import is inside GfxLib, i.e. unk160[4..6]). Not proven; Sun_display and B274
+  write the same vec. 6FA8 has no sites in this census.
+
+**Next:** 55A0's ItemMgr.unk34 once gdl/item.h is C++-safe (not in this base); the three CourseParm / WorldRegistry
+vptr retypes together with a / h; the import_8005C1A8 object (B750 / B274 / Sun_display); a census rule for the
+named-K AT uses.
+
