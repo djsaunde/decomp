@@ -144,6 +144,37 @@ Matched: fire 7/7, balloon 11/11, checkpoint 13/17 (E0 NM 99.97%; 2AC, 45C, 58C 
   (named shared `p` for the two inline CollObj ctors). Without `p` the frame is right and every
   slot one word low. 58C (box ctor) is likely the same shape.
 
+### agent-b run 634 (3395 / 3577, +3 exact; checkpoint 16/17)
+
+Commits on agent-b: cf4671b3b (E0, 58C, 2AC EXACT), 85ae105dd (episodes), f8fdf28fd (31 renames, pure).
+
+- **CheckpointCyl_ctor (E0) frame fix:** only the inline CollObj ctor's `p` is a named local; the
+  CollObj addresses are plain `self + K` expressions (uopt CSE temps, spilled at sp+0x30 / 0x2C).
+  Named `c1` / `c2` locals each keep a dead home word (frame 0x40 instead of 0x38). Generally, a
+  named scalar that uopt keeps in a register can still own a frame home: when the frame is one or two
+  words too big, turn named temporaries back into repeated expressions. **CheckpointBox_ctor (58C)**
+  has the same shape with one CollObj and matched on the first try.
+- **CheckpointCyl_handleMsg (2AC)** places the gate posts at (-/+ 117 / worldScale, 0, 0) through the
+  SNode Mtx plus pos. It needs `z = 0.0` (a double literal; with `0.0f` the `m * z` terms fold away)
+  and right-nested sums `m[12] + (m[8] * z + (m[4] * z + m[0] * x))` (IDO evaluates the right operand
+  first). `float *m` declared before the two Vec3 temps puts their homes at sp+0x5C / 0x50.
+- **45C is still open.** It is a leaf predicate (frame 0x90): `(p - postA)` and `(p - postB)` in the
+  XZ plane, dot < 0, so p lies between the posts. Its shape is C++. Each `*p - post` is built in a
+  V3 temp, copied by words to a return temp (sp+0x54), then to sp+0x1C. The first result is
+  float-copied into u (sp+0x84) with a user `operator=`. The second is read from sp+0x1C directly.
+  The dot is `u.x * w.x + Z * Z + u.z * w.z` with Z an `mtc1 zero` that is not folded, and the post
+  base is held in v0 (`addiu v0, a0, 0xA4`). An NCC donor gets the copy chain and the `bc1f; b; li 1`
+  tail, but its post loads fold into a0 offsets and the y = 0 vectors spill. Best result: 85
+  word diffs. cfe C gets the copy chain too, but folds the post base. Next try: a `const V3 &`
+  local for the post, and the XZ dot as an inline taking the two vectors by value.
+- Renames (fire / balloon / checkpoint): FireTmpl_create / _declColourParms / _display,
+  Fire_ctor / _display / _hostioParms, Balloon_ctor / _display / _saveData / _loadData /
+  _hostioParms / _handleMsg, BalloonTmpl_create, CheckpointCyl_* and CheckpointBox_* (ctor, loadData,
+  saveData, hostioParms, handleMsg), CheckpointCylTmpl_create, CheckpointBoxTmpl_create,
+  CheckpointColourItemType_create, plus the per-TU gdl helpers `balloon_gdl*_<addr>` and
+  `checkpoint_gdl*_<addr>`. The `*_00000000` functions (FireTmpl ctor, the balloon / checkpoint gdl
+  writers) are refused by rename-symbol.py as zero-address names.
+
 ## snoweffects.uso progress (agent-h runs 621, 628)
 
 - 58 / 106 functions EXACT, 1 NM wrap (0x9E10, 98.27: item / head colouring swap). Commits on
