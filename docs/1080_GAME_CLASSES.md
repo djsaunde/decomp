@@ -1197,3 +1197,43 @@ before each commit.
 **Next:** name the data-symbol sites (the Pair2 state table 0xDB0..0xF60 as per-state PMF aliases, so
 `AT(PM, &game_uso_D_807FF4B0, 0xEC0)` reads as the state it enters; needs uso-data-sites.py support for game_uso);
 find GameFlow.winVariant's setter; bootup's SnowBoarder_reset `I(0x3DC)` (agent-h) can use rider->riding.
+
+## 27. Run 538: game.uso data sites in uso-data-sites.py, RiderAnim state PMFs named
+
+Census (compiled code, casts / accessor uses): game_uso 108 / 21 -> 79 / 21. Commits on agent-g (base dc60769de):
+acf1b9889 + 5295c7939 (tool changes: uso-data-sites.py), b78a15d48 (tool output: game_uso_data.h + `spell`),
+c1830919d (hand edit: macro-hidden callees as macro arguments), d4159e75e (tool output: name-placeholder-calls
+plan). Gate PASS before each; every changed object objdump -dr identical.
+
+- **uso-data-sites.py `--uso game`**: game.uso inner header 0x7CC900; its Text is
+  build/assets/game_uso_block1_yay0.lnk.o (game_uso.c.o after drop-text-word 0xC0F0; the .c.o itself is 4
+  bytes off past 0xC0F0). Base Syms: 1 Text, 2 RoData, 3 Data, 4 Bss (bootup: 3 / 1 / 2 / 4; now found by kind).
+  Named Data objects (kind 2): 20 (sym 5, 97..102, 155..159, 198, 201..206, 344); Bss objects 199 / 200 / 266.
+  `sites` / `census` / `object` work; e.g. `--uso game object D:0xCE8`.
+- **Named section offsets** live in include/game/game_uso_data.h as integer constants
+  (`#define kPmf_RiderAnim_stateRide 0xE40 /* Data+0xE40: PMF -> RiderAnim_stateRide */`). The per-address zero
+  symbol stays (it is part of the matched spelling); only K gets the name, so sites read
+  `AT(PM, &game_uso_D_807FF4B0, kPmf_RiderAnim_stateTrickWindup)`. `check` (bootup output unchanged plus one
+  game.uso line) verifies every constant use has a Data-base site with that K, and the `PMF -> FUNC` target
+  against the DataReloc at K + 4. `pmf-table` emits the defines; `spell FILE.. --write` respells the literals
+  (handles `extern "C"` donor definitions).
+- **RiderAnim state table** Data 0xDB0..0xF60: 54 PMF records {s16 delta = -1, s16 index = 0, fn}; 0xDC8 is the
+  all-zero null PMF (`kPmfNull_DC8`). Order (by K): StartIntro, StartWait, Stopped, null, HopStart, HopRise,
+  CushionIn, HopDrop, HopAir, HopLand, CushionEnd, Cushion, RideBlendIn, OllieRise, OllieTakeoff, OllieLand,
+  OllieHang, OllieDrop, Ride, RideDeepBlendIn, Row, RowOut, RideDeep, RowIn, BrakeBlendIn, BrakeDeep, Brake,
+  CrashRecover, ResumeRide, SwitchStanceEnd, SwitchStance, PreJumpCancel, PreJumpHold, PreJump, TrickWindup,
+  TrickRelease, TrickAir, TrickHold, TrickStart, TrickEnd, FlipToRide, StartIntroEnd, Idle, Ending2, Ending3,
+  Ending1, Finish, GoalNormal, GoalWinOM, GoalWin, GoalLose, TimeUp, TimeUpLose, Stand.
+- **Macro-hidden placeholder calls fixed** (coordinator item): game_uso_7C1C.c's eight Vec3 XZ macros take
+  NEW (mem_new), 3AC0's BLK takes ADD, bootup_uso_ncc_4948.cpp's SNAP takes SETPOS
+  (math_mtxAddTranslation); then plan --write named 22 + 12 + 5 calls.
+- **GameFlow.winVariant setter: none found ROM-wide.** Scan over every module's TextRelocs to bootup Bss 0xF8:
+  no LO16 site with imm 0x7C; the only store at +0x7C through a register loaded from a GameFlow site (+-0x400
+  bytes) is RaceProcess_reset's clear. The other hits (titproc demo ctors, viewrec 0x1C70 / 0x4620 / 0x4968,
+  gui rows) are other objects. Unless it is written by a bulk copy (Backup restore / struct assignment) or
+  through a pointer returned by a getter, it is always 0 (the variant-2 victory sequence and result view 11 are
+  dead paths).
+
+**Next:** the other game.uso data (Parms name strings 0xD54 / 0xD78, parm-tag words, RoData doubles) as
+checked constants (a `"text"` / value claim in the comment, like GL_DATA_STR); the bootup ncc donors
+(D900 41, 55A0 40, CFA0 39, 1A44 24, FC28 24, 4948 18, now owned by g) on snowboarder / gdl headers.
