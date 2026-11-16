@@ -29,6 +29,8 @@
 - [15. Run 515 (agent-b): controllers, packed files, BallRotator](#15-run-515-agent-b-controllers-packed-files-ballrotator)
 
 ## 1. Frame flow
+- [16. Run 521 (agent-b): pad renames, InputPad = PadCtl, CollShape, DL packets](#16-run-521-agent-b-pad-renames-inputpad--padctl-collshape-dl-packets)
+- [17. Run 527 (agent-b): GfxLib struct, PolyShape_shade, texload, fault_printThread](#17-run-527-agent-b-gfxlib-struct-polyshape_shade-texload-fault_printthread)
 
 ```
 app_run (0x34EB4)          timing labels "gfx.Start" / "app.Update" / "app.Display" / "gfx.End"
@@ -66,7 +68,9 @@ gfx_setVideoMode (0x44B78) picks the VI mode ("video mode not supported").
 ## 2. The GfxLib global
 
 One data object in the bootup.uso data section, reached as `&D_00000000 + K` (a USO base
-placeholder; do not retype it as a struct in matched code, see READABILITY_PLAN section 9 rule 4e).
+placeholder; rule 4e keeps the symbol and K). Since run 527 the layout is the **GfxLib** struct in
+include/gdl/gfxlib.h, reached as `gGfx->field` (= `((GfxLib *)&gGfxLib)->field`, the same K) or
+`GFXLIB(&alias)->field` for the per-site aliases; see section 17.
 Source spelling since run 486: `gGfxLib` (include/gdl/gl_data.h: Bss+0x3C168, Sym 154, 0x5D8 bytes), so
 `(char *)&gGfxLib + 0x254`. 43 game_libs sites converted in run 486; run 489 added the 19 bootup_uso
 sites (`convert`), Snower_display, MapProp_display and the gfx NCC donors whose base is CSE'd at K = 0
@@ -688,3 +692,51 @@ Next:
 - PolyShape_display, whose matching code is the NCC donor game_libs_ncc_48AEC.cpp (the C body is
   NM reference only).
 
+## 17. Run 527 (agent-b): GfxLib struct, PolyShape_shade, texload, fault_printThread
+
+Hand edits only (no renames). Every changed .o had identical `objdump -d -r` in the matching
+and NON_MATCHING builds; the gate passed before each commit.
+
+- **include/gdl/gfxlib.h**: GfxLib (0x5D8), plain C types and `#ifndef __cplusplus` offset
+  checks so the NCC donors can include it. Named: every4thFrame, proj / modelView / curMtx /
+  extraMtx, worldScale[3] (+0x128: CollShape_query divides the probe point by it; [2] is the
+  section 2 "+0x130 scale"), renderFlags (+0x13C), viewStage, lights, shadowLight, flags,
+  mtxMode, dir, fbIndex, perspNorm, frameTime, staticDL, rcp, **textX / textY / charW / charH**
+  (+0x21C..0x228, the gfx_drawText cursor and cell: dbg_screenOverlay sets 0x32,0x50 with 8x8
+  cells then 0x78,0x78 with 16x16; sys_sprintf_00061B30 sets them for its CPU-drawn text),
+  mainWindow, curWindow, cpuDraw, ddm[51]. Accessors: `gGfx` and `GFXLIB(p)`. post0b's 62
+  sites use them (`gGfx->curWindow->dl` for the old `+0x254 ... +0x158` chains). The
+  per-site zero-valued aliases keep their own symbols (`GFXLIB(&gGfxLib_44EDC_c)->rcp`).
+  gGfxLib_3BE1C_128 is an alias pinned at +0x128 itself, so it stays a `f32[]`.
+  agent-h converts game_libs.c.
+- **polyshape.h**: BasePolyShape +0x30 unk30 (parseCmd 13 / 14 / 17 flag word), +0x38
+  **shapeFlags** (parse cmd 8 sets 0x8 with the alpha table, cmd 11 0x2000, cmd 21 0x4000;
+  0x8000 = normals through PolyShape_getNormal8), +0x4C **triList** (parse cmd 26), +0x50
+  **vtxColours** (parse cmd 9, one RGBA word per vertex), +0x7C **alphas** (parse cmd 8),
+  +0xA0 **collGrid** (parse cmd 35). POLY_TRILIST / POLY_COLLGRID (coll.h) are gone. The
+  offsetof checks moved under `#ifndef __cplusplus`.
+- **PolyShape_shade** (game_libs_ncc_49DBC.cpp): 47 raw sites to 0. Its parameters are
+  `BasePolyShape *shape, ..., s32 tri, BaseMat *mat` (extern "C", so no mangling change).
+  One edg lesson: `&shape->faceNormals[tri * 3]` renumbers the t registers against
+  `(s32)shape->faceNormals + tri * 0xC`. The u32 `&vtxColours[v]` index form is fine.
+- **texload.h**: gfx_flushTexture_00046C4C takes `BaseMat *` (TexImage width / height
+  under MAT_TEX_RECORD, &TexCI.texels / &TexCI.tlut for CI8). The gfx_setupMatTextures NM
+  reference body is on DLContext / BaseMat. The matching code is the agent-a port in
+  src/match_imports/gfx_setupMatTextures_00045E20.c, which still uses its context types
+  (GL470E4Object = DLContext, GLRenderNode = BaseMat).
+- **fault_printThread**: on libultra OSThread / __OSThreadContext (include/libultra/os_thread.h,
+  now included by post0b). The even FP slots that the matched code reads as 64-bit integers
+  stay `*(long long *)&ctx->fpN`.
+- CollShape_ctorPoly NM body: CollShape / BasePolyShape / PolyTri fields.
+
+Census (compiled code, casts + accessor uses): post0b 738 -> 656, ncc_49DBC 47 -> 0, owner b
+849 -> 767; whole ROM 5838 -> 5709.
+
+Next:
+- gfx_submitFrameTask_000469A8 (50), gfx_end (26), BasePolyShape_genNormals / genNormalsFast
+  (24 each), FogParms_lerp (18), gfx_start / CamFollow_update / math_mtx4Adjugate (16);
+- the gfx_* functions whose first parameter is the GfxLib (`a0[0x218 / 4]` in
+  gfx_waitRetrace and others) can take `GfxLib *`;
+- the run 521 leftovers that are still open: the HostIO objects, Window +0x84 / +0x98 / +0x100,
+  ItemType +0x34..+0x40, PolyShape_func_00043584;
+- the match_imports gfx_setupMatTextures port could include dlctx.h / material.h (agent-a).
