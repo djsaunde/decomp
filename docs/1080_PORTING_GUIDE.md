@@ -26,6 +26,7 @@
 | doc | covers |
 |---|---|
 | docs/USO_FORMAT.md | the USO module format, the ROM filesystem, the kernel loader, kernel/rmon names, the `k_` rule |
+| docs/1080_PC_PORT_PLAN.md | the PC port plan: approach, key decisions, port architecture, milestones M0-M7, verification by input replay |
 | docs/1080_SYSTEM_LAYER.md | game_libs 0x0-0xEBC8 (HUD gadgets, SRAM save, mode glue), the libgdl system layer (heap, files, DMA, HostIO, App loop), RaceProcess base, named data objects |
 | docs/1080_ENGINE_CORE.md | game_libs post0b 0x4C000-0x62F08 + post1b: RcpMgr, shapes, materials, heap, math, console, AnimPlayer, DNode, pad / boot, skin |
 | docs/1080_GRAPHICS.md | the render pipeline for a port author: frame flow, GfxLib global, DL building, windows, microcode, texture / material / shape formats, animation and skin formats |
