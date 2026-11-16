@@ -1086,6 +1086,43 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
 - NM wraps spell the raw placeholder tokens: the named-call check cannot prove CALL() sites
   whose build path is INCLUDE_ASM.
 
+## heli.uso (agent-g run 672)
+
+- **0xB08 NM donor moved to MIPSpro 7.2.1, 80.2 -> 84.2 % (commit 1921696de on agent-g, gate PASS, no renames).**
+  New donor `src/heli_uso/heli_uso_mp72_nm.cpp` (Makefile HELI_NM_DONOR, built by tools/ncc721.sh, non_matching
+  build only); the NCC donor heli_uso_ncc_nm.cpp is deleted. Exact count unchanged (3557 / 3579).
+- **The tg / ps per-case recompute was the switch's default edge, not the front-end IR.** The uopt dumps (r663
+  dumpm / dumpn) differ in one place only: NCC lowers the switch to an `uequ` chain, mp72 to `xjp`. With xjp and
+  no `default:`, the default edge goes straight to the join, and uopt's code motion does not insert
+  `self+0xDC` / `self+0x114` into the cases (the case-2 call-arg copy of ps is a separate, split LR; the join
+  recomputes). **An explicit empty `default: break;` after the last case** gives the default edge its own block
+  (the target's +0x66C block, which case 6 falls into), and uopt then computes both at the end of every case,
+  ps kept in a2 across the case-2 call with the target's `sw a2,52(sp)` spill (77.3 -> 82.0). `default:` first
+  in the switch: 81.6. Worth trying on any mp72 switch whose cases recompute a join value.
+- Other levers: `mode = mode * 1;` before the switch (agent-b's code-free ref; mode takes v0); reading the
+  marker's +0x3C back through `self+0x168` after the advance; `Vec3 old = *FWD;` copy-initialised (the target
+  copies old with lw / sw words, no by-value operator= temp; 82.2 -> 84.2).
+- **Not yet in the donor, but the target does it:** the slerp keeps the heading pointer self+0x138 in a register
+  spilled to sp+48 (`addiu a0,s0,312; jal normalise; sw a0,48(sp)`, then `lw v0,48(sp)` for the old copy and
+  `lw t3,48(sp)` for the three component stores; the dot product still reads 312(s0) directly). A `Vec3 *h`
+  for the normalise / old / stores / vel reproduces that shape but scores 83.9 (register shifts elsewhere);
+  draft `/tmp/claude-1000/agent-g/b08_keep/mp72_h6_hptr.cpp`.
+- **The objdiff % ignores sp offsets** (moving locals between slots leaves the score unchanged to the last digit),
+  so frame work only shows up in the score through the register changes it causes. MIPSpro 7.2.1 frame rules
+  (probes t1..t4.cpp in /tmp/claude-1000/agent-g/r672): every declared local gets a slot, register-allocated
+  ones too. Outer-scope named locals go first (in declaration order, even ones declared after statements). Then
+  nested-block locals and temps follow in textual order, and a block's named locals come before its temps. The
+  by-value operator= parameter temp is shared by all the op= in a scope. Target map: outer = pp 356, player 352,
+  q 348, toTgt 336, dir 324, dist 320, vel 308, side 296, 12 bytes at 284, key 280, 4 at 276, key2 272, 4 + 4 at
+  268 / 264. After that: case op= temp 252, mpos 232, join op- temp 212, t 208, op= temp 180 (dir and toTgt),
+  ang 168, s 164, old 152, sa 148, op* temp 136, toTgt op- temp 124, fwdAx 100, axZ 84, axX 72, axY 60.
+- Remaining diffs (k3 draft, mnemonics): the marker block has one copy fewer (target `q -> v1 -> v0`); the
+  100.0f in `speed < 100 ? f *= speed / 100` is materialised twice in the target (CSE'd once in ours); the yaw /
+  pitch clamp constant order; the axis-angle tail (`neg.s` of +0x14C and the axis stores). Drafts:
+  `/tmp/claude-1000/agent-g/b08_keep/mp72_k3_84.cpp` (= the donor), and the harness `/tmp/claude-1000/agent-g/r672/`
+  (h.sh = mp72 score, dd.sh = e.txt / o.txt dumps, var.py = string-replace variant, gen.py / gen2.py = declaration
+  layout generators).
+
 ## heli.uso (agent-g run 663)
 
 - **+1 EXACT (3553 -> 3554), +1 NM, gate PASS each, no renames.** Commits on agent-g: 1a0c5a1c7 (0x4C0
@@ -1222,6 +1259,42 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   Bss+0x50 pointer goes in s4 before the vertex-count test. There is also a v0/v1 pair in the ambient
   compare and the second walk's mask constants (-2 / -3 / -5 hoisted into s2..s4). Scratch:
   /tmp/claude-1000/agent-a/w654/a/best_A10C.cpp. 0x7FE0 is not started.
+
+## snoweffects.uso 0xA10C / 0x7FE0 (agent-a run 669)
+
+- **0xA10C NM 99.04 -> 99.80 % objdiff (in-tree report 99.98)**, all registers now match (agent-a 13de00c6c,
+  gate PASS, no renames). Scratch /tmp/claude-1000/agent-a/w669/ (c.sh compile + fuzzy, d.sh diff, md.sh -g3
+  homes, dump.sh `-Wo,-zdbug:6` isvar homes).
+  - **s1 is edg's pooled pointer temporary, one uopt variable.** It holds the colour Parm `this`, the
+    ambient Parm `this` of the copy, and each walk's item. The pool is reused after each full expression,
+    so walk 1's item living across its first call makes the whole pool variable callee-saved. Tell: a
+    callee-saved register that also holds short-lived values that never cross a call.
+  - **Pool temp keeps the load, named item becomes the copy:** pass `it.get()` to an inline helper whose
+    item parameter is used more than once (a pool temp). Assign the named item inside the same call from a
+    second, differently spelled read (`item = (SItem *)it.cur->data`) through a parameter that is used
+    only once, so it is substituted after the pool temp is loaded. With the same spelling (`it.get()` twice)
+    uopt adds a CSE temp and gives 3 registers. With a plain copy (`item = p`), item coalesces into p.
+  - **Ambient compare as two full expressions** (`x || y` then `z`, joined by goto): two pool words above
+    the key temp, the compare on the CSE'd base (v1), the copy through the pool temp (s1). One expression
+    makes 3 pool words; a named `const SParm &a` makes the right frame, but a0 / v1 colours.
+  - **void alias:** the callees whose result is discarded (9768, 9884, 9BE8, 9C48, 9FE8, getNormal8) are
+    declared void. The int returns left a dead v0 def that pushed next()'s result, the loop-body Parm base,
+    the col cursor and the walk-2 flags reload into v1. The fix was 94 -> 61 diff rows.
+  - **Homes:** NCC homes block-scope locals in declaration order, an array included (n8 is not placed after
+    the scalars). j / f were declared first in the vertex-loop body, and one more block-scope word
+    (`int unused = 0`) put n8 at sp+112. Declaring `SVec *n` before n8 changes codegen: the assignment form
+    loses the hoisted D+0x50 base.
+  - Left: walk 2's iterator at sp+84 / 88 (target 88 / 92). Walk 1 has one frame word more than the
+    target (named item -80 + pool p -84; the target has one word between the two iterators). Moving item
+    to function scope or into the if block does not remove it. The pool p probably has to reuse a
+    function-level slot.
+- **0x7FE0 draft 85.49 -> 85.74 % (still 811 / 800, not spliced; 621b06d93).** t->speed is now read once
+  into a local before the cam-speed test (target f0 at 0x8064). The `bc1tl` + two `mtc1 zero,$f24`:
+  - The target's zero for the +0x120..+0x134 clears is a ugen f0 constant.
+  - The ramp's 0.0f is rematerialised per arm into f24 (callee-saved, live after 46BC).
+  - In the draft, one 0.0f live range spans the 0x4374 call in f20.
+  - Next: give the clears their own constant. One way is to clear through an inline `set(0, 0, 0)` or an
+    int 0 converted. Then split the ramp zero per arm.
 
 ## snoweffects.uso 0xA10C / 0x7FE0 (agent-a run 665)
 
