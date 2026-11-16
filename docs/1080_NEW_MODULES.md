@@ -119,7 +119,32 @@ exacts, no NM wraps. Matched: fire 5/7, balloon 9/11, checkpoint 10/17, heli 3/2
   two `Colour::set(r, g, b, a) / 255.0f` inlines, divides not folded) reaches 78%: the target
   reloads 255.0f for the alpha dividend where cfe / NCC reuse the divisor register.
 
-## snoweffects.uso progress (agent-h run 621)
+### agent-b run 627 (3325 / 3577, +7 exact, 1 NM)
+
+Matched: fire 7/7, balloon 11/11, checkpoint 13/17 (E0 NM 99.97%; 2AC, 45C, 58C open).
+
+- **The template "create" shape is plain cfe C** (fire 148, balloon 47C, checkpoint 6F0 / 7F4): the
+  message is a 12-byte `NodeMsg` plus one unused `volatile int pad` (frame 0x38 / 0x40, tag at
+  sp+0x2C / 0x34); a code-free `if (o) {}` right after the ctor call moves o off v0 (v1, or s0 when it
+  lives across later calls), which also gives the empty jalr delay slot; `if (1) {}` after the
+  `gPolyFlags |= 8` store (bootup TreeTmpl_create) keeps the flag luis ahead of the branch. Same
+  template as game_libs SNodeItemType_newItem (3DD28, NCC donor there). Checkpoint 8E8 is
+  byte-identical to edd_ItemType_create_000003BC (body ported).
+- **Local ctor calls in these bodies are `jal 0` in the ROM** (filled by the TextReloc), unlike the
+  `jal 0x60` locals noted above: call them through `CALL(...)`. Check the ROM word before choosing.
+- **File-end pads**: balloon 47C and checkpoint 8E8 are the last fns; their alignment pad words are
+  `SUFFIX_BYTES_FORCE` + `TRUNCATE_TEXT` (Makefile, as TreeTmpl_create). Makefile-only changes do
+  not rebuild the .o: delete it first.
+- **Fire ctor 0**: the divisor is a local `d = 255.0f` (a literal `x / 255.0f` is folded by cfe); the
+  alpha is the int `255`, a separate constant, so it is reloaded as in the target; the inline base
+  ctor's call + vptr store on one line; `if (1) {}` after the FireTmpl vptr store.
+- **Balloon 1A8** (display) = SNode_display + bob: NCC donor `balloon_uso_ncc_1A8.cpp`, ported from
+  `game_libs_ncc_39E24.cpp` (the `Cam &` reference / inline `Cam::mul` keeps the GfxLib+0xA0 base).
+- **Checkpoint E0** (cylinder ctor): all slots and instructions right except frame 0x40 vs 0x38
+  (named shared `p` for the two inline CollObj ctors). Without `p` the frame is right and every
+  slot one word low. 58C (box ctor) is likely the same shape.
+
+## snoweffects.uso progress (agent-h runs 621, 628)
 
 - 58 / 106 functions EXACT, 1 NM wrap (0x9E10, 98.27: item / head colouring swap). Commits on
   agent-h: 3e41f58f4, 6055e92bd, 07fa47f12, ca7cd7fd1, 2bb0df5fc.
@@ -140,6 +165,26 @@ exacts, no NM wraps. Matched: fire 5/7, balloon 9/11, checkpoint 10/17, heli 3/2
   init), SnowRing cursors at +0x58..+0x70 (0x46BC / 0x535C / 0x53E8), two ColourItem-based
   ItemType creates (0x7D8C / 0x91BC = edd_ItemType_create_000003BC twins), an SNode subclass
   (0x9704 display with blend colour at +0x288, 0x973C loadData with Parms at +0x240).
-- Open: 0x3EB0 (13 words: ten float zeros where the last four use a second `mtc1 zero` register;
-  not reproduced by cfe or simple NCC inline / double variants), 0x70C0 (RoData constant init, needs
-  21 `(char *)&D_00000000 + K` reads), 0x4714, 0x40B4 (NCC), and every function above 60 words.
+- Run 628 (agent-h, commits 0900e6b68 a06434c4e 56eee9201 94f5b6125, renames 26a8204d8): +9 EXACT,
+  67 / 106: 0x3EB0, 0x3EE4, 0x4714, 0x6420, 0x70C0, 0x7F60, 0x9010, 0x9E88 (cfe C) and 0x40B4 (NCC
+  donor). Renamed: SnowRing_init / _draw / _setSlotState / _advance / _countSlots, SnowPoint_clear,
+  SnowLink_ctor / _update, SnowPool_init.
+- Levers found in run 628:
+  - A second `mtc1 zero` register is the **int 0 of a chained assignment** (`z = y = x = 0` stores z
+    first); a `0.0f` chain shares the first register.
+  - **RoData floats** (0x3EE4 / 0x6420 / 0x70C0 / 0x9010) each take their own `lui at`, so give each
+    constant its own pin (`snow_ro_<K>` in undefined_syms_auto.txt). `D_00000000 + K` CSEs the lui.
+    Store order: hill-climb over the statement order (a 20-line generator plus diff count is enough).
+  - **Vtable stores** carry the Data offset in the USO reloc (lo16 = 0 in the ROM), so they need a 0 pin
+    (`snowLink_vtbl_9C4`); a name / string pointer (Data(base) + K) keeps K in the immediate. The .o
+    diff against expected/ hides this: check the ROM bytes.
+  - Cfront ctors (0x9E88) match in cfe as `if (this != 0 || (this = mem_new(N)) != 0) { .. } return this;`.
+  - A vcall cast to a void return (`((void (*)(void *))VT_SLOT(..).fn)(..)`) frees v0 for a later
+    constant (0x3EE4).
+  - NCC `c->next()` packets (0x40B4): `Gfx *next() { int n = dl->count++; Gfx *g = &dl->buf[n]; return g; }`
+    gives v1 = context, v0 = head. Shared class header `src/snoweffects_uso/snoweffects_ncc.h`, donor
+    `snoweffects_uso_ncc.cpp`, list `SNOW_NCC_FUNCS` in the Makefile.
+- Open: 0x6144 / 0x6248 (`new` of an SNode-derived child with an inlined base ctor (this == 0
+  protocol), attached to the groups at +0x238 / +0x234, then virtual slot 10 (arg 8 / 16). Best NCC: 15
+  diffs. The target spills the attach parameter at sp+0x2C, but the parent test and the unk04 store go
+  through the new-result register s0), and every function above 60 words.
