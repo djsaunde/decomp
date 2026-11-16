@@ -1556,3 +1556,13 @@ reloc's Sym + K); every changed .o is objdump-identical (text / data / rodata, r
   genproc.uso). sites / census / object / const-table / spell / check work as for game.uso; constants
   go to include/game/<src dir>_data.h (const-table --write creates it), and the gate's bootup check
   also checks every such header that exists.
+- Run 593 (df46455bf, 11e058148): owner a's last data-table sites in the genproc / titproc / game /
+  n64proc / RaceTracker ports, 18 -> 0. `--uso MODE check` now runs only check_game (it used to run the
+  bootup macro checks on the mode census: genproc showed 20 false mismatches, exit 0). check_game and the
+  bootup check also scan the src/match_imports ports of a module (import_srcs: the
+  `context_<src dir>[_part].h` include), so a constant used only in a port is verified on that
+  function's relocs. New headers: include/game/timproc_uso_b5_data.h (genproc), titproc_uso_data.h, and
+  bootup_uso_data.h (bootup offsets read through a local base pointer, where GL_DATA(K) changes the
+  codegen: RaceTracker_findGates' `table + kTag_chk_D680`). Value claims accept `f32 V, text`.
+  Several "import-base data reads" were objects: import_00020098 / D_n64_100_f = gInputMgr (bootup
+  Bss+0xF8; +0x18C locked, +0x190 fader), import_8005C348 = gGfxLib (Bss+0x3C168; +0x240 mainWindow).

@@ -1257,3 +1257,27 @@ under `objdump -d -r` in both builds against a HEAD rebuild; gate PASS; census o
 - os_cont.h: libultra `__OSContReadFormat` (controller.h); gl_osContGetReadData is typed on it.
 - Donor placeholders: Node_doCommand / AnimData_load / anim_blendPose bodies on Node.unk04 /
   AnimData.state / Animator.unk50; gl_osDestroyThread stand-in on OSThread.state (OS_STATE_STOPPED).
+
+## 31. Run 592 (agent-a): engine data-table sites, yp0, 4BAF4 retry
+
+Commits on agent-a: 1f97e598d (hand edit, 12 data-table sites), 04ab087c5 (hand edit, byte-lock retries).
+Every changed .o identical under `objdump -dr` (+ .data / .rodata) in a full rebuild against a HEAD
+rebuild (1466 objects incl. bound ELFs); gate PASS. Census owner a: data-table 30 -> 18, byte-lock 4 -> 2.
+- **Section-base addends that are gGfxLib / gSysLib fields** (`uso-data-sites.py sites FUNC` names Sym 154
+  / Sym 73): heap_tempAlloc / gfx_pickNode `GFXLIB(&gl_4C928_state_base)->rcp / morphs / flags / unk1C8`,
+  light_setShadowMatrix `GFXLIB(&gl_54d04_root)->extraMtx`, gfx_pickNode `SYSLIB_AT(gl_4C928_queue_base)->msgQueue`.
+  The per-function placeholder (snw_port_<func>_<sym>) takes the macro like the gGfxLib aliases do.
+- **GfxLib_reset**: RoData+0x1B38 = f32 0.59, the GfxLib +0x24C default; D_44918_flt is the padded const
+  record (the gl_54d04_scale spelling).
+- **sys_fatal** is a classic MIPS <stdarg.h> walk: VA_ADVANCE / VA_PREV / VA_ARG / VA_START in the file.
+  In-call VA_ARG matches only %d / %f. %s / %c / %x need the cursor advance as a statement before the call,
+  or the `lui a0` moves ahead of the `addiu / and` cursor update.
+- **osInitialize** (both kernel copies): KmcMonitorHeader {magic 'KMC\0', monadr} at 0xBFF00000 (ultralib
+  os/initialize.c `monadr = *(mon + 1)`).
+- **CharacterItem_drawStats yp0**: `*(int *)&a0->yp0` keeps the bytes (the plain `a0->yp0` re-colours
+  t7 / t8 / t3); no longer a byte-lock.
+- **4BAF4 retry (still byte-locked)**: every member spelling of the camera x (cast to Cam4B, `*(f32 *)&`,
+  `me(&cam)`, a flat record, `(*p).p.x`) moves the a3 spill 0x8C -> 0x84; every depthBias member form
+  changes 32 lines. Only the index form `((f32 *)me(..))[12]` matches, and it names nothing.
+- Left (owner a): data-table 18 = agent-g's mode files (BoardList / CharacterList / KeyMessage / Sun /
+  n64proc / SelectWin / RaceTracker); byte-lock 2 = 4BAF4.
