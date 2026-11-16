@@ -1407,6 +1407,26 @@ coordination); H2HRace.dataMgr; the H2HRaceProcess_onPauseSelect / mgr o0_19C pa
 (menu->rows[cursor].arg); SnowBoarder_ctor (13 raw). Since main 0b77ceb96, Node.vptr / name
 take `(char *)` / `(const char *)` casts, not `(s32)`.
 
+### Run 584 (agent-h): object identification for the unknown-object / data-table RAW sites
+
+Owner-h raw sites: 70 -> 41 (byte-lock 4, data-table 28 -> 26, donor-mirror 7, unknown-object 31 -> 4).
+Commits 63a55c030, 25be2e4da (hand edits; every changed .o identical in both builds; gate PASS).
+- **GameFlow.game (InputMgr +0x134) is the WorldRegistry** (game/course.h): players[0 / 1].rider at
+  +0xC4 / +0xCC, windows[] at +0x108; **+0x114 = windows[3] = the "ProcessWindow"**
+  (game_createProcessWindow stores it, GameFlow_startMode links under it). The type stays `char *` in
+  input.h; sites use `WORLDREG(GAMEFLOW(p)->game)->windows[3]`.
+- RaceProcess +0x524 renamed `nameEntry` (each mode's NameEntry overlay; mgr sets NameEntry.phase 1 / 2).
+- envobj.h: BGBox (0x40; clearWindow +0x3C = ctor arg 2, BGBox_func_00000D94 copies it into the window
+  clear bit) and BGWallTex (bgNtex.uso face record: timg +8, tlut +0xC; s32, the edg donors lack u32).
+- mgrproc import_000A7B90 = input_getPad_00011D40 (PadCtl rawStickX / rawStickY at +8 / +9),
+  import_00096228 = snd_setPlayer3FreqScaleFromStick. h2h flowProc +8 = the s32[2] H2HRace.wins tally.
+  The "mrk" type's items are CourseMarkers. ShpNode +0x198 = dnode.parms.suc.value. Tv1Tmpl_func_000077D0's
+  arg0 is the Tv1Tmpl (frameImage). GameFlow +0x34 (Snower_display, RaceProcess_drawGui) = nextFlowMode.
+- Left: MapProp_ctor shape +0xA0 (pGrid, agent-b's BasePolyShape), the Tv1 screen nodes' +0x1C word, the F81C
+  donor (agent-g: `((WorldRegistry *)ptr44)->windows[3]` once it includes course.h). The 26 data-table sites
+  are mode-USO data tables (arc / h2h / mgr / tim / trk: GL_DATA / kRo_ are bootup.uso-only), the
+  kRo_SnowBoarder_ctor_8B8 / _8BC +4 / +8 linker-alias addends (both aliases are 0x8B4) and C++ donor aliases.
+
 ### Run 552 (agent-h): ModeFlowProc, MgrCourseList, C++-safe race / modeproc / nameentry headers
 
 Commits on agent-h (base 2acd57ec4), each gated PASS (3288/3288, ROM identical, 6089 named calls / 0 mismatches,

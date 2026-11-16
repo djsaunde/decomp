@@ -1148,3 +1148,32 @@ statement-layout sensitive).
   (MemberCallback_invoke family, 31 sites; {obj +4, s16 delta +8, s16 vslot +0xA, fn/vt-off +0xC}),
   gSysLib (0x28-byte system-services object, +0x14 frame counter, +0x1C message queue), MCamera
   (+0x14C fov), CamMan / Spinner / SeekNode structs.
+
+## 27. Run 583 (agent-b): PMF callback, SysLib, render state, DLContext chains
+
+Owner-b raw sites (census): 108 -> 51 (unknown-object 77 -> 27, byte-lock 7 -> 0, data-table 20,
+donor-mirror 4); all 51 left are tagged, 0 unjustified. Every changed .o byte-identical in the
+matching and NON_MATCHING builds (whole-object `objdump -drz` diff).
+- `include/gdl/pmf.h` (new): `GdlPmf` = Cfront's `__mptr` {s16 delta, s16 vslot, fn | vptr offset};
+  the 8-byte vtable entries have the same layout. `GdlPmfCallback` {vptr, obj, pmf, arg0, arg1} is
+  the callback object (game/sun.h MemberCallback, envobj.h Tv1Callback are views of its first 16
+  bytes). The six dispatchers (MemberCallback_invoke + _0003A044 / _0003A0C4 / _0003EBDC /
+  _0003EC5C, CMod_callbackInvoke_000551E0) take `GdlPmfCallback *`; the one-line statement layout
+  of the 35A18 recipe survives the field spelling unchanged. Default vptr offset 0x28 (Node) for
+  the family, 0x5C for CMod.
+- `SysLib` (sysapi.h; gSysLib, 0x28): frameCount +0x14, vptr +0x18, msgQueue +0x1C; `SYSLIB_AT(sym)`.
+- `smallnode.h` (new): Spinner (speed +0x2C), SeekNode (target +0x2C, rate +0x30).
+- `GdlRenderState` (dlctx.h): {unk0, flags}; flags & 0xFF render mode, & 0xF00 combine, >> 12
+  geometry, bits 19 / 23 two-cycle. gfx_initDdm builds {gfx count, GdlRenderState}.
+- The "+0x1C record" / "+0x2C record" chains are DLContext.vtx.cur / light.cur (gfx_findVtx,
+  MorphPoly_allocUpdateList, gfx_setLightDirs). gfx_queueGfxTask_0004CEFC returns an RcpTask.
+- DynArr_init_000665A4 initialises a DynArrPool (chunkSize, cur, nChunks), not a DynArr; a rename to
+  DynArrPool_init is open. CamMan's +0 store is Node.unk00 (CamMan = camera.h FreeCam).
+- Byte-locks cracked: QNode_setAnimPose `*(W3 *)&((Animator *)a1)->dst.trans`; CamFollow_update
+  cast-to-struct reads with the cb += 0x70 step kept (named sub-struct S36C08Sub); gfx curWindow
+  store `((GfxLib *)(int)&gGfxLib)->curWindow` with the 0 * (int)&gGfxLib folds kept.
+- Left (unknown-object 27): message-6 sender +0xEC Vec3 (3), CollShape(?) +0x8C point list (3; the
+  old tag said CollObj, which is 0x34), the gfx_findFaceVtxs object (+0x594, 3; its word 0 is a
+  DLContext), Cfront inline member ctors (FW64 x2, the col-tag block x5), button-map record (2),
+  8-byte list head (2), vFP1 callback record (2), and singles (MNode_ctor +0x40, B68 at obj +60,
+  gfx_copyField64, frame-start cb vptr +0x5C, BasePolyShape_emitTriPosUv arg4 +0x40).
