@@ -1232,3 +1232,28 @@ Owner a: 84 justified raw sites (20 unknown-object, 55 data-table, 9 byte-lock) 
   Sun / GfxLib_reset / gfx_pickNode / heap_tempAlloc / light_setShadowMatrix / n64proc / SelectWin / RaceTracker),
   sys_fatal's va_arg slots (5), and the debugger ROM header word (osInitialize x2). Next: kRoF_ / kData_ /
   kBss_ constants checked with `uso-data-sites.py --uso <mode> sites FUNC`.
+
+## 30. Run 591 (agent-b): owner-b raw sites 21 -> 0, GfxDdm pool, message 6
+
+Commits on agent-b: 825d61d05 (hand edits), 02645405d (pure rename). Every changed .o identical
+under `objdump -d -r` in both builds against a HEAD rebuild; gate PASS; census owner b by-reason
+21 -> 0 (data-table 9, unknown-object 8, donor-mirror 4).
+- **GfxDdm** (gfxlib.h): the 12-byte DDM record {dlIndex, GfxDdmState {unk0, flags}}; GfxLib +0x378
+  is `GfxDdm ddmPool[50]` with `nDdms` at +0x5D0 (was unk378[150] / unk5D0). gfx_addDdm takes one,
+  gfx_initDdm fills it. Its element ctor app_newListHead_000422AC is now **GfxDdm_ctor**: proven by the
+  bootup.uso HI16 / LO16 pair at Text 0x55ABC / 0x55AC0 in app_staticInit_000412E8, which passes it to
+  __vec_new (boot_stub_00066C60). Method: `uso-imports.py callers <regex>` also lists address-taken
+  (hi / lo) references, which is how a "no caller" function turns out to be a ctor passed to __vec_new.
+- **Message 6** (node.h NODEMSG_ADD_TRANS, NodeMsgTransPayload {+0xEC f32 trans[3]}): MNode, QNode and
+  DNode handleMsg add the payload's Vec3 to their translation. No sender exists in code. An asm scan
+  over all 21 split segments, plus the raw Text of the unsplit trnproc / viewrec / nameent / balloon /
+  heli / fire / checkpoint modules, finds no tag-6 store into a message passed by address. The same
+  scan finds every tag 2 / 7 / 0xC / 0xD / 0xE / 0x10 / 0x14 sender. So the payload's class stays
+  unknown, and the handlers may be dead.
+- coll_offsetPointsByMtx has no reloc reference at all in any module (dead code). The local
+  PtsOwner_3B1A8 view types its +0x8C point list.
+- gl_data.h "named per-site offsets" block: kRoF_SNode_radiusMax_1A80 (30000f), kBss_memTrace_3C160
+  (mem_delete / heap_new trace word), kTag_col_2108C. The gSkinMgrs per-site slot clears are now `[1..3]`.
+- os_cont.h: libultra `__OSContReadFormat` (controller.h); gl_osContGetReadData is typed on it.
+- Donor placeholders: Node_doCommand / AnimData_load / anim_blendPose bodies on Node.unk04 /
+  AnimData.state / Animator.unk50; gl_osDestroyThread stand-in on OSThread.state (OS_STATE_STOPPED).
