@@ -955,6 +955,64 @@ meaning; ColourParms_ctor (game_libs.c, 85) can now be written on RaceColourParm
 (the TimPauseBss twins in b3 / arcproc); MGRRaceProcess_drawIntro (match_import) colour pairs; the largest
 remaining functions (task 6 not reached): mgr_initMatchRace_00000700, MgrNameEntry_drawCongrats, tit_procMain.
 
+### Run 565 (agent-h): mgr_drawResults session / dataMgr, GdlParmRGBA.type, GuiRow callback, B / D sites
+
+Commits on agent-h (base 4731bbcb0), each gated PASS (3288/3288, ROM identical, verify-blocks 6/6, 6089 named
+calls / 0 mismatches, uso-data-sites 0, INPUT_MGR 0) after a full clean rebuild with all 1268 .o files
+(matching + NON_MATCHING) identical to the base by objdump -d -r -z plus .data / .rodata (non-empty dumps):
+bd0dac023 (mgr_drawResults, GdlParmRGBA.type), 4e2e7d65b (GuiRow.arg, B / D sites). All hand edits; no renames.
+
+- **SnowBoarder_ctor's last site** was already done on main by agent-a (050e438f7, CollObj.vptr `char *`).
+  The never-built bootup_uso_ncc_90CC_nm.cpp keeps its raw `+ 0x30` store.
+- **mgr_drawResults** (NCC donor mgrproc_uso_ncc_23FC.cpp) includes gdl/backup.h directly (it needs an `s8`
+  typedef). race.h still forward-declares BackupSession for C++, because other donors include race.h without
+  `s8`. The reads are `race.session->modes & BACKUP_MODE_TIME`, `GAMEFLOW(&import_800201D0)->dataMgr->elapsed`
+  and `dataMgr->entries->rank[0] < 3`.
+- **ColourParms_ctor**: these 32 sites were port-audit pattern **B**, not A. GdlParmRGBA.type (gadget.h) and
+  RaceColourParm.type (race.h) are now `void *`, so the stores read
+  `PARMRGBA(var_a0)->type = (char *)&D_00000000_cd58_uN + 0xCD58;`. The other GdlParmRGBA store, at game_libs.c
+  line 1193 (`PARMRGBA(mf)->type = &gl_ref_0000CA34_1C54`), also changed. bd0dac023 missed it, so a new cfe 712 warning appeared;
+  4e2e7d65b fixes it.
+- **GuiRow.arg** is `GuiRowFn` (`void (*)(void)`, guimenu.h). gui_addRow and gui_addRowSub take it as GuiRowFn.
+  The call sites call `rows[cursor].arg()` with no cast (h2h onPauseSelect, titproc, and the h2h 1204 /
+  titproc mp72_116C donors, whose GuiRow mirrors follow). arc's `!= ((0, 0))` is now `!= 0`. The bytes are the
+  same at every site. The callers pass data symbols through CALL(), so the prototypes don't matter there.
+- **D sites**:
+  - The -O0 Cfront dispatches (Process_update / display, QuitProcess_onQuit, GameFlow_restart,
+    settings_setFlag4) use `NODE(x)->vptr` in the embedded assignment; the lever survives.
+  - GameFlow_unloadUso and game_isUsoLoaded walk `FlowUso *`.
+  - settings_set8 uses `GAMEFLOW(a0)->options[i + 6]`.
+  - b3 uses `INPUT_MGR(..).dataMgr` (store, and `->entries->rank[1]`, the trick rank) and `NODE(a3)->vptr`.
+- **B sites**: arc_DataManager_init / h2h_WhiteFader_ctor use `NODE(x)->name` / `vptr`. TitleDemoProcess.dataMgr
+  (modeproc.h) is `struct RaceTracker *`, and import_000B6C40 is declared to return it.
+
+Port audit before -> after:
+
+| pattern | agent-h | all owners |
+|---|--:|--:|
+| A | 65 -> 63 | 183 -> 181 |
+| B | 38 -> 3 | 81 -> 46 |
+| C | 1 -> 1 | 12 (unchanged) |
+| D | 32 -> 18 | 204 -> 190 |
+| H | - | 9 (unchanged) |
+
+Census: owner h raw sites 280 -> 255; all raw `*(T *)(p+K)` 1209 -> 1191; accessor uses 120 -> 113 (the 23FC
+donor's FW macro is gone).
+
+Next:
+- The remaining agent-h B sites are not real pointer truncations:
+  - RaceProcess_createReplayCam's camera int;
+  - callGlobalSlot11's this-adjust;
+  - h2h's `(int)(flags << 15)`, an audit false positive.
+- The remaining D sites:
+  - item_create{Bal,Ba2,Chk,Gtr,Gtl} `obj + 0x48 / 0x4C`: needs an item struct;
+  - game_setupVs2P Window +0x1B8: window.h is not mine, ask its owner for a `Window *` field;
+  - FallingSnow_create +0x40, Tv1Tmpl +0x64 / model +0x84, ARCMenuProcess_ctor +0x190, MapProp_ctor name;
+  - the .cpp donors (Fader_display, ScreenThumbMat_grab, SnowBoard_ctor, TitleDemoProcess_handleInput's
+    0xA8 store).
+- item_registerTemplates (14 A) and RaceProcess_init (12 A) are the biggest A lists.
+- TitleDemoProcess 0x54-0x64 and GameDemoProcess.dataMgr (+0x6AC) are still s32.
+
 ### Run 559 (agent-h): race.h / gadget.h pointer fields, menu-row and course-list sites, SnowBoarder_ctor
 
 Commits on agent-h (base 2fe63c692), each gated PASS (3288/3288, ROM identical, verify-blocks 6/6, 6089 named
