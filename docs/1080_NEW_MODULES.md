@@ -402,6 +402,38 @@ No renames.
   (MATCHING_SUMMARY §5; the -O0 -g2 mdebug oracle names them).
 - Not started: 0x64B8, 0x6B28, 0x718C, 0x7960, 0x7FE0, 0x9328, 0x9884, 0xA10C.
 
+### snoweffects.uso 0x6000+ (agent-e run 650)
+
+- No new exacts. Commit 004e8b58d on agent-e: NCC near-miss drafts for 0x7960 and 0x9884 in
+  `src/snoweffects_uso/ncc_drafts/snoweffects_nm_e.cpp` (not built; pointer comments above both
+  INCLUDE_ASMs). The draft calls callees by real name, so the gate's placeholder-call check skips it
+  (a `#ifdef` block in a built donor is still scanned and fails the gate).
+- **0x9884** (203 / 217 words; snow light vertex list rebuild): restore the saved colours, free the
+  update list, p = pos (+0x5C) field-wise, `p *= g` (g through `SV *gp; const SV &g = *gp;`, gGfxLib
+  +0x128), p.y += +0x270, then for unsigned i < mesh +0x40: vf = PolyShape_getVertex shorts, `SV dd = p - vf`
+  (operator- returns `SV(a.x - b.x, ..)`), len = dd.length(); 0.1 (RoData+0xF0) < len < radius (+0x258)
+  stores the index (+0xAC) and alpha (1 - len / radius) * 255 (+0x12F), 64 caps it (`i = count`).
+  Levers: the named dd gives the target's copy at sp+0x90; computing `f` before the vtx store gives the
+  f12 radius colouring. Left (14 words): p sits at the top slot (0xD0) but the target has p at 0xB8 under
+  vf (0xC4) with 16 unreferenced bytes at 0xD0..0xE0. Unused pads are dropped; `(void)pad` pads and
+  `SV q` reshuffle the temps. Next: find which inline temporary the original allocated first (an
+  operator returning SV by value whose result is discarded?).
+- **0x7960** (194 / 219; trail head update): +0x148 = -dot(+0x114, +0x108), angle = acosf of it, negated
+  when dot(cam +0x318, cam +0x3C8) < 0; +0x144 = 0; |+0x4C| >= RoData+0xB4 then d = 0x52D4(this, +0x138,
+  &n, +0xD4); 0 < d < +0x15C: `pos += n * -d`, +0x144 = 2, a = (cos * +0x3C, 0, sin * +0x40) and b with
+  the negated widths, each transformed by the +0x30 matrix. The transform is three float locals stored
+  after all three are computed (z' spills to the stack: no FP register left). Left: frame 168 vs 176
+  (target normal at 0xA0, push temps 0x68 / 0x74 / 0x84) and zero / fabs register swap.
+- **0x9E10**: NCC with an inline `attach()` member and a named head local is 4 diffs, the same as the
+  cfe NM (head lands in a1 with beqzl; the target keeps it in a2 and copies to a1 in the beqz delay
+  slot). Tried: child-side link(), reference parameter, copy local in attach, free attachTo(): all 4+.
+- **0x6B28** decoded only to the first third (flag 0x820000 picks one of two RoData default sets for
+  +0x1B0..+0x1C4; counters +0x1C8 / +0x1CC driven by the course state at cam +0x9A0..+0xA20; then the
+  camera-relative spawn with sys_randf and SnowPool_alloc / _oldest). 0x9328 is the SnowTarget Cfront
+  ctor (SNode_ctor, Parms at +0x240 with 5 inline Parm ctors, names read from Data+0xA44..+0xA54 by value);
+  the timproc_uso_b5_ncc_2B74.cpp SelItemParms_ctor donor is the model.
+- Not started: 0x64B8, 0x718C, 0x7FE0, 0xA10C.
+
 ## trnproc.uso / nameent.uso progress (agent-c run 631)
 
 - trnproc 28 / 40 EXACT, nameent 17 / 21 EXACT + 1 NM (0x150, 41/45 words). Commits on agent-c:
@@ -531,6 +563,31 @@ No renames.
     f20) is a separate constant web: `(float)0` int-cast literal.
 - NM wraps spell the raw placeholder tokens: the named-call check cannot prove CALL() sites
   whose build path is INCLUDE_ASM.
+
+## viewrec.uso progress (agent-a run 648)
+
+- +6 EXACT (3517 -> 3523 on the agent-a base, gate PASS): 0x2D0 (commit 033276f9c), 0x1068 / 0x18D4 /
+  0x2AE4 / 0x2C08 / 0x2FC0 (5fb3078a6).
+- **0x2D0 (process ctor), edg frame homes.** edg numbers a block's named locals first, then the inline
+  temps expanded in that block, then the nested blocks; IDO lays homes out top-down in that order. The
+  loop counter (case block) sat one home too high until the Fader child was declared in a block of its
+  own wrapped around the mode switch (between the ctor-chain temps and the counter). A function-scope
+  declaration anywhere goes above the inline temps instead. Own donor file viewrec_uso_ncc_2d0.cpp
+  (Makefile VIEWREC_NCC_DONOR_2D0), .bss renamed viewrec_uso_func_000002D0_bss (0x858).
+- **v0 / v1 swaps: void alias.** 0x1068 / 0x18D4 / 0x2FC0: an int-returning call before the swapped
+  load leaves a dead $v0 def that pushes the next reload / CSE into $v1. `XCALL(gl_func_00000000_vrv,
+  name)` on the void calls fixes it.
+- **Early pseudo.** 0x2AE4: a dead `s32 h = 0` initialiser gives h $v0 ahead of the image pointer
+  (permuter-found as `h = 2; col[h] = ...`, minimised). 0x2C08: the same, plus the image pointer as
+  a named local declared first and buf[12] (as 0x2D9C).
+- **0x0 (NM, 3/33 words in NCC; the cfe NM body is unchanged).** The tail is edg + a reference local:
+  `{ VrProc *&p = sVrProc; p->mode = 0x10000; sVrMenu = p->menu88; }` gives the
+  `lui v0; addiu v0,0x87C; lw 0(v0)` x2 CSE. The show part under NCC:
+  `{ VrNode *s = sVrProc->mainMenu; sVrScreen = s; if (sVrScreen) {} sVrScreen->start(); }` gives
+  `or v1,v0; lw v0,40(v0)`, but the &sVrScreen base lands in a0 (target a1). The cfe body has a1 but no
+  tail CSE. Not tried yet: the permuter (it cannot parse C++ references, so it would need a C stand-in).
+  Scratch: /tmp/claude-1000/agent-a/w648/v/r7.cpp.
+- Not reached this run: 0x266C (74%, redo as C++) and 0x1488 (NCC donor).
 
 ## viewrec.uso progress (agent-a run 641)
 
