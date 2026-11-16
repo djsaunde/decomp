@@ -18,6 +18,7 @@
 - [5. N64-specific pieces a port must replace](#5-n64-specific-pieces-a-port-must-replace)
 - [6. Conventions and matching caveats](#6-conventions-and-matching-caveats)
 - [7. Open questions (all areas)](#7-open-questions-all-areas)
+- [8. 64-bit port readiness: pointer / int casts (scripts/port-audit.py)](#8-64-bit-port-readiness-pointer--int-casts-scriptsport-auditpy)
 
 ## 0. The area docs
 
@@ -356,3 +357,76 @@ Aggregated from each doc's open-items list (2026-11-15). The doc in brackets hol
 - Unnamed bootup Data objects Sym 256 (0x1C-byte rows used by `game_setupSolo`) and Sym 274 [SYSTEM_LAYER 12].
 - About 100 weak `<prefix>_func_<addr>` names remain ROM-wide (gfx / graphics classes, camera, RiderAnim,
   SnowBoarder, SnowAI) [SYSTEM_LAYER 12].
+
+## 8. 64-bit port readiness: pointer / int casts (scripts/port-audit.py)
+
+`scripts/port-audit.py` (agent-a run 536; run it from the project root after a full build) lists the
+spellings in compiled code that assume 32-bit pointers. It only reports; it changes nothing. It blanks
+what the matching build does not compile, in the same way as the readability census. Patterns:
+
+- **A** `(s32)&X` / `(int)&X` / `(u32)(&X)`: an address cast to a 32-bit int. A* = the cast is the right-hand
+  side of a store, typically `NODE(p)->vptr = (s32)&Foo_vtbl` or `->name = (s32)&sStr_...`.
+- **B** `(s32)((char *)p + K)`: an int cast whose operand starts with a pointer cast.
+- **C** `*(int *)(p + K)` loads used as pointers, for example `(T *)*(int *)(...)` or as the base of a
+  second raw access.
+- **D** `*(T **)(p + K)`: a pointer loaded at a hard-coded byte offset. The offset assumes 4-byte pointers,
+  so it moves on a 64-bit host where a struct field would not.
+- **H** header struct fields declared `s32` / `int` / `u32` whose name (vptr, parent, next, owner, ...) or
+  comment (`Foo *`, `char *`, pointer) says they hold a pointer. This is a lower bound, because many s32
+  fields that hold pointers have no such hint (for example H2HWinsDisplay.race).
+
+Owners are the census owner() table (a / b / c / g / h, section 0). hdr = include/ headers. Snapshot at
+agent-a run 536 (main 999560745 plus that run's commits):
+
+| pattern | a | b | c | g | h | hdr | total |
+|---|--:|--:|--:|--:|--:|--:|--:|
+| A: `(s32)&X` address -> int | 70 | 80 | 39 | 24 | 271 | 0 | 484 |
+| B: pointer expression -> int | 10 | 28 | 72 | 12 | 49 | 0 | 171 |
+| C: `*(int *)` load used as a pointer | 3 | 5 | 12 | 0 | 12 | 0 | 32 |
+| D: `*(T **)(p + K)` pointer at a fixed offset | 100 | 123 | 107 | 7 | 160 | 0 | 497 |
+| H: header field: int that holds a pointer | 0 | 0 | 0 | 0 | 0 | 49 | 49 |
+
+A* (the `(s32)&X` is a store right-hand side): a 46, b 64, c 29, g 17, h 231; total 387.
+
+Owners: the census owner() table (a / b / c / g / h); hdr = include/ headers (pattern H only).
+
+Top 10 files (A+B+C+D):
+
+| file | A | B | C | D | total |
+|---|--:|--:|--:|--:|--:|
+| `src/game_libs/game_libs_post0b.c` | 48 | 25 | 5 | 119 | 197 |
+| `src/game_libs/game_libs.c` | 62 | 36 | 0 | 1 | 99 |
+| `src/bootup_uso/bootup_uso.c` | 37 | 0 | 1 | 41 | 79 |
+| `src/timproc_uso_b5/timproc_uso_b5.c` | 15 | 4 | 8 | 43 | 70 |
+| `src/bootup_uso/bootup_uso_90CC.c` | 55 | 0 | 4 | 4 | 63 |
+| `src/game_libs/game_libs_post.c` | 2 | 7 | 4 | 45 | 58 |
+| `src/game_libs/game_libs_post1b.c` | 32 | 3 | 0 | 4 | 39 |
+| `src/game_uso/game_uso.c` | 19 | 11 | 0 | 4 | 34 |
+| `src/timproc_uso_b5/timproc_uso_b5_4118.c` | 1 | 33 | 0 | 0 | 34 |
+| `src/bootup_uso/bootup_uso_ncc_55A0.cpp` | 28 | 0 | 0 | 0 | 28 |
+
+Top 10 functions:
+
+| function | file | owner | sites |
+|---|---|--:|--:|
+| `SnowBoarder_ctor` | `src/bootup_uso/bootup_uso_90CC.c` | h | 63 |
+| `SelectWin_ctor` | `src/timproc_uso_b5/timproc_uso_b5_4118.c` | c | 34 |
+| `ColourParms_ctor` | `src/game_libs/game_libs.c` | h | 33 |
+| `item_registerTemplates` | `src/bootup_uso/bootup_uso_ncc_55A0.cpp` | h | 28 |
+| `GameFlow_startMode` | `src/bootup_uso/bootup_uso_tail3a_10C8C.c` | h | 19 |
+| `CourseGadgetParms_ctor` | `src/game_libs/game_libs.c` | h | 17 |
+| `DNode_ctor` | `src/game_libs/game_libs_post1b.c` | b | 17 |
+| `SelItemParms_ctor` | `src/timproc_uso_b5/timproc_uso_b5_ncc_2B74.cpp` | c | 15 |
+| `U64BGWall_func_00001A44` | `src/bootup_uso/bootup_uso_ncc_1A44.cpp` | h | 14 |
+| `SelectionMgr_setSplit_00001DB0` | `src/timproc_uso_b5/timproc_uso_b5.c` | c | 14 |
+
+Pattern H per header directory: `include/game` 15, `include/gdl` 34.
+
+Reading it: A and H are the bulk of the work, and both come from the same convention. Node / Parms /
+gadget fields are declared `s32` because the ctors store addresses into them through int-cast bases
+(`NODE(p)->vptr = (s32)&vtbl`). Many of those int casts are load-bearing for the matching build: an
+int base colours a different register than a typed pointer (uso_init's CTX(f), run 536; IDO_CODEGEN.md
+has more). So a 64-bit port types the fields first (H) and keeps the matching spellings behind a
+PORT / NON_MATCHING path, instead of editing the casts one by one. Pattern D disappears as raw offsets
+become struct fields (the census raw-offset count). `--list A|B|C|D|H` prints every site; `--owner X`
+narrows to one area.

@@ -68964,3 +68964,10 @@ add.s / beql operands; __rmonReadMem / __rmonWriteMem SP-window range tests
 __rmonRunThread's `sp94->tid != (*var_s0).id`. Find the sites by converting one field (or one
 statement) at a time and diffing the object; the agent-a run 531 bisect scripts did this greedily.
 
+Run 536 (agent-a): SnowAI_scaleRiderParms (match_imports, 7.1 -O2) is a fourth case: `AI(a0)->f * AI(a0)->g`
+swapped the mul.s operand loads (f16 / f18), `(*AI(a0)).f * (*AI(a0)).g` kept them. A related lever for an
+int-cast BASE that `p->f` cannot keep: uso_init (kernel_000_1594.c donor, 7.1 -O2) holds `cb = (s32)&gUsoCtx`
+in a3 for 30 `*(s32 *)(cb + K) = ...` stores; `UsoCtx *cb; cb->f = ...` colours it t3 / v0. Keep the int
+base and name the field with a constant offset: `#define CTX(f) (*(s32 *)(cb + (s32)&((UsoCtx *)0)->f))`
+compiles identically (the offsetof form folds to the same constant).
+
