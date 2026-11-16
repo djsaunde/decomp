@@ -740,3 +740,64 @@ Next:
 - the run 521 leftovers that are still open: the HostIO objects, Window +0x84 / +0x98 / +0x100,
   ItemType +0x34..+0x40, PolyShape_func_00043584;
 - the match_imports gfx_setupMatTextures port could include dlctx.h / material.h (agent-a).
+
+## 18. Run 534 (agent-b): GfxLib-first gfx_* typed, frame submit / end / start on fields
+
+Hand edits only (no renames). Every changed .o had identical `objdump -d -r` in the matching
+and NON_MATCHING builds; the gate passed before each commit.
+
+- **gfxlib.h** GfxLib, newly named: frameStartCbs[5] / nFrameStartCbs (+0x148 / +0x15C,
+  gfx_start calls vtable +0x5C slot 0 of each), drawUpdates[10] / nDrawUpdates (+0x198 / +0x1C0,
+  gfx_queuePush_0004E1BC overflows at 10; gfx_end calls slot 0 of each under "ADrawUpd"),
+  colour[3] (+0x1FC u16, gfx_colorToRGB16_0004771C), morphs (+0x22C GfxMorphList: MorphPoly_display
+  pushes itself, gfx_end runs its update under "MorphUpd", gfx_start empties it), nWindows /
+  windows[8] (+0x258 / +0x25C, gfx_addWindow "too many windows"; gfx_end submits each),
+  oneFrameDL[2] (+0x280, GfxLib_init "OneFrame"). New types GfxMorphList and **FogParms**
+  (0x18: colour[4], min, max).
+- **rcp.h** RcpMgr +0x24 **retraceCount** (RcpMgr_service `m24++` on each 'd' VI message;
+  gfx_waitRetrace and the gfx_end "Swap" loop spin until it changes).
+- **window.h**: WinClear (+0x100 / +0x104 are one 8-byte member object: Window_ctor builds it as
+  a unit, Window_setDefaults copies it as a pair; WINCLEAR(p)). Window +0x80 **coneCos**, +0x84
+  **drawDist[5]** (per-class draw distance at the reference 85-degree fov), +0x98
+  **drawDistFov[5]** (drawDist * 85 / camera fov, Window_display). cam_isSphereInView culls a
+  sphere of class i when drawDistFov[i] <= dist - radius or when dot(dir, view forward) <
+  coneCos.
+- **item.h** ItemType +0x34 **builtHead** (buildItems: first newItem(0) result, the rest chained
+  through each item's next word), +0x38 **searchDown** (SNodeItemType_vslot15 direction). +0x40
+  keeps unk40 (game_uso.c reads it): SNodeItemType_newItem attaches that Node under each new
+  SNode item. +0x3C is still unknown (cleared with the item list).
+- `GfxLib *` first parameter: gfx_waitRcpIdle, gfx_waitRetrace, gfx_setCpuDraw, gfx_swapBuffer,
+  gfx_emitRenderState, gfx_emitFogRange, gfx_colorToRGB16, gfx_matrixModeProjection / ModelView,
+  gfx_setDirBytes / FromVec, gfx_loadMatrix, gfx_loadIdentity, gfx_setViewStage,
+  gfx_resetModelView, gfx_listAppend, gfx_set/getShadowLight, gfx_addWindow, gfx_queuePush,
+  gfx_setEvery4thFrameFlag, gfx_callDdm, gfx_getDdm, gfx_start, gfx_end,
+  gfx_submitFrameTask_000469A8. FogParms_lerp / hostioParms take `FogParms *`.
+  BasePolyShape_genNormalsFast is on BasePolyShape fields.
+- **IDO lesson (gfx_submitFrameTask)**: a load's type matters for CSE. The function reads
+  arg0->mainWindow nine times; the matched code had them all as int loads (FW). Turning some into
+  pointer-typed field loads stopped IDO from sharing them with the others and the frame grew from
+  0x58 to 0xB0. All of them now go through `GFX_MAINWIN_I(g)` (`*(int *)&(g)->mainWindow`), and
+  the ScreenWindow fields read through it (SCRWIN(temp_v1)->...) are fine, because the field
+  loads were already single-typed.
+- Tried and dropped: BasePolyShape_genNormals' three cross-product rows on POLYVERT fields. With
+  the factors in source order the lh loads reorder (run 521); with both products' factors swapped
+  every pair comes out reversed. The 24 raw `*(s16 *)(v + K)` reads stay.
+
+Commits (agent-b, both hand edits, no renames): c57a84050 (gfxlib.h / rcp.h / WinClear and the
+gfx_* bodies), fa5833113 (Window / ItemType fields, genNormalsFast).
+
+Census (compiled code, casts + accessor uses): post0b 656 -> 512, post1b 103 (unchanged), owner b
+767 -> 623; gfx_submitFrameTask 50 -> 1, gfx_end 26 -> 1, genNormalsFast 24 -> 0, FogParms_lerp
+18 -> 0, gfx_start 16 -> 3 (the left sites are the unknown objects' vtables and gSysLib +0x1C).
+Still in post0b's top: genNormals (24), Window_display (14), cam_isSphereInView (10, its camera
+reads).
+
+Next:
+- genNormals cross products (try swapping only the second product, or a typed PolyVert local);
+- the GfxLib-first functions that are still `char *` / NM bodies: gfx_beginView (NM),
+  GfxLib_reset (NM), gfx_printWindowDLUsage (its a0 + 0x148 is not GfxLib: check the callers),
+  gfx_vcall_0004E150 (+0x134), gfx_callStaticDL (gGfx->staticDL);
+- PolyShape_func_00043584's object is PolyShape_init's clip-row Elem (ncc_493AC.cpp), not a
+  BasePolyShape: give Elem a header first;
+- post1b: boot_main_00066850's gSysApi table (a SysApi struct in gl_data.h needs the owner's OK),
+  skin_cmdSkinShape's loader context.
