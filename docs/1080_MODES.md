@@ -1224,3 +1224,47 @@ Next (H1):
   SELWIN_VIEW()->camera fov reads in state3 / state4 / beginTransition.
 - The board item's extra word at 0x2C4 (BoardList_createItem clears it; SEL_ITEM_CLASS is 0x2C4).
 - The vtable slot calls (`FW(FW(e, 0x28), 0x8C)` etc.) through a typed SelItem vtable.
+
+### Run 530 (agent-c): viewH, GenCamera, the SelItem vtable, SelBoardItem.blink
+
+Two commits on agent-c (base 100406707), each gated PASS (3288/3288, ROM identical, placeholder
+check 0 mismatches). Every select.h includer (genproc C / C++, o2_5FC0, the match_imports donors
+and their linked objects) is identical to a fresh pre-run build in both trees: sections,
+relocations and `objdump -d -r`.
+- 080318e83 (hand edit, field rename only): `SelectWin.centerX` -> **`viewH`** (0x4D8, the window
+  height in lines: 0x78 / 0xF0). SelectionMgr.split / shownMask comments follow.
+- 58875304c (hand edit): **select.h**
+  - **`GenCamera` (0x20)** = gen_createCamera_0000283C's rig = GenScene.cam / cam2 =
+    `SelectWin.scene` (now `GenCamera *`): world / unk04 / unk08 (app +0x134 +0x84 / +0x80 /
+    +0x8C), view 0xC (the 3D Window), **target 0x10** (the MCamera's look-at MNode,
+    MCamera_ctor(0, target, 0, 0, 0), moved to (0, 0, -400); camPos copies its mtx[3]), anchor
+    0x14 (the first MNode; SelectWin_init passes target / anchor to setCamToItem), **camera 0x18**
+    (MCamera; state6 turns pitch / yaw while rotEnable). The ctor's arg 3 is the fov (0x3C one
+    player, 0x29 two). `SELWIN_VIEW(w)` = w->scene->view; `SELWIN_CAMERA(w)` = the Window's
+    MCamera (same object). select.h includes game/camera.h in C.
+  - **`SelItemVtbl` (0xE8)** of `SelVEntry {short delta; short pad; void *fn}` (slot N at
+    vtbl + 8 + 8N). Slot names from the BoardItem / SelItem overrides: 10 updateHighlight,
+    11 focus, 12 unfocus, 13 onStageLeave, 14 onStageReturn, 15 setChosen, 16 clearChosen,
+    17 toggleVariant, 18 playPickAnim, 19 playAcceptAnim, 20 confirm, 21 copyState, 22 setAlpha,
+    23 drawLabel, 24 drawSubLabel, 25 drawStats, 26 drawArrows, 27 loadInfo. SelItem.vptr is
+    `SelItemVtbl *`; `SELVT(v)` views a raw vtable local. 52 slot calls converted (state0..9,
+    display, init, beginTransition, the 5FC0 donor), plus their vptr loads. No byte lever
+    appeared: `(GP)SELVT(v)->slot.fn)(SELVT(v)->slot.delta + o, ...)` is the same code as the
+    FW form.
+  - **`SelBoardItem` (0x2C8)** is its own type: `blink` 0x2C4 (BoardItem_drawStats counts it up
+    per draw; bit 3 shows the extra (233, 247, 0) sprite).
+  - Converted besides: gen_createCamera's self stores (GCAM), the camPos / fovFrom reads in
+    state3 / state4 / beginTransition, state6's rotEnable / pitch / yaw, SelectWin_display's view
+    height, the drawLabel originY + height sum.
+- **Census** (readability-census.py, casts / accessor uses): timproc_uso_b5 segment 530 / 472 ->
+  438 / 362; timproc_uso_b5.c 362 + 172 -> 276 + 71; owner c total 1468 -> 1182 (with the audio
+  commit, 1080_AUDIO.md run 530).
+
+Next (H1):
+- GenSelectChar_initLabels_00000778 (48 casts, the top genproc function), gen_createVRBox (21),
+  gen_buildRoom (15), SelItem_drawStatBar / Right (12 / 14).
+- GenScene.cam / cam2 can become `GenCamera *` (gen_createScene / SelectionMgr_ctor users).
+- The C++ donors (ncc_C310 BoardItem_drawStats, ncc_2B74 / 32C8 / BDEC / 8AFC) still use raw
+  offsets; they can include select.h now (the edg path has SelVEntry / SelItemVtbl, no MNode).
+- gen_createCamera's Window flags (+0x78, the `if (1)` lever) and clearColour (+0xDC same-line
+  store lever) stay raw.

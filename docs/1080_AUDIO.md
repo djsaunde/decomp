@@ -797,3 +797,34 @@ and the 10 o2 donors.
   census2 sites), ncc_28A68 (6) and o2_23914 (7). None were attempted this run (time).
   o2_26214 still keeps its own gl_26214_Ctx / AudioTask / OSTask_t view, which can now fold onto
   AudioContext.rspTask / AudioTask.
+
+### Run 530 (agent-c): sequence channel / player / note bodies on audio.h members
+
+3b778d68a on agent-c (hand edit, game_libs_post.c only; gate PASS 3288/3288, placeholder check
+0 mismatches; game_libs_post.c.o identical to the pre-run build in both trees by sections,
+relocations and `objdump -d -r`).
+- **Correction to the run-525 "next":** the AudioSynth_* command builders are NOT where the raw
+  sites are. They take `int *a0` and write a0[0] / a0[1], which the census does not count (no
+  `*(T *)(p + K)` form); only AudioSynth_LoadReverbSamples (5) and LoadAuxBufferC (4) have any.
+  The 385 game_libs_post.c casts were: Audio_SequenceChannelProcessSound 41, AudioSeq_
+  InitSequenceChannel 32, three fs_bufWrite / Read bodies 23 each and MCamera_ctor 19 / sys_fatal
+  13 (not audio), Audio_NoteInitForLayer 21, AudioSeq_ResetSequencePlayer 19,
+  Audio_SequencePlayerProcessSound 15, Audio_AllocNoteFromActive 13, Audio_NoteDisable 10.
+- Converted:
+  - AudioSeq_InitSequenceChannel: all SequenceChannel reset stores (adsr.decayIndex = 240 is
+    OoT's releaseRate slot). The byte-0 bit cascade and the +1 changes byte stay byte RMWs.
+  - Audio_SequenceChannelProcessSound: channel / seqPlayer fields. **Byte levers:** as members
+    the float products want member-first order ((volume * volumeScale) * appliedFadeVolume,
+    layer 0x38 * appliedVolume); the layer pan sum keeps raw `FW(arg0, 0x30)` (pan): as a
+    member, in either operand order, the addu operands and later t-temps swap.
+  - AudioSeq_ResetSequencePlayer, Audio_SequencePlayerProcessSound (product fadeVolume *
+    fadeVolumeScale, same order lever), Audio_NoteDisable (Note playbackState).
+- **Census:** game_libs_post.c 385 + 28 -> 313 + 16; game_libs segment 1408 / 450 -> 1336 / 438.
+- **Not done (time):** ncc_28A68 (6), o2_23914 (7), Audio_NoteInitForLayer (Note / layer:
+  SequenceLayer is padding past 0x18, so the layer side needs OoT layer fields verified first),
+  Audio_AllocNoteFromActive. **o2_26214 fold:** every field it uses exists in AudioContext
+  (offsets asserted), but audio.h declares curAudioFrameDmaQueue as `u8[0x18]` while the donor
+  needs an OSMesgQueue (MQ_GET_COUNT reads validCount): make it `OSMesgQueue`
+  (libultra/os_message.h) in audio.h and check the other includers first, then replace
+  gl_26214_Ctx / AudioTask / OSTask_t with AudioContext / AudioTask (field renames: t -> task,
+  msgQueue -> taskQueue).
