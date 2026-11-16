@@ -188,3 +188,53 @@ Matched: fire 7/7, balloon 11/11, checkpoint 13/17 (E0 NM 99.97%; 2AC, 45C, 58C 
   protocol), attached to the groups at +0x238 / +0x234, then virtual slot 10 (arg 8 / 16). Best NCC: 15
   diffs. The target spills the attach parameter at sp+0x2C, but the parent test and the unk04 store go
   through the new-result register s0), and every function above 60 words.
+
+## trnproc.uso / nameent.uso progress (agent-c run 631)
+
+- trnproc 28 / 40 EXACT, nameent 17 / 21 EXACT + 1 NM (0x150, 41/45 words). Commits on agent-c:
+  9be01eee9, 8f968f793, 3b99ebf4d, 09f59fd23, 5600c6097 (3376 -> 3416).
+- **Own-section relocs carry the offset in place.** A Bss-base / Data-base TextReloc site holds
+  K (e.g. `lw a0, 0x1B0(a0)` for trnproc Bss+0x1B0). Spell it off a fresh symbol pinned at 0 in
+  `undefined_syms_auto.txt` plus the offset: `trn_bss` (Bss+0x1B0 = gTrnRace, the running
+  process), `trn_data` (trnproc Data), `ne_data` (nameent Data, name string at +0x140). A
+  separate symbol also keeps uopt from sharing the lui with the D_00000000 imports.
+- **trnproc is the timproc / trkproc sibling.** Ported as-is: stream readers 268 / 2A4 / 2E0 / 338,
+  Parm reads 1B84..1CA4 (tit_read*Parm), ItemType create 1C14, onPauseSelect 858 (TimRace's body
+  with its `if (1) {}` / `^ 0` / `new_var = 0x90` levers + a dataManager +0xFC guard), pause rows
+  1B0 / 1E4 / 214. Its DataManager (RaceTracker subclass) runs the trick lessons: +0xF0 current
+  lesson, +0xF4 armed, +0x114 trick done, +0x108 lesson count, done bits at race +0x6B0
+  (1324 / 13A0; 180C picks the next lesson through 1778).
+- trnproc .text pads: 1 zero word after 1A4 and 3 after 1CA4 (`TRN_SUFFIX` + `TRUNCATE_TEXT 0x1CE0`).
+- nameent: phase (+0x60) dispatch through the own vtable (slots 14-16 update, 17-19 display);
+  0x150 NM: cfe colours the phase v1 where the target uses v0 (0x204, same switch with self in s0,
+  matched).
+- Open: trnproc 10 (procMain, RoData jumptable), 3A8 ctor (0.82 to TimRace_ctor), 6CC (18
+  gui_spriteInit), A2C, B78 / DD4 (HUD draw), 1098, 13C4, 16C8, 1778, 188C (update), 1A98; nameent
+  2F4 (board draw), 5B4, 760 (entry ctor), 9BC, E44 (input, 435 words).
+
+## heli.uso progress (agent-g run 632)
+
+- 21 / 26 EXACT, 2 NM wraps (0x3F4 99.0, 0x4C0 90.7). Commits on agent-g: 2a7e04130, feedcaf7e
+  (exacts), 403bded79 (NM wraps). Open: 0x8A8 (flight-state reset leaf, store scheduling), 0x980
+  (walks the "hem" ItemType's items for id 8), 0xB08 (943-word update: fsin / atan2s / acosf path
+  flight).
+- Classes: HeliItemType (0x54, ItemType + body / blade PolyShapes +0x48 / +0x4C, Sprite +0x50),
+  Heli (0x174 QNode, vtable Data+0xCA88, start position +0x108, flight state +0x114..+0x170),
+  HeliRotor (0x118 QNode, spin speed +0x108, axis +0x10C), two 0x40 marker ColourItem creates.
+- Levers that worked here:
+  - global vs static local calls: 0x0 / 0x3C / 0xAC / 0xE8 are static in the original (resolved
+    `jal` words: call them directly), 0x388 / 0x4C0 / 0x8A8 are global (blank `jal 0`: use
+    `CALL(heli_uso_func_X)`). A direct call to a global gives a linked non-zero word that a
+    reloc-blind .o compare misses; only the gate's ROM check catches it.
+  - 0x274: one alias per gPolyFlags access, `if (1) {}` after the first RMW keeps the
+    geometry-mode base out of the entry block; ctor args through locals in blades / body /
+    sprite order give the target's a2 / a1 / a3 load order.
+  - 0x1D4: the ItemType base ctor is inlined with its own this == 0 allocation and a by-value
+    4-byte name tag (`sw a1, 4(sp)`), item_createBal recipe with one volatile pad.
+  - 0x7B4: `beq 9; beql 7; b out` = `if (m == 9) goto A; if (m != 7) goto out; goto B;`.
+  - RoData floats loaded `lui at; lwc1 K(at)` per site need a distinct zero symbol per load
+    (a shared symbol, or a float[] extern, is CSE'd into an s-register).
+  - A zero store that the target materialises in its own `mtc1 zero` (while call args share
+    f20) is a separate constant web: `(float)0` int-cast literal.
+- NM wraps spell the raw placeholder tokens: the named-call check cannot prove CALL() sites
+  whose build path is INCLUDE_ASM.
