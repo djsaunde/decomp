@@ -237,6 +237,56 @@ No renames.
   course*3*16 spellings, and the 0x3364 levers (do-while, `show = 1` after the call).
 - **Not started:** 0x3878 (records draw, 431 lines) and 0x3F24 (erase-select pad handling, 272 lines).
 
+### agent-b run 675: viewrec 0x3878 NM, snoweffects 0x1E60 NM (3557 / 3579, +0 exact, +2 NM)
+
+Commits on agent-b: be9d82da4 (3878 NM), 88889d286 (1E60 NM). No renames. Gate PASS before each.
+
+- **viewrec 0x3878 NM 98.7 %** (objdiff): the run-670 body as a MIPSpro 7.2.1 NON_MATCHING-only donor
+  `src/viewrec_uso/viewrec_uso_mp72_nm_3878.cpp` (built by the `viewrec_uso_mp72_%` rule; list block
+  `VIEWREC_NM_B_DONOR` at the end of the Makefile). It is 426 words vs 427, and the shorter body passes the
+  gate (the NM build only shifts the later functions by 4; objdiff pairs them by symbol). The NM donor calls
+  `gl_func_00000000(/* name */ ...)`: name-placeholder-calls.py only maps matching-build splices, so a
+  `CALL(name)` in an NM-only .cpp fails gate step 5 ("not among the ROM callees ... {}").
+- **The 3878 residual, restated with the real diff:** the target has a nop after the FIRST `c.lt.s` (the
+  `selFade > 0` grid test, 0x3BB0), and `or s5,zero,zero` / `li s7,2` / `li s6,1` sit after the bc1fl. Ours
+  speculates those three into the hazard slot above the branch, which as1 may do only because s5 / s6 / s7
+  are dead on the fall-out path. That path's first `.livereg` (gui_setColor) is the run-662 mask.
+  The C++ inline-temporary hypothesis gave nothing in about 15 minutes:
+  - inline `scol(d, a, c)` wrappers, with and without local copies of the parameters;
+  - block-local copies of the three arguments;
+  - `int rr = r; ... r = rr;` around the call;
+  - a `{ int r = 1, j = 2; ... }` shadow block and an aggregate `{r, 1, 2}` temporary;
+  - `int r = 0` at the declaration, with and without the for-init;
+  - C++ `for (int r ...)` / `for (int j ...)` scoping.
+  All of these are ndiff 11 (unchanged) or worse, and none sets the s5..s7 bits.
+  Scratch: `/tmp/claude-1000/-home-danjs-code-decomp/843f1ac1-389e-4d4a-9ec1-9423b96b9705/scratchpad/agentb/w70/` (mk.py anchor edits, run1.sh).
+- **snoweffects 0x1E60 NM 98.9 %** (objdiff), 300 words = target: agent-h's run-649 draft, moved into
+  `snoweffects_uso_ncc_b.cpp` (renamed types `SnowTexB` / `SnowGCtxB`; NM list `SNOW_NM_B_FUNCS` at the end
+  of the Makefile, spliced on build/non_matching only).
+  - **The jr ra fill is not local:** the IDO epilogue `lw ra; lw s0; addiu sp; jr ra; nop` vs
+    `...; jr ra; addiu sp` depends on the whole basic block's as1 schedule, even when the last 14 instructions
+    are identical (siblings 15D0 / 1A18 / 2310 are unfilled, 1E60 is filled).
+  - A `.s` oracle (as0 + as1 directly, without the driver's `-noglobal` for .s inputs, which adds a word)
+    showed that a label right before the epilogue fills it. From C, a dead `switch (t->w) { case 1: break; }`
+    does it: uopt keeps the switch-value load, ugen emits it, and as1 deletes it after scheduling.
+  - Swept over the 18 statement positions, the fill comes at positions 3 and 14..17. The best is before
+    the prim-colour packet: 60 diff lines, all a1 / a2 / a3 packet-pointer colouring.
+  - No-ops that uopt removes do nothing: `if (x) {}`, `t->w;`, `(void)t->h`, while(0), and goto labels
+    (labels change uopt colouring but ugen emits no label).
+  - The old `return &dl->buf[dl->count++]` next() gets down to 39 lines but never fills (301).
+  - Scratch: `/tmp/claude-1000/-home-danjs-code-decomp/843f1ac1-389e-4d4a-9ec1-9423b96b9705/scratchpad/agentb/se/` (cf.sh compile + diff, as.sh .s oracle, grid/ and grid2/ sweeps).
+- **snoweffects 0x559C: not decoded (time).** Reloc map (uso-imports sites):
+  - three mem_new calls (the 0x60 BaseMat with 8- / 4-byte members at +0x34 / +0x58, this == 0 protocol),
+    then BaseMat_init_000517E4;
+  - Data+0x1FBEC and Bss+0x3C168 (gfx context), gl_osVirtualToPhysical, gfx_emitLights_000454C4,
+    SnowRing_countSlots_000053E8;
+  - the slot loop: three more osVirtualToPhysical calls and Data+0x588 (hi 0x5970 / 0x5BEC, lo 0x59C4 / 0x5C44);
+  - Node_display at the end.
+  The frame is 480 (BaseMat on the stack at sp+0x150) and uses f20 / f22 and s0..s8.
+  An m2c draft (380 lines) is `/tmp/claude-1000/-home-danjs-code-decomp/843f1ac1-389e-4d4a-9ec1-9423b96b9705/scratchpad/agentb/se/m559c.c`, from `m559c.s`, which was rebuilt from the expected .o
+  with these relocs as names. Next: NCC transcription from that draft, in the
+  `snoweffects_uso_ncc_b.cpp` NM block.
+
 ### agent-b run 670: viewrec.uso 0x3878, how ugen builds `.livereg`, and what the residual needs (no new exact)
 
 No commits. 3878 is still at ndiff 11 (426 words; the target has 427, with the extra nop in the c.lt.s slot).
@@ -927,6 +977,47 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   not the source).
 - Not reached: 0x718C, 0x9328.
 
+### snoweffects.uso 0x6000+ (agent-e run 673)
+
+- Commits on agent-e (base 91633efb7): 6f1851f5e **0x7960 EXACT** (3557 -> 3558), bea11fde7 0x718C NM, 5533e64c1
+  0x64B8 / 0x6B28 NM gains. Gate PASS each. No renames.
+- **0x7960 EXACT (NCC, moved to the matching donor `snoweffects_uso_ncc_e.cpp`).** The zero / |speed| swap was an
+  **edg temporary shared between two expressions**: `ang = acosf(t->dist = -dot(..))` and the `?:` of |speed| both
+  used the edg temp M-28 (uopt `-zdbug:5` trace: M-28 has refs in bb1 (the acosf argument, f12) and bb5-7 (the
+  ternary)). One LR, so |speed| inherited the call argument's f12. Splitting the store into its own statement
+  (`t->dist = -dot(..); ang = acosf(t->dist);`) gives |speed| its own temp; uopt forwards the stored value, so no
+  reload. **General lever: when a `?:` result colours like an unrelated nearby value, look for an edg temp shared
+  with an embedded assignment / call argument (`lre.py` lists M-xx refs per bb).** The run 662 / 663 levers were
+  not needed.
+  - Trace harness for IDO 7.1 NCC: `/tmp/claude-1000/h414/u/out/NCC ... -Wo,-zdbug:5` (stderr = PICK trace,
+    `uoptlist` in cwd), then `h384/t/lre.py` and `h414/t/ord.py`; script `w673/tr.sh` (FN=function). ord.py's FP
+    names are one slot off: trace f2 / f12 / f14 / f16 / f18 = binary f0 / f2 / f12 / f14 / f16.
+- **0x718C decoded whole, spliced NM 97.0 % (471 words, frame 368 = target).** Effect C spawn update: state 99 and
+  +0x80 clear; a = 0 (cam f348 < 60 or |speed| < +0x214) / +-1 (|speed| > +0x218) / `(1 - f21C) * r + f21C` with
+  r = (|speed| - lo) / (hi - lo), negated for speed < 0; `t->timer--; if (t->timer < 0)` with +0x204 reload; then
+  `(a != 0)` through an int abs `?:`, a `for (i = 0; i < 1; i++)` pool +0xA0 spawn: u = +0x138 copied then lerped
+  to +0xF0 by randf; `w = v318 * f208` (w declared first, assigned by the by-value operator=), `SV a1 = v3B0 * f20C
+  * |a|`, `SV a2 = v114 * (1 + randf * RoData+0xB0) * f210; a2 *= |a|; if (0 < a) a2 *= -1`, w += a2, w += a1;
+  fields +0x1DC..+0x1F8, `r = randf(); alphaVel = f1EC; alpha = 128 + r * 127`, colour bytes lerped from cam +0xA30
+  to +0x224 by a local f = +0x220 with `(int)` casts (trunc.w.s; without the cast IDO emits the unsigned cvt
+  sequence). Frame levers: `sp`, `r`, `i`, `n`, `go` at function scope, the `if (p != 0)` block body, one dead
+  `{ int sc[2]; sc[0] = 0; }` before `w = ..`. Left: the operator* scalars and |speed| colour f12 where the target
+  has f16 (heavy loop weighting; see `w673/d718j.ord`), the `u = t->pos` copy materialises &t->pos (target reads
+  312(s1) directly; POD types, copy-ctor forms and by-value lerp helpers did not change it), and the inner edg
+  temps sit 4..8 bytes off.
+- **0x64B8 94.3 -> 97.0 %, 0x6B28 90.8 -> 93.8 % (both now the target's length).**
+  - **The &vFC register comes from operator* built through set()** (`SVb r; r.set(x * s, ..); return r;`, struct
+    SVb in the NM donor): the vector fields and u become SVb and uopt keeps `addiu v0,a1,252` like the target.
+    The 0x6B28 run 668 operator* (`return SV(x * s, ..)`) shared its ctor-parameter temps across every expansion,
+    so |speed| interfered with them and took f16, which also shifted the ugen FP temp ring for the whole
+    function. (A `fc = (SV *)((int)fc * 1)` pointer local also materialises &vFC, but SVb alone does it.)
+  - `t->timer--; if (t->timer < 0)` in place of `if (--t->timer < 0)`: the target's counter uses t-registers
+    (also in 0x718C).
+  - Left: 0x64B8 frame 352 vs 344 (the spawn-block temps are 4..12 bytes off), 0x6B28 frame 240 vs 232 and the
+    lerp loads.
+- Not reached: 0x9328 (the run 659 draft in `ncc_drafts/snoweffects_nm_e.cpp` is a real C++ ctor; it needs an
+  extern "C" splice shape before it can be measured for length), 0x9E10.
+
 ### nameent.uso 9BC + snoweffects below 0x6000 (agent-c run 655)
 
 - **nameent 21 / 21 EXACT** (agent-c f56621038; 3539 / 3579). 9BC's two scale spill slots were one edg
@@ -1259,6 +1350,32 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   Bss+0x50 pointer goes in s4 before the vertex-count test. There is also a v0/v1 pair in the ambient
   compare and the second walk's mask constants (-2 / -3 / -5 hoisted into s2..s4). Scratch:
   /tmp/claude-1000/agent-a/w654/a/best_A10C.cpp. 0x7FE0 is not started.
+
+## snoweffects.uso 0xA10C / 0x7FE0 (agent-a run 677)
+
+- **0xA10C EXACT (3558 -> 3559 / 3579, gate PASS, no renames; agent-a c59adb0e0).** New exact donor
+  `src/snoweffects_uso/snoweffects_uso_ncc_a.cpp` on both build paths (Makefile `SNOW_A_FUNCS`), void-typed
+  blank alias `gl_func_00000000_snowa_v`, `snoweffects_uso_func_0000A10C_rodata = 0xF4` (1/127).
+  - **The extra frame word was not the named item.** The `-Wo,-zdbug:6` isvar homes showed walk 1's loop
+    body has the named item (-80) and **the inline helper's copy of its `t` parameter** (-84). edg copies an
+    inline parameter into a pool temp unless the argument is substituted. `q` is substituted only because
+    the argument is an assignment to a variable (`item = ...`): edg evaluates it and uses the variable.
+    A cast of the assignment (`(SItem *)(type = ...)`) is not substituted and costs a word too.
+  - **Fix:** hold walk 1's item in the function-scope `type` (dead inside the walk). The helper's `q` is
+    typed `SType *`, the call passes `type = (SType *)it.cur->data`, and the store is
+    `((SItem *)type)->flags = 4`. That leaves one word in the loop body, as in the target.
+  - Reusing `c` or `i` for the item changes the colouring (s0 / s2 swap). Passing `t` twice (one use per
+    parameter) still copies both. `SLights *const &t` forces t to memory.
+- **0x7FE0 draft 85.7 -> 93.1 %, 811 -> 799 / 800 words (not spliced; the donor must be 800).** Levers are
+  listed in the draft's comment in `snoweffects_uso_ncc_nm_a.cpp`:
+  - int-local clears (separate zero web);
+  - `speed < 60 || |v| < lo`;
+  - an if / else for +-1;
+  - **d through a `TV(const TV &, float)` ctor**, which drops 13 words of return-temp / param-temp copy;
+  - &v114 / &vFC pointer locals hoisted;
+  - the vtx t value computed before the s store.
+  - Left: one `mov.s $f0,$f10` in the lerp (the target copies p.y into the register that held the reloaded
+    p.x). No change from: an inline lerp, a reused `float q`, a member lerp, `p.x += ...`.
 
 ## snoweffects.uso 0xA10C / 0x7FE0 (agent-a run 669)
 
