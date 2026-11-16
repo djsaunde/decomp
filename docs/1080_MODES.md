@@ -955,6 +955,57 @@ meaning; ColourParms_ctor (game_libs.c, 85) can now be written on RaceColourParm
 (the TimPauseBss twins in b3 / arcproc); MGRRaceProcess_drawIntro (match_import) colour pairs; the largest
 remaining functions (task 6 not reached): mgr_initMatchRace_00000700, MgrNameEntry_drawCongrats, tit_procMain.
 
+### Run 572 (agent-h): gadget.h parms over GdlParmBase, RaceProcess.name, this-adjusts, BackupOptions defaults
+
+Commits 717a44e93 and a3de2d001 on agent-h (base 9799250ab). Each was gated PASS after a clean rebuild:
+3288/3288, ROM identical, verify-blocks 6/6, 6089 named calls / 0 mismatches, uso-data-sites 0, INPUT_MGR 0.
+All 1278 .o files (matching and NON_MATCHING) are identical to the base by objdump -d -r -z plus .data /
+.rodata, with non-empty dumps. The cfe warnings are identical (590 lines, 291 x 712); the edg 3262 lines
+differ only by interleaving. All hand edits; no renames.
+
+- **gadget.h / parm.h** (agent-b's request). gadget.h now includes gdl/parm.h.
+  - GdlParm / GdlParmF / GdlParmRGBA: `char head[0xC]` is GdlParmBase's first three members, spelled out
+    (`GdlParmBase *next`, `GdlParmTag tag`, `s32 unk08`). The base is not embedded: about 120 parm type
+    stores write `->type`, 13 of them in agent-b's post1b. To embed `GdlParmBase base` instead, those stores
+    become `->base.type`, and agent-b would edit post1b.
+  - GdlParmRGBA.type was already `void *`.
+  - The `s32 unk04` in GdlParms, TimeGadgetParms, CountDownParms, FloatPosParms and CourseGadgetParms is
+    now `GdlParmBase *first`, as in GdlParmList. The 7 `= 0` stores follow.
+- **RaceProcess.name** (race.h) is `const char *`, and RaceProcess_init's arg2 is `const char *`. Every
+  caller already passed `(char *)&D + K`. match_imports/context_game_libs.h (not mine) still declares arg2
+  as s32; no TU sees both declarations.
+- **Pattern A**:
+  - The Cfront this-adjusts are `(char *)&gSnowBoard + delta`, all the same bytes. They are in
+    GameFlow_restart (2 sites), settings_setFlag4, Backup_resetOptionsData and RaceTracker_sendEndingMsg.
+    sendEndingMsg's prototyped cast now takes `char *`. GameDemoProcess_handleInput's `import_0001FFF8`
+    adjust is the same idiom.
+  - tit_procMain's GameDemoProcess_ctor argument (flags mask + ghost count) is `(char *)mask + count`.
+    An int sum swaps the addu operands in either operand order, so the char * is the lever. Typing `d` as
+    `InputMgr *` or `char *` re-allocates the whole function, so `d = (int)&import_00020098` stays.
+  - mgrproc 1693 passes `&self->base.elapsed` and `(char *)self->base.entries + K` to the K&R callee.
+  - Kept as levers:
+    - U64BGWall_ctor's `*(s32 *)(int)&import_8001FFA0_h[1]`. The plain `[1]`, `*(s32 *)&h[1]`, char + 4 and
+      `*(&h[0] + 1)` spellings all change bytes.
+    - mgr_openSession's dead `v3 = (int)&D`: a register int that reuses s0.
+- **Pattern D, game_createMap** `*(char **)(gEnvSettings_6808 + 0x3C) = o`: EnvSettings +0x3C is not a
+  mode. It is the BG box (game_createBGBox's result). EnvSettings_ctor clears it, and EnvSettings_display
+  sets the clear flag / colour only while it is 0. The fix is envobj.h `EnvSettings.mode` ->
+  `struct Node *bgBox`, which is agent-g's this run, so the site stays raw for now.
+- **Census**: Backup_resetOptionsData_0000AFC4 (10 sites, the largest) writes through SETTINGS(arg0):
+  unlocks, seqStep, flags, levels[], newMark[] / unk11. The unk6 loop keeps its walking `char *`. The 3
+  resetOptions / writeOptions calls pass `.options` without `(int)`.
+
+Port audit (h): A 27 -> 18 (all 126 -> 117); B 3, C 1, D 9 unchanged. Census raw sites: h 231 -> 223
+(all 1064 -> 1056).
+
+Next:
+- RaceTracker_passGates (8) and RaceTracker_ctor (7). passGates needs RaceEntry.gate / gateA / gateB typed
+  `struct RaceGate *` (race.h; RaceGate is in course.h) and RaceGate +0x5C / +0xC8 (course.h, not mine).
+  Its int * locals carry register levers, so retype the locals only.
+- game_createLights (8), game_setupMode (6 + 6 in the o2_2DA4 donor).
+- agent-g: EnvSettings +0x3C bgBox (above), then game_createMap's D site.
+- agent-b: whether to embed GdlParmBase and convert post1b's 13 `->type` stores.
+
 ### Run 567 (agent-h): TitleDemoProcess pointer fields, vptr / name stores, item structs, the 116C +0xA8 store
 
 Commit fb7f786e1 on agent-h (base 664b7a58e), gated PASS (3288/3288, ROM identical, verify-blocks 6/6, 6089
