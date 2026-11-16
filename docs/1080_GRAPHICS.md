@@ -977,3 +977,55 @@ h's sign-off. Then BasePolyShape_avgTriColour (6), gfx_submitFrameTask_000469A8 
 gfx_newDLContext (5), coll_markZeroWeight_0003C7A4, ItemMgr_spawnItem; census b top: BaseLight_ctor,
 LightTarget_display (8). The HostIO device object itself (gHostio, Bss 0x3C768, 8 bytes;
 HostioDev_vtbl) is still untyped.
+
+## 23. Run 560 (agent-b): port-audit top, BaseLight_ctor / LightTarget, HostioDev, gl_data.h dup
+
+Census (owner b raw struct-offset sites): 327 -> 288 (post0b 298 -> 259, post1b 26). port-audit
+owner b: 135 -> 109 (A 52 -> 44, B 12, C 3, D 68 -> 50; run 553's 155 had been lowered to 135 on
+main before this run). Two hand-edit commits, no renames; both gated (ROM byte-identical,
+3288/3288, 0 mismatches in all three source checks); every post0b change left the matching and
+NON_MATCHING objects identical in section bytes and relocations.
+
+- **BasePolyShape_avgTriColour(BasePolyShape *, int tri, u8 *out)**: vtxColours / triList / tris,
+  PolyTri.v. Byte levers: the indexed tri address `*(char **)&shape->tris` (the plain member moves
+  the t-ring) and the loop entry `*(unsigned char **)&shape->vtxColours` (the plain member swaps an addu).
+- **PolyShape_getFaceNormal(BasePolyShape *, tri, corner) -> f32 \***: it returns the corner's
+  *vertex* normal (vtxNormals row of tris[tri].v[corner], through the optional 6-byte remap
+  rows), so the name is wrong (a rename candidate: BasePolyShape_getCornerNormal). Levers
+  `*(PolyTri **)&shape->tris` and `*(char **)&shape->vtxNormals`; `remap[v * 3]` as a u16 *
+  moves the t-ring, so remap stays a byte pointer.
+- **gfx_newDLContext**: the int carrier is a `DLBuf *buf`.
+- **coll_markZeroWeight_0003C7A4(CollShape *)**: every triangle whose face normal has y == 0 (a
+  vertical face) gets CollTri.tag = -1, which the queries skip. A better name would be
+  coll_disableVerticalTris.
+- **ItemMgr_spawnItem(ItemMgr *, ItemType *, int) -> Node \***: newItem (vtable slot 10), attached
+  under the type, Node.name = &type->tag, then NodeMsg {7, arg} through slot 4 (handleMsg). The
+  old `pad1[4]` + `stk[2]` frame is the 12-byte NodeMsg (its unset reply is the dead word at 0x38).
+- **BaseLight_ctor**: MNode mflags / mtx, BaseLight flags / parms, BaseLightParms name / unk04 /
+  colHead (the Parm stores at m + 0xC / 0x10 / 0x20 stay raw: GdlParm is area h's gadget.h).
+- **LightTarget** (light.h) is a QNode: +0xDC pos (cvqs.trans), +0x114 queryPos (f32[3]: pos is
+  copied there and passed to gfx_selectLights, whose result goes to unk108). LightTarget_display,
+  _doCommand (0x72 sets mask) and _hostioParms ("LightMask" = mask, "Fade" = scale) use it. The
+  `scale` member is really the HostIO "Fade" but timproc / bootup sites use the name, so it stays.
+- **HostioDev** (new include/gdl/hostio.h): gHostio (Bss 0x3C768, 8 bytes) = {flags (bit 0
+  HOSTIO_READY: hostio_init's handshake), connected (hostio_connect sets 1 after msg 0x21)};
+  hostio_reset clears both and re-runs hostio_init. hostio_reset / init / connect take
+  HostioDev *; math_logFloatDiffs passes HOSTIODEV(&gHostio) (gl_proto_5c810 prototyped with
+  HostioDev * / char *). The other ~80 `&gHostio` arguments are untyped K&R calls (no int casts).
+  HostioDev_vtbl (gl_data.h, "vptr store by app_staticInit_000412E8") was not tied to gHostio:
+  the NCC donor only zeroes gHostio's first word (gHostio_412E8_m); its one vtable store goes to
+  the object behind gSysLib_412E8_l. Unverified which object that is, so the vtable name may be wrong.
+- gl_data.h: the second `gWindowDefaults` define (wave 2 list) is gone; its notes are merged
+  into the first.
+
+Left alone: gfx_submitFrameTask_000469A8's 5 sites are register levers in a hand-tuned exact
+body (`(s32)&...->win.flags`, `(int)&gGfxLib + 0x254`, folded `0 * (int)p` uses). ZoneShape_build
+(7): BasePolyShape +0x78 is a per-triangle u8 mark array (parse cmd 7 or ZoneShape_build's
+alloc(nTris), Mesh_paint fills it), but typing it `u8 *` forces a cast in area a's
+game_libs_o2_52CD4.c (`BASEPOLY(arg0)->unk78 = *q`), so it needs a coordinated change.
+MemberCallback_invoke_0003A0C4 (7): the Cfront member-callback struct exists only in game/sun.h
+(area g); a shared gdl one would collide by name.
+
+Next: ZoneShape_build with the unk78 type (coordinate with a); `<block>` (9) and
+dbg_printThreads (7); then port-audit Parms_addParm (4, after h's gadget.h retype), Node_Load (3),
+PolyShape_getNormal8 (3), coll_offsetPointsByMtx (3); the two rename candidates above.
