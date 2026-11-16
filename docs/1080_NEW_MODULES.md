@@ -201,6 +201,42 @@ Commits on agent-b: 3d2acf56d (checkpoint 45C), 200bd12fd (snoweffects 5FD4 / 61
   outside the segment uses it). Renamed FireTmpl_ctor, balloon_gdlWriteVec3, checkpoint_gdlWriteInt.
   Placeholders (gl_func_00000000, game_uso_func_00000000) are still refused.
 
+### agent-b run 646: viewrec.uso 0x3000..0x47FF (3506 / 3579, +3 exact, 1 NM)
+
+Commits on agent-b: 60626bf48 (36B4, 4518 EXACT; 4354 NM 84%), d1fad96a6 (3364 EXACT), e7a3d33de (episodes).
+No renames.
+
+- **Screen ctors 0x36B4 (erase, 200 bytes) / 0x4518 (replay, 0x9C)**: cfe C, the trnproc / h2h cfront
+  chain Node (0x2C) -> Process (0x50) -> screen, each level `if (o != 0 || (o = mem_new(N)) != 0)`.
+  Lever: `CALL(Node_ctor)(o2, name); NODE(o2)->vptr = vt;` on ONE source line. On two lines the vptr
+  lui/addiu are split by the o1 reload (1 word off). Vtables are 0-pinned per-site externs
+  (`vr_vtNode_*`, `vr_vtProc_*`, `vr_vtErase_36B4`, `vr_vtReplay_4518`). The other screen ctors (0x1748,
+  0x1B4C, 0x4854, 0x5200) should be the same shape.
+- **0x3364 (arcade records draw) EXACT**, cfe C. (1) The divisor `d` is declared first, so its home sits
+  above the three colour arrays (sp+0x74 / 0x84 / 0x94). Use int numerators over `d`. (2) Use do-while
+  loops: the outer one gives the loop-end increment order, and the inner one is
+  `j = 0; if (n > 0) do {...} while (j < n);`. (3) `show = 1` goes after the entry read. (4) Spell the
+  row-counter updates on the array element: a named temp costs one more frame home and moves the frame
+  by 8.
+- **0x4354 (erase pad handling) NM 84%**: the logic is right. Pad: 0x10001 / 0x4002 pick yes / no
+  (+0x70). A erases the set in proc+0x70: 0x100000 course times, 0x200000 course scores, 0x400000
+  arcade, 0x800000 ghost, 0x1000000 all (procState = nextProcState, unk84 = 0, unk88 = 1, resetAll,
+  fadeOut). The target colours the switch value v0 and the reloaded proc v1; ours gets v1 / a2, with
+  the &GameFlow lui hoisted into the last beq slot. Tried with the same result: switch, if-chain,
+  default:, a proc local, a switch-value local, every store order, `if (1) {}`, a separate GameFlow
+  symbol, and an NCC version of the same body.
+- **0x319C (course scores draw) is still INCLUDE_ASM**. The best body is 92%, but it is 2 words
+  longer than the target, and an NM wrap that changes length pushes 0x55A4 past the non-matching
+  TRUNCATE_TEXT (the gate then reports 55A4 at 33%). Decode: `d` first, colour 40 / 100 / 255 / 255
+  over d; `course = self+0x98`; gui_setCombine(&gui Bss+8); 0x1488(proc, course, 83); 3 entries with
+  e = Backup_courseRecordGetScore(*session + course*48, i); show = !(Backup_scoreEntryIsNew(*session +
+  course*48 + 24 + i*8) && proc flags & 8); rank = (prev == e->score) ? -1 : i; then 0x29B0(self, rank,
+  38, y, e->b0 & 7, (e->b0 & 0x78) >> 3), 0x2AE4(self, 132, y, e + 1), 0x2D9C(self, 196, y, e->score,
+  col); y = 123 + 34 * i. Open problem: in a structured loop, uopt hoists &col into s8 and spills
+  course*48, but the target keeps course*48 in s8 and does not CSE the second course*48. Next tries:
+  course*3*16 spellings, and the 0x3364 levers (do-while, `show = 1` after the call).
+- **Not started:** 0x3878 (records draw, 431 lines) and 0x3F24 (erase-select pad handling, 272 lines).
+
 ## snoweffects.uso progress (agent-h runs 621, 628)
 
 - 58 / 106 functions EXACT, 1 NM wrap (0x9E10, 98.27: item / head colouring swap). Commits on
