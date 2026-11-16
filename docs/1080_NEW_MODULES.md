@@ -237,6 +237,49 @@ No renames.
   course*3*16 spellings, and the 0x3364 levers (do-while, `show = 1` after the call).
 - **Not started:** 0x3878 (records draw, 431 lines) and 0x3F24 (erase-select pad handling, 272 lines).
 
+### agent-b run 651: viewrec.uso 0x3000..0x47FF + ctors 0x4854 / 0x5200 (3526 / 3579, +3 exact)
+
+Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episodes). No renames.
+
+- **Screen ctors 0x4854 (0x98 bytes) / 0x5200 (0x70 bytes) EXACT**, cfe C, in the 36B4 shape (levers
+  from agent-g's drafts). In 4854 every constant store follows Process_stop. Call it through the void
+  alias `gl_func_00000000_vrv`, so that no dead v0 def sits at the call and the shared constant 76
+  colours v0. In 5200: `+0x68 = vr_gLanguage`; the white is `d = 255.0f; c = 255 / d;` (a local
+  divisor and an int numerator keep the dividend and the divisor in separate mtc1s); and the 0x30 / 0x2C / 0x48
+  flag stores come right after the call. Six new 0-pinned vtable symbols, `vr_vt{Node,Proc,Screen}_{4854,5200}`.
+- **viewrec RoData layout:** 0x0..0xC = four separate 0.1f literals (0x3878), 0x10 = 0x3878's 5-entry
+  table, 0x24 = 0x3F24's 5-entry table, then 0x4990's tables at 0x38 / 0x48.
+- **0x3F24 (erase-select pad handling) EXACT**, cfe C: a switch on the phase (+0xA0), and inside it a
+  switch on the set cursor +0xA4 (0 course times / 1 course scores -> phase 1; 2 arcade / 3 ghost (only
+  if Backup_ghostGetMode) / 4 all -> proc mode 0x2000000, +0x70 = 1). Phase 1 moves the course +0xA8 on
+  the 2 x 4 grid. Two levers: the case-0 `snd_postEvent(5)` goes through the void alias (it frees v0 for
+  the +0xAC read), and the first phase-1 test reads `self+0xA8 > self+0xAC` rather than the saved `old`.
+  For the table, the unit's .rodata (only that table, while 0x3878 stays INCLUDE_ASM) is pinned NOLOAD at
+  **VMA 0x24 with `SUBALIGN(4)`** (tenshoe.ld `.viewrec_uso_3F24_jtbl`). Without SUBALIGN, the .o's
+  16-byte .rodata alignment puts it at 0x30. Once 0x3878 is C, its literals and table come first, and the
+  VMA goes back to 0.
+- **0x3878 (erase screen draw) is still INCLUDE_ASM. It needs MIPSpro 7.2.1 (tools/ncc721.sh).** The
+  target multiplies `64.0f * fade` and `blink * fade` with the constant / converted int as the first
+  mul.s operand. cfe always puts the field load first: every operand order, int constants and a local
+  copy all fail. IDO NCC gets the order right but lowers the 5-case switch to a beq chain. mp72 gets both
+  right. The best mp72 draft is 98.1 % of words (`--raw --pins`, diffwords 14 -> 24, with only the
+  scheduling below left).
+  - Levers: `for` loops with the sprite as `&sVrLabels[29 + i]`, and the grid as `&sVrLabels_3F0[r * 2 + j]`
+    (uopt strength-reduces them into the spilled row / index induction words at sp+80 / 84).
+  - Declare `col` then `blink`, then an unused `volatile int pad[6]`: this gives frame 152, col at 136,
+    blink at 132.
+  - Compare `r * 2 + j == self->course`.
+  - The one residual: uopt hoists the grid loop's `r = 0` and the constants 2 / 1 (s5 / s7 / s6) above the
+    `selFade > 0` bc1fl. The target keeps them after it, with a nop in the c.lt.s slot. `if (1) {}`
+    before or inside the if, and a do-while outer loop, do not help.
+  - With `&sVrLabels[21 + r*2 + j]`, the hoist matches the target but the row base is wrong (+504 is added
+    per row).
+  - Draft: /tmp/claude-1000/-home-danjs-code-decomp/843f1ac1-389e-4d4a-9ec1-9423b96b9705/scratchpad/agentb/vr3878_mp72_best.cpp.
+  - To land it, use an mp72 donor (`viewrec_uso_mp72_3878.cpp`, REPLACE_FUNC_BODY). Its .rodata reloc
+    becomes `viewrec_uso_func_00003878_rodata`, pinned 0, so the in-place addends 0..0x10 stand. 3F24's NOLOAD
+    VMA stays 0x24.
+- Not reached this run: 0x319C (3364 levers at the target length) and 0x4354 (84 % NM; unchanged).
+
 ## snoweffects.uso progress (agent-h runs 621, 628)
 
 - 58 / 106 functions EXACT, 1 NM wrap (0x9E10, 98.27: item / head colouring swap). Commits on
@@ -459,6 +502,42 @@ No renames.
   the timproc_uso_b5_ncc_2B74.cpp SelItemParms_ctor donor is the model.
 - Not started: 0x64B8, 0x718C, 0x7FE0, 0xA10C.
 
+### snoweffects.uso 0x6000+ (agent-e run 653)
+
+- **0x9884 EXACT** (commit 168ede1fa on agent-e; NCC donor in `snoweffects_uso_ncc_e.cpp`, pins
+  `gl_func_00000000_snow_sqrtf` and `snoweffects_uso_func_00009884_rodata` = RoData+0xF0).
+  Read the frame with `-O2 -g3` + an mdebug dump (`/tmp/claude-1000/c418/py/mdsym.py`). Ours had
+  p at vfp-16 and the `for (unsigned i ..)` counter at -40, and the target needs 3 named words above
+  the vertex local. The fix: declare `SnowLV *gp; int i; unsigned j;` up front (the restore loop and
+  the vertex loop each get their own function-scope counter), then `SnowLV vf; SnowLV p;` (vf first).
+  Bind the reference as `const SnowLV &g = *(gp = (SnowLV *)(D_00000000 + 0x128));`. A plain
+  `gp = ..;` assignment const-propagates 0x128 into the loads, and an initialised `gp` declared up
+  front does the same.
+- **0x7960** (draft 193 / 219, every instruction except frame offsets plus one FP swap). The layout
+  levers put the operator* result, the copy and push exactly at the target's vfp -72 / -60 / -44:
+  `float ang;` declared before `SnowV n;`; no named |speed| local; d in the outer if-block; a named
+  `SnowV push = n * -d;` in the inner block; `operator+=(const SnowV &)`. Left: the xform x/y/z homes
+  are 8 bytes high and the frame is 160 vs 176. Two more pool words in the push statement fix the
+  homes, but only through a dummy-parameter lever: a `SnowV(a, b, c, k, k2)` ctor called from
+  operator* with `s, s` keeps the code identical and puts the homes at -112 / -124, frame 168.
+  That leaves 8 bytes below the second xform block, plus the |speed| / zero f12 / f2 swap.
+  Did not move it: a nested `scaled()` (+4 words), a named result in operator*, a ctor through
+  set(), xform as a member or with pointer params (changes the code), `set()` / ctor assignments
+  for the side points.
+- **0x9328** (draft 78 / 247): the SnowTarget ctor, written as real C++. edg's `this == 0 ->
+  operator new` protocol comes out of the inline ctors by itself. The structure:
+  - base: SNode, then vptr +0x28 = Data+0;
+  - the Parms member at +0x240 is 0x8C bytes with an 8-byte head `{Data+0xA34, 0}` that has its own
+    new(8) fallback (a field, not a vptr: a polymorphic base adds a new(4));
+  - five inline Parm ctors over GdlParmBase (= Parms_addParm(this, owner, name by value, flag)):
+    float 40 / 10, Colour value / min / max passed by value (only the value is stored), int 0
+    (flag 0) and int 3;
+  - body: name = Data+0xA58, plus the field defaults.
+
+  Left: the target keeps the Parms `this` in a1 with sp+0xDC spills (only s0 saved), and each
+  Parm's name copy has its own word. Frame 224 vs 168.
+- Not started (no time this run): 0x64B8, 0x718C, 0x7FE0, 0xA10C, 0x6B28 (whole bodies), 0x8D70.
+
 ## trnproc.uso / nameent.uso progress (agent-c run 631)
 
 - trnproc 28 / 40 EXACT, nameent 17 / 21 EXACT + 1 NM (0x150, 41/45 words). Commits on agent-c:
@@ -624,6 +703,39 @@ No renames.
 - NM wraps spell the raw placeholder tokens: the named-call check cannot prove CALL() sites
   whose build path is INCLUDE_ASM.
 
+## viewrec.uso progress (agent-a run 654)
+
+- +3 EXACT (3530 -> 3533 on the agent-a base, gate PASS each): 0x266C (commit e24e1cb5d), 0x1488
+  (77102594f), 0x0 (c2919d89c). All three are in the NCC donor viewrec_uso_ncc.cpp; viewrec has no NM
+  wraps left below 0x3000.
+- **0x266C (records menu input), first NCC compile 95/209 -> exact in four steps:** `x--; if (x < 0)` instead
+  of `if (--x < 0)` (edg's pre-decrement temp reuses v1; the target has fresh t-registers): 14 words. The
+  state switch read through an `int st` local (v0, not v1): 9 words. The void alias on the snd_postEvent(5)
+  before the tab switch and the `proc->mode = proc->nextMode` copy (the dead int $v0 def pushed both into
+  v1): 2 words. `old` declared at function scope instead of in the case block (the block-scope one took a
+  home 8 bytes higher, frame 0x30 vs 0x28).
+- **0x1488:** `VrSprite &label = sVrLabels[i]; VrSprite *spr = &label;` gives the 0x28 frame with the pointer
+  spilled at sp+0x1C. A plain pointer local, two `&sVrLabels[i]`, or a bare reference are 5-7 words off.
+- **0x0 (a0 vs a1, read in the -Wo,-zdbug:5 colouring dump):** &sVrScreen took a0 because its range ended
+  before the jalr block, where edg's `this` temp is coloured a0. The cfe screen switches get a1 because their
+  second `if (sVrScreen) {}` stretches the range over that block. Under NCC a second test right after the
+  virtual call does the same (a1), but it splits the next blocks and the tail's &sVrProc range then reaches
+  back into an empty block and stays uncoloured (no `lui v0; addiu v0,0x87C` CSE; 8 words). Moving the
+  second test after the 0x1A08 call (or to the end of the function) gives both. Brute force on test
+  placement in the show block alone (250 variants) never got past 3 words.
+- **Other modules (only snoweffects attempted):**
+  - snoweffects 97C as NCC C++: 2/64 words, the same residual as the cfe NM (p reload above the mul.s).
+    All 120 orders of the first store group were tried; none matched.
+  - snoweffects 9E10 as NCC C++ with an inline member addChild: 4/30, the same as cfe. The dump shows why:
+    head is one range coloured a1 (call-argument preference). The target splits it: head is loaded into
+    a2, copied to a1 for list_append, and reloaded into a1 after the call. `c = head; head = 0;` before an
+    inline addChild(c) (kit CXCI kill) gets the copy in the delay slot and the 32-byte frame. But head then
+    colours v1 before item (higher priority), so item ends in a2: 10 words. Open: lower head's priority
+    below item's.
+  - Levers that may help the parked NMs: the void alias fits a v0/v1 swap after an int-returning call;
+    `h = 0` fits a pseudo needing v0 earlier; the zdbug:5 colouring read fits arg-register swaps (nameent
+    2F4 / trnproc 1778 if they are a0/a1 or v0/v1 residuals). Not attempted: owners are active.
+
 ## viewrec.uso progress (agent-a run 648)
 
 - +6 EXACT (3517 -> 3523 on the agent-a base, gate PASS): 0x2D0 (commit 033276f9c), 0x1068 / 0x18D4 /
@@ -648,6 +760,41 @@ No renames.
   tail CSE. Not tried yet: the permuter (it cannot parse C++ references, so it would need a C stand-in).
   Scratch: /tmp/claude-1000/agent-a/w648/v/r7.cpp.
 - Not reached this run: 0x266C (74%, redo as C++) and 0x1488 (NCC donor).
+
+## viewrec.uso / heli.uso (agent-g run 652)
+
+- **viewrec +3 EXACT (3524 -> 3527)**, commit d1fd61c1b on agent-g, no renames:
+  - **0x4990 (sound options pad handling) is MIPSpro 7.2.1.** Its two 4-label `switch (cursor)` are
+    4-entry jump tables (`sltiu at,v0,4`) at RoData +0x38 / +0x48: cfe tables from 5 labels and IDO 7.1
+    NCC never, so it is the 4-label family (MATCHING_WORKFLOW "MIPSpro 7.2.1 donor recipe"). Donor
+    `src/viewrec_uso/viewrec_uso_mp72_4990.cpp`, viewrec pattern rule + REPLACE_FUNC_BODY in the
+    Makefile. The donor's .rodata holds only the two tables (+0 / +0x10), so the splice-renamed
+    `viewrec_uso_func_00004990_rodata` is pinned to 0x38 (no layout function needed). The first C++
+    draft was already 99.1; the rest was `self->mode--;` as its own statement (the `--self->mode` call
+    argument saves a ugen temp the target burns). viewrec RoData: 4 x 0.1f at +0x0 (no Text reloc),
+    then 0x3F24's 10-entry table at +0x10, then the 4990 tables. When 0x3F24 is matched as cfe its table
+    will come first in viewrec_uso.c's .rodata; it does not affect the 4990 donor.
+  - **0x4DEC (sound options draw), cfe C.** The row-label sprite is `&sVrLabels_7E0[i]` with no pointer
+    local: uopt strength-reduces it into a temp spilled to sp+0x64, as in the target. A named `spr`
+    local spills into its own home instead (wrong slot). Frame 0x100: one `unused` declared before the
+    six colour arrays (white then sits at sp+0xEC) and `unused2[4]` after the scalars. `if (1) {}`
+    before `d = 255.0f` lets d reuse white's f0. The mode-label if is spelled `j != mode` (else = the
+    white one), giving the target's `beq` polarity.
+  - **0x5440 (VrScreen5C draw), cfe C**, `s32 unused[5]` for the 0x48 frame.
+  - New pins: sVrLabels_7E0 (Bss 0x7E0), gInputMgr_vr4990, vr_sndTbl_4990 (Data+0x318, in-place 0).
+    The screen at proc+0x58 is typedef `VrSoundOptions` in viewrec_uso.c (agent-b's ctor 0x4854 builds it).
+- **heli under NCC / 7.2.1, no gain:** 0x980 C++ (ListNode iterator class with inline next(), Vec3
+  by-value operator=, dy hoisted into a local) reaches 91.0 under both NCC and mp72 (cfe NM 94.7): the
+  first next() result lands in a0 where the target hoists `v0 = 0` and uses v0, and the frame is 0x50 vs
+  0x58. 0x4C0 NCC 85.7 (cfe NM 90.7): edg merges the `(float)0` web with 0.0f.
+- **heli B08 under mp72 (74.67, hc2.cpp):** `&pp` (sp+356) stays a global a3 candidate with every
+  spelling tried: pp as a struct member, as a 1-element array, through a reference, through a pointer
+  local, operator=(const Vec3 &) with an inner by-value copy. All score 73.4-74.6. The 7.2.1 donors in
+  the repo (game_uso B3C, titproc 116C, game_libs 76F0, kernel 1ADC) use the same `ncc721.sh -O2`
+  flags, so there is no flag lever. Still below the 80 % NM threshold; not committed.
+- **heli 8A8 under NCC (97.5):** edg drops unused locals (`int pad[2]`, `Vec3 unused`, volatile), so the
+  frame cannot be padded to 0x28; `h->off = Vec3(...)` keeps the temp in memory (67 %). The cfe NM
+  (99.4) stays.
 
 ## viewrec.uso progress (agent-a run 641)
 
