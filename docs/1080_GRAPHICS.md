@@ -1207,3 +1207,28 @@ b4d50d460 (hand edits).
   __OSContReadFormat local buffer (3).
 - Next: find the message-6 sender (likely a game_uso / bootup C++ class sending {6, node} through
   slot 4); a caller for coll_offsetPointsByMtx / app_newListHead in the mode USOs' import tables.
+
+## 29. Run 590 (agent-a): owner-a unknown-object closeout, data-table records, byte-lock retries
+
+Owner a: 84 justified raw sites (20 unknown-object, 55 data-table, 9 byte-lock) -> 34 (0 / 30 / 4). All hand edits, all byte-identical (all-.o diff + gate).
+
+- **Strip.vtxTotal** (polyshape.h, +0x58C): ids[] now ends at 0x58C (100 ids). The batch emitters
+  PolyShape_emitTriBatch_000483BC / gfx_emitLineBatch_000488A0 do `vtxTotal += nv` after each G_VTX. Their
+  object is the Strip (ctx = mesh, nline = nt, vbase = vtxBase); 488A0's per-line widths wd[] start at
+  0x59C = sizeof(Strip), a Strip-derived line strip.
+- **SysLib.msgQueue** in RcpMgr_ctor (donors 4D468 / 4D688 include sysapi.h). **ItemType.unk40** is the
+  Node attached under every new item (CourseMarkerTmpl_create = the marker type's newItem, like MNode_ctor).
+- **NodeMsg.arg.cursor** (node.h): a doCommand message is {opcode, stream read cursor}. Node_doCommand
+  post-increments it by one word per operand.
+- **GuiFont / GuiGlyph** (new include/game/guifont.h): the 0x28 font and 0x14 glyph built by gui_fontCreate
+  (its exact donor's GuiGlyphGrid148 / GuiGlyphCell148). Glyph {x, y, width, advance, leftBearing}.
+- **UsoSym** (uso.h, 12 bytes {name, value, size}); **BreakInfo** (rmon.h, ultralib BREAKINFO).
+- A DDM (gfx_getDdm) is {DL count, GdlRenderState} (gfx_initDdm); gfx_decodeMatCmd copies its state.
+- The h2h "vtable + 0x20" was RaceSpriteImage.width; the 4BAF4 parent +0x1E is the low half of the
+  parent Node's serial.
+- Byte-lock retries: AnimData numNodes (`*(s16 *)&self->numNodes`) and uso_initSlot's cursor
+  (`((UsoModuleSlot *)ptr)->secData[k]`) are now typed.
+- Left data-table 30: section-base / import-base addend reads (BoardList / CharacterList / KeyMessage /
+  Sun / GfxLib_reset / gfx_pickNode / heap_tempAlloc / light_setShadowMatrix / n64proc / SelectWin / RaceTracker),
+  sys_fatal's va_arg slots (5), and the debugger ROM header word (osInitialize x2). Next: kRoF_ / kData_ /
+  kBss_ constants checked with `uso-data-sites.py --uso <mode> sites FUNC`.
