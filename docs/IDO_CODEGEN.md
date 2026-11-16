@@ -14941,6 +14941,7 @@ Each block's `root` has a per-segment lifetime; IDO uses a temp register ($3-cla
 - [kit XI (agent-g 2026-10-20, run 109): twin ports and the one-reused-local rule. Four exacts (timproc_b3 19CC + 0E60, arcproc 0FA8 + 1D18) and b5 1460 93.7 -> 99.98. Port an EXACT twin's kit verbatim before probing (b1 0EE8 -> b3 0E60 -> arcproc 0FA8 state machines; b3 19CC -> arcproc 1D18 widget ctors); a value "held in v0 across a call" is usually the CALL'S RETURN; link blocks re-read the child into the SAME local; flag RMWs go through the mutated pointer (`o += 0xC4; *(int *)o |= 0x40;`) with no pre-loaded value local; `num / (float)255` (float var over a cast literal) gives two mtc1 of one lui; stack-arg stores written earlier load first; the `255.0f * x` FP pair swap (125C/1C90/2E3C/titproc 1710) is invariant across 20+ spellings](#kit-xi-run109) -- _first thing to try on an NM with an exact sibling: diff the two C bodies line by line and copy the sibling's spelling._
 - [game_libs_post/bootup kit IX (agent-c 2026-10-17, run 109): the UNROLL FACTOR follows the pre-optimisation loop body size -- a held `B` base local (even one uopt puts in s0) or a typed struct-array view makes the body bigger and drops x4 to x2 or to no unroll, naming the global at every access gives the target's x4 + andi-3 remainder (24378 69.5 -> 95.4); a dead bound reload + s32 counter in the `for` header keeps three classify loops rolled (1DCB4 probe); bootup pool reads need per-address scalars whenever a function has two of them, and `*(f32 *)0xC` was pool slot func_00000044 + 0xC; `/ (f32)4` keeps div.s; reassigning a float PARAM keeps it in its load register and one shared result local takes f0 (0610 93.2 -> 99.9); m2c `if (x == 1) {}` + unconditional store = conditional store; per-access scalar externs for baked `lui at,2` floats (2E354); 26214 is the audio-manager frame handler (55A0 87.6 -> 92.5, 26214 67.3 -> 79.1)](#kit-ix-unroll-body-size-run109) -- _an unroll-factor mismatch is a source-shape question, not a cap: shrink or grow the per-iteration IR first._
 - [post0b kit IV (agent-c 2026-10-17, run 105): two global loads issue in source order only when their statements share ONE line (48184 EXACT); a value colours by VARIABLE identity, so park a stream cursor in the int local another arm uses (4E96C EXACT); every block-local pointer temp reserves a frame home (+8 frame from two `{ int *t = ...; }`); a function-scope temp reused for a later sub-object shares its spill slot; m2c `s32 *p + 0x2C` bodies scale every offset x4](#post0b-kit-iv-run105) -- _check frame size and spill-slot offsets against the target first; they name the local set._
+- [Field conversion: `(*p).f` lowers like the raw read where `p->f` swaps operands or renumbers temps (agent-a run 531: snd_SoundObjUpdate, __rmonReadMem / WriteMem / RunThread)](#field-conversion-star-dot-spelling)
 - [Field conversion flips commutative operand order: a raw `*(T *)(p + K)` deref and the equivalent struct field load are ordered differently by cfe inside one `a OP b`, so a byte-safe field conversion sometimes needs the operands swapped (agent-b run 500: ConsoleMgr_scrollDown, CollObjMgr_update, BasePolyShape_genNormals)](#field-conversion-commutative-operand-swap)
 
 ## IDO-O0-STALE-NM-PERCENT-TABLE-REFLECTS-C-SHAPE
@@ -68949,3 +68950,17 @@ need more than one swap; leave those raw if a swap of each product does not rest
 Always diff `objdump -d -r` of the matching AND NON_MATCHING objects after a conversion pass.
 Examples: ConsoleMgr_scrollDown, CollObjMgr_update, BasePolyShape_genNormals (game_libs_post0b.c);
 BasePolyShape_avgTriColour / PolyShape_getFaceNormal (`idx * K + base` sums) were left raw.
+
+
+<a id="field-conversion-star-dot-spelling"></a>
+## Field conversion: `(*p).f` keeps the raw read's order when `p->f` does not (agent-a run 531)
+
+A third fix for the two entries above, needing no operand swap and no leftover raw read: spell the
+stubborn read `(*p).f`. In 7.1 (-O1 and -O2) and 5.3 -O1 it lowered like the raw
+`*(T *)((char *)p + K)` read wherever `p->f` swapped operands or renumbered temps. Cases (all
+objdump -d -r identical): snd_SoundObjUpdate (match_imports, -O2), 5 of 139 SoundObj reads, mul.s /
+add.s / beql operands; __rmonReadMem / __rmonWriteMem SP-window range tests
+`((*p).addr < LO) || (((*p).nbytes + (*p).addr) >= HI)` (kernel 7.1 -O1 and the 5.3 donor);
+__rmonRunThread's `sp94->tid != (*var_s0).id`. Find the sites by converting one field (or one
+statement) at a time and diffing the object; the agent-a run 531 bisect scripts did this greedily.
+
