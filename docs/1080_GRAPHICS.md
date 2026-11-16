@@ -1299,3 +1299,20 @@ both. Vtable slot meanings proven on the way (useful for the remaining `unk` wor
   CMod_staticInit (same as app_staticInit_000412E8).
 - BinFile slots 1 acquire / 2 release / 3 invalidate (BinFileMgr_getAcquire / getRelease / forEach).
 - Left: RcpMgr_func_0004DB38 (tagged `UNNAMED: unknown-role`: varargs-style return-1 stub, no reloc anywhere).
+
+## 33. Run 597 (agent-b): owner-b unnamed placeholder calls 141 -> 0 untagged
+
+Compiled sites in game_libs_post0b / post1b / post1b2c (`name-placeholder-calls.py plan` refused all):
+
+- 62 calls named by hand from the function's ROM R_MIPS_26 targets (`uso-imports.py sites bootup`) mapped
+  onto the built object's placeholder jals. Donor-spliced libultra bodies follow libultra call order (IDO
+  duplicates `while` tests, so jal count > site count; the check is a per-function multiset).
+- 51 sites were not calls: `gl_func_00000000` passed as a data address (HI16/LO16). Respelled with the
+  gl_data.h aliases (gSysLib, gSysDevBlock_3A4E8, gHostio, gMainHeap, gGfxLib, Window_vtbl, BinFile_vtbl,
+  new gTempHeap_3A210 = Bss+0x3A210 Sym 1503). objdiff ignores the reloc symbol name (expected/ has none).
+- An `X = 0xADDR;` line in undefined_syms_auto.txt for a function that is now defined in C makes the elf
+  symbol ABS, and the resolvers then print `Text+0xK` instead of the name (BinFile_set_000683C4, removed).
+- 28 tagged `UNNAMED:`: 26 mid-entry (osSetIntMask+0x8, osWritebackDCacheAll+0x4, osWritebackDCache+0x4,
+  __osDisableInt+0x4, __osExceptionPreamble+0x630 = __osEnqueueAndYield, +0x730 = __osEnqueueThread),
+  2 no-reloc (dead `if (0)` arms in gfx_newDLContext and math_quatAddAxis_0005C548).
+- rcp.h RcpMgr +0x48 = `preNmi` (set on event message 108 = OS_EVENT_PRENMI; App_onPreNmi while set).

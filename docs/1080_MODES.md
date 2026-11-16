@@ -1595,6 +1595,29 @@ int-typed-load levers first); arcproc_tail1 (42), bootup_uso_tail4 (24), MGRRace
 reached; the gGfxLib +0x254 / +0x130 sites wait for agent-b's GfxLib struct; SnowBoarder_ctor's remaining
 reads are GameFlow / InputMgr data sites (agent-a's aliases).
 
+### Run 599 (agent-h): last unnamed calls in agent-h's files named or `UNNAMED:`-tagged
+
+Commits 541300e15 (hand: 20 CALL names + 8 `&gSysLib` args) and 84fbefd83 (hand: 50 tags + D_00000050), both
+gated PASS (3288/3288, ROM identical, check 6353 named calls / 0 mismatches). Census: 0 unjustified unnamed
+calls / functions / globals in agent-h's files (calls overall 311 -> 233 unjustified).
+
+- **Named from relocs** where name-placeholder-calls.py plan refuses (donor splice / SUFFIX recipe hosts):
+  tim / trk_closeSession = Backup_closeSession (mod0 sym25, like arc's donors), h2h_closeSession = mem_delete
+  (its only import), ColourItem_create_0000C5B0 + boot_ItemType_create_0000EBE8 / EE8C = mem_new,
+  ColourItem_ctor, list_append; TreeTmpl_create's 8 (XCALL on the _087A4 aliases).
+- **fs_gdlRead* readers** (game_libs.c / game_libs_tail.c) passed the bare `gl_func_00000000` token as the
+  stream: it is gSysLib (Bss+0x3C740 Sym 73), now spelled `&gSysLib`.
+- **Callees no tool can name** (unknown-role): nameent.uso Text+0x18 (bind the mode NameEntry to the
+  session, right after its ctor) and Text+0x718 (on exit-fade done) in arc / mgr / tim / trk; heli.uso
+  Text+0x1D4 and fire.uso Text+0x0 (item_createHel / Cfr); import mod60 sym120 / 122 (SnowBoarder_ctor) and
+  sym179 / 180 (game_createMap, the "MapLighter" create): module id 60 is past the 59-entry USO table.
+- **Gotchas:** (1) arcproc_uso_func_00000000's jal is fs_gdlReadFile, but CALL() fails the check: the
+  PREFIX_BYTES entry-0 function owns no reloc site in the check's view (uso-imports prints `Text+0x1C`), so it
+  is tagged `sentinel`. (2) An NM-only .cpp donor (SnowBoarder_handleMsg, h2h_WinsDisplay_display_00001360)
+  cannot take CALL names (the .cpp check uses only functions whose bytes are the ROM); their tags name the
+  ROM callee per site in TextReloc order. (3) A function-address store (Process_exit: &GameFlow_restart_000116C8,
+  hi/lo) is not a jal, so CALL cannot spell it.
+
 ### Run 524 (agent-h): Parms ctor fields, WorldRegistry map / players, restart chain, PointsGadget_update donor
 
 Commits on agent-h (base 57b2ad9b3), each gated PASS (3288/3288, ROM identical, 5457 named calls / 0

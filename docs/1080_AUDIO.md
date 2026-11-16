@@ -1171,3 +1171,11 @@ the match_imports objects, matching and NON_MATCHING, identical by `objdump -d -
 - **Next:** post.c `--top`: AudioLoad_GetSampleBank, AudioLoad_InitTable, InitSequencePlayerChannels'
   last 5, AudioSynth_LoadReverbSamples, Audio_InitSyntheticWave (5 each), MCamera_ctor /
   hostioParms; snd_SoundObjUpdateChannel (match_imports, 6).
+
+## Run 600 (agent-c): unnamed calls / D_ globals in game_libs_post.c and the snd_ imports
+
+- `gl_osSetIntMask+0x8`, `gl_osWritebackDCache+0x4`, `gl_osWritebackDCacheAll+0x4`: the splat symbols of the game_libs libultra copies start at the preceding object's pad words, so the ROM TextRelocs in AudioHeap_Init / Audio_InvalDCache / Audio_WritebackDCache point mid-symbol. The 8 blank calls carry `UNNAMED: mid-entry` tags.
+- Audio_NoteInitAll's blank call is `AudioHeap_AllocDmaMemory` (TextReloc 0x3DBD8); `name-placeholder-calls.py plan` refuses the function only because of its SUFFIX_BYTES_FORCE pad.
+- fs_gdlReadInt/Quad (0x473F4.., names carry stale suffixes): the `gl_func_00000000` first arg of fs_gdlReadFile is `&gSysLib` (Bss+0x3C740).
+- Renamed: `gl_hdwrBugFlag[_w1/_w0]` (aisetnextbuf.c static, Data+0x1B710), `gl_fatalHaltExitCombo` (sys_fatalHaltLoop's pad-combo table, Data+0x1E21C); macro alias `gInvalidAdpcmCodeBook` (OoT D_8012FBA8, MM name).
+- snd_SetPlayer1Channel15IO_2D910's `D_0001C1xx` are game_libs Data base placeholders (`UNNAMED: data-base`); D_8016B780 stays `unknown-role` (OoT write-only, no upstream name).

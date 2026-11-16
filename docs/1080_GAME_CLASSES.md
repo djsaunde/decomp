@@ -42,8 +42,11 @@
 
 ## 0. State for porters (agent-g run 575, final wave)
 
-- **Fully typed:** every bootup_uso and game_uso function has a real or kind-qualified name (bootup 19
-  intentional placeholders that double as USO data bases, game_uso 0; census in READABILITY_PLAN 0). Class
+- **Fully typed:** every bootup_uso and game_uso function has a real or kind-qualified name (bootup: 0
+  placeholder / 0 weak since agent-h run 596 named the last 19 placeholders and 8 weak names, only the
+  address-0 sentinel bootup_uso_func_00000000 is left; game_uso 0; census in READABILITY_PLAN 0). The
+  calls bootup still spells as placeholders all carry `UNNAMED:` tags (agent-h run 599: unsplit heli / fire /
+  nameent exporters, the unresolvable mod60 imports, the NM-only C++ donors, gl_bzero+0xC). Class
   headers: snowboarder.h (SnowBoarder + DNode base + Parms), snowai.h (SnowAI, its Parms and states),
   rideranim.h (RiderAnim, its PMF state machine, AnimPlayer base), tricktable.h (TrickTable / TrickEntry),
   camera.h, course.h, envobj.h, sun.h, input.h (InputMgr / RiderInput) and game_uso_data.h (named Data /
