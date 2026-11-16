@@ -912,6 +912,68 @@ SnowBoarder, +0x800 input; InputPad +0x34 unnamed; the shared q temp is a lever)
 (game_libs_o2_3430.c FW forms -> TPOINTS / POPUP); bootup_uso.c SnowBoarder_update (14) and the Tmpl
 helpers; mgrproc MGRRaceProcess_drawIntro (9) / mgr_DataManager_update (7); h2h_createPauseMenu (4).
 
+### Run 533 (agent-h): WinsDisplay, TreeTmpl, RaceSprite, RaceEntry score, GameFlow alias sites
+
+Commits on agent-h (base 90d27efd3), each gated PASS (3288/3288, ROM identical, 6012 named calls / 0
+mismatches, gameflow-import-sites.py check 0 mismatches; every touched .o, donors included, identical by
+objdump -d -r -z in the matching and NON_MATCHING builds): bb18709d3 (H2HWinsDisplay bodies), aa4463dbe
+(TreeTmpl), 9a948d1a7 (RaceEntry score / shownPending, TrkDataManager_update), bfbc96500 (RaceSprite,
+arcproc_tail1), c2b97f488 (mgr drawIntro, bootup_uso_tail4), e52c235d9 (bootup_uso.c), a7bc7b16c (timproc
+b1 / b3), eb8a61fb0 (h2hproc), 26c36cbe2 (titproc), c465427e3 (game_libs.c / tail / mgrproc). All hand
+edits; no renames, no renames.tsv lines.
+
+- **RaceSprite** (gdl/race.h, 0x18) is the gui_uso sprite slot: image 0x10 = BinFileMgr_getAcquire(fileId),
+  fileId 0x14 (gui_spriteLoad / Refresh / Release); **RaceSpriteImage.width** (s16 +0x20) is what every
+  overlay reads to place the next sprite (arc / mgr drawIntro, h2h WinsDisplay, CoolGadget bar). H2HWinsDisplay
+  .sprites is RaceSprite[4] (the GuiSprite of bb18709d3 was folded into it in bfbc96500).
+- **H2HWinsDisplay bodies**: the NM display body (frame, fader + VT_SLOT 2, race spriteSet / winner / wins,
+  sprites) and the matching update NCC donor (layout mirrors: H2HWinsDisplay, WhiteFader, RaceProcess
+  .timeout, GuiMenu cursor / rows; NCC donors build without -I include, so modeproc.h can't be included).
+  H2HRace.wins is a pointer to s32[2] (`((int *)wins)[i]`).
+- **TreeTmpl** (envobj.h, 0x74): the "tr1".. SNodeItemType item_registerTemplates builds (bootup_uso_ncc_55A0
+  .cpp): ItemType head, items 0x34 (Trees via SNode.next), shape 0x40 = the PolyShape TreeTmpl_create builds
+  once with PolyShape_ctor(0, "tree", shapeData, 0) (callee from the bootup.uso TextReloc), shapeData 0x48,
+  colour 0x4C, fog 0x5C (FogParms).
+- **RaceEntry** 0x18 score / 0x20 shownPending (stepped toward pendingPoints by 50 / 5 / 1 with
+  snd_sendEvent(0x20, step) in tim / trk / arc update; points94 shows it). **TimDataManager 0xDC
+  ghostReplayMode** (the TrkDataManager 0xD8 twin). **H2HDataManager 0xE8 / 0xEC health1 / health2** (the two
+  CoolGadgets showing entries[0 / 1].health; a player retires at cur 0).
+- **Int-load lever check (TrkDataManager_update)**: yes, it applies to the entry floats passed to the course
+  gadget (`*(int *)&entries->pct / posX / progress`, same loads). points94 is a PointsPopup (alpha 0x78), +0x18
+  of both gadgets is Node.doFlags. Arm 3 keeps `fl = (int *)entries; fl[8]` (the field form changes the code).
+- **New general byte fact**: `*(int *)&p->field` is NOT the same tree as `p->field` under IDO cfe; it is the
+  same as the raw `*(int *)((char *)p + K)`. Every "the member spelling recolours the fp regs / swaps the
+  loads" site tried this run (CountDownGadget / Time / BestGadget alpha, CoolGadget `m[0] + xps`, the Parm
+  cascade's `*(char **)&PARM(m2)->type = &D`) was byte-identical in that spelling, while `(s32)&D` stores and
+  plain members changed the code. Also `entry->score != finalTime` vs `finalTime != entry->score` swaps the
+  two loads (write the field whose load comes first on the left).
+- **GameFlow via per-site aliases**: many `D_<mod>_<addr>_x` / `D_00000000` / `import_00020098` tokens are
+  GameFlow (bootup Bss+0xF8); they are now `INPUT_MGR(tok).field` / `GAMEFLOW(base)->field` (procState,
+  nextProcState, nextFlowMode, seq, demoIndex, backup, dataMgr, fader, unk184, locked, unk84 / 88). Proof per
+  function: a throwaway reloc mapper (obj relocs aligned to `uso-imports.py sites <mod>` rows by the first
+  jal) showed each token's ROM TextReloc target. gameflow-import-sites.py does not cover these (check: only
+  0x8002xxxx tokens; plan crashes on titproc_uso.c with KeyError '' in scan, agent-a's tool).
+- Other: VT_SLOT 10 for every `vt + 0x5C / 0x58` call in the mode ctors; BackupArcadeEntry.score /
+  BackupTimeEntry.time[] / BackupScoreEntry.score record reads; WorldRegistry players[i].rider / windows[0]
+  in the replay starts (h2h, titproc demo); func_000003F8 (sound pan) on CamWindow->cam world[3] / view rows;
+  BaseLight.flags RMW levers; TrickPointsGadget.allIdle; CoolGadget seg / cur.
+
+Census (readability-census.py raw casts) before -> after: arcproc 44 -> 14, bootup_uso 362 -> 311, h2hproc
+68 -> 24, timproc b1 60 -> 18, b3 54 -> 23, titproc 84 -> 54, mgrproc 72 -> 65, game_libs (segment) 1408 ->
+1398; owner h 1084 -> 839; all 3453 -> 3208. Files (census, compiled code): bootup_uso.c 134 -> 107,
+game_libs.c 95 -> 89, game_libs_tail.c 38 -> 34. Whole-file `+K` casts (NM bodies and comments included):
+h2hproc_uso.c 108 -> 42, titproc_uso.c 58 -> 27, timproc_uso_b1.c 60 -> 18, timproc_uso_b3.c 51 -> 20,
+arcproc_uso_tail1.c 51 -> 21, bootup_uso_tail4.c 33 -> 9, mgrproc_uso.c 39 -> 24.
+
+Next: game_libs.c ColourParms_ctor (85, all data tag / kRo_ sites: agent-a's data spelling); bootup_uso.c's
+Snower / Fog / EnvSettings / BGBox / Tv1Tmpl gGfxLib sites (agent-b's GfxLib); BaseLight colour parm
+(0x10C = Parms head + a GdlParmRGBA, value at 0x124: gdl/light.h is not mine); FallingSnow_create's owner
+(+0x40 of an unknown object, gInputMgr_74e8_g / _h aliases: check their relocs); MemberCallback_invoke
+_00007BF4 (sun.h's MemberCallback has Pair2 pmf: needs s16 delta / index fields); RiderCam_command's a2 +
+0x30 (the course "cam" item: a ColourItem?); mgrproc import_8002xxxx_b sites the gameflow tool skips;
+h2h / tim / trk / arc *_a Bss aliases (+4 / +0xA8: each mode's own Bss process pointer, a per-module struct);
+the RaceProcess colour blocks at 0x260 / 0x284 / 0x380 / 0x3A4 (inside unk140: more RaceColour pairs).
+
 ### Run 529 (agent-h): SnowBoarder_ctor, TitleDemoProcess_handleInput, TrkDataManager, Tree, H2HWinsDisplay
 
 Commits on agent-h (base cf7d7758f), each gated PASS (3288/3288, ROM identical, 6012 named calls / 0
