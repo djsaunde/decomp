@@ -406,6 +406,26 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   - Not reached: 0x270, 0xC90, 0x28E0, 0x39C4, 0x47D4, 0x4E5C, 0x559C, then 0x4188 / 0x97C.
     Tools: /tmp/claude-1000/agent-h/r649/ (dis.py annotated target, cf.sh compile + diff, tex4.py, t43h.cpp).
 
+- Run 656 (agent-h, commits 0603fe742 28cddb438, no renames): +1 EXACT (0x39C4), +1 NM (0x4E5C, objdiff 99.9 %).
+  - **0x39C4 SnowFall fill EXACT** (NCC donor in snoweffects_uso_ncc.cpp, `_rodata` pin 0x10: donor .rodata
+    +4 because 27A8's word comes first in the file). Levers: GfxLib through a local pointer
+    (`SnowGfxLib *gl = (SnowGfxLib *)D_00000000`) keeps one &D base for worldScale (296(v0)) instead of a
+    folded D+0x128 lui; **`if (1) {}` right after the third sys_randf** stops uopt sinking
+    b = (r - 0.5) * 60 down to its first use (169 -> 22 diff lines); the constant-store block wants the
+    gravity load first (720-permutation search) and accel.y between accel.x and accel.z (move-one search).
+  - **0x4E5C** (NM donor snoweffects_uso_ncc_nm.cpp): every instruction matches; frame 192 vs 216. mdebug
+    (`/tmp/claude-1000/c643/mdebug.py` on an `-O2 -g3` build): ours ang -4, hit -16, two pool words -20 / -24,
+    xf nx..nz -28..-36. Target: xf's nz at -28, so it has no pool words there. Those words are pointer
+    pool slots shared by the inline dot() refs and xf()'s params: removing both (explicit dot plus a macro
+    xf) frees one, but changes code. The operator* chains are r -92 / ret -76 / param -60 and r -152 /
+    ret -76 / param -140, with 4-byte gaps. Ours packs them (-76 / -60 / -108 shared). Named-`d`,
+    by-value `a`, member operator* and ctor-return probes all change code or don't move slots.
+  - 0x4374: the xf macro form also changes code (208 vs 210 words). The 8-byte gap under pa / pb is the
+    xf param pool.
+  - Not reached: 0x47D4 (418 words: slot-state update, Vec3 temps), 0x559C (~650 words), 15D0 family /
+    4188 live-unit, 1E60, 97C. Tools: /tmp/claude-1000/agent-h/r656/ (md.sh = -g3 slot dump, vm.sh =
+    variant + slots, abl.py = ablation batches, perm6.py / mv1.py statement-order searches).
+
 ### snoweffects.uso 0x6000+ (agent-e run 639)
 
 - +2 EXACT (commit feb67fb6a on agent-e): 0x8C60 and 0x9FE8, both IDO 7.1 NCC. Own donor
