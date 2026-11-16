@@ -1823,6 +1823,79 @@ gamegfx's Data is now a blob (29 modules).
   `dbg_printThreads(n)`, a misnamed placeholder for `mem_new`, so QNode_ctor references
   `dbg_printThreads` three times.
 
+### 16.7 Naming the ambiguous sites (run 618)
+
+Run 618 (agent-a), on main 2a1ec167d, commits 0f26a1ab5, 5cc61957a, 8ddc2abc8 (tool output),
+2f97f2c26 and 6ea9066f4 on agent-a. Gate PASS on each source state.
+
+**The `dbg_printThreads` "bug" (item 4).** Not a misnaming in the matching build: eight game_libs
+NCC donors (34890, 3E5E0, 40070, 41D40, 46050, 48510, 4B0A8, 4C5E4) used `dbg_printThreads` as a
+generic placeholder and renamed it in the object with `objcopy --redefine-sym
+dbg_printThreads=<tok>`. The matching bytes and relocs were right. The port compiles the `.cpp`
+without the objcopy, so each of those calls went to the real `dbg_printThreads`. The gate did
+not catch it because `check` compares only CALL / XCALL names; a bare token is never checked,
+and the objcopy pointed the object's reloc at the placeholder anyway. Fix: the source now
+spells the post-objcopy token (`gl_func_00000000` / `gl_*_c34458`), and the redefine is gone
+(same bytes). Then every site got its proven name: QNode_ctor's `operator new` -> `mem_new`,
+the inline Base ctor -> `MNode_initMatrices`, `zero()` -> `math_mtxAddTranslation`, the last
+call -> `math_quatScaleToMtx4` (the ROM relocs, in order).
+
+**Scanner gaps fixed (`name-placeholder-calls.py`, also used by `port-gen-binds.py` and
+`gameflow-import-sites.py`).** These sites were silently skipped before:
+- functions inside `extern "C" { }`;
+- inline member functions in struct / class bodies (their verify declarations go before the
+  outermost class);
+- K&R definitions (`T f(a) T1 a; {`: the header was cut at the parameter declarations);
+- `_c34458` tokens: the donors' zero-pinned blank-jal tokens.
+
+**Macro-spelled names.** `macro_named()` counts the CALL / XCALL names in a `#define` body once
+per use in a function (honouring `#undef`; uses inside `CALL(name)` are skipped). The gate's
+`check` now verifies them (6695 named calls, 0 mismatches), and `port-gen-binds` subtracts
+them. SnowAI_ctor's 82 INIT_ITER sites had been listed as ambiguous only because of this. The
+audio files' `#define Audio_GetDrum (Drum *)gl_func_00000000` aliases now read
+`CALL(Audio_GetDrum)` (24 macros, 3 files).
+
+**C++ subtraction.** A donor's named sites form one pool per file, because a site's source block
+is an inline or a class name, never the object function. Before this, no donor's CALL names were
+subtracted at all.
+
+`plan --write --funcs port/gen/binds-left.tsv` named **169 sites** (proven per site). Two
+donors needed `#ifdef PORT` fixes once named: 34890's recursive void call is read as a value,
+and 116C calls `tit_nextDemo()` with no argument.
+
+**Also fixed (from agent-g run 619):**
+- `port-gen-uso.py` read `port_defined()`'s tuple as the name set, so every code target in
+  `uso_modules.c` was 0. 3161 Text targets now bind.
+- CMake adds `sysapi.c` and `fs/fs.c` to the host sources, and builds `test_fs` under
+  `PORT_LINK`, each only when the file exists (they are on main, not in this tree yet).
+- **Not added:** port/audio (agent-c). It includes `<stdint.h>`, which fails without a 32-bit
+  libc. It needs `PORT_LIBC_DECLS_ONLY`-style headers first. Until then, `port_audio_*` (3) show
+  up as undefined (`other`).
+
+**Measured.**
+- binds-left: ambiguous `gl_func_00000000` went from 48 functions / 392 sites to
+  **16 / 69**. All ambiguous pairs: 120 -> 103.
+- `port/undefined.txt`: 145 -> 143 symbols. `gl_func_00000000` refs went from 151 to 68;
+  `gl_578b4_c34458` and `gl_func_00000000_116c_v` are gone.
+- Blocking: 17 plumbing + 5 match_imports + 24 data aliases + 39 C++ + `glv_2a44`, plus 3
+  `port_audio_*` that are new from main.
+
+**Left (`gl_func_00000000`):**
+- the 5 `-O0` NCC donors `app_createGame_*` and `ColourItem_create`: their verify compile
+  differs, so they need the o0 recipe in `compile_verify_cpp`;
+- PolyShape_display (48AEC, 13 sites);
+- the 6 `gl_osSetIntMask+0x8` / `gl_osWritebackDCache*+0x4` functions: plan needs the padding
+  rule that `port-gen-binds` already applies (`sym+pad` -> `sym`);
+- `Text+0x0` / `+0x18` / `+0x718`: modules with no names;
+- AudioHeap_DiscardSampleCaches (a nested macro).
+
+**Not started this run:**
+- `D_00000000` (56 functions / 222 sites, via `uso-data-sites.py`);
+- `timproc_uso_b5_alias` (6 / 176);
+- the 39 C++ cross-donor references (21 ctor pairs; the vtable decision);
+- the 24 data aliases;
+- `glv_2a44`.
+
 ## 17. M1: libultra shim and main loop
 
 agent-g run 610, branch agent-g. Files (all new, under `projects/1080-decomp/port/`):
