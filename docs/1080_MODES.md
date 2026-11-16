@@ -955,6 +955,44 @@ meaning; ColourParms_ctor (game_libs.c, 85) can now be written on RaceColourParm
 (the TimPauseBss twins in b3 / arcproc); MGRRaceProcess_drawIntro (match_import) colour pairs; the largest
 remaining functions (task 6 not reached): mgr_initMatchRace_00000700, MgrNameEntry_drawCongrats, tit_procMain.
 
+### Run 559 (agent-h): race.h / gadget.h pointer fields, menu-row and course-list sites, SnowBoarder_ctor
+
+Commits on agent-h (base 2fe63c692), each gated PASS (3288/3288, ROM identical, verify-blocks 6/6, 6089 named
+calls / 0 mismatches, uso-data-sites 0, INPUT_MGR 0) after a full clean rebuild with all 1268 .o files
+(matching + NON_MATCHING) identical to the base by objdump -d -r -z plus .data / .rodata (non-empty dumps), and
+no new cfe warnings: de9e883bd (race.h pattern H), 3b3b82b2d (H2HRace.dataMgr), 8e01409f6 (gadget.h pointers),
+c42e5143e (onPauseSelect / o0_19C), c9a29421a (SnowBoarder_ctor). All hand edits; no renames.
+
+- **race.h pattern H**: RaceProcess.parent is `Node *`, TimRace.dataManager `struct RaceTracker *`,
+  RaceTracker.vptr `char *` (as Node.vptr), RaceTracker.owner `RaceProcess *`; H2HRace.dataMgr (modeproc.h)
+  `struct H2HDataManager *`. Only six stores needed a cast; the readers already went through `(char *)` /
+  DATAMGR().
+- **gadget.h**: GdlParm.type / GdlParmF.type are `void *` (the parm-type vtable), so the ~90 typed stores read
+  `PARM(m)->type = &gl_ref_...;` with no cast (SnowBoarder_ctor 43, game_libs.c 31, agent-b's DNode_ctor 13);
+  every Parms `name` is `const char *` (`->name = &sStr_...`); Gadget / CoolGadget label1 / label2 are `char *`.
+  snowboarder.h's C++ GdlParmF mirror follows; dnode.h's GdlParmV3.type / DNodeParms.name (agent-b) are still s32.
+  game_libs.c's sStr_Colour_Parms_CF80 extern is now `char`.
+- **Menu rows**: H2HRaceProcess_onPauseSelect reads `((GuiRow *)((char *)menu->rows + menu->cursor * k))->arg`
+  (k = the shared 0x28 multiplier lever). With char * arithmetic the pointer must be written FIRST: the
+  `cursor * k + (char *)rows` order swaps the addu operands (the old int form wanted the opposite order).
+- **mgrproc_uso_o0_19C.c** includes game/modeproc.h: procMain state 4 is `FLOWPROC(a0)->courseList->courses[idx]`
+  / `riders[idx]`, mgr_pickRivals fills `courseList->riders[]`. At -O0 the member forms gave the same bytes as
+  the `list[idx + 3]` / `+ 0x24 + i * 4` spellings.
+- **SnowBoarder_ctor**: the func_000000F0 + 0x44 alias is GameFlow.game (+0x134): `FLOW_90CC =
+  GAMEFLOW((char *)gInputMgr_90cc_dF0 - 0xF0)` (as FLOW_74E8_H), and the spray / trail nodes attach under
+  `((WorldRegistry *)FLOW_90CC->game)->egRoot` / `bgRoot`. The fn-typed gProcNodeList base keeps its addiu
+  through `((BuW90 *)gProcNodeList_41700_90cc_fz)->f00 / f08 / f04`.
+
+Port audit before -> after: A 314 -> 227 (h 143 -> 69, b 60 -> 47), C 20 -> 16 (h 5 -> 1), D 246 -> 232
+(h 46 -> 32), H 39 -> 34 (include/game 16 -> 15, include/gdl 23 -> 19); B unchanged (157, h 38).
+Census: owner h raw sites 316 -> 295, all raw casts 1370 -> 1349, accessor uses 176 (unchanged).
+
+Next: SnowBoarder_ctor's last site is `COLLOBJ(var_s0)->vptr = (s32)&bu_90cc_imp30` (coll.h's owner would
+retype CollObj.vptr); ColourParms_ctor (32 A sites, the RaceColourParms sub-object addresses: needs a lever or
+a typed parm-ctor argument); GuiRow.arg is the row callback (could become a function pointer); dnode.h's
+GdlParmV3.type / DNodeParms.name to match gadget.h (agent-b); since main 24749e1ce backup.h is C++-guarded, so
+mgr_drawResults' `session->modes` reads can convert; the remaining agent-h pattern B (38) and D (32).
+
 ### Run 556 (agent-h): pause-menu Bss twins, GuiMenu colours, MgrRace.courseList
 
 Commits on agent-h (base e10de4848), each gated PASS (3288/3288, ROM identical, 6089 named calls / 0
