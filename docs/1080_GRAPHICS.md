@@ -1177,3 +1177,33 @@ matching and NON_MATCHING builds (whole-object `objdump -drz` diff).
   DLContext), Cfront inline member ctors (FW64 x2, the col-tag block x5), button-map record (2),
   8-byte list head (2), vFP1 callback record (2), and singles (MNode_ctor +0x40, B68 at obj +60,
   gfx_copyField64, frame-start cb vptr +0x5C, BasePolyShape_emitTriPosUv arg4 +0x40).
+
+## 28. Run 587 (agent-b): unknown-object closeout, DynArrPool_init
+
+owner b raw sites 51 -> 21 (unknown-object 27 -> 8, data-table 20 -> 9, donor-mirror 4); objects
+unchanged in both builds. Commits 2ce862b4d (pure rename DynArr_init_000665A4 -> DynArrPool_init),
+b4d50d460 (hand edits).
+
+- **Strip** (polyshape.h, 0x59C): the Cfront class of Strip::add = PolyShape_addFace_00048510.
+  {mesh (DLContext) +0, nv +4, nt +8, vtxBase +0xC, tris[200][3] +0x14, ids +0x4C4, maxVtx +0x590,
+  mode +0x594, vptr +0x598}. gfx_findVtx_00048720 / gfx_findFaceVtxs_0004880C take a Strip.
+  BasePolyShape.collGrid is the source's pGrid (MapProp_ctor assert; agent-h converts that site).
+- **GdlList / GdlListCell** (mem.h): the 4-byte list head {data, next} cells; DNode.attached and
+  unk3A0 are two (DNode_ctor inline member ctors).
+- **App.version** (node.h, +0x3C, AppVersion 0x44): "rom_version.bin" (fs_readRecord_00041F90,
+  from SnowBoard_InitInstance).
+- **GdlFunctor** (pmf.h): {vptr, fn, arg}, vFP1_invokeFn_0004D084 calls fn(arg, this).
+- The hostio button / link callbacks (Node_hostioLink / Parms, BaseMat_hostioParms, Mat_print) are
+  0x10-byte GdlPmfCallback heads; their 8-byte "parm-pair templates" are GdlPmf constants in Data.
+- gfx_copyField64_00043D2C copies Mat.stateDL; gfx_start's frame-start callbacks are BaseMats;
+  MNode_ctor is the MNode item type's newItem (arg0 = ItemType, unk40 attached); pad_decodeButtonMap
+  takes the PadCtl and reads PadDev.conts[port - 1]; App_main stores the pad into ConsoleMgr.input;
+  skin_cmdSkinAnim reads SkinBone.weights (`*(int *)&` keeps the bytes; the pointer-typed read
+  recolours).
+- Left (unknown-object 8; each tag says what was checked): message-6 payload +0xEC (3: no tag-6
+  NodeMsg in source, +0xEC is not a QNode / DNode Vec3), coll_offsetPointsByMtx's +0x8C list (3: no
+  caller), app_newListHead_000422AC's 8-byte member (2: no caller). data-table 9: distinct
+  placeholder + addend reads (D_39C8C_max, sTag_col_2108C, D_415A4_z, gSkinMgrs x3) and the
+  __OSContReadFormat local buffer (3).
+- Next: find the message-6 sender (likely a game_uso / bootup C++ class sending {6, node} through
+  slot 4); a caller for coll_offsetPointsByMtx / app_newListHead in the mode USOs' import tables.
