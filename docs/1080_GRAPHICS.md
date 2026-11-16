@@ -1029,3 +1029,60 @@ MemberCallback_invoke_0003A0C4 (7): the Cfront member-callback struct exists onl
 Next: ZoneShape_build with the unk78 type (coordinate with a); `<block>` (9) and
 dbg_printThreads (7); then port-audit Parms_addParm (4, after h's gadget.h retype), Node_Load (3),
 PolyShape_getNormal8 (3), coll_offsetPointsByMtx (3); the two rename candidates above.
+
+## 24. Run 566 (agent-b): parm base (gdl/parm.h), BasePolyShape.triMarks, SysLib vtable, renames
+
+Census (owner b raw struct-offset sites): 288 -> 246 (post0b 259 -> 217, post1b 26). port-audit
+owner b: 94 -> 68 (A 29 -> 24, B 12 -> 9, C 3, D 50 -> 32; main had lowered run 560's 109 to 94
+before this run). Six commits, two of them pure renames; every commit gated (ROM byte-identical,
+3288/3288, 0 mismatches in all three source checks), and all 1149 matching + NON_MATCHING objects
+(timproc / bootup and the .cpp donors included) stayed identical in section bytes and relocations
+(the renames changed only the reloc symbol names). Note: the Makefile has no header dependencies,
+so an incremental make after a header edit does NOT rebuild the includers; only the gate's clean
+build (or `rm -rf build`) checks a header change.
+
+- **Renames**: PolyShape_getFaceNormal -> **BasePolyShape_getCornerNormal** (the vertex normal of
+  tris[tri].v[corner]; the face normal is BasePolyShape_getFaceNormal 0x54210);
+  coll_markZeroWeight_0003C7A4 -> **coll_disableVerticalTris** (CollTri.tag = -1 where the face
+  normal's y is 0); HostioDev_vtbl_1E1B8_412E8_k -> **SysLib_vtbl_1E1B8_412E8_k** (and the gl_data.h
+  macro, hand edit).
+- **SysLib vtable**: app_staticInit_000412E8's TextRelocs put both donor objects _i and _l on
+  gSysLib (Bss 0x3C740, Sym 73): ConsoleDev_vtbl (Data 0x21DA0, slots ConsoleDev_vfn0..3: -1 / -1 /
+  -1 / void stubs) is stored at gSysLib +0x18 by the base ctor, then Data 0x1E1B8 (hostio_devWrite
+  0, hostio_devRead 1, hostio_devSlot2 0, app_loadUso) by the derived implicit ctor. So 0x1E1B8 is
+  gSysLib's own class vtable; gHostio (Sym 338) has no vptr. ConsoleDev_vtbl is gSysLib's base
+  vtable, so "ConsoleDev" is probably also a poor name (the base looks like an abstract device:
+  read / write / slot2 / slot3 all unimplemented).
+- **include/gdl/parm.h** (new, owner b): GdlParmTag (the 4-char tag, a by-value 4-byte struct),
+  GdlParmBase (0x10: next, tag, unk08 = Parms_addParm's 4th arg, type), GdlParmList (the
+  "<Class>::Parms" head as {name, first}). Parms_addParm(GdlParmBase *, GdlParmList *,
+  GdlParmTag, int) -> GdlParmBase * is over it. light.h BaseLightParms = name / first /
+  GdlParmBase colParm / col[4] / unk28. Suggestion for area h: gadget.h's `char head[0xC]` in
+  GdlParm / GdlParmF / GdlParmRGBA (and dnode.h GdlParmV3) could become the first three
+  GdlParmBase members (or the whole base with `type` inside it), and GdlParms.unk04 the list
+  head `GdlParmBase *first`; GdlParmRGBA.type is still s32.
+- **BasePolyShape +0x78 = u8 \*triMarks** (one byte per triangle: parse cmd 7, or ZoneShape_build's
+  alloc(nTris) + clear; ZoneShape_build calls Mesh_paint for every unmarked triangle). The one
+  cast in area a's game_libs_o2_52CD4.c (`(u8 *)*q`) went in with a's OK.
+- dbg_printThreads walks OSThread (libultra/os_thread.h) by tlnext to the priority -1 tail
+  (id, state, context.pc).
+- Node vtable calls through VT_SLOT: Node_Load slots 8 / 0, Node_Save 7, ItemType_load 10
+  (newItem) and 8 on the new item; Node_def uses the NODE(c) attach idiom; LightTarget_doCommand
+  takes a NodeMsg * (0x72 consumes one int of the payload stream).
+- K&R `<block>` group: ColourItemType_ctor (vptr, colour), BaseMat_forEachVarArg_00051ED8
+  (BaseMat.vptr, VT_SLOT 3), gfx_texelBytes (BaseMat.format / id, MAT_FMT_* names).
+- PolyShape_getNormal8's port-audit B hits were float -> int conversions behind a redundant
+  `(float *)` on vtxNormals.
+
+Left alone: Node_handleMsg's payload (+4 read as int for 0xC, as s16 for 0xE: no single payload
+type yet); coll_offsetPointsByMtx (+0x8C list of 40-byte point records: the owner class is not
+proven to be CollShape, whose +0x8C is unk8C); gSkinMgrs per-site alias stores; the varargs align
+idioms; gfx_submitFrameTask_000469A8 (register levers).
+
+Next: port-audit b top: gfx_submitFrameTask_000469A8 (5, levers), coll_offsetPointsByMtx (3, needs
+the owner class), FogParms_hostioParms (2), BaseMat_hostioParms (2), gfx_clearScreen (2),
+ItemMgr_firstItemOfType, gfx_drawFbSplash_00048184, gfx_queueGfxTask_0004CEFC, Window_runTaskHooks,
+ImageFileMgr_newFile_000688F8 (2 each); census b top: MemberCallback_invoke_0003A0C4 (7, Cfront
+member-callback struct lives in game/sun.h, area g), Mat_print, ShapeNode_ctor_000521F8,
+Friction_applyContact (6 each). Rename candidate: ConsoleDev_vtbl / ConsoleDev_vfn* (gSysLib's
+base class).

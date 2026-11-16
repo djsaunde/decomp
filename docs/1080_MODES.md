@@ -955,6 +955,76 @@ meaning; ColourParms_ctor (game_libs.c, 85) can now be written on RaceColourParm
 (the TimPauseBss twins in b3 / arcproc); MGRRaceProcess_drawIntro (match_import) colour pairs; the largest
 remaining functions (task 6 not reached): mgr_initMatchRace_00000700, MgrNameEntry_drawCongrats, tit_procMain.
 
+### Run 567 (agent-h): TitleDemoProcess pointer fields, vptr / name stores, item structs, the 116C +0xA8 store
+
+Commit fb7f786e1 on agent-h (base 664b7a58e), gated PASS (3288/3288, ROM identical, verify-blocks 6/6, 6089
+named calls / 0 mismatches, uso-data-sites 0, INPUT_MGR 0) after a clean rebuild. All 1278 .o files (matching
+and NON_MATCHING) are identical to the base by objdump -d -r -z plus .data / .rodata (non-empty dumps). The cfe
+warnings are unchanged (132 x 712 before and after; the edg 3262 lines differ only by parallel-build interleaving).
+All hand edits; no renames.
+
+- **TitleDemoProcess** (modeproc.h): +0x54 `struct KeyMessage *keyMessage`, +0x58 `struct MainLogo *mainLogo`, +0x5C
+  `struct GuiMenu *menu`, +0x60 `struct Node *langMenu` (no LangMenu struct yet), +0x64 `struct WhiteFader *whiteFader`.
+  **GameDemoProcess.dataMgr** (+0x6AC) is `struct RaceTracker *` (no C users). TitleDemoProcess_ctor casts the ctor
+  results to those types. Its raw `mainLogo + 0x2C` store is `mainLogo->alpha`. TitleDemoProcess_buildMenu's
+  `menu + 0x128` store is `menu->rows[4].enabled = 0` (0x84 + 4 * 0x28 + 4: with pad 2 not connected, row 4 is
+  disabled). The 116C donor's TitleDemoProcess mirror uses the same pointer types. Same bytes.
+- **116C donor +0xA8 store**: import_00263D30 (game_libs 0x80263D30) is the shared gui sprite table (KeyMessage
+  +0x0 / +0x18, MainLogo +0x60 / +0x78 / +0x90). The word after seven 0x18-byte sprites, at +0xA8, gets the
+  TitleDemoProcess just before a picked row's callback runs. The donor writes it through a local
+  `GuiSpriteTable { char sprites[7][0x18]; char *menuOwner; }` view.
+- **RaceTracker.name** (race.h) is `const char *`. TrkDataManager_init (b3) and h2h_DataManager_init store
+  `&D + K` without the int cast. RaceProcess.name stays s32: RaceProcess_init takes it as an s32 arg2.
+- **Pattern A**:
+  - 19 Node vptr stores (`*(int *)(p + 0x28) = (int)&X`, `p[0x28 / 4] = ...`, `p[10] = ...`) in titproc
+    (GameDemoProcess_ctor, LangMenu_ctor, tit_WhiteFader_ctor, MainLogo_ctor, the 619 block) and bootup_uso.c
+    (ColourItem types, CamDirector_ctor, item_createHem / Fog / Snow) are `NODE(p)->vptr = (char *)&X`.
+  - SnowBoard_InitInstance and MapProp_ctor store `NODE(p)->name`.
+  - RaceProcess_init / RaceProcess_drawGui pass `&arg0->sprites[n]` (and the plain sprite id) to the K&R
+    gui_sprite* callees without the int casts.
+- **Pattern D**:
+  - item_createBal / Ba2 / Chk store through `BootItemType` (bootup_uso.c: ItemType + `char *vptr2` at
+    0x48, size 0x4C). item_createGtr / Gtl use `BootGateItemType` (ItemType + `s32 side` 0 / 1 + `vptr2` at
+    0x4C, size 0x50). A pointer after the subclass's own word is Cfront's layout for a second base's vptr,
+    hence the name. bootup_uso.c now includes gdl/item.h.
+  - FallingSnow_create reads `ENVSET(a0)->fallingSnow`. Tv1Tmpl_func_000077D0 reads `->scroll` / `->state`.
+  - ARCMenuProcess_ctor's `D_arc251C_h + 400` is `INPUT_MGR(D_arc251C_h).fader`: the same link-the-shared-fader
+    sequence TitleDemoProcess_ctor does. The INPUT_MGR check counts it, 0 mismatches.
+- **Tried and reverted**: item_registerTemplates' 11 `0 * ((int)&v0 + ...)` address-escape terms (the 55A0
+  donor). Neither `(&v0 != 0)` nor char-pointer differences keep the frame. With `!= 0`, edg folds the
+  terms and the escape is lost; the differences reorder the homes. The lever stays. Its other 3 A sites are
+  `TREETMPL(obj)->shapeData = (int)&D_55A0_o48_N`, which needs envobj.h TreeTmpl.shapeData typed as a pointer.
+
+Port audit before -> after:
+
+| pattern | agent-h | all owners |
+|---|--:|--:|
+| A | 63 -> 27 | 173 -> 137 |
+| B | 3 -> 3 | 46 (unchanged) |
+| C | 1 -> 1 | 12 (unchanged) |
+| D | 18 -> 9 | 172 -> 163 |
+| H | - | 9 (unchanged; TitleDemoProcess was not in the H list) |
+
+Census: owner h raw sites 255 -> 235. All owners 1265 -> 1245. Accessor uses unchanged.
+bootup_uso 106 -> 92, titproc 22 -> 18, arcproc 13 -> 11.
+
+Next:
+- A (27 left):
+  - item_registerTemplates' 14: the escape lever, plus TreeTmpl.shapeData (envobj.h, not mine).
+  - The `delta + (int)&gSnowBoard` this-adjusts in GameFlow_restart / settings_setFlag4 / Backup_resetOptionsData /
+    RaceTracker_sendEndingMsg: try `(char *)&gSnowBoard + delta` one site at a time.
+  - tit_procMain's `d = (int)&import_00020098` and its `(int)&mask[...]` ctor arg.
+  - WorldRegistry_create's s32 vptr.
+  - U64BGWall_ctor, mgr_openSession and the mgrproc 1693 block.
+- D (9 left):
+  - envobj.h owner: Tv1Tmpl.unk64 as `u16 *` (Tv1Tmpl_func_000077D0's tbl) and Tv1Tmpl.model as a pointer
+    whose +0x84 table holds the two screen nodes (Tv1Tmpl_func_00007D04).
+  - game_setupVs2P Window +0x1B8: window.h, with agent-a.
+  - game_createMap's gEnvSettings_6808 + 0x3C.
+  - Fader_display, ScreenThumbMat_grab and SnowBoard_ctor are agent-g's.
+- RaceProcess.name could become `const char *` if RaceProcess_init's arg2 does (every race ctor passes a
+  string).
+
 ### Run 565 (agent-h): mgr_drawResults session / dataMgr, GdlParmRGBA.type, GuiRow callback, B / D sites
 
 Commits on agent-h (base 4731bbcb0), each gated PASS (3288/3288, ROM identical, verify-blocks 6/6, 6089 named
