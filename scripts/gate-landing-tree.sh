@@ -21,7 +21,7 @@ make RUN_CC_CHECK=0 -j8 all >"$LOG-make.log" 2>&1; rc=$?; echo "   make exit=$rc
 if [ $rc -ne 0 ]; then echo "   !! make failed -- ROM is stale; see $LOG-make.log"; tail -5 "$LOG-make.log"; exit 2; fi
 if cmp tenshoe.z64 baserom.z64; then echo "   ROM: BYTE-IDENTICAL"; else echo "   ROM: !! MISMATCH"; exit 3; fi
 # cmp cannot see the Yay0-compressed USO units; their decompressed ranges must equal the ROM
-make verify-blocks RUN_CC_CHECK=0 >"$LOG-blocks.log" 2>&1; okb=$(grep -cE '^OK .*jal=0 lo16=0 other=0$' "$LOG-blocks.log")  # OK tolerates reloc-class diffs; a shifted jumptable shows only as lo16!=0
+make verify-blocks RUN_CC_CHECK=0 >"$LOG-blocks.log" 2>&1; okb=$(grep -cE '^OK .*jal=0 lo16=0 other=0(, compressed identical)?$' "$LOG-blocks.log")  # OK tolerates reloc-class diffs; a shifted jumptable shows only as lo16!=0
 if [ "$okb" -ne 6 ]; then echo "   !! verify-blocks: $okb/6 OK with jal=lo16=other=0; see $LOG-blocks.log"; grep -vE '^OK |ld:' "$LOG-blocks.log" | tail -5; exit 7; fi
 echo "   verify-blocks: 6/6 OK"
 echo "== gate: non_matching_objects"; rm -f build/non_matching/src/game_libs/game_libs_post0b.c.o  # a failed clip leaves a stale .o make treats as current

@@ -10,7 +10,7 @@ exactly one category, and reports any byte it cannot place as a GAP. `--check` i
 - [How a byte is placed](#how-a-byte-is-placed)
 - [What --check fails on](#what---check-fails-on)
 - [The allowlist](#the-allowlist)
-- [Results (2026-11-16, run 626)](#results-2026-11-16-run-626)
+- [Results (2026-11-16, run 633)](#results-2026-11-16-run-633)
 - [Findings](#findings)
 - [Usage](#usage)
 
@@ -57,14 +57,18 @@ test, linking snoweffects as a plain bin again gives a 0xA900-byte gap plus the 
    that symbol's kind (by base name, or `c` if the object's source defines it, else undecomp).
    A word right after a `jr`/`j` is a delay slot and joins the previous word's category. Any
    other nonzero word stays a GAP.
-6. **Yay0 code blocks**: the six compressed Text records are linked from the extracted
-   baserom bins (`build/assets/%.bin.o: assets/%.bin` is the first matching pattern rule, and
-   game_uso links the carved `game_uso.bin`). The C for them is proven only by
-   `make verify-blocks`, which tolerates jal / lo16 reloc-field diffs. The audit parses the
-   Makefile's block recipes (objects, `ld -r` alignment vs `cat`, drop-text-word offsets) and
-   lays out every function inside the decompressed block. It word-compares each function
-   against the block, needing at least 75% matching words. It then splits the compressed ROM
-   bytes across categories in proportion to the decompressed content.
+6. **Yay0 code blocks**: since run 633 the six compressed Text records are linked from the C
+   build's own output: `build/assets/<blk>_yay0.bin` is the C objects' `.text`, laid out by
+   the block recipe and compressed with crunch64. crunch64's Yay0 encoder reproduces the
+   original compressed streams byte for byte, so the byte-identical ROM check proves the C of
+   every block. The audit checks that provenance: each compressed Text must lie in
+   `build/assets/<blk>.bin.o`, and that object's objcopy symbol must be
+   `_binary_build_assets_<blk>_bin_start` (the baserom extract would give
+   `_binary_assets_...`). It parses the Makefile's block recipes (objects, `ld -r` alignment vs
+   `cat`, drop-text-word offsets) and lays out every function inside the decompressed block.
+   It word-compares each function against the block, needing at least 75% matching words. It
+   then splits the compressed ROM bytes across categories in proportion to the decompressed
+   content.
 7. Header gets data-asm, IPL3 gets code-asm/vendor, and ucode ranges are applied. Leftover
    zero / 0xFF runs become padding. The reviewed allowlist ranges are applied last, and only to
    GAP bytes.
@@ -74,6 +78,8 @@ test, linking snoweffects as a plain bin again gives a 0xA900-byte gap plus the 
 - any GAP byte;
 - a USO Text record that no code segment's function covers (uncompressed), or a compressed
   Text record that no Yay0 recipe lays out (the 2026-11-16 class);
+- a compressed Text record not linked from its C-built block (`build/assets/<blk>.bin.o`
+  wrapped from `build/assets/<blk>.bin`);
 - a function placed past its block, two functions that overlap, or a block layout mismatch;
 - a hidden-code shape in any Data / RoData / BinaryDataSection payload (decompressed when Yay0)
   or in a linked bin outside the filesystem. A shape is `addiu sp,sp,-N` with `sw ra,K(sp)`
@@ -90,14 +96,14 @@ required, in the spirit of the `RAW:` / `UNNAMED:` tags. Entries only re-categor
 and never override a real attribution. An entry that matches nothing fails `--check`, so
 delete it when the split is fixed.
 
-## Results (2026-11-16, run 626)
+## Results (2026-11-16, run 633)
 
 | category | bytes | % of ROM |
 |---|---:|---:|
 | GAP | 0 | 0.000% |
-| code-c | 675,147 | 4.024% |
+| code-c | 681,803 | 4.064% |
 | code-asm/src | 9,548 | 0.057% |
-| code-asm/undecomp | 89,912 | 0.536% |
+| code-asm/undecomp | 83,256 | 0.496% |
 | code-asm/vendor (IPL3) | 4,032 | 0.024% |
 | data-c | 368 | 0.002% |
 | data-asm | 2,477,876 | 14.769% |
@@ -107,40 +113,61 @@ delete it when the split is fixed.
 | total | 16,777,216 | |
 
 Honest decomp %:
-- **87.16%**: C bytes / game code bytes in the ROM (IPL3 and ucode excluded);
-- 88.39% if hand-written asm counts as done;
-- **88.33%** when Yay0 Text is counted at its decompressed (instruction) size:
-  753,096 / 852,556 B, with 89,912 B not decompiled.
+- **88.02%**: C bytes / game code bytes in the ROM (IPL3 and ucode excluded);
+- 89.25% if hand-written asm counts as done;
+- **89.11%** when Yay0 Text is counted at its decompressed (instruction) size:
+  759,752 / 852,556 B, with 83,256 B not decompiled.
 
-As a cross-check, report.json has total_code 852,412 and matched 762,652. That total is 144 B
-smaller than the audit's 852,556 B, because it lacks the hidden 0x90 function, the eddproc stub
-and a few delay-slot / static words. Its matched figure equals C (753,096) + hand-written asm
-(9,548) within 8 B.
+All 83,256 undecompiled bytes are in the 8 new modules, which other agents are decompiling:
+trnproc 0x1BF8, viewrec 0x55B0, nameent 0x1510, balloon 0x208, heli 0x1A78, fire 0x1E4,
+checkpoint 0x724, snoweffects 0x98F8. Outside them, every game-code byte is C or real
+hand-written asm, and the byte-identical ROM proves all of it, Yay0 blocks included.
 
-Of the 3577 functions, 3288 have a source body and 289 are INCLUDE_ASM. The INCLUDE_ASM ones are
-all in the 8 new modules: trnproc 0x1CE0, viewrec 0x55B0, nameent 0x1510, balloon 0x570,
-heli 0x1B60, fire 0x3B0, checkpoint 0x980, snoweffects 0xA900.
+report.json now has 3579 functions (3378 exact, 201 INCLUDE_ASM in the new modules) and
+total_code 852,564. That equals the audit's 852,556 B instruction count within 8 B. Both
+functions the audit found are in it (findings 1 and 3).
+
+Run 626 had 87.16% / 88.33%, 3577 functions and 289 INCLUDE_ASM. The difference is the
+new-module work plus the two functions below. `--sourcemap port/sourcemap.tsv` reuses the
+committed sourcemap, which is stale for the new modules and still gives the run-626 figures,
+so run without it to get current numbers.
+
+The allowlist now holds 4 ranges (36,092 B): the RSP IMEM in game_libs_text2_rsp_pre / mid /
+tail (ucode) and the 3 zero words at 0xEC88 (padding). No code entries are left.
 
 ## Findings
 
 1. **A hidden CPU function in a bin.** At game_libs VRAM 0xEBF8 (ROM 0xDF3CD0..0xDF3D60), the
-   first 0x90 bytes of the `game_libs_text2_pre` bin are a 36-insn CPU function: alloc 0x40,
-   init, store the vtable, list-insert into arg0+0x40. It is an `ItemType_create` sibling (cf.
-   `edd_ItemType_create_000003BC`). No unit contains it, so report.json never counted it. It is
-   allowlisted as code-asm/undecomp. TODO: split it out of the bin and decompile it.
+   first 0x90 bytes of the `game_libs_text2_pre` bin were a 36-insn CPU function: alloc 0x40,
+   init, store the vtable, list-insert into arg0+0x40. No unit contained it, so report.json
+   never counted it. **Fixed in run 633:** it is now the unit `src/game_libs/game_libs_EBF8.c`,
+   `ColourItem_create_0000EBF8`. It is a word-for-word twin of `ColourItem_create_0000C5B0`,
+   with the same TextReloc targets (mem_new, ColourItem_ctor, list_append, vtable Data+0x75A0),
+   and it matches exactly. The bin is now `game_libs_text2_rsp_pre` at 0xDF3D60.
 2. **text2_pre / mid / tail are RSP IMEM.** Apart from that function, the rest of text2_pre
    (from 0xEC94), and all of text2_mid and text2_tail, are RSP code: COP2 / lqv / sqv, and j / jal
    into 0x04001xxx. This is 0x8CF0 B (36,080 B) that no public ucode matches. It is allowlisted as ucode.
    The yaml's "half CPU code" note was really just the one function above.
-3. **eddproc's last function is unlisted.** At Text+0x478 is a 2-insn `jr ra; sw a0,0(sp)` stub
-   (the same shape as titproc's `TitleDemoProcess_drawGui`). Its jr ra comes from a symbol-less
-   `_pad.s`, and its delay slot is in the eddproc_uso_post bin, because PREFIX_BYTES shifts the
-   C segment 4 bytes early. It is allowlisted as code-asm/undecomp.
-4. **The Yay0 code blocks in the ROM are the baserom bins, not the C build.** The ROM link uses
-   `assets/<blk>_yay0.bin`, which the pattern-rule order selects, and the carved
-   `game_uso.bin`. The C for all six blocks (mgrproc, timproc / trkproc / genproc, map5_data,
-   game) lays out exactly, but only `make verify-blocks` proves it, modulo reloc fields. The
-   byte-identical ROM check does not cover them.
+3. **eddproc's last function was unlisted.** At Text+0x478 (splat offset 0x47C) is a 2-insn
+   `jr ra; sw a0,0(sp)` stub. Its jr ra came from a symbol-less `_pad.s`, and its delay slot
+   was in the eddproc_uso_post bin, because PREFIX_BYTES shifts the C segment 4 bytes early.
+   **Fixed in run 633:** it is now `edd_EditorsProcess_drawGui(int a0) {}`, an exact match.
+   The name comes from the DataReloc: Sym 42 fills the vtable slot after
+   edd_EditorsProcess_handleInput, the same pair as titproc's handleInput / drawGui. The C
+   segment is 0x484 and the bin is now `eddproc_uso_post_sym` at 0x59F904. The other USOs'
+   Text tails in post bins (boarder2 0xC, boarder4 8, boarder5 / n64proc / arcproc / h2hproc
+   4 B) are all zero words, so they are padding.
+4. **The Yay0 code blocks in the ROM were the baserom bins, not the C build.** The ROM link
+   used `assets/<blk>_yay0.bin`, which the pattern-rule order selected, and the carved
+   `game_uso.bin`. **Fixed in run 633:** the Makefile filters YAY0_O_FILES out of BIN_O_FILES
+   and wraps them with a static pattern rule from `build/assets/<blk>.bin`. tenshoe.ld's
+   `.game_uso` links pre / block0 / inter01 / block1 (built) / inter12, and the game_uso.bin
+   carve is gone. crunch64's Yay0 output is byte-identical to all six original compressed
+   streams, so no fallback was needed. The proof is the same for all six blocks: the
+   byte-identical ROM (`make verify`), built with the C-built block linked, which
+   rom-coverage `--check` confirms. `verify-yay0-blocks.py` is also strict now: the
+   decompressed bytes must be identical (reloc fields included; it already had 0 jal / lo16
+   diffs), and so must the compressed bytes against splat's extract.
 5. **PREFIX_BYTES encodes metadata as code.** Six USOs compile the Text record's flag word as a
    fake `beq zero,zero,+0x6F00` / `+0x736F` first instruction of `*_func_00000000`. The audit
    counts those 24 B as data-asm.
