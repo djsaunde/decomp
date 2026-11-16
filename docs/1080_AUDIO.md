@@ -895,3 +895,25 @@ the pre-run build by `objdump -d -r -s` (.mdebug excluded).
 - **Next:** post.c's top functions by raw count (run the census `--top`). Channel byte 0x1
   (`*(u8 *)(arg0 + 1)`, the channel change bits) is still raw in ProcessSound. Save65EE4
   (post1b, owner b) can become FsStream.
+
+### Run 544 (agent-c): ProcessSound change bits, InitSequencePlayerChannels, SetInstrument
+
+96afed053 on agent-c (hand edit; gate PASS 3288/3288, checks 0 mismatches; game_libs_post.c.o,
+matching and NON_MATCHING, identical by `objdump -d -r`, `-r` and `-s`).
+- **ProcessSound:** the channel change-bits byte 0x1 is `CH_CHANGES(c)` and its tests are
+  `CH_CHANGED_FREQSCALE / VOLUME / PAN` (0x80 / 0x40 / 0x20 = audio.h changesFreqScale /
+  changesVolume / changesPan). The macros keep the matched spellings: the signed 1-bit lb read
+  and the `<< 8 << 1` / `<< 9 << 1` word tests. The audio.h u32 bitfield reads were not tried in
+  the tests (the 2026-10-15 ring levers depend on those exact forms). The pan addend
+  `FW(arg0, 0x30)` became `*(int *)&CH->pan` (agent-h's lever: the same bytes, where the plain
+  member swaps the addu operands).
+- **AudioSeq_InitSequencePlayerChannels:** `&ctx->seqPlayers[a0]`, sequenceChannelNone and
+  miscPool; the new channel's seqPlayer and layers[1..3] go through `*(int *)&member`. The
+  post-increment `p + 0x40` store (the previous p's layers[0]) stays raw.
+- **AudioSeq_SetInstrument:** instOrWave, instrument, `&instrument` / `&adsr` reader args.
+  The flag bit is audio.h's `SequenceChannel.hasInstrument`: the u32 bitfield gives the same
+  bytes as the old u8 view, so Gl2BAACFlags is gone.
+- **Census:** game_libs_post.c 177 + 6 -> 163 + 0. game_libs segment 981 -> 967 raw.
+- **Next:** AudioThread_GetLayerSamplesLeft (7: gAudioContext_275F4 + a0 * 0x160 is
+  seqPlayers[a0]; the header notes ring levers on the operand names), cam_createDefault (8),
+  then post.c `--top`.

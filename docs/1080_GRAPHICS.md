@@ -858,3 +858,44 @@ Next:
   gfx_callStaticDL, gfx_vcall_0004E150; the HostIO objects; PolyShape_func_00043584 after an
   Elem (clip-row) header;
 - skin_cmdSkinMgr NM body onto NodeListState.
+
+## 20. Run 542 (agent-b): NodeMsg, GdlInput, GdlFile, GdlVtx, the swapped controller helpers
+
+Census (owner b raw struct-offset sites): 486 -> 366 (post0b 436 -> 337, post1b 42 -> 26,
+post1b2 8 -> 3). All edits byte-identical in the matching and NON_MATCHING objects
+(`~/.local/bin/mips-linux-gnu-objdump -d -r`, non-empty dumps), gate PASS for each commit.
+
+- **NodeMsg** (include/gdl/node.h): `{tag, arg, reply}`, the handleMsg / doCommand argument.
+  Node_handleMsg (0x38830) answers 0x2 (NODEMSG_SET_ACTIVE: DoDisplay | DoUpdate), 0xC (doFlags
+  0x80 from payload +4), 0xD (find by name: reply = this when callback(name, *payload) == 0),
+  0xE (find by serial). The census's `<block>` row was this K&R function.
+- **GdlInput** (include/gdl/pad.h): the debug input object behind CamFollow.owner and
+  BallRotator.input: PadCtl *pad +0xB4, prevPoint +0xBC, pan[3] +0xD4, curPoint +0xF8, enable
+  +0x108, window +0x110. Its constructor/class is still unidentified (no caller of CamFollow_ctor).
+- **GdlFile** (new include/gdl/gdlfile.h): kind +0x4 (GDLFILE_REMOTE 0 = HostIO, GDLFILE_LOCAL 1 =
+  SYSAPI ROM files, read-only, GDLFILE_SRAM 2 = PI SRAM with the position word 0x3B8E8) and
+  handle +0x20. All fs_gdl* methods, fs_func_0003593C and fs_set/getHandle take GdlFile *.
+- **GdlVtx** (include/gdl/polyshape.h): libultra Vtx_t (ob / flag / tc / cn); gfx_findVtx_00048720
+  compares ob, tc and (optionally) cn[0..2].
+- Mat_fromFrameBuffer_0004F85C: spec is a Window (colorBuf[0], width, height), the texture is
+  MAT_FMT_RGBA16. CollObjMgr_update / gfx_vcall_0004E150: vtable slot calls through VT_SLOT.
+- math_mtx4Adjugate / Determinant: the 9-float helper is `DET3` = math_det3x3 (the old local `H`
+  macro was counted as an accessor macro by the census).
+- DNode.attached holds **Frictions**: DNode_updateAttached sets contactPoint = cvqs.trans + vel,
+  contactDelta = contactPoint - prevContact (Friction +0x114 / +0x108, renamed from unk114 / unk108).
+- **Controller helper names were pairwise swapped** (checked against libreultra): 0x6BC44 is
+  __osContGetInitData (now gl___osContGetInitData_6BC44), 0x6BD14 is __osPackRequestData(cmd)
+  (gl___osPackRequestData_6BD14), 0x6C11C is osContGetReadData (gl_osContGetReadData, called by
+  the pad thread with &PadDev.conts), 0x6C1B8 is __osPackReadData (gl___osPackReadData). The first
+  two keep an address suffix because their plain gl_ names are OLD names in renames.tsv (the chain
+  folding in the gate and census keys renames by OLD, so a name can never be reused).
+- gfxlib.h: GfxLib.fog (FogParms at 0x294), worldMtx at 0xE8, GFX_FLAG_MAPPARMS (flags 0x8, set by
+  game_createMap for a COURSE_OP_MAP record; PolyShape_func_00043584 then allocates the 0x100-byte
+  +0x7C buffer). GfxLib_reset's NM body is on fields.
+
+Next: skin_cmdSkinMgr's NM body (its `self` is the skin command-parser context, not SkinMgr: find
+the struct shared with skin_cmdSkinShape / skin_cmdSkinAnim); gfx_beginView, gfx_callStaticDL; the
+HostIO objects; the clip-row element header with PolyShape_func_00043584 (+0x4C..+0x84);
+MorphPoly_updateColours and Window_setDefaults (10 each), ScreenWindow_allocBuffers and
+gfx_submitFrame_0004CDB0 (9), then BaseLight_ctor / LightTarget_display / coll_markZeroWeight (8).
+BallRotator.input could become GdlInput * (ballrot.h would include pad.h).

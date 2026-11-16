@@ -1434,3 +1434,46 @@ Next (H1):
 - 8AFC's name: RoomModifier_resetScale_00008AFC takes a SelectWin. Rename it with
   rename-symbol.py once the role is settled.
 - SelectWin.unk4A0 -> an alpha name (BDEC and the other draw slots multiply 255 by it).
+
+### Run 544 (agent-c): SelectWin_ctor parms, SelItemsMgr_ctor, Course / LevelList createItem, world roots, acceptAlpha
+
+Commits on agent-c (base bcc816ae4), each gated PASS (3288/3288, ROM identical, placeholder /
+data-site / GameFlow checks 0 mismatches). Every b5 / game_libs / match_imports object, matching
+and NON_MATCHING, is identical to the pre-run build by `objdump -d -r`, `-r` and `-s` (.mdebug
+excluded; the rename commit differs only in the symbol name).
+- b8a0e85dc (hand edit):
+  - **SelectWin_ctor** (_4118 donor and the b5.c NM copy, kept in step): each parm is built at
+    `&WPARMS(var_s0)->tag` and written through PI / PF / PC (SelParmI / F / RGBA), as in 2B74.
+    Node name / vptr, eventFlags, the fov read (`((MCamera *)((GenCamera *)arg9)->view->camera)->fov`)
+    and `tesuri[k]->model->head.inner` are members. No lever needed. The cfront null checks
+    `var_s0 != (char *)-0x2CC` stay as they are.
+  - **SelItemsMgr_ctor** (_8FC8): SelTesuriModel is now 0x168 (unk120, unk128, unk12C,
+    numShapes 0x13C, unk140, unk144, shapes[8] 0x148). The 0x16C inner node is a LightTarget
+    (unk108[], mask = 1, scale). The parm V3 / F writes, the vqs zeroes, and the list calls
+    go through VT_SLOT(v, 10) (createItem: the signature of the four *_createItem overrides)
+    and VT_SLOT(w, 3).
+    **Lever:** `NODE(p)->vptr = (int)&sym` (or `->name`) hoists the address lui / addiu above
+    the preceding Node_ctor call and grows the function by 2 words. `*(char **)&NODE(p)->vptr = &sym`
+    keeps the target's order. This is the same address-deref form as agent-h's
+    `*(int *)&p->field`.
+  - **CourseList / LevelList createItem**: SelCourseModel / SelLevelModel gain unk120, unk13C
+    and unk140 (level also unk128 and unk134). Both are 0x144. The items[] store is
+    `LIST->items[n]`.
+  - SelItemsMgr / SelItemList **cfg2C / parent / cfg34 -> bg / fg / mainGame** (char *, as
+    GenRoom / GenCamera). CommonInfo_init_0000A928 is on them.
+  - **SelectWin.unk4A0 -> acceptAlpha**: set to 1 on an accept press in game mode 2
+    (state3 -> state 4), faded by RoData 0x1D0 per frame in state5, and it scales the BDEC
+    sprites' alpha.
+- 5604e46c5 (**pure rename**, rename-symbol.py): RoomModifier_resetScale_00008AFC ->
+  **SelectWin_dimOtherItems_00008AFC**. Every item except the current one gets
+  updateHighlight(1 - fade * 0.9), and the current one gets 1.0.
+- **Census:** timproc_uso_b5 segment 220 raw + 258 accessor -> 179 + 90. _4118 113 -> 0,
+  _8FC8 64 -> 18, DF14 27 -> 1, D884 26 -> 2. Owner c 696 -> 467 (with the audio commit).
+
+Next (H1):
+- _8FC8's last 18: the gPolyGeomMode / f8fc8_* flag-word chain (FW(&sym, 4), a global's
+  second word), the CommonInfo `+0x2C = this` store, FF(import_80807FB8, ...) RoData reads.
+- b5.c's top functions: SelectionMgr_setSplit (16), SelectWin_display (14), state8 (13),
+  SelectionMgr_update (12). SelCharacter_display (B624, 12).
+- RoomModifier_display_0000117C calls SelectWin_dimOtherItems on its field_38[field_34].
+  RoomModifier may be a SelectionMgr-side name too, so check it.
