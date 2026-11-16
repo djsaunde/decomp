@@ -936,3 +936,22 @@ matching and NON_MATCHING, identical by `objdump -d -r`, `-r` and `-s`).
 - **Census:** game_libs_post.c 163 -> 153; game_libs segment 714 -> 704 raw.
 - **Next:** port-audit `--owner c` for audio: AudioSeq_SeqChannelSetLayer (match_imports, 6),
   AudioSynth_LoadAuxBufferC / AudioLoad_RelocateFont (2 each), snd_SoundObjUpdate.
+
+### Run 554 (agent-c): SeqChannelSetLayer, SearchRegularCaches, SearchPermanentCache
+
+a9c885c62 on agent-c (hand edit; gate PASS 3288/3288, checks 0 mismatches; game_libs_post.c.o and
+the match_imports objects, matching and NON_MATCHING, identical by `objdump -d -r`, `-r` and `-s`).
+- **AudioSeq_SeqChannelSetLayer** (match_imports): `LAYER = ((Gl2AD1CState *)slot)->slots50[0]`,
+  with slot = the channel shifted by idx words, so it is channel->layers[idx] with the 0x50 folded
+  into each lw / sw. The typed `&base->slots50[idx]` adds 0x50 once and recolours the function
+  (the native-port check fails: "native linked body changed").
+- **AudioHeap_SearchRegularCaches:** seqCache / fontCache / sampleBankCache on AudioContext; the
+  temporary cache's nextSide and entries[0..1].id / ramAddr; the persistent walk keeps its
+  12-byte cursor, read as `((AudioPersistentCache *)v1)->entries[0]`. ramAddr returns through
+  `*(int *)&` (the function returns int).
+- **AudioHeap_SearchPermanentCache:** permanentPool.numEntries; permanentCache[i] through the
+  shifted cursor (PERM): the arguments are OoT's (tableType, id).
+- **Census:** game_libs_post.c 153 -> 142; match_imports 186 -> 180 raw.
+- **Next:** post.c `--top`: AudioLoad_GetSampleBank, AudioLoad_InitTable, InitSequencePlayerChannels'
+  last 5, AudioSynth_LoadReverbSamples, Audio_InitSyntheticWave (5 each), MCamera_ctor /
+  hostioParms; snd_SoundObjUpdateChannel (match_imports, 6).

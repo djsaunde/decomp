@@ -1599,3 +1599,52 @@ Next (H1):
   SelItemInfo_ctor (32C8, 11), SelectionMgr_finish (6), Course / LevelList_createItem (6 each).
 - RoomModifier_display (NM) on SELWIN / SelItemsMgr members: dispItems doFlags bit 4.
 - gen_createCamera_0000283C (11).
+
+### Run 554 (agent-c): typed SelParm vptrs, RoomModifier, SelCommonInfo, gPolyGeomMode words, eventFlags
+
+18176448e on agent-c (base e10de4848; hand edit; gate PASS 3288/3288, ROM identical, the three
+source checks 0 mismatches). Every b5 / game_libs_post / match_imports object (397 dumps), matching
+and NON_MATCHING, is identical to the pre-run build by `objdump -d -r`, `-r` and `-s` (.mdebug
+excluded).
+- **select.h vptrs are `void *`:** SelParmI / F / V3 / RGBA, SelItemParms, SelItemInfo and
+  SelectWinParms. The 90 `vptr = (s32)((char *)&sym + K)` stores drop the int cast: 32 in
+  SelectWin_ctor (_4118), 32 in its b5.c NM copy, 15 in SelItemParms_ctor (2B74) and 11 in
+  SelItemInfo_ctor (32C8). (The commit message says 58; 90 is the right count.) No
+  lever needed; the .cpp donors take the pointer store as is.
+- **Node vptr / name stores** (Course / LevelList_createItem, GenCourse / GenSelectChar /
+  SelectionMgr / RoomModifier ctors, gen_createCamera, GenItemType_create, SelectWin_ctor) are
+  `*(char **)&NODE(p)->vptr = &sym`. That form compiles under both the old s32 and main's new
+  `char *` Node.vptr (0b77ceb96); after the merge it can become `NODE(p)->vptr = (char *)&sym`.
+- **RoomModifier** (select.h, 0x40): showItems 0x2C (1 from the ctor; 0 = display hides both
+  windows' DispItems), unk30, pass 0x34 (update: 0, display: ++), wins[2] 0x38 (SelectionMgr_ctor
+  stores its windows there; `RMOD(room->modifier)->wins[k]`). The ctor, update and the NM
+  RoomModifier_display body are on the members: display reads `SELWIN(w)->owner->shownMask` and
+  `NODE(SELWIN(w)->itemsMgr->dispItems)->doFlags`. The NM body's `((R1 *)b)[k][14]` IXA spelling
+  is not needed: `RMOD(b)->wins[k]` gives the same NON_MATCHING bytes.
+- **_8FC8:** SelCommonInfo (0x30, +0x2C = the owning SelItemsMgr) and SelPolyGeomMode (bootup
+  gPolyGeomMode's two words: mode0, geomMode). The b5 aliases gPolyGeomMode_3EEC8_8005EE6C,
+  f8fc8_ee6c_sb1..3 / _r3, import_80063D04 / 800664C4 are typed SelPolyGeomMode, so the flag chain
+  is `alias.geomMode`. 18 -> 5 accessor uses. The 5 left are RoData float reads through the
+  import aliases (`FF(&import_80807FB8, 0x23C)` and so on). A DF_ extern changes the reloc symbol
+  in the .o, so they stay.
+- **SelectionMgr_finish:** `wins[i]` and
+  `SELWIN(r)->itemsMgr->lists[2]->items[SELWIN(r)->curItem[2]]->id` (the chosen course's id goes
+  to snd_sendEvent 7). The comment's "base-first text" lever was not needed.
+- **gen_createCamera:** MNode mflags / mtx, Window flags (|= 6: the Z and colour clears) and
+  clearColour[0..3], and `*(int *)&INPUT_MGR(import_8001EA70).game`.
+- **eventFlags:** all 14 raw `FW(w, 0x4D4)` / `*(int *)(scr + 0x4D4)` reads in the state functions
+  are `*(int *)&SELWIN(w)->eventFlags`. The plain member still differs in state0 / 3 / 4 / 6 / 7 /
+  8 / 9, so the select.h note now names the lever.
+- **Census:** timproc_uso_b5 segment 140 raw + 61 accessor -> 116 + 26; timproc_uso_b5.c
+  117 + 31 -> 93 + 9; _8FC8 0 + 18 -> 0 + 5. Owner c 375 -> 299 (with the audio commit).
+  port-audit `--owner c`: SelectWin_ctor 34 -> 0, SelItemParms_ctor 15 -> 0, SelItemInfo_ctor
+  11 -> 0, SelectionMgr_finish 6 -> 0, Course / LevelList_createItem 6 -> 0, SelectionMgr_ctor
+  5 -> 0, GenCourse / GenSelectChar_ctor 4 -> 0.
+
+Next (H1):
+- port-audit `--owner c`: SelectWin_display (9 A: the `(int)&parms.cc[k].rgba` call arguments;
+  type the callee parameters), BoardItem_drawStats (C310) / LevelItem_drawStats (CEB4) sprite
+  arguments, CommonInfo_init (the GameFlow +0x134 reads), SelItem_drawStatBar(Right) +0x10.
+- match_imports BoardList_createItem (raw +0x28 / +0xC Node stores) and
+  CourseItem_drawLabel_0000C98C.
+- SelectWin_update_00005FC0 (o2_5FC0, 17), SelectWin_canScrollPrev / Next.
