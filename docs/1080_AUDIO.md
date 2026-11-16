@@ -2,6 +2,67 @@
 
 Area C of the readability phase (agent-c runs 444, 446, 450, 455). Uncommitted area doc.
 
+## State for porters (agent-c run 574, final wave)
+
+**Correspondence.** game_libs 0x1C9E4-0x2D374 is OoT's `src/audio/internal/` driver
+(synthesis, heap, load, thread, os, playback, effects, seqplayer), in OoT's unit and function
+order, with OoT's names (renames.tsv maps every address). It is the older 1998 driver: 8-layer
+SequenceChannel (0xE4), no RANDPTR / RUNSEQ opcodes, older NoteAttributes / SynthesisReverb,
+and a smaller AudioContext (0x5C30, notes at 0x2CFC). game_libs 0x2D374-0x31DF8 (`snd_*`) is
+1080's own glue. It queues OoT-encoded audio-thread commands, and bootup's `snd_*` wrappers are
+the API the game calls. The section below ("For port authors") gives the layer split. In short:
+replace the driver and libultra, reimplement the glue, keep the bootup API.
+
+**Typed (include/audio.h; every offset is asserted against the matched code).** AudioContext
+is typed end to end, from 0 to 0x5C30. That covers the reverbs, the sample-preload stack, the
+slow loads, the load tables, the caches, seqPlayers / sequenceLayers / sequenceChannelNone,
+the note free lists, the mesg queues and threadCmdBuf. The sub-structs are: AudioTask (OSTask_t);
+AudioAllocPool; the cache entries and caches (seq / font / sample caches and the pool splits);
+Sample / AdpcmLoop / AdpcmBook / TunedSample; AudioPreloadReq; **AudioSlowLoad** (run 574, 0x64,
+OoT layout with a u8 instId); Instrument / Drum / SoundEffect / SoundFont; AudioTable and its
+header / entry; SampleBankRelocInfo; SynthesisReverb and its ring items; AudioListItem /
+NotePool; SeqScriptState; AdsrEnvelope / AdsrSettings / AdsrState; AudioCmd; SequencePlayer;
+SequenceChannel; SequenceLayer; Portamento / VibratoState; Note (synthesis / playback / sample
+state) and NoteAttributes; and the glue's SoundObj. Only AudioAsyncLoad is still opaque: its
+0x54 stride is verified, its fields are not.
+
+**What stays raw, and why.** game_libs_post.c has 46 census sites left (run 574). In all of them the
+raw spelling is load-bearing or the target is unknown:
+- **gAudioCtx is not a linked symbol.** Each function reaches it through its own base-0 extern
+  (`gl_<addr>_gAudioCtx`, `gAudioContext_23B98`, ...) or `&D_00000000`. Those per-function
+  symbols carry the matched relocations and the lui / addiu CSE shapes, so a port collapses
+  them into one real `AudioContext gAudioCtx`.
+- **Container width steers the loads.** Some byte read-modify-writes on a u32 bitfield word
+  stay bytes (SequenceChannelEnable enabled / finished, Sample.medium through the u8 view),
+  because the u32 member would compile to a word RMW. Audio_NoteDisable converted cleanly in
+  run 574. The bitfield member and a `volatile NoteSampleState` view give the same bytes.
+- **Coloring levers.** These are recorded in each function's comment: the `s32 dflt` in
+  SequencePlayerDisableChannels, the u32 table bases in snd_SoundObjUpdateChannel,
+  AudioLoad_RelocateFont's u32 copy, and the `gl_2495C_Rec` / `gl_2495C_GS` view in
+  SlowLoadSample / ProcessSlowLoads. That view is AudioSlowLoad's layout, but its struct-member
+  `addu` order is what matched, so it was left as it is.
+- **AudioSynth_* command builders.** They write Acmd words as raw u32 pairs, the same words a
+  port's ABI interpreter reads.
+
+**Where to start replacing the RSP audio microcode on PC.** The seam is one function.
+`AudioThread_UpdateImpl` (game_libs 0x26214, src/game_libs/game_libs_o2_26214.c) calls
+`AudioSynth_Update(curAbiCmdBuf, &abiCmdCnt, curAiBuffer, aiBufLengths[i])`. That call builds
+the frame's ABI command list. UpdateImpl then fills an AudioTask (OSTask_t, ucode = aspMain:
+the image at game_libs 0x31DF8, 0xF7C bytes of data) and returns it. `snd_AudioUpdate_31DA4`
+-> `AudioThread_Update` is called from `RcpMgr_service`, which runs that task on the RSP.
+
+On PC:
+1. Keep `AudioSynth_*`, or the OoT PC port's synthesis.
+2. Do not hand the task to the scheduler. Run the command list through a CPU ABI implementation
+   instead (the OoT / MM PC ports' mixer).
+3. Send the AI buffer to the host audio stream. This replaces `osAiSetNextBuffer` (os.c,
+   0x27704-0x27804).
+4. Check each Acmd opcode that `AudioSynth_*` emits against the mixer before you trust it. This
+   is the 1998 aspMain, not OoT's.
+
+The rest of the driver (heap / load / seq player) is plain C on AudioContext and ports as-is.
+The ROM archives are OoT's format (see "Cartridge data formats").
+
 ## Overview
 
 game_libs 0x1C9E4-0x2D374 is the 1998 EAD audio driver that OoT's
@@ -936,6 +997,30 @@ matching and NON_MATCHING, identical by `objdump -d -r`, `-r` and `-s`).
 - **Census:** game_libs_post.c 163 -> 153; game_libs segment 714 -> 704 raw.
 - **Next:** port-audit `--owner c` for audio: AudioSeq_SeqChannelSetLayer (match_imports, 6),
   AudioSynth_LoadAuxBufferC / AudioLoad_RelocateFont (2 each), snd_SoundObjUpdate.
+
+### Run 574 (agent-c): AudioSlowLoad, NoteDisable bitfields, GetLoadTable, channels[] walks
+
+1ba066e5c on agent-c (base da8d26426; hand edit, no renames; gate PASS 3288/3288, ROM identical,
+the three source checks 0 mismatches). Every build/src object is identical to the pre-run build
+(`objdump -d -r` .text, `-s` .data / .rodata, `-r`, symbol names).
+- **audio.h AudioSlowLoad** (0x64, OoT layout, u8 instId) and AudioContext.slowLoads[2] at 0x157C
+  (asserted, with sizeof == 0x64). **AudioLoad_DmaSlowCopy** is on it: curRamAddr, msgQueue / msg,
+  ioMesg, curDevAddr, medium.
+- **AudioLoad_GetLoadTable** returns `AudioTable *`: sequenceTable / soundFontTable /
+  sampleBankTable, NULL otherwise.
+- **Audio_NoteDisable:** `sampleState.needsInit == 1` / `= 0`. enabled / finished go through a
+  `volatile NoteSampleState *` view. These are the same bytes as the old volatile u8 RMWs.
+- **AudioSeq_ResetSequencePlayer:** `stopScript = 0`, plus the channels[] walk.
+  **SequencePlayerSetupChannels** (the K&R block) and **SequencePlayerDisableChannels** load
+  channels[i] with the `*(T *)&` lever.
+- **sys_fatalSwapBuffer:** `NODE(dev)->vptr`, VT_SLOT(vt, 2) / VT_SLOT(vt, 11).
+- **Census / port-audit (owner c):** raw sites 128 -> 108 (game_libs_post.c 63 -> 46,
+  timproc_uso_b5.c 25 + 5 -> 22 + 5). port-audit `--owner c` 10 -> 8 (A 3, B 5, C 1 -> 0,
+  D 1 -> 0).
+- **Left:** snd_SoundObjUpdateChannel's u32 table bases (A, load-bearing), the s32 dflt (A),
+  snd_SoundObjUpdate / snd_CueQueueSet / SaveReverbSamples / RelocateFont (B). The
+  gl_2495C_Rec view could fold onto AudioSlowLoad, but its member-array `addu` order is the
+  matching lever.
 
 ### Run 569 (agent-c): AudioContext mesg queues / threadCmdBuf, port-audit D sites, NotePool / AdsrInit / SampleCache
 

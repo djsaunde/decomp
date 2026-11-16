@@ -1086,3 +1086,50 @@ ImageFileMgr_newFile_000688F8 (2 each); census b top: MemberCallback_invoke_0003
 member-callback struct lives in game/sun.h, area g), Mat_print, ShapeNode_ctor_000521F8,
 Friction_applyContact (6 each). Rename candidate: ConsoleDev_vtbl / ConsoleDev_vfn* (gSysLib's
 base class).
+
+## 25. Run 571 (agent-b): SysLibBase renames, RcpTask.window, ShapeNode, NodeMsgPayload
+
+Census (owner b raw struct-offset sites): 246 -> 200. port-audit owner b: 68 -> 41 (A 24 -> 10,
+B 9 -> 7, C 3 -> 1, D 32 -> 23). Four commits, one a pure rename; every commit gated (ROM
+byte-identical, 3288/3288, 0 mismatches in all three source checks), and every changed object of
+the matching and NON_MATCHING builds kept identical .text (with relocations), .data and .rodata
+(clean rebuild after the rcp.h / material.h edits).
+
+- **Rename** (pure): ConsoleDev_vtbl_412E8_j -> **SysLibBase_vtbl_412E8_j**, ConsoleDev_vfn0..3 ->
+  **SysLibBase_devWrite_00061ADC / devRead_00061AF0 / devSlot2_00061B04 / loadUso_00061B10**.
+  Data 0x21DA0 is gSysLib's base-class vtable (section 24); its four stubs have exactly the
+  signatures of the derived overrides in SysLib_vtbl_1E1B8 (hostio_devWrite_00035990 (a0,a1,a2),
+  hostio_devRead_000359A4 (a0,a1,a2), hostio_devSlot2_000359B8 (a0), app_loadUso (a0,a1)).
+  The gl_data.h macro is now SysLibBase_vtbl (hand edit). ConsoleDev_init / ConsoleDev_setOrigin
+  (the debug-console origin halfwords) are unrelated and keep their names.
+- **rcp.h**: RcpTask.clipShape / .window are `struct PolyShape *` / `struct ScreenWindow *`.
+  gfx_queueGfxTask_0004CEFC stores rec->window and ends GfxLib.oneFrameDL[fbIndex].
+- gfx_drawFbSplash_00048184(GfxLib *): mainWindow->fbOwner->win.colorBuf[fbIndex].
+- ItemMgr_firstItemOfType(ItemMgr *, tag, ..) -> void *: ItemType.node.children->item.
+- Window_runTaskHooks(Window *), Window_display: Cfront calls through VT_SLOT (the camera's slot
+  11, the window's own slot 12, each task hook's slot 0).
+- ImageFileMgr_newFile_000688F8 / BinFileMgr_newFile_0006877C return ImageFile * / BinFile *.
+- material.h: BASEMAT(p); BaseMat_hostioParms / Mat_print use geomFlags & MAT_GEOM_TEXTURED,
+  unk14, unk4C, id, unk58 (printed as "%s": a short name string), minCut / maxCut.
+- **ShapeNode** (0x40, local to post0b): Node + unk2C, polyFlags (one-word struct, the
+  gPolyFlags_3EEC4 snapshot), geomMode (8-byte pair, gPolyGeomMode_3EEC8), unk3C. BasePolyShape
+  has the same +0x30 / +0x34 members (ncc_526D0.cpp m30 Flags / m34 Blk2) but in the derived
+  class, not in its Base, so it is not proven to derive from ShapeNode.
+- **GfxObj** (0x18, local): GfxObjBase (0x14: items = mem_new(20), cap 5, unk0C) + vptr at +0x14.
+- **NodeMsgPayload** (local to post0b, Node_handleMsg): +0 name (FIND_NAME), +4 union {s32 on
+  (SET_FLAG80); s16 serial (FIND_SERIAL)}. The serial read needs `*(short *)&pl->v.serial`; the
+  plain member read recolours t1 / t2 / t3 in two arms. node.h is untouched: NodeMsg.arg could
+  gain a `NodeMsgPayload *` member (agent-a's header).
+- Friction_applyContact's contact normal is `f32 *`; the eight Node-derived ctor vptr stores go
+  through NODE()->vptr.
+
+Left alone: gfx_clearScreen's two B sites (agent-g's int/pointer carriers `cnt` / `g`, one variable
+for a count and a packet pointer, a colouring lever); gfx_submitFrameTask_000469A8 (5, levers);
+Window_setupView's `(float *)*(int *)(camera + 0x14C)` (the dead-web reuse lever); GfxObj_ctor's
+`a0 + 0x134` store (owner class of a0 unknown).
+
+Next: port-audit b: coll_offsetPointsByMtx (3, needs the owner class), the varargs `<block>` /
+TextWin_printf / sys_sprintf align idioms, Window_hostioParms (1); census b:
+MemberCallback_invoke_* (7 / 5 x4, the Cfront member-callback struct is game/sun.h, area g: a
+shared gdl one needs a distinct name), BaseLight_ctor (5, Parm stores wait for gadget.h),
+CMod_callbackInvoke_000551E0 (5).

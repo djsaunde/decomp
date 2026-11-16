@@ -5,6 +5,7 @@ names are the current repo names. Written by agent-g run 480 from the matched co
 "Probably" marks a reading that no code path proves yet.
 
 ## Index
+- [0. State for porters](#0-state-for-porters-agent-g-run-575-final-wave)
 - [1. The pieces](#1-the-pieces)
 - [2. World registry and the course list](#2-world-registry-and-the-course-list)
 - [3. Course descriptors (the command stream)](#3-course-descriptors-the-command-stream)
@@ -15,6 +16,34 @@ names are the current repo names. Written by agent-g run 480 from the matched co
 - [7a. Splitting checkpoint.uso](#7a-splitting-checkpointuso-investigation-agent-g-run-494-no-config-change-made)
 - [8. Props: MapProp, Mountain, BGBox, U64BGWall](#8-props-mapprop-mountain-bgbox-u64bgwall)
 - [9. Open questions](#9-open-questions)
+
+## 0. State for porters (agent-g run 575, final wave)
+
+- **Fully typed:** include/game/course.h: `WorldRegistry` (0x118, course list + scene roots og / fg / bg / eg),
+  `WorldCourse` and the descriptor command stream (COURSE_OP_* ops), `CourseMarker` (+ its CourseParm /
+  CourseFParm parm group: wid / ext / flg), `MapProp`, `Mountain`, `BGBox`, the gate items; include/game/envobj.h:
+  `EnvSettings` (bgBox at +0x3C since run 575: the BG box node, the screen is cleared only while it is NULL),
+  `FallingSnow`, `U64BGWall`, the tree / tv1 item templates; include/game/sun.h: `Sun` / `LensFlare`.
+- **Entry points:** course load = `game_init` -> `game_createMap(world, course, mode)` (bootup 0x6808, donor
+  bootup_uso_o2_6808.c; section 4): EnvSettings + ItemMgr, the descriptor command loop (section 3), then
+  `item_registerTemplates`, the course PolyShape + collision (`CollShape_ctorPoly`), the item file, the
+  marker file (`CourseMarker_registerTemplates`). Per frame the course objects are ordinary Node children
+  of the WorldRegistry roots (PORTING_GUIDE 2.2); `EnvSettings_display` sets the clip range and screen clear.
+- **Still unknown:** settings +0x68 (the ENV_LT2 / EQ2 / EQ3 selector) and the SUN op's two ints; RaceGate below
+  +0x64; the ItemMgr / item file binary format (game_libs); WorldRegistry 0x98..0x104 (section 9).
+- **Port hazards:**
+  - *Endianness:* everything is big-endian. The descriptor is a stream of 32-bit words (`(argc << 16) | op`
+    then argc words) inside bootup Data, and its pointer arguments are USO-relocated addresses: a port must
+    relocate them (or rebuild the table) before reading strings / file names. Item, marker and env files are
+    big-endian s32 / f32; item positions are read as three ints and converted to float.
+  - *Fixed point:* course meshes are s16 vertex rows (BasePolyShape, GRAPHICS 7.1) (the collision grid format is still
+    open, ENGINE_CORE / SYSTEM_LAYER 7); game logic (markers, gates, AI path) is f32.
+  - *Frame-rate dependence:* falling snow, the sun / lens-flare easing (Sun_display: fade between the 0.98 /
+    0.7 / 0.3 / 0.1 thresholds) and item animations step once per frame; RaceTracker progress uses positions,
+    not time.
+  - *Asset loading:* course shapes are separate USOs (rom/mapN_data.uso, bgNtex.uso), some Yay0-compressed
+    (section 7a / USO_FORMAT); a port can pre-extract them but must keep the Sym-based exports the loader
+    resolves.
 
 ## 1. The pieces
 

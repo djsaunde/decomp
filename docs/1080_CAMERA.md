@@ -4,6 +4,7 @@ How the camera follows the rider. Types are in include/game/camera.h (1080 repo)
 names. Written by agent-g run 475 from the matched code. "k" = a RoData constant not needed here.
 
 ## Index
+- [0. State for porters](#0-state-for-porters-agent-g-run-575-final-wave)
 - [1. Objects](#1-objects)
 - [2. Who builds what (bootup cam_create)](#2-who-builds-what-bootup-cam_create)
 - [2a. The course camera (game.uso CourseCam, 0x27C)](#2a-the-course-camera-gameuso-coursecam-0x27c)
@@ -14,6 +15,35 @@ names. Written by agent-g run 475 from the matched code. "k" = a RoData constant
 - [7. Choosing the camera: CamDirector and RiderCam](#7-choosing-the-camera-camdirector-and-ridercam)
 - [8. Debug cameras](#8-debug-cameras)
 - [9. Open questions](#9-open-questions)
+
+## 0. State for porters (agent-g run 575, final wave)
+
+- **Fully typed:** include/game/camera.h: `CamMNode`, `MCamera` (game_libs, 0x150), `RiderCam` (bootup, 0x15C),
+  `CamDirector`, `CourseCam` (game.uso, 0x27C) with `CamList` / `CamPath` / `CamKey` (rom/cam_info.bin),
+  `SnowChaseActorCam` / `SnowChaseActorLook` / `SnowChaseActor` and their parms, `LookAtNode`, `FreeCam`,
+  `CamFollow`. All camera bodies (cam_create donor 31C0, RiderCam_update donor 4948, the B3C path player,
+  CamDirector_update, MCamera_updateLookAt donor game_libs_ncc_33094.cpp) are on these fields.
+- **Entry points:** built once per race by bootup `cam_create` (section 2; mode 0 / 2 = CourseCam, mode 1 =
+  RiderCam). Per frame, after the riders (PORTING_GUIDE 2.2): the chase components move their bodies
+  (`math_mtxAddTranslation(&body->local, gain * error)`), the CourseCam path player `cam_updateView_00000B3C`,
+  `CamDirector_update` (which camera is active), `RiderCam_update_00004948` (fov), then
+  `MCamera_updateLookAt` builds `view` from world[3] toward target. Display uses `window->cam`.
+- **Still unknown:** CamPath unk08 / 0C / 18 / 1C / 24 / 2C (read, never used), CourseCam 0x278, MCamera
+  unkF8 / unkFC / unk100 / unk110 (a 0x20-byte sub-object) / unk13C (roll?), and which RoData words the
+  RiderCam fov tables' k0 / k1 / klo / khi are (section 9). RiderCam_update's two pool words off
+  func_000003F8 are both f32 pi (bootup RoData 0x554 / 0x558, named RO_PI_554 / RO_PI_558 in run 575).
+- **Port hazards:**
+  - *Float, not fixed point:* camera maths is f32; fov is in **degrees** (85 default, 45..120 in manual mode)
+    and is converted with pi / 180 only where the projection is built. The RSP Mtx (s15.16) conversion
+    happens on display (GRAPHICS), not in the camera.
+  - *Frame-rate dependence:* strong. Chase components ease by a fixed fraction of the error per frame (no
+    dt), CamDirector re-picks the course "cam" node every 60 frames, manual mode steps fov by 2 and pitch /
+    yaw by stick * 2 per frame, and CourseCam advances one key-frame step per frame. At another update rate
+    the follow lag and the cut timing change; keep the fixed step.
+  - *Data:* rom/cam_info.bin and the cam_ca / lookat_ca parms files are big-endian (s32 counts, f32
+    positions / weights); pointers inside cam_info are rebuilt by cam_readParms, not stored.
+  - *Node layout:* the eye and target are Node subclasses; Node.parent (+0x14) is the body a chase component
+    moves, so a port that changes the Node layout must keep the parent link.
 
 ## 1. Objects
 

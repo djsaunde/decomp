@@ -6,6 +6,7 @@
 > one layout header (`include/game/snowboarder.h`). Names are in `renames.tsv`.
 
 ## Index
+- [0. State for porters](#0-state-for-porters-agent-g-run-575-final-wave)
 - [1. Method: strings, vtables, ctors](#1-method-strings-vtables-ctors)
 - [2. Base-class conventions](#2-base-class-conventions)
 - [3. Classes and their functions](#3-classes-and-their-functions)
@@ -38,6 +39,33 @@
 - [30. Run 555: U64BGWall fields, Tv1, ScreenThumbMat, input.h on race.h, GameFlow.titleFlags](#30-run-555-u64bgwall-fields-tv1-screenthumbmat-inputh-on-raceh-gameflowtitleflags)
 - [31. Run 558: Tv1Callback, game.uso marker tags / rumble patterns / parm tags, the C234 marker query](#31-run-558-tv1callback-gameuso-marker-tags--rumble-patterns--parm-tags-the-c234-marker-query)
 - [32. Run 563: C234 CollShape.shape, SnowBoarder.boardBin, Sun / CourseMarker data constants, pattern H](#32-run-563-c234-collshapeshape-snowboarderboardbin-sun--coursemarker-data-constants-pattern-h)
+
+## 0. State for porters (agent-g run 575, final wave)
+
+- **Fully typed:** every bootup_uso and game_uso function has a real or kind-qualified name (bootup 19
+  intentional placeholders that double as USO data bases, game_uso 0; census in READABILITY_PLAN 0). Class
+  headers: snowboarder.h (SnowBoarder + DNode base + Parms), snowai.h (SnowAI, its Parms and states),
+  rideranim.h (RiderAnim, its PMF state machine, AnimPlayer base), tricktable.h (TrickTable / TrickEntry),
+  camera.h, course.h, envobj.h, sun.h, input.h (InputMgr / RiderInput) and game_uso_data.h (named Data /
+  RoData offsets: strings, tags, vtables, f32 / f64 pool constants). The C++ donors (bootup_uso_ncc_*.cpp,
+  game_uso_ncc_*.cpp) use these classes or local mirrors of them.
+- **Entry points:** the Cfront vtables (section 2: slot 3 update, slot 2 display, slot 12 command / class
+  slots); per frame `SnowBoarder_update` -> `SnowAI_update` -> `SnowBoarder_updateDyn` -> `RiderAnim_update_0000D204`
+  (PHYSICS 2), the cameras (CAMERA 0), `Sun_display` / `LensFlare` on display. Construction: `game_init` /
+  `game_setupMode` (section 6), `game_createMap` (COURSE 4), `cam_create` (CAMERA 2).
+- **Still unknown:** the `unk` fields listed in PHYSICS 0 / CAMERA 0 / COURSE 0, about 24 SnowAI and 11
+  RiderAnim `unk` words (mostly state scratch), and the meaning of some weak `<Kind>_func_<addr>` /
+  `_vfnN` names in bootup (8 left).
+- **Port hazards:**
+  - *Cfront objects:* vptrs sit after the first virtual class's data (Node.vptr at +0x28, not +0), calls go
+    through `{s16 delta, pad, fn}` slots (VT_SLOT), and pointers-to-member are 3-word PMFs (MemberCallback).
+    A port either keeps this ABI in C or rewrites the classes as native C++ with the same field order.
+  - *64-bit hosts:* the remaining port-audit sites in these areas are byte-locked spellings (SnowAI_scanNodes /
+    scanSegments link temps, the Sun_display donor's int address copies, MemberCallback_invoke's selector
+    arithmetic, a few `*(T **)(base + K)` reads off USO data bases); they need a PORT path. Run 575 removed the
+    item_registerTemplates `(int)&` escapes and Node::add's `(int)this`.
+  - *Float, frame rate, endianness:* f32 throughout the game classes; no dt anywhere (one step per frame);
+    all parms / data files big-endian (see the per-area sections 0).
 
 ---
 

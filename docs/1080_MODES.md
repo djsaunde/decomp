@@ -1,5 +1,59 @@
 # 1080 Snowboarding: mode / process USOs (area H)
 
+## State for porters: the select screens (genproc) (agent-c run 574, final wave)
+
+**What it is.** genproc.uso (module 28) is the shared character / board / course / level select
+step. It is the splat segment `timproc_uso_b5`, not timproc: Text at ROM 0x5BD2C2, 0xE620 bytes.
+All 193 real functions are exact; the 194th is the `_00000000` sentinel. The code is cfront C++
+lowered to C. Most bodies are IDO C. The rest are edg (NCC) `.cpp` donors and IDO cfe donors
+(`_8FC8.c` SelItemsMgr_ctor, `_4118.c` SelectWin_ctor), spliced over placeholders. There are also
+separate sub-TUs: `_D884` / `_DF14` (the course / level createItem) and `_o2_5FC0`
+(SelectWin_update). The class / vtable table is in H1 "genproc" below.
+
+**Flow.** GenSelectChar_ctor (the Process) runs `gen_createScene`, which builds the "MainGame" /
+"bg" / "fg" nodes, the GenRoom and one or two GenCameras. It then creates the SelItemsMgr (the
+four stage lists, three Tesuri items and the CommonInfo) and the SelectionMgr, which makes one
+SelectWin per player. Each SelectWin runs the 11-state machine in `SelectWin_update`
+(`SelectWin_state0..10`, stage bits 1 / 2 / 4 / 8). The machine handles cursor and accept input,
+the cheat sequences (`SelectWin_charCheatIndex` / `boardCheatIndex`), the camera lerps between
+items and the 2-player split slide (SelectionMgr_setSplit / _update). `SelectWin_commitSelection`
+writes the chosen items' `id` (and the board `flags`) through `SelectWin.out[5]`, then fades the
+process out. Those five words are the screen's whole output contract to the caller.
+
+**Typed (include/game/select.h, offsets asserted for C builds).** The full layouts are SelectWin
+(0x4F0), SelectWinParms, SelectionMgr (0x58), SelItemsMgr, SelItemList and SelCommonInfo. Also
+typed: SelItem / SelItemEx and the five item classes; SelItemParms / SelItemInfo (the HostIO parm
+records, named by their 3-letter tags); SelItemVtbl (slots 10..27 by role); the display models
+(SelModel and the Character / Board / Course / Tesuri / Level models, plus SelCharAnim);
+GenCamera, GenRoom, GenScene, RoomModifier and GenSelectChar. Settings and cheat marks come from
+gdl/backup.h. The gdl node types (Node / MNode / QNode, VT_SLOT) come from include/gdl, and
+camera / window from game/camera.h and gdl/window.h.
+
+**What stays raw, and why.** 36 census sites are left in the segment, 22 casts + 5 accessor uses
+of them in timproc_uso_b5.c:
+- **RoData float-pool reads through pinned symbols.** These are SelItemsMgr_ctor's five
+  `FF(&import_..., K)` and SelectWin_update's five reads (o2 donor). The pinned symbol / relocation
+  is what matches. On a port they are float constants: read them from the RoData listing.
+- **gen_createScene's three game_libs globals** (`import_8005C2CC` +0x1C4 flag clear,
+  `import_8005C39C` +0x294 vec4, `import_8005EBA4` +0x2A0). Their owners are not identified. The
+  distinct-alias and pointer-mutate spellings are matching levers.
+- **The state functions' `arg0 + stage * 4` cluster offsets**, kept as char * arithmetic. This is
+  a matching lever, explained at the SELWIN macro in select.h.
+- **The edg donors.** They see the gdl bases as opaque bytes because edg rejects the gdl headers'
+  asserts, so their few raw sites are inside those bases. `_ncc_8FC8_nm.cpp` is not compiled.
+
+**Porting.** The screen is plain code on the gdl scene graph. It needs Node / QNode / MNode,
+list_append, PolyShape, MCamera and Window. It also needs gui sprites and fonts, the input
+manager (`input_checkPressed`) and bootup's sound events. Each call goes through a `gen_imp_*` or
+`import_*` symbol, so the dependency list is genproc's import list (`scripts/uso-imports.py`,
+1080_GAME_CLASSES.md section 8). Layout and tuning come from data files, not code:
+- rom/1psel.bin, rom/2psela.bin / rom/2pselb.bin and rom/selinfo.bin (GenSelectChar);
+- rom/selwin1.bin / rom/selwin2a.bin / rom/selwin2b.bin (the SelectWin Parms: cwt, msp, lfw, the
+  colours and the offsets).
+
+Each one loads into the HostIO Parms records that select.h names. A port can keep the module
+as-is on top of a gdl port. Or it can rewrite the screen against SelectWin.out[] and the item ids.
+
 ## H2. Mode / process modules: titproc, h2hproc, arcproc, mgrproc, eddproc, n64proc, gui, boarder1-5 (agent-h run 460)
 
 > agent-h run 460, branch agent-h on 8239918e8: efb3336fb (78 names) and 16f7cbcb8 (110 names), both pure
@@ -1816,6 +1870,21 @@ Next (H1):
   SelItemInfo_ctor (32C8, 11), SelectionMgr_finish (6), Course / LevelList_createItem (6 each).
 - RoomModifier_display (NM) on SELWIN / SelItemsMgr members: dispItems doFlags bit 4.
 - gen_createCamera_0000283C (11).
+
+### Run 574 (agent-c): setCamToItem, canCommit, DispItems camera axis
+
+1ba066e5c on agent-c (base da8d26426; hand edit, no renames; gate PASS 3288/3288, ROM identical,
+source checks 0 mismatches; every build/src object identical by objdump).
+- **SelectWin_setCamToItem_00003A28:** `((QNode *)item->node)->cvqs.trans` into
+  `((MNode *)cam)->mtx[3]`, which snaps the camera node onto the item.
+- **SelectionMgr_canCommit_00001D1C:** `wins[a1]` / `wins[a1 ^ 1]`, `stageBit`, `state`. The
+  three defs stay on one source line (the as1 tie-break lever).
+- **DispItems_display_0000E5D8:** the state global is a CamWindow. The three floats are
+  `cam->view[0..2][2]` (the camera's look axis), copied into an imported vec3.
+- **Not converted (byte-locked):** SelItemsMgr_ctor's five FF() RoData reads (pinned float
+  pool) and gen_createScene's three unidentified game_libs globals (distinct-alias /
+  pointer-mutate levers).
+- **Census:** timproc_uso_b5 segment 39 -> 36 raw (b5.c 25 + 5 -> 22 + 5).
 
 ### Run 569 (agent-c): commitSelection PICK, display sprite widths, camera window, cheat index
 

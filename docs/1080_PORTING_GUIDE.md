@@ -19,6 +19,7 @@
 - [6. Conventions and matching caveats](#6-conventions-and-matching-caveats)
 - [7. Open questions (all areas)](#7-open-questions-all-areas)
 - [8. 64-bit port readiness: pointer / int casts (scripts/port-audit.py)](#8-64-bit-port-readiness-pointer--int-casts-scriptsport-auditpy)
+- [9. State of the source (end of the readability phase, run 573)](#9-state-of-the-source-end-of-the-readability-phase-run-573)
 
 ## 0. The area docs
 
@@ -375,38 +376,62 @@ what the matching build does not compile, in the same way as the readability cen
   comment (`Foo *`, `char *`, pointer) says they hold a pointer. This is a lower bound, because many s32
   fields that hold pointers have no such hint (for example H2HWinsDisplay.race).
 
-Owners are the census owner() table (a / b / c / g / h, section 0). hdr = include/ headers. Snapshot at
-agent-a run 568 (main 3f4755e0b plus that run's commits; run 562 had A 270, B 81, C 16, D 208, H 13;
-run 557 had A 310, B 157, C 20, D 239, H 22;
-run 549 had A 323, B 158, C 23, D 285, H 40; run 536 had A 484, B 171, C 32, D 497, H 49). Run 549 typed
-Node.name (const char *), Node.children (NodeLink *), Node.vptr (char *), Sprite.children and the skin.h
-pointers. Run 557 typed the gdl headers: anim.h (AnimData.keys / mgr, AnimGroup.anims / mgr,
-AnimFrameSlot.anim, AnimFrameCache.slots, AnimDataMgr.groups, AnimPlayer.animators / mgr), dnode.h
-(PhysQNode.owner, Friction.owner: DNode *), coll.h (CollObj.owner: Node *), the CollObj / BinFile / BaseMat
-vptr (char *), TexImage.pixels (char *), TextWin.owner (void *), and NodeMsg (arg is now a union {value,
-payload}, reply a Node *). Run 562 typed backup.h BackupGhost.data (struct InputFrame *; Backup_ghostSetHeader's
-parameter with it). Run 568 typed course.h CourseParm.vptr / CourseFParm.vptr / WorldRegistry.vptr
-(char *; the six forced (s32) / (int) store casts, plus the three in game_uso.c's NON_MATCHING
-CourseMarkerTmpl_create, dropped); H is now 0 (the other areas typed race.h and include/game between 562 and 568).
-At run 562 gdl still had race.h only (RaceProcess.parent, TimRace.dataManager, RaceTracker vptr /
-owner; agent-h's run); the other 9 are include/game. Between 557 and 562 the other areas cleared most of
-timproc_uso_b5 (SelectWin_ctor, SelItemParms / SelItemInfo ctors) and part of post0b. No retype so far has
-needed a `*(int *)&p->field` fallback; the one trap is a field used in pointer arithmetic (`p->mgr + 0x40`,
-`(c)->slots + off`), which compiles silently scaled, so every retype is checked by an all-object objdump
-diff, not by warnings. (The `*(int *)&` lever has been needed for raw-offset conversions, not retypes:
-member reads that reorder loads or swap `and` operands, e.g. ncc_3D71C, SnowBoarder_update. Run 568: in
-ncc_4BAF4 a typed read through a cast of an inline `me()` result -- even `*(f32 *)&((Sprite *)me(..))->depthBias`
--- moved edg spill slots / FP operand order, so F4B(cam, 0x30) / F4B(self, 0xC8) stay raw.)
+Owners are the census owner() table (a / b / c / g / h, section 0). hdr = include/ headers. **Final
+snapshot at agent-a run 573** (main da8d26426 plus that run's commits), the last wave of the readability
+phase.
+
+| run | A | B | C | D | H | A+B+C+D |
+|---|--:|--:|--:|--:|--:|--:|
+| 536 (first audit) | 484 | 171 | 32 | 497 | 49 | 1184 |
+| 549 | 323 | 158 | 23 | 285 | 40 | 789 |
+| 557 | 310 | 157 | 20 | 239 | 22 | 726 |
+| 562 | 270 | 81 | 16 | 208 | 13 | 575 |
+| 568 | 167 | 38 | 6 | 133 | 0 | 344 |
+| **573 (final)** | **108** | **24** | **6** | **92** | **0** | **230** |
+
+That is 81% of the A-D sites and all of H gone in the phase. Run 549 typed Node.name (const char *),
+Node.children (NodeLink *), Node.vptr (char *), Sprite.children and the skin.h pointers. Run 557 typed the
+gdl headers: anim.h, dnode.h, coll.h, the CollObj / BinFile / BaseMat vptrs, TexImage.pixels, TextWin.owner
+and NodeMsg (arg is a union {value, payload}, reply a Node *). Run 562 typed backup.h BackupGhost.data.
+Run 568 typed course.h CourseParm / CourseFParm / WorldRegistry vptrs; the other areas typed race.h and
+include/game, which took H to 0. Between 568 and 573 the other areas took A from 167 to 108 and D from 133 to 92. Area h went
+A 62 -> 23 and D 18 -> 7, area b D 50 -> 32, and area c D 10 -> 1. Most of that was vtable / name
+stores rewritten as typed member stores, for example `NODE(p)->vptr = (char *)&vt` in place of
+`*(int *)((char *)p + 0x28) = (int)&vt`. Run 573 did eddproc / n64proc and FloatPosParms_ctor (PARMS / PARMF),
+and moved Sun_display onto `GFXLIB(...)->modelView[3]`.
+
+No retype so far has needed a `*(int *)&p->field` fallback. The one trap is a field used in pointer
+arithmetic (`p->mgr + 0x40`, `(c)->slots + off`): it compiles silently scaled. So every retype is checked
+by an all-object objdump diff, not by warnings. The `*(int *)&` lever has been needed for raw-offset
+conversions, not for retypes: member reads that reorder loads or swap `and` operands (ncc_3D71C,
+SnowBoarder_update). Two other byte locks show up:
+- Run 568, ncc_4BAF4: a typed read through a cast of an inline `me()` result moved edg spill slots,
+  so F4B(cam, 0x30) / F4B(self, 0xC8) stay raw.
+- Run 573, Sun_display: the member form `GFXLIB(&g)->modelView[3][0]` folds the 0xA0 into the store
+  offset (0xD0), and the target has a separate `addiu +0xA0`. The site keeps
+  `((float (*)[4])(unsigned)GFXLIB(&g)->modelView)[3][i]`.
+
+What is left, by kind:
+- **A (108; 52 are store right-hand sides).** GfxLib_hostioParms (12: hostio callback objects built
+  with `*p = (s32)&vtbl`) and item_registerTemplates (11, the template table). The rest are args where
+  the callee prototype takes an int:
+  - `bootup_27E8_func_04C678(0, (s32)&ref)` in game_init;
+  - `(int)(&tbl + K)` sprite-table addresses in CourseItem_drawLabel;
+  - libultra's `__osPiDevMgr` fields in osCreatePiManager, which are s32 in the matching declaration.
+- **B (24) and C (6).** Mostly in post0b / post1b / post.c and game_uso.c, where the int expression is
+  the colouring lever.
+- **D (92).** post0b has 30. Node_doCommand's message payloads have 6, and so do RoomModifier_display's
+  `*(char **)(slot->field_40C + 0x38)` chains (timproc_uso_b5 screen objects, untyped past +0x38).
 
 | pattern | a | b | c | g | h | hdr | total |
 |---|--:|--:|--:|--:|--:|--:|--:|
-| A: `(s32)&X` address -> int | 63 | 29 | 4 | 9 | 62 | 0 | 167 |
-| B: pointer expression -> int | 6 | 12 | 6 | 11 | 3 | 0 | 38 |
+| A: `(s32)&X` address -> int | 54 | 24 | 3 | 4 | 23 | 0 | 108 |
+| B: pointer expression -> int | 4 | 9 | 5 | 3 | 3 | 0 | 24 |
 | C: `*(int *)` load used as a pointer | 1 | 3 | 1 | 0 | 1 | 0 | 6 |
-| D: `*(T **)(p + K)` pointer at a fixed offset | 54 | 50 | 10 | 1 | 18 | 0 | 133 |
+| D: `*(T **)(p + K)` pointer at a fixed offset | 51 | 32 | 1 | 1 | 7 | 0 | 92 |
 | H: header field: int that holds a pointer | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 
-A* (the `(s32)&X` is a store right-hand side): a 39, b 19, c 1, g 2, h 26; total 87.
+A* (the `(s32)&X` is a store right-hand side): a 33, b 14, c 1, g 2, h 2; total 52.
 
 Owners: the census owner() table (a / b / c / g / h); hdr = include/ headers (pattern H only).
 
@@ -414,49 +439,113 @@ Top 15 files (A+B+C+D):
 
 | file | A | B | C | D | total |
 |---|--:|--:|--:|--:|--:|
-| `src/game_libs/game_libs_post0b.c` | 23 | 9 | 3 | 48 | 83 |
-| `src/bootup_uso/bootup_uso.c` | 10 | 0 | 0 | 11 | 21 |
-| `src/game_libs/game_libs.c` | 15 | 2 | 0 | 0 | 17 |
-| `src/bootup_uso/bootup_uso_ncc_55A0.cpp` | 14 | 0 | 0 | 0 | 14 |
-| `src/game_uso/game_uso.c` | 4 | 10 | 0 | 0 | 14 |
-| `src/game_libs/game_libs_post.c` | 2 | 4 | 1 | 5 | 12 |
+| `src/game_libs/game_libs_post0b.c` | 18 | 6 | 3 | 30 | 57 |
 | `src/match_imports/GfxLib_hostioParms.c` | 12 | 0 | 0 | 0 | 12 |
-| `src/titproc_uso/titproc_uso.c` | 12 | 0 | 0 | 0 | 12 |
+| `src/bootup_uso/bootup_uso_ncc_55A0.cpp` | 11 | 0 | 0 | 0 | 11 |
 | `src/game_libs/game_libs_post1b.c` | 6 | 3 | 0 | 2 | 11 |
-| `src/eddproc_uso/eddproc_uso.c` | 4 | 0 | 0 | 2 | 6 |
 | `src/game_libs/game_libs_o2_38A28.c` | 0 | 0 | 0 | 6 | 6 |
+| `src/game_libs/game_libs_post.c` | 1 | 3 | 1 | 1 | 6 |
 | `src/match_imports/RoomModifier_display_0000117C.c` | 0 | 0 | 0 | 6 | 6 |
+| `src/game_uso/game_uso.c` | 2 | 3 | 0 | 0 | 5 |
 | `src/kernel/kernel_006.c` | 5 | 0 | 0 | 0 | 5 |
 | `src/match_imports/game_init.c` | 4 | 1 | 0 | 0 | 5 |
-| `src/n64proc_uso/n64proc_uso.c` | 2 | 2 | 0 | 1 | 5 |
+| `src/game_libs/game_libs_ncc_4FD00.cpp` | 4 | 0 | 0 | 0 | 4 |
+| `src/match_imports/arc_DataManager_update.c` | 4 | 0 | 0 | 0 | 4 |
+| `src/bootup_uso/bootup_uso.c` | 1 | 0 | 0 | 2 | 3 |
+| `src/game_libs/game_libs_mid.c` | 3 | 0 | 0 | 0 | 3 |
+| `src/game_libs/game_libs_ncc_42938.cpp` | 3 | 0 | 0 | 0 | 3 |
 
 Top 15 functions:
 
 | function | file | owner | sites |
 |---|---|--:|--:|
-| `item_registerTemplates` | `src/bootup_uso/bootup_uso_ncc_55A0.cpp` | h | 14 |
-| `RaceProcess_init` | `src/game_libs/game_libs.c` | h | 12 |
 | `GfxLib_hostioParms` | `src/match_imports/GfxLib_hostioParms.c` | a | 12 |
+| `item_registerTemplates` | `src/bootup_uso/bootup_uso_ncc_55A0.cpp` | h | 11 |
 | `Node_doCommand` | `src/game_libs/game_libs_o2_38A28.c` | a | 6 |
 | `RoomModifier_display_0000117C` | `src/match_imports/RoomModifier_display_0000117C.c` | a | 6 |
 | `gfx_submitFrameTask_000469A8` | `src/game_libs/game_libs_post0b.c` | b | 5 |
 | `osCreatePiManager` | `src/kernel/kernel_006.c` | a | 5 |
 | `game_init` | `src/match_imports/game_init.c` | a | 5 |
-| `N64DemoProcess_ctor` | `src/n64proc_uso/n64proc_uso.c` | a | 5 |
 | `Col::side` | `src/game_libs/game_libs_ncc_4FD00.cpp` | a | 4 |
-| `Parms_addParm` | `src/game_libs/game_libs_post0b.c` | b | 4 |
-| `ZoneShape_build` | `src/game_libs/game_libs_post0b.c` | b | 4 |
 | `arc_DataManager_update` | `src/match_imports/arc_DataManager_update.c` | a | 4 |
-| `GameDemoProcess_ctor` | `src/titproc_uso/titproc_uso.c` | h | 4 |
-| `edd_EditorsProcess_ctor_0000025C` | `src/eddproc_uso/eddproc_uso.c` | a | 3 |
+| `<block>` | `src/game_libs/game_libs_mid.c` | a | 3 |
+| `dbg_screenOverlay_00042938` | `src/game_libs/game_libs_ncc_42938.cpp` | a | 3 |
+| `coll_offsetPointsByMtx` | `src/game_libs/game_libs_post0b.c` | b | 3 |
+| `SnowAI_scanSegments` | `src/game_uso/game_uso.c` | g | 3 |
+| `CourseItem_drawLabel_0000C98C` | `src/match_imports/CourseItem_drawLabel_0000C98C.c` | a | 3 |
+| `<block>` | `src/match_imports/snd_HandleSeqEvent_30AF4.c` | a | 3 |
 
 Pattern H per header directory: none left.
 
-Reading it: A and H are the bulk of the work, and both come from the same convention. Node / Parms /
-gadget fields are declared `s32` because the ctors store addresses into them through int-cast bases
-(`NODE(p)->vptr = (s32)&vtbl`). Many of those int casts are load-bearing for the matching build: an
-int base colours a different register than a typed pointer (uso_init's CTX(f), run 536; IDO_CODEGEN.md
-has more). So a 64-bit port types the fields first (H) and keeps the matching spellings behind a
-PORT / NON_MATCHING path, instead of editing the casts one by one. Pattern D disappears as raw offsets
-become struct fields (the census raw-offset count). `--list A|B|C|D|H` prints every site; `--owner X`
-narrows to one area.
+Reading it: at the start of the phase, A and H were the bulk of the work, and both came from the same
+convention. Node / Parms / gadget fields were declared `s32`, so the ctors stored addresses into them
+through int casts (`NODE(p)->vptr = (s32)&vtbl`). The headers are now typed (H = 0), and most of those
+stores are plain pointer stores. Many of the A / B sites that remain are load-bearing for the matching
+build: an int base colours a different register than a typed pointer (uso_init's CTX(f), run 536;
+IDO_CODEGEN.md has more). So a 64-bit port keeps the matching spellings behind a PORT / NON_MATCHING
+path instead of editing the casts one by one. Pattern D disappears as raw offsets become struct fields
+(the census raw-offset count). `--list A|B|C|D|H` prints every site; `--owner X` narrows to one area.
+
+## 9. State of the source (end of the readability phase, run 573)
+
+All counts are for compiled code only, from READABILITY_PLAN.md section 0 (census) and section 12
+(closing summary). Throughout, the ROM is byte-identical and all 3288 functions are exact.
+
+**Named and typed.**
+- **Functions.** 3203 of 3270 non-sentinel functions have a real name (98.0%). The 19 remaining
+  `func_<addr>` placeholders are all in bootup_uso. 48 functions have weak `<Kind>_func_<addr>` names,
+  where the class is known but the method is not (game_libs 40, bootup_uso 8).
+- **Calls.** 6,089 cross-USO calls are spelled `CALL(f)` / `FCALL` / `GCALL` / `XCALL(tok, f)`. Each is
+  proven against the module's TextReloc by `scripts/name-placeholder-calls.py check`, which the gate
+  runs. 555 are still `gl_func_00000000(...)`, mostly game_libs and bootup_uso.
+- **Types.** include/ has 62 headers and 399 struct / union / class definitions:
+  - gdl/: 32 headers for the libgdl engine (Node, MNode / SNode / QNode, Sprite, Window, GfxLib, anim,
+    skin, coll, item, gadget, polyshape, ...);
+  - game/: 17 headers (course, race, input, backup, camera, audio, ...);
+  - libultra/: 7 headers.
+  The size and offset of each one is pinned by `_check` typedefs. No header field holds a pointer in
+  an int (port audit H = 0).
+- **Data.** In bootup.uso, 2,638 of the 4,611 Data / RoData LO16 sites go through a named linker alias
+  (`GL_DATA_STR(off, "text")`, `sStr_*`, `kRo_*`, per-object names such as `gHostio` / `CMod_vtbl`).
+  `uso-data-sites.py check` proves each alias against the relocs. The remaining sites have no provable
+  name left (the plan is empty).
+
+**Deliberately raw, and why.** About 930 raw struct-offset sites remain (857 `*(T *)((char *)p + K)`
+casts plus 73 accessor-macro uses), and 230 port-audit A-D sites. They fall into four groups:
+- **Byte-locked spellings.** The member form compiles to different bytes. These sites keep the
+  documented levers, each with a comment at the site:
+  - `*(int *)&p->field` where the member load reorders or recolours;
+  - operand order (`a & b` vs `b & a`) and int-cast bases (`(s32)&X`, `(unsigned)` around a member
+    address);
+  - per-site alias tokens (`gGfxLib_4CDB0_a`, `*_44144` carriers) that keep a separate `lui`.
+  A port can type all of these freely. The constraint is only the 1997 compiler's register allocator.
+- **Data-table reads.** Constants read out of a module's RoData / Data by section offset
+  (`*(f32 *)(kRo_X_1868 + 0x1868)`, `(&tbl + K)` sprite and sound tables). The offset is the identity
+  of a ROM datum, not a struct field. A port loads the table (section 4) and indexes it.
+- **Unknown objects.** Raw offsets on objects that no area has identified yet. Examples:
+  - the timproc_uso_b5 screen object behind RoomModifier_display's `field_40C + 0x38`;
+  - the Node_doCommand message payloads;
+  - GfxLib `unk*` words. ncc_4E00C stores floats at +0x1D0..+0x1DC, which gfxlib.h declares as
+    `int unk1CC[5]`.
+
+  Their names would be guesses, so they stay offsets with a comment.
+- **C++ donors.** 106 sites in 49 `.cpp` donors. The NCC (edg) donors build without `-I include`, so
+  they can only use headers that include their siblings by relative path (gadget.h does; mnode.h does
+  not, so SNode_display in ncc_39E24 still reads pos / height raw). The readable body of a donor is
+  the `.cpp`, not the host placeholder (READABILITY_PLAN section 1).
+
+**Where a porter should start.**
+1. Read this guide, sections 1-5: modules, boot, the frame loop and the data formats. Then read the area
+   doc for the subsystem (section 0).
+2. Begin with the engine layer, the most typed code: game_libs = libgdl, include/gdl/. Start with
+   Node / NodeMsg dispatch (node.h, 1080_ENGINE_CORE.md), GfxLib and the display-list path
+   (gfxlib.h, 1080_GRAPHICS.md), and the HostIO parm system (gadget.h `GdlParm`).
+3. Then the game layer: bootup_uso (app, game modes) and game_uso (race, rider physics:
+   1080_GAME_CLASSES.md, 1080_PHYSICS.md, 1080_COURSE.md). The mode USOs (timproc / trkproc /
+   genproc / titproc / arcproc / h2hproc / mgrproc) are thin menus on top.
+4. Replace the N64 layer last (section 5): libultra, the RSP / RDP task path, audio (1080_AUDIO.md is
+   OoT's driver), and the USO loader. The USO loader becomes the static link the matching build
+   already does.
+5. Before compiling for a 64-bit host, run `scripts/port-audit.py --list A|B|C|D` and
+   `scripts/readability-census.py`. The A-D lists are the pointer-width hazards (section 8). The
+   census top-files tables show where raw offsets remain (game_libs_post0b.c first).

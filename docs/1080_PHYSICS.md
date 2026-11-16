@@ -5,6 +5,7 @@ Function names are the current repo names; offsets are SnowBoarder offsets. Writ
 the matched code. "k" means a RoData constant whose value was not needed for the explanation.
 
 ## Index
+- [0. State for porters](#0-state-for-porters-agent-g-run-575-final-wave)
 - [1. Object layout](#1-object-layout)
 - [2. Frame order](#2-frame-order)
 - [3. Orientation and edge (SnowBoarder_updateOrient)](#3-orientation-and-edge-snowboarder_updateorient)
@@ -14,6 +15,36 @@ the matched code. "k" means a RoData constant whose value was not needed for the
 - [7. Speed limits and catch-up (SnowBoarder_limitSpeed, SnowAI)](#7-speed-limits-and-catch-up)
 - [8. AI steering (game.uso SnowAI)](#8-ai-steering-gameuso-snowai)
 - [9. Open questions](#9-open-questions)
+
+## 0. State for porters (agent-g run 575, final wave)
+
+- **Fully typed:** `SnowBoarder` (include/game/snowboarder.h, 0xA8C) over the game_libs `DNode` base
+  (include/gdl/dnode.h: pose, last pose, DNode::Parms, surface copies, force accumulators, angVel, friction),
+  `SnowBoarder::Parms`, the rider input record (`RiderInput`, include/game/input.h), `SnowAI` and its parms
+  (include/game/snowai.h). Every function in sections 2-8 is named and its donor / C body is on fields; the
+  physics donors (game_libs_ncc_65494.cpp contact solver, the bootup updateOrient / updateDyn / procColl bodies)
+  compile to the matched bytes.
+- **Entry points:** frame order = `app_run` -> `App_Update` -> Node tree update (PORTING_GUIDE 2.2); per rider
+  `SnowBoarder_update` (bootup 0xD440, vtbl slot 3): "SnowBai" `SnowAI_update` (game.uso; pad riders read the
+  InputMgr pad instead) -> "SnowBDyn" `SnowBoarder_updateDyn` (section 2 steps 1-8) -> "SnowBAnm"
+  `RiderAnim_update_0000D204` -> "SnowBChild", then fwdSpeed / shake / sound. The camera reads the rider after
+  this (docs/1080_CAMERA.md 0).
+- **Still unknown:** groundFlags bits 1 / 0x400 (which course attribute), unkA18 (air-trick enable; writer not
+  found), unkA28 (pause latch?), unkA68, unkA74, unk91C, the unk814..unk860 skin / shape slots, unk8B8 / unk8C0
+  bit meanings, and the surfImp / surfSpd / surfVsc use inside DNode_solveContacts (section 9). About 45 `unk`
+  fields remain in snowboarder.h; none of them is read by the integration step itself.
+- **Port hazards:**
+  - *Float, not fixed point:* all rider state, parms and the integrator are f32 (double only for a few RoData
+    compare constants). Fixed point appears only at the edges: s16 animation keys (quat x 1/32767) and s16
+    shape vertices (GRAPHICS 7.1, 11), and the RSP Mtx conversion on display.
+  - *Frame-rate dependence:* there is no dt. Gravity, accumulators, angVel (applied once per frame), decay
+    factors (e.g. the 0.724 air-spin decay), the speed caps and SnowAI's one-marker-per-frame scan all assume
+    one fixed step per `app_run`. Run physics at the original fixed rate and interpolate rendering; scaling
+    by dt changes handling.
+  - *Data:* parms come from big-endian `.bin` parm files (3-char tags, then int / float / Vec3): byte-swap
+    f32 / s32 on a little-endian host. The k constants are bootup RoData 0x8C8..0x9A0 (big-endian f32).
+  - *Pointers:* snowboarder.h has no pointer stored in an int field any more (port-audit pattern H clean
+    for this header); a few NON_MATCHING-only bodies still spell offsets.
 
 ## 1. Object layout
 
