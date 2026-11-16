@@ -1766,6 +1766,39 @@ Next (H1):
 - RoomModifier_display (NM) on SELWIN / SelItemsMgr members: dispItems doFlags bit 4.
 - gen_createCamera_0000283C (11).
 
+### Run 569 (agent-c): commitSelection PICK, display sprite widths, camera window, cheat index
+
+fdca02565 + e4639db81 on agent-c (base 3f4755e0b; hand edits, no renames; gate PASS 3288/3288 before
+each commit, ROM identical, the three source checks 0 mismatches). All 1149 objects of the full
+build, matching and NON_MATCHING, identical to the pre-run build by `objdump -d -r`, `-r` and `-s`.
+- **SelectWin_commitSelection_00006C00:** the E6C00 offset macro is gone. `PICK(s)` =
+  `*(curItem[s] + itemsMgr->lists[s]->items)`: written index-first, which keeps the old
+  `idx * 4 + base` operand order (the t-reg ring position of the loads). The flags row's first
+  term stays base-first as the array form `lists[0]->items[curItem[0]]->flags`. The outputs are
+  plain `*out[k] = PICK(s)->id` (the old `(s32 *)` casts were spurious).
+- **SelectWin_display_00006394:** the four sprite-width reads are `((RaceSprite *)x)->image` /
+  `RaceSpriteImage.width`; its local FW define is gone (no FW use is left in b5.c; the other
+  `#ifndef FW` defines are dead too).
+- **SelBoard_display / SelCourseMap_display (AC20 / B368 NCC donors):** they include
+  game/camera.h; import_80087DA8 is the active CamWindow *, so the transposed matrix is
+  `(*(CamWindow **)&import_80087DA8)->cam->view` (game_uso_ncc_BB8C.cpp's Glob view has the same
+  0x70 camera slot).
+- **SelectWin_charCheatIndex_00008C44:** `SETTINGS(options)->seqStep` and `newMark[0..2]` (b5.c
+  includes gdl/backup.h), `SELITEM(curItem())->id`.
+- **SelItemParms_ctor / SelItemInfo_ctor (rodata placeholders):** `*(volatile float *)arg0`, the
+  `+ 0` dropped (12 of the census drop; the bodies are splice placeholders).
+- gen_createScene's B site was already gone (not on the run-569 port-audit list).
+- **Census / port-audit:** owner c raw sites 202 -> 138 (timproc_uso_b5.c 60 + 9 accessor uses ->
+  35 + 5, game_libs_post.c 95 -> 63; SelectWin_display 8 -> 0). port-audit `--owner c` 21 -> 10
+  (A 4 -> 3, B 6 -> 5, C 1, D 10 -> 1). Audio details in 1080_AUDIO.md run 569.
+
+Next:
+- b5: SelectWin_setCamToItem_00003A28 (6), SelectWin_update_00005FC0 (6, o2 donor: the five RoData
+  float reads), SelItemsMgr_ctor (5, _8FC8), SelectionMgr_canCommit_00001D1C (4),
+  DispItems_display_0000E5D8 / gen_createScene_00008DB4 (3 each).
+- Remaining port-audit c sites: snd_SoundObjUpdate (2 B) / snd_SoundObjUpdateChannel (2 A: the
+  load-bearing u32 table bases), sys_fatalSwapBuffer_00034180 (D), snd_CueQueueSet (B).
+
 ### Run 564 (agent-c): canScroll item walks, RaceSprite stat bars, vtable walks, match_imports
 
 4b447e239 on agent-c (base 04a1501e8; hand edit, no renames; gate PASS 3288/3288, ROM identical,

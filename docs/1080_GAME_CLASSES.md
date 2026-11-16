@@ -1448,3 +1448,38 @@ before each commit; `--uso game check` 0 mismatches.
 vptr retypes together with a / h; the import_8005C1A8 object (B750 / B274 / Sun_display); a census rule for the
 named-K AT uses.
 
+
+## 33. Run 570: ItemMgr.classMask, the import_8005C1A8 object (GfxLib.modelView), port-audit g sites, envobj retypes
+
+Port audit (owner g, A+B+C+D): 23 sites in 12 functions -> 8 in 5 (A 8 -> 4, B 14 -> 3, C 0, D 1). H: TreeTmpl.shapeData,
+Tv1Tmpl.unk64 / model retyped (envobj.h). Census game_uso raw / accessor 4 / 21 -> 4 / 18. Every changed object
+`objdump -dr -s` identical (.mdebug / .comment excluded), main and NON_MATCHING builds.
+
+- **import_8005C1A8 = gGfxLib, its token named for the +0xA0 site** (the same naming as import_800200CC = GameFlow
+  + 0x34): 0x8005C1A8 - 0xA0 = 0x8005C108 = gGfxLib_8005C108, and +0xA0 is GfxLib.modelView. The vec the three
+  sites write (+0xA0 + 0x30..0x38) is **modelView[3][0..2], the translation row**: LensFlareElem_draw and
+  Sun_display place the flare / sun sprite by writing its position straight into the current model-view matrix
+  before the sprite's draw virtual. Sun_display's other GfxLib reads: +0x254 curWindow (063734's projection
+  target, also stored as Sun.depthImage), +0x2A0 fog.colour[3] (the 0.98 / 0.7 / 0.3 fade thresholds).
+  - B750 donor: `GFXLIB(&import_8005C1A8)->modelView[3][i] = ...` is byte-identical to `AT(float, (int)&tok + 0xA0,
+    0x30 + 4i)`: edg forms the array base (`lui/addiu tok+0xA0`) and stores at +0x30. A `float *` row local folds
+    the base to +0xD0, a `GfxLib *` local to +0, a `float (*)[4]` local moves the Q temp (all tested).
+  - game_uso.c NON_MATCHING Sun_display body: typed (GFXLIB(s1)->fog.colour[3] / ->curWindow, dst = modelView[3]).
+  - B274 donor (NON_MATCHING only): left. Dropping `int di` keeps every instruction but moves r's slot 60 -> 64;
+    any pointer local adds an instruction. match_imports/Sun_display.c (owner a) can use the same modelView[3] spelling.
+- **55A0:** `ITEMMGR(D_55A0_root)->classMask = var_s0` (gdl/item.h by relative path).
+- **game_uso sites:** SnowChaseActorLookParms_ctor stores through SnowChaseActorLookParms / CamParm; Sun_ctor's two
+  MemberCallback vptr stores; RiderAnim_ctor's Parms name; the (int) casts dropped at K&R call sites
+  (RiderAnim_startTimeout x2, SnowAI_findNearestMarker x2, dma_read); 591C's `->link == 0`.
+  Left: scanNodes / scanSegments `t` / `cnt` hold link and are reused as ints (a pointer type fails to compile
+  later: `t = scanIndex + 1`); scanSegments' `(Vec3 *)(unsigned)&b1 / &b4` (cfront placement-new null check);
+  MemberCallback_invoke's sel multi-def; B3C's `*(char **)ob` (D).
+- **envobj.h (agent-h's request):** TreeTmpl.shapeData `void *` (55A0's three A sites gone); Tv1Tmpl.unk64 ->
+  `u16 *frameImage` (7D04's VT_SLOT 11 call cast to `u16 *(*)(char *)`); Tv1Tmpl.model -> `Tv1Model *` with
+  `char **screens` at +0x84. 7D04 reads it as `k = *(int *)&...->model; ((Tv1Model *)k)->screens`: k must stay the
+  one int variable (a `Tv1Model *` local swaps v0 / v1). Tv1Tmpl_create's `link[5] = (int)ret` (h) is the model's
+  list word.
+- PHYSICS.md section 2 "Frame order" already covers the per-frame flow.
+
+**Next:** the B274 donor slot (find another escaping local to hold r at 60); scanSegments' placement-new spelling;
+match_imports/Sun_display.c to modelView[3] (a).

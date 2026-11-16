@@ -937,6 +937,46 @@ matching and NON_MATCHING, identical by `objdump -d -r`, `-r` and `-s`).
 - **Next:** port-audit `--owner c` for audio: AudioSeq_SeqChannelSetLayer (match_imports, 6),
   AudioSynth_LoadAuxBufferC / AudioLoad_RelocateFont (2 each), snd_SoundObjUpdate.
 
+### Run 569 (agent-c): AudioContext mesg queues / threadCmdBuf, port-audit D sites, NotePool / AdsrInit / SampleCache
+
+fdca02565 + e4639db81 on agent-c (base 3f4755e0b; hand edits, no renames; gate PASS 3288/3288 before
+each commit, ROM identical, the three source checks 0 mismatches). Every object of the full build,
+matching and NON_MATCHING (1149), identical to the pre-run build by `objdump -d -r`, `-r` and `-s`
+(.mdebug excluded).
+- **AudioContext (audio.h)** now runs to its end: taskStartQueue / threadCmdProcQueue /
+  audioResetQueue (OSMesgQueue at 0x53D0 / 0x53E8 / 0x5400), taskStartMsgBuf / audioResetMesgBuf /
+  threadCmdProcMsgBuf (0x5418 / 0x541C / 0x5420), threadCmdBuf[0x100] (AudioCmd, 0x5430); size
+  0x5C30 = gl_data.h's gAudioContext Bss symbol (asserted). AudioThread_InitMesgQueuesImpl is OoT's
+  body on them; CheckSpecChange and the two reset-queue drains read audioResetQueueP;
+  AudioThread_WaitForAudioTask reads taskStartQueueP.
+- **AudioThread_QueueCmd:** threadCmdBuf / threadCmdWritePos / threadCmdReadPos through the inline
+  `(AudioContext *)&D_00000000` macro. Lever: the member compare must be written
+  `writePos == readPos` (the old byte-index form had them the other way round; the member form loads
+  the operands in the opposite order, `bne v1,t2` vs `bne t2,v1`).
+- **AudioHeap_UnapplySampleCache(SampleCacheEntry *, Sample *):** same lever: OoT's
+  `sample->sampleAddr == entry->allocatedAddr` gives the target `lw 8(a0)` / `lw 4(a1)` order (the
+  entry-first compare swaps the two loads once the operands are typed pointers). The medium store
+  stays on the B22398 u8 bitfield view (a u32 Sample.medium store would be a word RMW).
+- **Audio_NotePortamentoInit(Note *):** OoT's two statements; the Portamento struct assignment is
+  the inline struct copy (base computed in the expression, no named local), same bytes.
+- **Audio_InitNoteList(AudioListItem *) / Audio_InitNoteLists(NotePool *), Audio_AdsrInit(AdsrState *,
+  AdsrEnvelope *, s16 *):** OoT's member stores.
+- **AudioSeq_SequenceChannelEnable(SequencePlayer *, idx, u8 *script):** channels[idx],
+  scriptState.depth / pc, delay; layers[] read through the shifted cursor; the enabled / finished
+  byte RMWs stay raw (load-bearing byte form).
+- **AudioHeap_DiscardSequence:** numSequencePlayers; CTX_SEQP(p) = the shifted seqPlayers[0]
+  (enabled / seqId), stride sizeof(SequencePlayer).
+- **AudioSeq_SeqLayerProcessScriptStep4 (2B09C donor):** tunedSample->sample->loop->end.
+- **MCamera_hostioParms(MCamera *):** NODE(a0)->name, &a0->fov; gl_func_00000000_33338 typed
+  (void *, const char *, f32 *, float, float, int). **cam_createDefault_00033228(NodeListState *):**
+  the o + 0x3C holder is NodeListState.parent (obj / mnode / node stores, lst = o->parent->node).
+- **Census / port-audit (owner c):** raw sites 202 -> 138 (game_libs_post.c 95 -> 63, timproc_uso_b5.c
+  60 + 9 accessor -> 35 + 5). port-audit `--owner c` A 4 -> 3, B 6 -> 5, C 1, D 10 -> 1 (21 -> 10).
+- **Next:** snd_SoundObjUpdateChannel tableC330 / C3B0 u32 bases (load-bearing), AudioLoad_GetLoadTable
+  (0x201C.. tables), AudioLoad_DmaSlowCopy (AudioSlowLoad), AudioSeq_ResetSequencePlayer's stopScript
+  byte RMW, AudioSeq_SequencePlayerDisableChannels (A: sequenceChannelNone), Audio_NoteDisable's
+  0xB0 bitfield RMWs.
+
 ### Run 564 (agent-c): SequenceLayer instOrWave / portamento, SndLevelRamp, sequenceFontTable
 
 4b447e239 + 389e48643 on agent-c (base 04a1501e8; hand edits, no renames; gate PASS 3288/3288

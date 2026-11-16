@@ -376,7 +376,8 @@ what the matching build does not compile, in the same way as the readability cen
   fields that hold pointers have no such hint (for example H2HWinsDisplay.race).
 
 Owners are the census owner() table (a / b / c / g / h, section 0). hdr = include/ headers. Snapshot at
-agent-a run 562 (main 04a1501e8 plus that run's commits; run 557 had A 310, B 157, C 20, D 239, H 22;
+agent-a run 568 (main 3f4755e0b plus that run's commits; run 562 had A 270, B 81, C 16, D 208, H 13;
+run 557 had A 310, B 157, C 20, D 239, H 22;
 run 549 had A 323, B 158, C 23, D 285, H 40; run 536 had A 484, B 171, C 32, D 497, H 49). Run 549 typed
 Node.name (const char *), Node.children (NodeLink *), Node.vptr (char *), Sprite.children and the skin.h
 pointers. Run 557 typed the gdl headers: anim.h (AnimData.keys / mgr, AnimGroup.anims / mgr,
@@ -384,23 +385,28 @@ AnimFrameSlot.anim, AnimFrameCache.slots, AnimDataMgr.groups, AnimPlayer.animato
 (PhysQNode.owner, Friction.owner: DNode *), coll.h (CollObj.owner: Node *), the CollObj / BinFile / BaseMat
 vptr (char *), TexImage.pixels (char *), TextWin.owner (void *), and NodeMsg (arg is now a union {value,
 payload}, reply a Node *). Run 562 typed backup.h BackupGhost.data (struct InputFrame *; Backup_ghostSetHeader's
-parameter with it). Left in gdl: race.h only (RaceProcess.parent, TimRace.dataManager, RaceTracker vptr /
+parameter with it). Run 568 typed course.h CourseParm.vptr / CourseFParm.vptr / WorldRegistry.vptr
+(char *; the six forced (s32) / (int) store casts, plus the three in game_uso.c's NON_MATCHING
+CourseMarkerTmpl_create, dropped); H is now 0 (the other areas typed race.h and include/game between 562 and 568).
+At run 562 gdl still had race.h only (RaceProcess.parent, TimRace.dataManager, RaceTracker vptr /
 owner; agent-h's run); the other 9 are include/game. Between 557 and 562 the other areas cleared most of
 timproc_uso_b5 (SelectWin_ctor, SelItemParms / SelItemInfo ctors) and part of post0b. No retype so far has
 needed a `*(int *)&p->field` fallback; the one trap is a field used in pointer arithmetic (`p->mgr + 0x40`,
 `(c)->slots + off`), which compiles silently scaled, so every retype is checked by an all-object objdump
 diff, not by warnings. (The `*(int *)&` lever has been needed for raw-offset conversions, not retypes:
-member reads that reorder loads or swap `and` operands, e.g. ncc_3D71C, SnowBoarder_update.)
+member reads that reorder loads or swap `and` operands, e.g. ncc_3D71C, SnowBoarder_update. Run 568: in
+ncc_4BAF4 a typed read through a cast of an inline `me()` result -- even `*(f32 *)&((Sprite *)me(..))->depthBias`
+-- moved edg spill slots / FP operand order, so F4B(cam, 0x30) / F4B(self, 0xC8) stay raw.)
 
 | pattern | a | b | c | g | h | hdr | total |
 |---|--:|--:|--:|--:|--:|--:|--:|
-| A: `(s32)&X` address -> int | 68 | 50 | 4 | 9 | 139 | 0 | 270 |
-| B: pointer expression -> int | 10 | 12 | 10 | 11 | 38 | 0 | 81 |
-| C: `*(int *)` load used as a pointer | 1 | 3 | 7 | 0 | 5 | 0 | 16 |
-| D: `*(T **)(p + K)` pointer at a fixed offset | 57 | 68 | 36 | 1 | 46 | 0 | 208 |
-| H: header field: int that holds a pointer | 0 | 0 | 0 | 0 | 0 | 13 | 13 |
+| A: `(s32)&X` address -> int | 63 | 29 | 4 | 9 | 62 | 0 | 167 |
+| B: pointer expression -> int | 6 | 12 | 6 | 11 | 3 | 0 | 38 |
+| C: `*(int *)` load used as a pointer | 1 | 3 | 1 | 0 | 1 | 0 | 6 |
+| D: `*(T **)(p + K)` pointer at a fixed offset | 54 | 50 | 10 | 1 | 18 | 0 | 133 |
+| H: header field: int that holds a pointer | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
 
-A* (the `(s32)&X` is a store right-hand side): a 44, b 37, c 1, g 2, h 103; total 187.
+A* (the `(s32)&X` is a store right-hand side): a 39, b 19, c 1, g 2, h 26; total 87.
 
 Owners: the census owner() table (a / b / c / g / h); hdr = include/ headers (pattern H only).
 
@@ -408,43 +414,43 @@ Top 15 files (A+B+C+D):
 
 | file | A | B | C | D | total |
 |---|--:|--:|--:|--:|--:|
-| `src/game_libs/game_libs_post0b.c` | 31 | 9 | 3 | 66 | 109 |
-| `src/game_libs/game_libs.c` | 45 | 34 | 0 | 0 | 79 |
-| `src/bootup_uso/bootup_uso_90CC.c` | 43 | 0 | 4 | 4 | 51 |
-| `src/game_libs/game_libs_post.c` | 2 | 7 | 3 | 17 | 29 |
-| `src/game_libs/game_libs_post1b.c` | 19 | 3 | 0 | 2 | 24 |
-| `src/bootup_uso/bootup_uso.c` | 11 | 0 | 0 | 12 | 23 |
-| `src/timproc_uso_b5/timproc_uso_b5.c` | 0 | 1 | 4 | 16 | 21 |
+| `src/game_libs/game_libs_post0b.c` | 23 | 9 | 3 | 48 | 83 |
+| `src/bootup_uso/bootup_uso.c` | 10 | 0 | 0 | 11 | 21 |
+| `src/game_libs/game_libs.c` | 15 | 2 | 0 | 0 | 17 |
 | `src/bootup_uso/bootup_uso_ncc_55A0.cpp` | 14 | 0 | 0 | 0 | 14 |
 | `src/game_uso/game_uso.c` | 4 | 10 | 0 | 0 | 14 |
-| `src/titproc_uso/titproc_uso.c` | 12 | 1 | 0 | 0 | 13 |
+| `src/game_libs/game_libs_post.c` | 2 | 4 | 1 | 5 | 12 |
 | `src/match_imports/GfxLib_hostioParms.c` | 12 | 0 | 0 | 0 | 12 |
-| `src/h2hproc_uso/h2hproc_uso.c` | 1 | 2 | 0 | 4 | 7 |
-| `src/mgrproc_uso/mgrproc_uso_o0_19C.c` | 1 | 0 | 0 | 6 | 7 |
+| `src/titproc_uso/titproc_uso.c` | 12 | 0 | 0 | 0 | 12 |
+| `src/game_libs/game_libs_post1b.c` | 6 | 3 | 0 | 2 | 11 |
 | `src/eddproc_uso/eddproc_uso.c` | 4 | 0 | 0 | 2 | 6 |
 | `src/game_libs/game_libs_o2_38A28.c` | 0 | 0 | 0 | 6 | 6 |
+| `src/match_imports/RoomModifier_display_0000117C.c` | 0 | 0 | 0 | 6 | 6 |
+| `src/kernel/kernel_006.c` | 5 | 0 | 0 | 0 | 5 |
+| `src/match_imports/game_init.c` | 4 | 1 | 0 | 0 | 5 |
+| `src/n64proc_uso/n64proc_uso.c` | 2 | 2 | 0 | 1 | 5 |
 
 Top 15 functions:
 
 | function | file | owner | sites |
 |---|---|--:|--:|
-| `SnowBoarder_ctor` | `src/bootup_uso/bootup_uso_90CC.c` | h | 51 |
-| `ColourParms_ctor` | `src/game_libs/game_libs.c` | h | 33 |
-| `CourseGadgetParms_ctor` | `src/game_libs/game_libs.c` | h | 17 |
 | `item_registerTemplates` | `src/bootup_uso/bootup_uso_ncc_55A0.cpp` | h | 14 |
-| `DNode_ctor` | `src/game_libs/game_libs_post1b.c` | b | 13 |
 | `RaceProcess_init` | `src/game_libs/game_libs.c` | h | 12 |
 | `GfxLib_hostioParms` | `src/match_imports/GfxLib_hostioParms.c` | a | 12 |
-| `CoolGadgetParms_ctor` | `src/game_libs/game_libs.c` | h | 7 |
 | `Node_doCommand` | `src/game_libs/game_libs_o2_38A28.c` | a | 6 |
-| `BasePolyShape_avgTriColour` | `src/game_libs/game_libs_post0b.c` | b | 6 |
-| `BoardList_createItem` | `src/match_imports/BoardList_createItem.c` | a | 6 |
-| `CourseItem_drawLabel_0000C98C` | `src/match_imports/CourseItem_drawLabel_0000C98C.c` | a | 6 |
 | `RoomModifier_display_0000117C` | `src/match_imports/RoomModifier_display_0000117C.c` | a | 6 |
-| `TimeGadgetParms_ctor` | `src/game_libs/game_libs.c` | h | 5 |
 | `gfx_submitFrameTask_000469A8` | `src/game_libs/game_libs_post0b.c` | b | 5 |
+| `osCreatePiManager` | `src/kernel/kernel_006.c` | a | 5 |
+| `game_init` | `src/match_imports/game_init.c` | a | 5 |
+| `N64DemoProcess_ctor` | `src/n64proc_uso/n64proc_uso.c` | a | 5 |
+| `Col::side` | `src/game_libs/game_libs_ncc_4FD00.cpp` | a | 4 |
+| `Parms_addParm` | `src/game_libs/game_libs_post0b.c` | b | 4 |
+| `ZoneShape_build` | `src/game_libs/game_libs_post0b.c` | b | 4 |
+| `arc_DataManager_update` | `src/match_imports/arc_DataManager_update.c` | a | 4 |
+| `GameDemoProcess_ctor` | `src/titproc_uso/titproc_uso.c` | h | 4 |
+| `edd_EditorsProcess_ctor_0000025C` | `src/eddproc_uso/eddproc_uso.c` | a | 3 |
 
-Pattern H per header directory: `include/game` 9, `include/gdl` 4.
+Pattern H per header directory: none left.
 
 Reading it: A and H are the bulk of the work, and both come from the same convention. Node / Parms /
 gadget fields are declared `s32` because the ctors store addresses into them through int-cast bases
