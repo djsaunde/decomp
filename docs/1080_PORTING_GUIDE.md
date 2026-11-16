@@ -37,6 +37,7 @@
 | docs/1080_MODES.md | the mode / process USOs (title, h2h, arcade, match race, time attack, trick, select screens, gui) |
 | docs/1080_GAME_CLASSES.md | bootup_uso and game_uso C++ classes: SnowBoarder, GAME_MODE setups, replay, SnowAI, RiderAnim, cross-USO imports |
 | docs/READABILITY_PLAN.md | the readability phase itself: inventory, naming rules, the rename tool, the gate, the struct path, USO section-base accesses |
+| docs/ROM_COVERAGE.md | the ROM coverage audit (scripts/rom-coverage.py, gate step 6): every baserom byte's category (code C / asm, data, asset, ucode, padding), the honest decomp %, the reviewed gaps |
 
 Matching (not porting) knowledge is in docs/IDO_CODEGEN.md, docs/PATTERNS.md, docs/MATCHING_WORKFLOW.md and
 docs/N64_FORENSICS.md.
