@@ -461,6 +461,38 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     4188 live-unit, 1E60, 97C. Tools: /tmp/claude-1000/agent-h/r656/ (md.sh = -g3 slot dump, vm.sh =
     variant + slots, abl.py = ablation batches, perm6.py / mv1.py statement-order searches).
 
+- Run 660 (agent-h, commit 6f5340a26 NM only, no renames, no exacts):
+  - **15D0 / 1A18 / 2310:** the named-index next() (`int n = dl->count++; Gfx *g = &dl->buf[n]; return g;`) is
+    96 -> 66 / 100 -> 70 / 102 -> 72 diff lines. Packets 1-2 and the w / h constant 32 now match (a1, a2, K32 a3).
+    The rest is the target's packet-pointer sequence `a1 a2 | a2 a3 a2 a3 a2 a3 a2 a3 a2 a3 | t0 | a1 a2 | v1`:
+    from packet 3, a1 is busy in every unit, but no visible a1 value exists there. The last packet's v1 means the
+    target's final unit starts after that packet's count store. Phantom greedy (`if (t->dl) {}` at statements
+    6 / 10 / 15) gets down to 30 lines, but only by colouring a CSE'd t->dl range a1 (ctx loads then use a1, not
+    v0), so it was not landed. Flat: 16 next() bodies (DList::next members, `if` inside next, split increment).
+    1E60's draft gets worse with the named form (51 -> 75), but it is not spliced.
+  - **4188:** the units come in whole statements. 1-23 `(c->w[k] & 0)` phantoms in one packet's w1 move the
+    0|1 boundary by a whole statement or not at all: none before packet 3, and in packet 1 the boundary drops
+    in front of packet 2. Packet 3's `_g = next()` statement has to fit in unit 0, which needs one fewer op
+    before it, and phantoms can only add ops. Flat: register / const / reference / `_g[0]` / `unsigned *` packet
+    locals, and the explicit `&c->dl->buf[c->dl->count++]` for any subset of packets 1-4 (edg makes no `this`
+    temp for a parameter ctx).
+  - **0x47D4 decoded** (draft /tmp/claude-1000/agent-h/r660/t47b.cpp, NCC, 431 vs 414 words). It is the
+    emitter update: u4C = +-cam+0x970 (flag 0x80); p / q zeroed, len / u40 = u34 / u38; call 0x4374; u80 =
+    hits <= 0; hits = 0 unless mode (cam+0x9A2) is 97 / 98 and speed (cam+0x348) >= 5; on = 0x46BC(t); a = u164,
+    or u164 / (u160 - 5) * (speed - 5) when speed < u160; alpha = |u4C| * u168 * (255 - a) + a; slots[write].u4 =
+    mode == 98; P = p, Q = q (by-value operator=); 0x4714(t, on, prev, alpha) (float in a3); alpha = 0 on slot
+    state 2; for stride 4 in mode 98 the drop is u158 and dv = normalize(cam->v318) * u154, otherwise both are 0.
+    When on, each i < stride gets w = lerp(P, Q, i / (stride - 1)), plus dv and minus drop for i == 1 / 2.
+    That goes to points[writeOfs + i] (pos, w18 = 0, vel.set(0), u28 = 0, w1C = alpha, w20 = w1C / (size /
+    u16C)), and vtx[writeOfs + i] gets tc.s = (int)((uA8 - 1) * i / (stride - 1)) << 6, tc.t =
+    ((writeOfs & stride) >> 1) * 31U << 6, and rgb = cam+0xA30..A32. Then vslot 16, prev = on, prevMode = mode.
+    Open: the target keeps 5.0f in f20 across the 46BC call, materialized in both arms of the hits test, and
+    f20 is reused for the drop. A `lim` variable is constant-propagated (no change). alpha lives in f22. The
+    frame is 184 vs 160: the Vec temps sit at sp100 (operator= param) / 160 P / 148 Q / 132 dv / 72 w.
+  - Not reached: 559C, 1E60, 4374 / 4E5C frames, 97C. Tools: r660/cf2.py (NCC compile + diff with
+    function-relative branch targets), gen.py / s3.py / s6.py (15D0 phantom greedy), s41.py / mk42.py (4188 packet
+    kinds and phantom counts), pk.py (packet-pointer register sequence).
+
 ### snoweffects.uso 0x6000+ (agent-e run 639)
 
 - +2 EXACT (commit feb67fb6a on agent-e): 0x8C60 and 0x9FE8, both IDO 7.1 NCC. Own donor
@@ -618,6 +650,38 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   copy shape appears, but the registers are reversed (head in a1, copy in a2).
 - Not reached (budget): 0x64B8, 0x6B28, 0x718C (whole-body decodes).
 
+### snoweffects.uso 0x6000+ (agent-e run 664)
+
+- No new exacts; gate PASS (3550 / 3579). Commit 515100e41 on agent-e (base f342b7d00, 8 behind origin/main):
+  a new NON_MATCHING-only donor `src/snoweffects_uso/snoweffects_uso_ncc_nm_e.cpp` (Makefile `SNOW_NM_E_FUNCS`).
+  Pins: `snow_ro_B4`, `snow_ro_50`, `snow_ro_54`, `gl_func_00000000_snow_pool` and `gl_func_00000000_snow_norm`.
+- **0x7960 is spliced as an NM (objdiff 99.7 %).** The zero / |speed| swap is still open. These had no effect:
+  - agent-g's int-zero lever: `int z = 0` in the compares turns them into int compares, and in blocks it
+    costs frame words;
+  - a named float zero, set at the declaration or before the dot test;
+  - a separate int zero for the `.y = 0` stores or for `d != 0`;
+  - a named |speed| (`if (s < 0) s = -s`, or ?: at function / block scope);
+  - `>=` / `0.1f >` / `!(x < 0)` spellings.
+  In the -zdbug:5 trace, ord.py's `f2` / `f12` labels are swapped against the output. The trace's `f12` is
+  e195, the 3-use sin * h value, which is f2 in the binary. So |speed| (pri 2.0) takes the first FP colour
+  (f12), and the zero piece (pri 0.33) gets f2. To match the target, the zero has to be coloured first.
+- **0x64B8 decoded whole** (effect A spawn update; the structure is in the donor). It reaches 91.6 % but is
+  **not spliced**: our body is 406 words against the target's 404, and a longer splice shifts 0xA8D0 (gate
+  report FAIL).
+  - Edg temp lever: the target's two shared return-copy slots (s3 = sp+244, s2 = sp+188) come from **one
+    expression with two by-value operator results**: `n += cam->v318 * k * (f184 + spd);` and
+    `SV u = vF0 + vFC * (f3C * 2.0f);`. Named intermediates give a single shared slot.
+  - Use `operator*(float)` as `return SV(x * s, ..)`; `SV r; r.set(); return r;` does worse (129 exact
+    words against 196).
+  - Left:
+    - the frame is 336 against 344, and the materialised operand temps are ordered the other way (target
+      b above a);
+    - the target forwards the lerped `u` into p->pos, where ours reloads u.y / u.z (that accounts for the
+      2 extra words);
+    - the xform's v.z load is scheduled differently.
+- Not reached: 0x6B28 and 0x718C (both siblings of 0x64B8: same pool spawn, SnowPool_alloc / _oldest plus
+  sys_randf; reuse this donor's SV / SPart model), 0x9328, 0x9E10.
+
 ## trnproc.uso / nameent.uso progress (agent-c run 631)
 
 - trnproc 28 / 40 EXACT, nameent 17 / 21 EXACT + 1 NM (0x150, 41/45 words). Commits on agent-c:
@@ -700,6 +764,47 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   matches except the two scale spill slots, 4 bytes high: the target has one more named word above
   them and one fewer edg temporary (a named `c = name2[i]` in the first loop plus one dead
   scratch word reaches 288 / 290, leaving only the loop-1 spill slot at 0x60 vs 0x64).
+
+### nameent.uso 9BC + snoweffects below 0x6000 (agent-c run 655)
+
+- **nameent 21 / 21 EXACT** (agent-c f56621038; 3539 / 3579). 9BC's two scale spill slots were one edg
+  temporary word too many. Both the inline `Colour::set()` on `col` (its `this`) and the `+=` on `self->fD0` (the
+  lvalue address) take an edg temporary, and they share one frame word. To find it, dump uopt's var list with
+  `-Wo,-zdbug:6` (the `isvar M 20 <off>` lines after REDUNDANT STORES): it showed `-80` stored first with `&col`
+  and later with `self + 0xD0`. Fix: four member stores, `x = x + k`, and a second dead `scratch2 = 0` word.
+  9BC also moved ahead of E44 in the donor, so both `_rodata` pins are 0.
+- **0x270 NM 245 / 260** (donor `src/snoweffects_uso/snoweffects_uso_ncc_c.cpp`, Makefile block `SNOW_C_DONOR` /
+  `SNOW_C_NM_FUNCS` at the end, NM-only). It is the 0x15D0 texture-sprite family with the render state first.
+  - The target loads the 32 for w / h inside the prim-colour packet, not at the entry. A `w = 32; h = 32` pair
+    becomes a hoisted constant LR at the block start; one `if (1) {}` before the prim-colour packet plus
+    `t->w = 32; t->h = t->w;` keeps it local. With that, the whole first half matches, including E7 in t1 and
+    F568 in t2.
+  - The two size statements must sit on separate source lines: on one line they come out h, w.
+  - Left: five texture-load packet pointers (live-unit colouring, as agent-h's family).
+  - Flat: next / named-local next / three more spellings per packet, `if (1) {}` anywhere else, setSize inlines.
+    Any second block split changes the as1 schedule of the first half, which then loads each packet's constant
+    one packet early.
+- **0xC90 NM 82.9 %** (same donor): the particle sprite draw.
+  - Sequence: texture DL call; view matrix from camera +0x30. Then per particle: pos * the gGfxLib world scale
+    (+0x128) through column 3 of the matrix, cull against near / far +0xAC / +0xB0 and the half-screen box.
+  - Packets: prim depth EE (RoData+0x4 scale), env colour FB (alpha +0x50), `drawn++` (+0x44), then the stock
+    gSPScisTextureRectangle with steps `((texW << 10) - 1024) / w`. Render-state reset at the end.
+  - The camera is `*(gGfxLib + 0x254)`. Each world-scale word is its own 0-pin (`snow_gfx_scale_128..130`), so
+    every load keeps its own lui; the `&snow_gGfxLib + 0x128` spelling gets CSE'd.
+  - Left: float colouring and the frame (384 vs 400).
+- **0x28E0 decoded, draft only (objdiff 74 %, under the NM threshold, not spliced)**: the snowfall draw.
+  - Integration: `p->pos += (cam - lastCam) * follow`, where cam is camera +0x70 pos * the world scale,
+    lastCam +0x98, follow +0xA4.
+  - Wrap in camera space (the rotation matrix from camera +0x70 + 0xB4): x / y to +-30, z to -100..0, along the
+    box axes +0x50 / +0x5C / +0x68. A y wrap re-rolls alpha: `fadeChance < sys_randf()` sets it to `fadeIn ? 1 : 0`.
+  - Draw: flakes with alpha > 0 (counted in +0xBC) are drawn with the 0xC90 projection as EE + texrect; size
+    comes from +0x38, prim colour from +0xC0.., and the first call runs the 0x39C4 fill (+0xB4 flag).
+  - Frame levers: put the function-scope scalars above the two matrices (m at vfp-116, rot at vfp-180), and
+    write the motion as one expression with by-value `operator*` / `operator+=` parameters (the target's two
+    three-word copy chains); mnemonics went 76.8 -> 82 %.
+  - Left: frame 504 vs 520 (the temps' order) and float colouring.
+  - Splicing it needs `snow_ro_10 = 0x10`. The body must stay <= 793 words, or 0xA8D0 passes TRUNCATE_TEXT and
+    the gate fails.
 
 ## heli.uso progress (agent-g run 632)
 
