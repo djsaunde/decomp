@@ -1316,3 +1316,20 @@ Compiled sites in game_libs_post0b / post1b / post1b2c (`name-placeholder-calls.
   __osDisableInt+0x4, __osExceptionPreamble+0x630 = __osEnqueueAndYield, +0x730 = __osEnqueueThread),
   2 no-reloc (dead `if (0)` arms in gfx_newDLContext and math_quatAddAxis_0005C548).
 - rcp.h RcpMgr +0x48 = `preNmi` (set on event message 108 = OS_EVENT_PRENMI; App_onPreNmi while set).
+
+## 34. Run 601 (agent-b): post0b D_ globals 17 -> 0, unassigned game_libs ido53/o1/o2/ncc calls 75 -> 0
+- post0b's 17 unjustified `D_` globals were file-scope externs that the matching build never uses. Five
+  had no uses at all and are deleted. The GfxLib_hostioParms registration keys (D_0002FD34..FDD4, D_0002F970)
+  moved into that function's `#ifdef NON_MATCHING` block, the only code that spells them.
+- 75 placeholder sites in 36 unassigned ido53 / o1 / o2 / ncc files:
+  - 24 named. The osCreateViManager / viMgrMain per-site aliases now use XCALL. The StickCtrlA/B `call`
+    inline is split into rot() = math_mtxRotateEuler and trans() = math_mtxAddTranslation, because one
+    inline that expands to two callees can't be named. Also named: Mat_clone's Base() ->
+    BaseMat_init_000517E4, dbg_printfSink -> TextWin_write, osViSetXScale -> __osRestoreInt.
+  - 53 tagged: 46 mid-entry (__osDisableInt+0x4, __osExceptionPreamble+0x630/0x730, bzero+0xC,
+    osGetCount+0x8, osWritebackDCache+0x4), 5 no-reloc, 2 sentinel (Col::side's address folds).
+- A C++ donor's non-spliced TU-context functions are never "live" to `check`; only the spliced function's
+  bytes are in the ROM. ncc_4D688's RcpMgr_removeTask copy is one of these, so its call is tagged
+  no-reloc rather than named.
+- `check` now falls back to `gl_<fn>` when a C static's object symbol is the POST_COMPILE-added gl_ name
+  (74EF4 viMgrMain -> gl_viMgrMain).
