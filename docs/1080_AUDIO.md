@@ -937,6 +937,28 @@ matching and NON_MATCHING, identical by `objdump -d -r`, `-r` and `-s`).
 - **Next:** port-audit `--owner c` for audio: AudioSeq_SeqChannelSetLayer (match_imports, 6),
   AudioSynth_LoadAuxBufferC / AudioLoad_RelocateFont (2 each), snd_SoundObjUpdate.
 
+### Run 561 (agent-c): LoadReverbSamples, InitTable, GetSampleBank
+
+85b7a0491 on agent-c (hand edit; gate PASS 3288/3288, checks 0 mismatches; game_libs_post.c.o and
+the match_imports objects, matching and NON_MATCHING, identical by `objdump -d -r`, `-r` and `-s`).
+- **AudioSynth_LoadReverbSamples:** REVERB_AT(rec) (= synthesisReverbs[a2]) for downsampleRate,
+  decayRatio (+ 0x8000) and the leakRtl / leakLtr gate. volume stays a u16 load through
+  `*(u16 *)&REVERB_AT(rec)->volume`: the field is s16 (other readers use lh) and this one is lhu.
+- **AudioLoad_InitTable:** OoT's (AudioTable *, romAddr, unkMediumParam) on AudioTableHeader. The walk
+  keeps its cursor at the header (the matched colouring needs the +0x10 offsets), typed
+  `AudioTableEntry *` with entry i read as `cursor[1]`.
+- **AudioLoad_GetSampleBank:** the gl_ref_00038204(2) result is the sample-bank AudioTable:
+  `entries[x].cachePolicy / medium / romAddr`. Identical bytes.
+- **snd_SoundObjUpdateChannel (match_imports):** the two `(u32)&gl_2F288_tableC330 + aux * 4 +
+  0x1C330` reads must keep the u32 base. As `(char *)&sym + ...` the native-port check fails
+  ("native linked body changed"): the pointer sum reassociates.
+- **Census / port-audit (owner c, both commits of the run):** owner c raw sites 299 -> 267 (timproc_uso_b5 segment 116 + 26 -> 109 + 16; game_libs_post.c 142 -> 127; _o2_5FC0 7 + 10 -> off the per-file list). port-audit `--owner c` A 20 -> 4, B 10, C 10 -> 7, D 36 (76 -> 57): SelectWin_display 9 -> 0, BoardItem_drawStats 4 -> 0, LevelItem_drawStats 3 -> 0, CommonInfo_init 3 -> 0.
+- **Next:** Audio_InitSyntheticWave (5: layer instOrWave byte 2 / channel->instOrWave 0x24 /
+  note playbackState 0x32 / 0xB6; not reached this run), InitSequencePlayerChannels (5),
+  snd_SoundObjUpdateChannel's D_00000000 + 4 / + 0x10 reads (identify the snd globals),
+  AudioSynth_LoadAuxBufferC / AudioLoad_RelocateFont (B 2 each), AudioSeq_SeqLayerProcessScriptStep1
+  (C 2), AudioLoad_GetFontsForSequence / InitSequencePlayerChannels (D 2), MCamera_hostioParms.
+
 ### Run 554 (agent-c): SeqChannelSetLayer, SearchRegularCaches, SearchPermanentCache
 
 a9c885c62 on agent-c (hand edit; gate PASS 3288/3288, checks 0 mismatches; game_libs_post.c.o and

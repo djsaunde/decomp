@@ -1600,6 +1600,44 @@ Next (H1):
 - RoomModifier_display (NM) on SELWIN / SelItemsMgr members: dispItems doFlags bit 4.
 - gen_createCamera_0000283C (11).
 
+### Run 561 (agent-c): plain Node stores, typed sprite / colour parameters, SelectWin_update members
+
+897eb38ee + 7f07b45df on agent-c (base 75a598f4d; hand edits, no renames; gate PASS 3288/3288 before
+each commit, ROM identical, the three source checks 0 mismatches). Every timproc_uso_b5 /
+game_libs_post / match_imports object (420 dumps), matching and NON_MATCHING, is identical to the
+pre-run build by `objdump -d -r`, `-r` and `-s` (.mdebug excluded).
+- **Node stores (897eb38ee):** Node.vptr / name are `char *` / `const char *` on main, so the 54
+  `*(char **)&NODE(p)->vptr|name = ...` stores and one read in b5 (b5.c 23, _4118 2, _8FC8 18,
+  _D884 6, _DF14 6) are plain `NODE(p)->vptr = (char *)&sym`. No lever: the bytes are the same.
+- **Sprite colour call:** import_0024E608 is prototyped `(void *ctx, s32 alpha, f32 *rgba)` (the
+  shape of gui_setColor_00001A5C, which SelItem_drawSpriteColor calls). SelectWin_display passes
+  the nine `parms.cc[k].rgba` / cc9 / c11 / c12 arrays directly.
+- **SelItem draw helpers typed:** drawStatBar (3A4C) / drawStatBarRight (3C8C) are
+  `(char *item, x, y, char *sprite, count, f32 *col, f32 *col2, char *win)`; drawSpriteColor
+  (4068) is `(char *item, x, y, f32 *rgba, char *sprite, alpha)`. BoardItem_drawStats (C310 donor;
+  ptrs[] / q are now `f32 *`), LevelItem_drawStats (CEB4), the CharacterItem_drawStats NM body and
+  its match_import (plus context_timproc_uso_b5.h) pass pointers. The sprite records are the gui_uso
+  0x18-byte sprite slot (image at +0x10, its s16 width at +0x20: race.h RaceSprite has the same
+  layout); they stay `char *` here.
+- **CommonInfo_init:** `WORLDREG(INPUT_MGR(D_00000000).game)` for the three GameFlow +0x134 reads
+  (the gameflow-import check counts them: shared tokens 109 -> 112, 0 mismatches).
+- **SelectWin_update_00005FC0 (o2 donor):** NODE(v)->vptr for the five item vptr reads,
+  `*(int *)&SELWIN(arg0)->fade` for the setAlpha argument, `*(f32 *)&SELWIN(arg0)->transition` /
+  `->fade` inside the fsin operands (the byte lever keeps run 490's lwc1 order), camPos, and the
+  item's `parms.cf2` / `cfv` through `*(f32 *)&SELITEM(sp2C)->...`. Checked by .o comparison (the
+  donor .o and the spliced b5.c.o): identical. FW is gone; only the five RoData float reads
+  (`&D_00000000 + 0x1BC..0x1CC`) stay raw.
+- **Census:** owner c raw sites 299 -> 267 (timproc_uso_b5 segment 116 + 26 -> 109 + 16; game_libs_post.c 142 -> 127; _o2_5FC0 7 + 10 -> off the per-file list). port-audit `--owner c` A 20 -> 4, B 10, C 10 -> 7, D 36 (76 -> 57): SelectWin_display 9 -> 0, BoardItem_drawStats 4 -> 0, LevelItem_drawStats 3 -> 0, CommonInfo_init 3 -> 0.
+
+Next:
+- SelectWin_canScrollPrev / Next (the item-list walk through itemsMgr->lists[stage] + 0x3C +
+  0x2A4, pattern C), SelItem_drawStatBarRight (3 D: the sprite's image `*(char **)(arg3 + 0x10)`;
+  a shared gui sprite-slot type in a header both b5 and the race overlays can include would clear
+  these and RaceSprite's twin).
+- CommonInfo_loadData / SelItemsMgr_loadData / loadInfo / SelItemList_loadData / loadInfo (2 D each:
+  the vtable walks).
+- match_imports BoardList_createItem, CourseItem_drawLabel_0000C98C.
+
 ### Run 554 (agent-c): typed SelParm vptrs, RoomModifier, SelCommonInfo, gPolyGeomMode words, eventFlags
 
 18176448e on agent-c (base e10de4848; hand edit; gate PASS 3288/3288, ROM identical, the three

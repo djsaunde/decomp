@@ -36,6 +36,7 @@
 - [28. Run 543: bootup C++ donors on headers, game.uso strings / tags / constants](#28-run-543-bootup-c-donors-on-headers-gameuso-strings--tags--constants)
 - [29. Run 551: bootup donors 485C / 11B5C / 7328, game.uso RoData constants, U64BGWall_display](#29-run-551-bootup-donors-485c--11b5c--7328-gameuso-rodata-constants-u64bgwall_display)
 - [30. Run 555: U64BGWall fields, Tv1, ScreenThumbMat, input.h on race.h, GameFlow.titleFlags](#30-run-555-u64bgwall-fields-tv1-screenthumbmat-inputh-on-raceh-gameflowtitleflags)
+- [31. Run 558: Tv1Callback, game.uso marker tags / rumble patterns / parm tags, the C234 marker query](#31-run-558-tv1callback-gameuso-marker-tags--rumble-patterns--parm-tags-the-c234-marker-query)
 
 ---
 
@@ -1358,3 +1359,45 @@ batch; every changed object (donors, titproc_uso_5DC.c.o, bootup_uso.c.o main + 
 reads (not started this run); C234's +0x84 once coll.h is C++-safe (ask its owner); 55A0 / FC28 still wait on
 envobj.h / guimenu.h fields from h.
 
+## 31. Run 558: Tv1Callback, game.uso marker tags / rumble patterns / parm tags, the C234 marker query
+
+Census (compiled code, casts / accessor uses): bootup_uso 136 / 22 -> 124 / 19, game_uso 7 / 21 -> 4 / 21, ROM-wide
+1370 / 176 -> 1355 / 173; C++ donors 211 -> 194 sites (65 -> 62 files with any). Commits on agent-g (base 2fe63c692):
+6dde93b50 (hand edit: envobj.h + FC28 / 55A0), 0eeb60915 (hand edit + `--uso game spell --write` output:
+game_uso_data.h + 15 respelled sites + INIT_ITER), 6d4b1c4ba (hand edit: C234 / CAE8 + two pins). No renames. The
+gate passed on the tree before each commit; `--uso game check` 0 mismatches.
+
+- **FC28 PauseMenu_create:** the colour quads are GuiMenu.selColour / rowColour (h run 556). The target keeps
+  `addiu s0,a0,0x4C` and stores at 0..12(s0), so `s` stays the quad pointer: `((f32 *)s)[i]`. FC28 has no sites
+  left. QuitProcess.unk4C is the Process tail word (RaceProcess.unk04C = init arg 3); unknown, so it keeps its name.
+- **envobj.h Tv1Callback / Tv1Tmpl.stepCallback (+0x48):** 55A0 builds a 16-byte member-function callback in place
+  as a 3-level cfront cascade: base vptr Data 0x7528 (slot 1 `__pure_virtual_called`), obj = the Tv1Tmpl,
+  pmf = Data 0x7520 {0x0000FFFF, Tv1Tmpl_func_00007D04}, then the concrete vptr Data 0x7770 (slot 1
+  MemberCallback_invoke_00007BF4). It is the bootup twin of sun.h's MemberCallback. To read the Data words plus
+  their DataReloc targets, load scripts/uso-data-sites.py as a module and walk `Census(...).secs['Data']` /
+  `['DataReloc']` (the venv python is needed for crunch64).
+- **55A0's last site:** `OI(DROOT, 0x34)`. D_55A0_root is Data 0x776C, the ItemMgr pointer (course.h), so the
+  store is ItemMgr.unk34 (ctor arg 2) = the item-class mask item_registerTemplates computes. gdl/item.h includes
+  gdl/node.h by -I path, so the donor cannot include it until item.h's owner makes it C++-safe.
+- **game_uso_data.h, hand constants (outside the const-table block):** kMarkerTypeTags_548 (12 DataReloc pointers
+  to RoData 0x60..0x8C: mrk, mk1..mk9, mkl, mkr in MARKER_* order; the readers load the tag word through the
+  pointer and pass it by value), kMarkerTypeTag_mkl_570 / _mkr_574 (6FA8), the rumble patterns
+  kRumble_hit1_109C .. hit5_10DC (0xFF-terminated per-frame motor bytes, PadCtl.rumble), kSnowAIParmTags_6E8
+  (the 41 parm tags are the 4-byte STRINGS themselves at Data 0x6E8..0x788, not pointers; INIT_ITER reads tag IDX
+  at `kSnowAIParmTags_6E8 + 4 * IDX`, so the TMPL_OFF argument is gone) and kVtbl_FloatParm_3C8. `spell` does not
+  see sites inside a #define or behind a placeholder token that differs from the reloc's (INIT_ITER, the
+  CourseMarkerTmpl_create 0x3C8 site), so those were edited by hand; `check` still verifies them per function.
+- **C234:** Data 0x8A78 is the string "mrk": the 151-frame airborne reset calls
+  ItemMgr_queryType(MarkerMgr = Data 0x7768 Sym 302, "mrk", pos, 0) and moves the rider 200 above the returned
+  CourseMarker.pos. Pins: sTag_mrk_8A78 = 0x8A78 and D_C234_markerMgr = 0. The tag site's .o reloc changed from
+  func_00008A40 + 0x38 to sTag_mrk_8A78 + 0 (lo16 immediate 0x38 -> 0 in the unlinked .o). The linked ROM and the
+  objdiff report are unchanged. C234 has 4 sites left, all CollShape.shape (+0x84); coll.h is not C++-safe in this
+  base.
+- **CAE8:** NODE(st)->name (gdl/node.h, relative include) and RIDER(st)->board. Left: `((short *)(st + 0x8C6))[board]`.
+  0x8C6 is the low half of `character` (u32 at 0x8C4), so the per-board s16 table overlaps the character
+  word. The real layout (s16 fields at 0x8C4?) needs the ctor's stores checked.
+
+**Next:** C234's 4 CollShape.shape reads once coll.h has its C++ guard (agent-b); 55A0's ItemMgr.unk34 (needs
+item.h C++-safe; ask its owner); CAE8's 0x8C6 table. Then the census donor table for g's files: game_uso B750 (4
+accessor), 10694 / E35C / F6D4 (3), 10840 / 10A0C / F13C / 6FA8 (2). Also the remaining "?" game.uso sites
+(Sun_display, CourseMarkerTmpl_create's tag words +0x6B0 / +0x6C4).
