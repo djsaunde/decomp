@@ -175,6 +175,32 @@ Commits on agent-b: cf4671b3b (E0, 58C, 2AC EXACT), 85ae105dd (episodes), f8fdf2
   `checkpoint_gdl*_<addr>`. The `*_00000000` functions (FireTmpl ctor, the balloon / checkpoint gdl
   writers) are refused by rename-symbol.py as zero-address names.
 
+### agent-b run 640 (3474 / 3579, +4 exact; checkpoint 17/17)
+
+Commits on agent-b: 3d2acf56d (checkpoint 45C), 200bd12fd (snoweffects 5FD4 / 6144 / 6248), c6013172d
+(episodes), 2b76bdf85 (rename-symbol.py module-zero exception + Fire comment fix), 8c64a9f05 (3 renames, pure).
+
+- **Checkpoint 45C EXACT** (NCC donor `checkpoint_uso_ncc_45C.cpp`): `u = pos - *a; w = pos - *b;
+  w.y = u.y = 0.0f; f32 d = u * w; return d < 0`. V3 with a ctor-temp `operator-`, a by-value
+  `V3 &operator=(V3 v) { set(v); return *this; }` and a dot `operator*`. Three edg / uopt levers:
+  (1) `operator=` returning `V3 &` instead of `void` moves the first ctor temp 4 bytes up (0x40 -> 0x44);
+  (2) `const V3 &pos = *p` then `pos - *a`: the binary operator on `*p` itself gives a different temp
+  layout (as do `(*p).sub(*a)` and `p->operator-(*a)`, which also match); (3) the dot in a named `d`:
+  uopt colours d (f16) and the zero (f18), which removes both from the FP temp ring, so the z loads
+  reuse f4 / f6. The kept post pointers are the 3B01C `if (0) { a = 0; }` lever.
+- **snoweffects 5FD4 / 6144 / 6248 EXACT** (NCC donor `snoweffects_uso_ncc_b.cpp`, own Makefile block
+  `SNOW_B_DONOR`): SnowEffect::init / createA / createB. `lnk(childA = new SnowChildA, grpA); lnk(childA,
+  grpB); childA->v11(8);` with a free inline `lnk(Node *q, Node *s)`. Putting the `new` inside the first
+  attach's full-expression gives the inline ctor's `this` and q separate edg pool words (as two statements
+  they share one, and the ctor's this is coloured a2). list_append goes through a void-typed alias
+  (`gl_func_00000000_snowb_v`): v0 is forbidden through a value-returning call's block, and the target
+  keeps the group in v0. The SnowNode base ctor is inline (edg's this == 0 protocol around the
+  out-of-line Node ctor); vtables / Node ctor renamed by objcopy to 0 pins.
+- **rename-symbol.py** now renames `<seg>_func_00000000` when it is a module's own offset-0 function
+  (defined as code only in src/<seg>, not pinned, not a uso_call.h token, no object or tracked file
+  outside the segment uses it). Renamed FireTmpl_ctor, balloon_gdlWriteVec3, checkpoint_gdlWriteInt.
+  Placeholders (gl_func_00000000, game_uso_func_00000000) are still refused.
+
 ## snoweffects.uso progress (agent-h runs 621, 628)
 
 - 58 / 106 functions EXACT, 1 NM wrap (0x9E10, 98.27: item / head colouring swap). Commits on
