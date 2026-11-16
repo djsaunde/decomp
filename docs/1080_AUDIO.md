@@ -377,6 +377,17 @@ record, gen_createScene's three game_libs imports, the import_000A5D38 display o
 6 donor-mirror (SelectWin_update's placeholder body), 1 byte-lock (InitSequenceChannel's
 `changes` byte: the bitfield-store form emits an lbu RMW).
 
+### Run 585 additions (agent-c)
+
+- `SndTimers` (Data 0x1C080, Sym 1425, 0x1C): snd_UpdateTimers' per-frame countdowns; +0xC is the
+  256-frame ramp (snd_HandleSeqEnd(6) sets 256, snd_PlayPlayer1Seq clears it). `SND_TIMERS(tok)`.
+- `AudioHeapInitSizes` +0x2 = `tatumsPerBeat` (s16 48, OoT gTatumsPerBeat), AudioHeap_Init's divisor.
+- snd_CueQueueStep's argument is a `SndCueQueue`.
+- Named section offsets for per-site token reads (audio.h): `kRoF_tempoScale_E90` (2880000),
+  `kRoF_maxTempoPal_EC8` / `Mpal_ECC` / `Ntsc_ED0`, and the Data tables inside Sym 1450's span:
+  `kD_sndLevelWobble_1C330`, `kD_sndScaleWobble_1C3B0`, `kD_sndGainWobble_1C430` (f32[32] each) and
+  `kD_sndWobbleCount_1C740`. Owner c's raw sites: 1 left (AudioSeq_InitSequenceChannel byte-lock).
+
 ## Next
 
 1. Model more of SequenceLayer / SequenceChannel (the 27E24 / 28604 / 291C0

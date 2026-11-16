@@ -34,9 +34,14 @@ of them in timproc_uso_b5.c:
 - **RoData float-pool reads through pinned symbols.** These are SelItemsMgr_ctor's five
   `FF(&import_..., K)` and SelectWin_update's five reads (o2 donor). The pinned symbol / relocation
   is what matches. On a port they are float constants: read them from the RoData listing.
-- **gen_createScene's three game_libs globals** (`import_8005C2CC` +0x1C4 flag clear,
-  `import_8005C39C` +0x294 vec4, `import_8005EBA4` +0x2A0). Their owners are not identified. The
-  distinct-alias and pointer-mutate spellings are matching levers.
+- **gen_createScene's three game_libs globals are gGfxLib** (run 585): `import_8005C2CC` / `_w` /
+  `import_8005C39C` / `import_8005EBA4` all relocate to bootup Bss+0x3C168 (Sym 154), so they are typed
+  `extern GfxLib` and read `.flags &= ~GFX_FLAG_MAPPARMS`, `.fog.colour[0..3] = 0`, `.fog.colour[3] = 0`.
+  The distinct-alias and pointer-mutate spellings stay as matching levers. Also identified in run 585:
+  genproc Bss 0 / 4 = GenMenuPick {menu, owner} (select.h; GenCourse_update saves them, the row
+  callback timproc_uso_b5_func_00000000 reads them), import_000A5D38 = PauseMenu_create (GuiMenu),
+  SelectWin_state0's pad = input_getPad -> InputPad, GenItemType_create = ColourSubItem. The genproc
+  RoData floats / Data tags are named offsets in select.h (kRoF_gen_*, kTag_gen_*).
 - **The state functions' `arg0 + stage * 4` cluster offsets**, kept as char * arithmetic. This is
   a matching lever, explained at the SELWIN macro in select.h.
 - **The edg donors.** They see the gdl bases as opaque bytes because edg rejects the gdl headers'
