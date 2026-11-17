@@ -1769,6 +1769,56 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   register value (for example a parameter-free inline that reads k from an enclosing inline's named local), or
   accept the memory scalar.
 
+### snoweffects.uso 0x718C / 0x64B8 under MIPSpro 7.2.1 (agent-e run 732)
+
+- **0x718C NM 98.14 -> 99.95 %** (agent-e 7cbaa7e2c 99.85 %, 37d75951b 99.95 %; gate PASS both times, 3571 / 3579,
+  lost: none, no renames). Every register now matches; only frame offsets are left. Scratch
+  `/tmp/claude-1000/agent-e/w732/`: `h.py` (`go2` = score + objdiff % + non-sp diff count, `ns` / `spd` / `offs`
+  print the register-only diffs, the sp diffs and the sorted sp offsets of target vs ours), `p*.py` probe batches.
+- **What fixed the registers.** Each lever was found by reading the non-sp diff, not by sweeping:
+  - **Ramp: a named `float d = t->hi - t->lo;`** gives lo f12, d f14, r f2. Without it, hi - lo was a ugen temp
+    (f8), so the FP temp ring was one register ahead for the rest of the function. That one temp was most of the
+    "lerp / colour FP ring" leftovers. With d named, lerpF must drop its named d (the plain
+    `(q - p) * r + p` form); otherwise the lerp takes coloured d's.
+  - **Field copies through inlines.** In the target, the loaded fields sit in uopt-coloured registers (f1F8 / f1E8
+    in f16, f1EC in f12), so they pass through edg pooled float parameter words:
+    - `setSz3(s, u, f) { size = s; fadeAt = f; unk3C = u; }`. Body order fadeAt before unk3C gives the target's
+      store order.
+    - `setLife(256.0f, t->f1E8)`.
+    - `setAlpha3(a, unused, v)` with a load (`t->f1EC`) as the dummy argument. The extra word moves alphaVel's
+      word to f12 and f into f2.
+    - Single-parameter member setters (`setSize(f)`) are bad: `this` (p) then takes a pooled pointer word, and p is
+      spilled instead of living in s0.
+  - **Colour section: three variables c0 / c1 / c2** (target f14 / f16 / f18). One `c` reused gives a single LR.
+  - With the pooled setters in place, **pos / vel go back to plain `set()`**. Run 727's set5 dummy now costs 10
+    diffs.
+- **Frame.** `{ int sc[1]; sc[0] = 0; }` at function scope adds one dead word above the loop block. Everything from
+  sp+224 up then matches (a1 / a2 temporaries 320 / 308, w 296, u 284, a1 272, a2 260), but the frame is 376
+  (target 368). Below sp+236 the inline-expansion temporaries are 8..12 bytes high:
+  - op= copy: 196 vs 188;
+  - a1 op* r's: 180 / 164 vs 168 / 152;
+  - a2 r's: 124..144 vs 116..136.
+
+  Needed: dead words +2 between w's op* temporary (224) and the op= copy, +1 below the copy, -1 above a2's pair,
+  and -2 at the bottom. The bottom dead words include the colour block's four named floats: moving them to the loop
+  block moves the whole lower region down 16.
+  - No effect on the lower region: `if (0)` statements (they add words at the top), zeroN dummy pointer params,
+    setK / mulK extra dummy float params in the w / a1 operator* (they change colours).
+- **0x64B8 (not beaten; NCC donor stays 99.91 % in the report).** Tried taking op*1's scalar out of an inline
+  parameter on the mp72 s1 draft:
+  - `const float &s` / `const float *s` (a member, or a global operator*) forces k into memory: 95 / 94 %.
+  - `mf(x, s)` single-return float inlines inside op*1: identical bytes (the s word is still the method's).
+  - An explicit `SV q; SV::ct3(&q, v.x * k, ..)`: 93 %.
+  - `scl(s) { SV r = *this; r *= s; }`: 87 %.
+  - set-built / field-store / `if (1) {}` / `mk(a, b, c)` bodies for op*1: no gain. An extra float dummy
+    parameter before s rotates the colours (f12 / f14 / f2), so op*1's word choice really is pool rotation.
+  - Both donors share a second leftover: target `lw v1,44(s0)` / `addiu v1,v1,792` (op*1's `this` pointer word in
+    v1), ours v0. zeroN dummy pointer params (1..4, at three positions) do not move it.
+- Also tried for the lower region, no gain: `SVb w = ..` initialisation (95.4 %), a `const SVb &` operator= (97.97 %),
+  and a `(SVb)` cast on the w product (bytes unchanged).
+- Next for 718C: the lower-region gaps above, one statement's inline at a time. Next for 64B8: the v1 / v0 pointer word (what conflicts with v0 in
+  the target: the p / &vFC pointer words at 260..268?).
+
 ### snoweffects.uso 0x718C / 0x64B8 under MIPSpro 7.2.1 (agent-e run 727)
 
 - **0x718C NM 97.28 -> 98.14 %** (agent-e 63d6a7ed4 + 7239f185a; gate PASS both times, 3571 / 3579, lost: none, no
