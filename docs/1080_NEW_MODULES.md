@@ -3155,6 +3155,62 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     are worse (raw rows about 960).
   - Variants: /tmp/claude-1000/agent-e/w756/s11.py and s12.py.
 
+## heli.uso 0xB08 pitch colours (agent-e run 764, research only, no commits)
+
+- **The pitch window is now byte-identical to the target, including `mov.s f2,f16`.** All 26 rows from
+  `cvt.s.d f0` to the angle block's `lui at,0x3f80` match. Colours: pf f0, old-h f2, F4 f12, F8 f14, the lerp
+  value f16, -pi/8 f18 (hoisted), +pi/8 f0, the clampf copy f2, and the result f12.
+  - Built on agent-g's run-761 `R4_0_4_q5.cpp`. Source: /tmp/claude-1000/agent-e/w764/b08_e764.cpp; diff:
+    `b08_e764.diff`.
+  - Not landable yet: 945 words (target 943) and 95.14 %. The two extra words are elsewhere (see "Left").
+- **The source changes** (each one was checked against the instrumented uopt PICK / COL trace):
+  ```
+  static inline float clampV(float v, float lo, float hi, int z) { float w = v;
+      if ((w < lo) + zf8(w, z)) return lo; if (zf1(w, z)) w = lo; if ((hi < w) + zf4(hi, z)) return hi; return w; }
+  ...
+  HF(0x14C) = HF(0x14C) + yaw * (0.06);
+  if (1) {}                                  // (4)
+  fwdOf(fwdAx, &HF(0xF4));
+  pf = dot(fwdAx, vel) / 200.0f; pf = pf + fwdAx.y * (0.1);
+  dist = (pf - HF(0x148)) * 0.2f + HF(0x148);                                          // (1)
+  *(float *)(self + 0x148 + zf4(pf, 0) + zf3(-0.3926991f, 0) + zf1(HF(0x148), 0)) = dist;
+  if (1) {}                                  // (2)
+  *(float *)(self + 0x148) = clampV(dist, -0.3926991f, 0.3926991f, 0);
+  ```
+  1. **The lerp value goes in its own variable (`dist`, which is dead by this point), not `f`.** With `f`, the lerp
+     LR runs on through the clamp tests into the angle blocks. It is then one LR with the angles' f2, picked at
+     pri 4-5.5.
+  2. **An `if (1) {}` between the HF(0x148) store and the clamp starts a new uopt block for test 1 and the copy
+     `w = v`.** This costs no code. uopt interference works per block, so without this cut the copy and old-h
+     (both f2 in the target) share block 91 and conflict. as1 still schedules `c.lt.s` / `swc1` / `mov.s` in the
+     target's order.
+  3. **The dead `w = lo` sits between test 1 and test 2 (agent-g's z5 position).** Then test 2 reads w (target
+     `c.lt.s f0,f2`), not the lerp value. In the z7 / q5 position, test 2 is copy-propagated to the lerp value.
+  4. **An `if (1) {}` after `HF(0x14C) = .. yaw * 0.06` moves the yaw-clamp return temp M-160 (LR 206, pri 2.6)
+     out of the lerp block.** Without it, M-160 takes f18 before -pi/8 does.
+- **Priority levers.** In `(cond) + zfK(x, z)`, the zf goes inside an `if` condition, so it adds no block and no
+  code. The fold's uses count on whatever x is at that point:
+  - `zf8(w)` in test 1: w is single-def there, so the uses are propagated to `dist`. dist goes 1.0 -> 2.67, so it
+    is coloured, and it now comes after F4 / F8 (3.0) and before -pi/8. With zf5..7, dist stays below its split
+    threshold and is spilled to 320(sp).
+  - `zf4(hi)` in test 2: +pi/8 goes 0.5 -> 2.5 and takes f0 in the arms. That is the f0 holder that leaves f2 for
+    the copy (pri 2.0).
+  - `zf1(HF(0x148))` in the store address: old-h goes 3.0 -> 4.0, so it is picked before F4 / F8 and takes f2.
+  - `zf3(-pi/8)`: -pi/8 is 2.5, which is below dist (2.67). zf4 gives 3.0, and then -pi/8 takes f16 before dist.
+    Its den is 2, so it moves in steps of 0.5.
+  - A zf on w at a point where w is multi-def (after `if (zf1(w, z)) w = lo;`) counts on the copy itself. As
+    `if ((hi < w) + zfK(w, z))` it lifted the copy 1.5 -> 6.0 (zf8). This was not needed in the end.
+- **Left (2 words, frame):** dist is now one LR with its earlier sqrt / slerp region (blocks 47-63), coloured f16
+  there too. That adds a `swc1 f,320(sp)` and two reloads around rows 480-565. All frame temps below 56 also move
+  down one word (kit CCXCIII: one fewer spilltemp).
+  - Next: a lerp variable with no earlier LR. `float hn` declared after pf gave the same pitch shape in the Vhn
+    sweep, but the frame changed (reg rows 202).
+  - Or keep dist and cut its join: dist's earlier piece split off at its lower priority in the W0 forms.
+  - Or reuse yaw or g (S_dist_yaw 95.05 / S_dist_g 94.84, both still 944-945).
+- Tools: `an.sh NAME` (trace + pitch-region picks + pitch window against the target), `cols.py NAME..` (one line
+  of the key LR colours / priorities, plus MOV when `mov.s f2,f16` is present), `pk3.py NAME LO HI` (FP picks with
+  true register names; lre.py's names are shifted by one FP register). Sweeps: s4..s16.
+
 ## heli.uso (agent-g run 761)
 
 - **0xB08 NM 97.79 -> 97.84 % (agent-g f74783a86; gate PASS, 3576 / 3579, exact set identical, no renames, 943 words).**
