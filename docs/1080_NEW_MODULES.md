@@ -1336,6 +1336,34 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     - trp.py: parallel-safe uopt trace (pri / den / colour / forbidden per LR);
     - v*.py: the batches (v5 FB forms, v9 / v10 named count words, v11 clamp grid).
 
+- Run 746 (agent-h, commit a2d8724e9 on agent-h, NM only, no renames; 3574 / 3579, gate PASS, exact set identical,
+  592 words, frame 400).
+  - **0xC90 NM 96.73 -> 96.83 %**: a code-free `if (p) {}` after the texrect. That late use raises p's uopt priority
+    (7.4 -> 8.07, 15 blocks) above y0 and the E4 pointer, so p takes t1 as in the target. A sweep of `if (v) {}` over
+    every loop-body / tail line and 20 variables found nothing further. `if (y0) {}` / `if (x0) {}` after the texrect
+    give 594 words.
+  - Left: c is t4 (target t2) and y0 t2 (target t3). c's priority dropped to 6.76 (17 blocks), so it is still below
+    y0 (8.0) and gt (7.5).
+  - **Count -> v0 (plan item 2):** B4 written as a comma statement (`g1 = pkt, w0 = .., w1 = ..`; only B4 matters, B3
+    makes no difference) plus a separate prologue word (nextN / nextI) puts the count in v0 at 6 sites. A climb then
+    restores 592 words (FB / B4 / B3 nextI, yl `MAX(x, 0)`, blez sense right). The best result is 96.71 at frame 408..424.
+    The prologue nextN `n` sits between m and v (m +8, frame +8). No single function-scope edit compensates:
+    removing scratch, d, inv or g, or moving g, does not work. Even off-frame, these states score below 96.73.
+  - **Stock tail packets:** six `gDPWord(c->nextN(), ..)` tail packets plus a `gDPWord` prologue give the target's
+    tail pointer rotation (v0 / a0 / a1 / v0 / a0 / v0, i.e. the target's a0 / a1 / a2 / a0 / a1 / a3 shifted by the
+    count) and the prologue pointer a3, at 592 words. But they cost 12 frame words: the six `_g` words plus the six
+    nextN `n` words all land below r.
+  - No constrained climb, all-pairs scan (1357 pairs) or random 2-4-move search (about 900 states at 592 / 400 /
+    offsets) beats the committed body.
+  - Tools: /tmp/claude-1000/agent-h/r746/:
+    - g6.py: knob builder over the committed body (per-packet named pointer vs `_g` block, prologue / tail form, imc
+      per packet, decl removals; G6B env picks the base file);
+    - hc8.py / hc9.py: climbs (ok / free / v0 / soft keys);
+    - pairs.py, rnd.py, sub.py: pair, random and subset scans;
+    - ds.py: dummy-`if` site sweep;
+    - al.py: register-normalised alignment;
+    - sbs.py: side by side.
+
 ### snoweffects.uso 0x6000+ (agent-e run 639)
 
 - +2 EXACT (commit feb67fb6a on agent-e): 0x8C60 and 0x9FE8, both IDO 7.1 NCC. Own donor
@@ -2713,6 +2741,43 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     f20) is a separate constant web: `(float)0` int-cast literal.
 - NM wraps spell the raw placeholder tokens: the named-call check cannot prove CALL() sites
   whose build path is INCLUDE_ASM.
+
+## heli.uso (agent-g run 747)
+
+- **0xB08 NM 96.39 -> 97.71 % (agent-g b98304565 97.43, 99ded151c 97.71; gate PASS each, no renames, 3574 / 3579,
+  exact set identical).** Case 4 is now byte-identical to the target.
+- **The sp+252 entry unit is an empty two-predecessor block.** `case 3: if (..) {..} if (1) {} L4: break;` and case 4
+  ending in `goto L4;` (= break). uopt's K-116 split grows case 4's piece over its successor L4 (ADJ), and L4 has a
+  second predecessor outside the piece, so the piece has two entry units for two uses (num 0): case 4 is not coloured
+  v1 and rematerializes t8 / t4. Placement matters, because L4 is a predecessor of the switch join and takes the ps
+  (a2) PRE def:
+  - L4 at case 4's own end (case 3 `goto L4`, first commit, 97.43): case 4 falls into L4, so the `addiu a2` lands in
+    the join branch's delay slot instead of mid-case.
+  - L4 = case 3's if-join (no `if (1) {}`, 97.46): that block also takes case 3's tg (v0) PRE def, and case 4's
+    `V3(0x12C) = *tg` copy folds to 276(s0).
+  - L4 after case 6's break / default / end of switch (96.99): it is laid out last, falls into the join, and as1 does
+    not copy it.
+  - L4 at the end of case 1 (97.27): case 4 is exact, but case 1 now falls into L4 and gets the a2 problem.
+  - The kept form: L4 after case 3's join (the `if (1) {}` keeps them apart) ends in `b join`, so as1 copies
+    `addiu a2; b join` into case 4 (scheduled mid-case, `swc1` in the slot), and case 3 falls into it with a2 in the
+    delay slot, which is the target's case 3.
+- `yaw = (6.2831855f) + yaw` gives the target's constant-first `add.s` (+1 row).
+- **2.0f / f2 (not solved; the diagnosis is narrower).** The side.x / y / z 2.0f is one live range (K2, uopt bp 691)
+  over units 70 and 71. It is coloured late (it splits from the function-wide 2.0f LR at pri 0.71). HF(0xF8) (LR 432,
+  `{1358|18}`, units 70 and 91) and HF(0xFC) (436) are coloured first.
+  - The target needs F8 = f14, FC = f0 and 2.0f = f2. 432 gets f14 only if f0, f2 and f12 are already taken in units 70
+    and 91. That ties this residual to the g / HF144 / -0.3f colours in unit 91 (target f14 / f2 / f0).
+  - lre.py's register column is one off for FP: colour 24 = f0, 25 = f2, ... 29 = f18.
+  - Zero-code unit shifters work under EDG with `(*(int *)(self + K) - *(int *)(self + K))` (they move the uopt unit
+    cut). `& 0` / `* 0` / `0 &` fold first, and so do the minus form in `player`'s address (it is evaluated before
+    subc's cut) and in `V3(0xDC) += vel`.
+  - In the side.x load address, 8 shifters move the cut to side.x / side.y but the bytes stay the same. In toTgt's
+    store address, 4 shifters put all six 2.0f uses in one unit (pri 5.0) but it takes f14 (97.21). Six or more change
+    the code (95.19). `if (1) {}` cuts around toTgt / side cost 3+ points.
+- Other negatives: `p + delta` for the vcall `this` (`addu a0,t4,v1` order unchanged).
+- **Next:** the unit-91 colour order (g / HF144 / -0.3f), which also decides HF(0xF8)'s colour and so the 2.0f f2.
+  Smaller ones: case 3's `addiu v0` schedule position, case 2's `lw v0,44(v0)` (ours v1), the p / q `or v1,a0` copy
+  at the top, and 148(sp) f16 vs f14.
 
 ## heli.uso (agent-g run 742)
 
