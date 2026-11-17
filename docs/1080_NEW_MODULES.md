@@ -2009,6 +2009,34 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   register value (for example a parameter-free inline that reads k from an enclosing inline's named local), or
   accept the memory scalar.
 
+### snoweffects.uso 0x64B8 under MIPSpro 7.2.1 (agent-e run 744)
+
+- **0x64B8 EXACT** (agent-e 0bcf74c92; gate PASS, 3573 / 3579, lost: none, no renames). Spliced in both build trees
+  from `snoweffects_uso_mp72_nm_e.cpp` (`SNOW_MP72_E_EX_FUNCS`). The IDO 7.1 NCC donor `snoweffects_uso_ncc_nm_e.cpp`
+  only served 64B8, so it and its Makefile block are gone. Scratch `/tmp/claude-1000/agent-e/w744/`: `s.py`
+  (`fl` / `lset` / `show`: edg word layout of a variant, compared with the target's memory-word set `TGT`), `cp.py`
+  (parallel compile + score), `c*.py` probe batches, `tr.sh` (instrumented-uopt colouring trace for 64B8 alone).
+- **Search method:** filter on edg's memory-word (`l`) offsets first. The target's set is ours with r1 -140 -> -144
+  and r2 -168 -> -172. Only variants with that exact set get compiled.
+- **New edg rule (corrects run 718):** param substitution is not limited to scalar-returning inlines. Any inline whose
+  body is declarations plus one `return` substitutes a plain-variable argument; that includes SV-returning ones,
+  e.g. `SV f(float s) const { SV r; return (r.setIf(x * s, ..), r); }`. A statement in the body (`ct3(..); return r;`)
+  turns it off. `return mk(..)` also substitutes but adds a third struct copy, so the comma form is the one to use.
+- **The three fixes:**
+  - `SV::scaled(k)`: k is substituted, so the products take the three oldest pooled float words, which are the target's
+    f0 / f2 / f12 LRs. That was the run 713-736 blocker. A pooled scalar always took the oldest word (-20). An extra
+    old word above it (e.g. `fab()` on spd) only moves the problem, because that word becomes every later
+    statement's first pick and so takes f0. A `double` parameter (Q pool) also fixed the colours, but cost cvt code.
+  - `const SV *q = this;` inside scaled: a named word, never reused. It is the one fresh word above r1, which puts r1 at
+    sp+200 and makes s2 fresh, so r2 lands at sp+172. Loading through q (or this) keeps the dead `addiu v1,v1,792`
+    store; with the loads in the caller (`mk3(v.x * k, ..)`) uopt drops it.
+  - `SV::operator+=` as `x = x + v.x`: one compound-lvalue pointer word fewer below, so frame 344.
+- **v1 vs v0 was the callee's return type.** `math_vec3Normalize` returns int (`context_game_libs_post0b.h`). With
+  `void`, uopt colours the this-word LR (one block, right after the norm call) v0: nothing interferes and v0 is
+  first. With an int / pointer return, the call's v0 result is forbidden to the next block's LRs, so it takes v1. 30+
+  block / dummy / q spellings did not move it. Check a blank-jal callee's real return type before chasing a v0 / v1
+  colour right after a call.
+
 ### snoweffects.uso 0x718C / 0x64B8 under MIPSpro 7.2.1 (agent-e run 736)
 
 - **0x718C EXACT** (agent-e 465c3eedb; gate PASS, 3572 / 3579, lost: none, no renames). It is now spliced in both
