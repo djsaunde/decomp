@@ -4184,3 +4184,79 @@ the boot reaches a gfx task, the capture recipe is in 19.6. On a multilib machin
    gfx_flushTexture) to `port_fast3d_invalidate` and the read-back. These are game-side PORT edits, outside
    agent-a's area.
 
+
+### 19.8 Run 832: the first real frames, capture.sh, patch 0009 (agent-a)
+
+> agent-a run 832, 2026-11-17, branch agent-a: 62c088f25 (dump directory, capture tool) and a249d6f9b (LUS
+> patch 0009). The gate passed before each commit (ROM byte-identical, 3579/3579 exact).
+
+**Capture in one command.** `port/tools/capture.sh -b <PORT_LINK build> -o <out> [-n frames] [-e every] [-f first]
+[-S render scale]` runs `run32 tenshoe --frames N` in `<out>` (a fresh `1080.sram`) with `PORT_GFX_DUMP`, renders
+every dump with f3dreplay (built into `<out>/gfx` unless `-x` names one; llvmpipe), and writes `sheet.png` (a
+contact sheet labelled with gfx task numbers, `port/tools/contact_sheet.py`, stdlib only), `histogram.txt`
+(`dlump.py --total`), `run.log` (with the exit code; a crash still processes the frames before it) and
+`replay.log`. On main + this branch, 300 frames take about 20 s: tenshoe dumps all 223 tasks in 0.5 s (251 MB),
+then crashes at task 222 (agent-g's title-demo bug); f3dreplay takes about 60 ms per frame.
+- `PORT_GFX_DUMP=<dir>` now creates the directory (mkdir -p).
+- `fast3d/Makefile` tracks header dependencies (-MMD). Before this, a patch that changed `interpreter.h` left
+  stale objects with the old class layout, and f3dreplay crashed.
+
+**What the 223 frames show** (each gfx task is one frame):
+
+| tasks | content | verdict |
+|---|---|---|
+| 0-1 | N64 logo; the start-up Fader dissolve finishing | dark-green specks (the Fader bug below) |
+| 2-83 | N64 logo, static, full alpha (81 identical frames) | correct |
+| 84-98 | logo fades out, PRIM alpha -16 per frame | correct |
+| 99-130 | Lamar / Tommy Hilfiger trademark screen fades in, PRIM alpha +8 per frame | correct |
+| 131-197 | trademark screen, static | correct |
+| 198-221 | Fader dissolve to the next process | **wrong: dark green instead of black** |
+
+- **The N64 logo is 2D on hardware.** It is not a 3D model. The capture has no G_VTX or G_TRI1 at all: every
+  frame is FILLRECT plus 1-cycle TEXRECTs, and that matches n64proc. N64DemoProcess_drawGui draws sprite 6
+  (state 0) or sprite 3 (state 1) with `gui_drawSprite(.., 160, 120, 3)` at `gui_setColor(alpha)`.
+  N64DemoProcess_handleInput gives the timing: 100 frames, the last 16 fading by 16; then +8 per frame from
+  0 to 255 and a 100-frame hold, then `Process_fadeOut`. That matches the table frame for frame. The colours (the
+  green / red / blue N with yellow tops, the grey "NINTENDO" with a white "64"), the Lamar disk's grey
+  gradient, the navy / white / red Tommy flag and the text are all right at native resolution.
+- The command census over the 223 frames has only 29 opcodes, all inside the 11.1 census. 4158 TEXRECTs come
+  from 4132 LOADTILE + 52 LOADBLOCK. There is no G_LINE3D, lighting or triangle yet; the 11.4 questions wait
+  for the title / race.
+
+**Bug 1 (game side, for routing): the Fader colour texture is written in host byte order.**
+Fader_buildTexture (`src/bootup_uso/bootup_uso_tail4.c`) fills `FADER(f)->texture[0..0x3FF]` (u16) with 1 when
+`mode == 0`: RGBA5551 black, alpha 1. Fader_display then draws it as the T0 colour of a full-screen 2-cycle
+TEXRECT (32x32 RGBA16 at 0x08852CA0, with an I8 dissolve mask in T1). On x86 the bytes are `01 00`, and Fast3D
+reads texels big-endian, as the hardware's TMEM does, so it sees 0x0100: G = 4, which renders as dark green
+(0, 33, 0). Evidence:
+- every TEXTURE chunk at 0x08852CA0 in tasks 0-1 and 198-221 is 1024 x `01 00`;
+- patching those bytes to `00 01` in tasks 199, 205 and 212 and replaying gives the expected dissolve to black.
+Fix: under `#ifdef PORT`, store `0x0100` (or byte-swap the 0x800 bytes once after either loop, before the
+patch-4 invalidate). The `mode != 0` path copies `pal[screenIdx[i]]` u16 to u16. That keeps the palette's byte
+order, so it is right only if the window's slot-11 palette is big-endian; check it when that path first runs (it
+is not reached in these 222 frames). The same applies to every CPU texture writer in the 14.1 list
+(ScreenThumbMat_grab, Tv1Tmpl_blitFrame): their texels must end up big-endian.
+
+**Bug 2 (Fast3D, fixed by patch 0009): seams in strip blits above native resolution.** The logo and the trademark
+screen are drawn as 8-column LoadTile strips (`G_SETTILE ... masks 8`, a wrap mask of 256), each a 1:1 TEXRECT.
+- At `--scale 3`, bilinear filtering blended each strip's last column with its first through GL_REPEAT: a grey
+  line every 8 pixels, even on the black background.
+- On the RDP a 1:1 rect from a whole texel samples texel corners, so it never blends.
+- Patch 0009 clamps the sampler on any axis where a TEXRECT maps 1:1 from a whole texel and stays inside its
+  texture. Scaled rects such as the Fader's stretched 32x32 keep the wrap: there the RDP really blends across it,
+  and the `fader` golden scene caught the first, unconditional version.
+- Results: native output is byte-identical (the 18 golden scenes, and all 223 real frames), and the seams are gone at
+  scale 3.
+- The patch applies cleanly after 0001-0008 on a fresh clone at the pin.
+- Note: `tools/lus` is shared by all worktrees and now has 0009 applied, while its `.complete` stamp still names
+  the 8-patch series. Native rendering is unchanged, so main's golden tests still pass against it. The first
+  `setup-lus.sh` after 0009 lands refetches and re-applies.
+
+**Fine at native resolution, nothing to do:** the fade arithmetic (PRIM alpha with `XLU_SURF` 0x404240 over the
+fill-cleared black), the CI-free RGBA16 strips, and the I8 mask texture (bytes, no order issue). A mask
+fragment shows near the logo in tasks 0-1 only because of bug 1.
+
+**Next.**
+1. Re-capture past task 221 once agent-g's title-demo fix lands: `capture.sh -n 900 -e 5`. That is the first
+   3D (G_VTX / G_TRI1, lights, texgen) and the first CI textures.
+2. Route bug 1 (bootup_uso_tail4.c is game code, outside agent-a's area).
