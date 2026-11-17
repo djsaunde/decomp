@@ -5339,3 +5339,59 @@ case 0 takes the charmap arm when mode != 2, and SelItemsMgr_ctor creates the 8 
 On the N64 the unresolved charmap import would not be a zero page either, so the port is diverging
 earlier: the open question is which of (the mode value, the list's createItem vtable slot / arg2 in mode
 3, the jump-table arm) differs. Not fixed in run 845.
+
+### 20.2 Run 848: the fall-through root cause, the finish line, replay and ghost (agent-c)
+
+**Root cause of the "respawn, fall, respawn" loop (run 845): the CollShape edge table's byte order.**
+The four CollShape queries (game_libs_ncc_3B2EC / 3B6A0 / 3B9C0 / 3BE1C: height / below / raycast /
+query, which CollShape_nearestHit uses) test point-in-triangle by walking the s16 table
+`gTriEdgeNext` = {1, 2, 0} at bootup Data 0x1ED90 with a pointer (`nx++`). The access scan in
+port-gen-blob-types.py typed only element 0 (a "field" access at +0), so element 1 stayed big-endian:
+0x0200 = 512 on the host. The second edge test of every triangle read `f->vi[512]` (a garbage vertex)
+and rejected the triangle at random, so the ground query found no ground for long runs. After 151
+frames without ground, procColl puts the rider 200 above the nearest marker, and the rider fell
+again. The title demo's rider fell through the course too. Fix (875b4e868): a KNOWN layout (6 bytes of
+u16). On current main, after the Parms tag fix, the old script gave a damage "Retire" at step 2533
+instead of the fall loop (the rider crashed through missing ground). With the fix, no-ground frames
+after the race start drop from 2229 to 99 (the longest run from 65 to 21 frames: real jumps). Checked:
+the course polyshape's s16 vertices are right (collision reads the same verts and now works), so
+agent-g's spike-vertex writer is in the display Vtx build, not in the shared shape data. The
+ground-query path (procColl, nearestHit, query, solveContacts) has no adjacent-locals hazard: all its
+vectors are Vec3 structs.
+
+**Finish line.** Steering came from a greedy offline search (/tmp/claude-1000/c848/bin/steer.py: per
+60-step window, the stick x of {-80, -40, 0, 40, 80} with y 80 that gives the lowest rider y one window
+later; 5 parallel runs per window, about 1 minute for the whole course). The script is
+/tmp/claude-1000/c848/steer1.input (it reuses time_attack.input's menu steps, without DR). Crystal Lake
+is finished at step 4857 with "Goal!" and a time of 1'52"06. Then name entry (5338) and TimMenu (5610).
+
+**Crashes past the goal, fixed (commit 2):**
+- NameEntry_drawBoard: NeNode used a g++ `virtual` (vptr read at +0). It is now the cfront layout
+  under PORT (explicit vptr at +0x28, CF_V0 slot 11).
+- The boot-integrity reads of N64 RDRAM: `*(int *)0xA0000200 == 0xAC290000` in TimMenu_ctor,
+  settings_set8_00012818 and MGRRaceProcess_onEndTimerDone, and `*(s32 *)0xA0000284 == 0x240B17D7` in
+  MainOptions_buildMenu and mgr_initMatchRace_00000700. These caused a SIGSEGV on the host. Under PORT
+  they pass, as on a real cartridge. This also enables TimMenu's "Update Ghost" row, the Options
+  "Replay" row and the 4th Match Race course of level 1.
+- viewrec (Options / Records): VrNode used a g++ `virtual`, which shifted every VrProc / VrScreen field
+  by 4. It is now the cfront layout under PORT. Options and Records now render.
+
+**Replay and ghost.**
+- View Replay (TimMenu row 2) plays from 5841 to 9250. The rider position matches the race bit for bit
+  through the goal (frame 3399 of the race).
+- Update Ghost -> "Save ghost data?" -> Yes: SRAM writes go from 26 to 32.
+- Reload test: a new process with that 1080.sram (script /tmp/claude-1000/c848/re1.input: START,
+  DD, A ... no language menu on a saved SRAM) starts Time Attack on Crystal Lake. The ghost (trace r1)
+  matches the original r0 bit for bit through the goal (3398 frames).
+
+**SFX.** The player-2 channel-0 IO4 one-shots in the race are ids 8 / 9 / 10 / 11 (17 in 3400 frames;
+-1 stops them; 0x0602030x = 8 at the start, 3 at the goal). They fire both on landings (airFrames
+6-26 before) and on contacts with non-snow surfaces 'd' / 'e' (0x64 / 0x65), with no clear split by id.
+Likely the rider's voice variants. The continuous sounds (player 0 channels 1 / 3, frequency follows
+speed) are the board / wind bed. Not checked by ear.
+
+**Open issues seen:**
+- the speedometer shows 0 km/h at speed 100-230 (a HUD read, not physics);
+- slowdown 0x960 sits at 5 for most of the race;
+- the name-entry board is a grey box without letters (2D, agent-a);
+- the spike polygons (agent-g).
