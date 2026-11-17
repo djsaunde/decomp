@@ -935,6 +935,40 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     lim f20, alpha f22).
     Drafts: /tmp/claude-1000/agent-h/r699/ (l2.cpp shared-c, x2def.cpp, lp.py loop-window diff, mk*.py batches).
 
+- Run 702 (agent-h, commits 13f250cda + 44226a86c on agent-h, NM only, no renames, no exacts; 3564 / 3579, gate PASS each).
+  - **0x47D4 NM 94.58 -> 94.91 -> 99.25 %** (objdiff, snoweffects_uso_ncc_nm_h.cpp).
+    - 94.91: run 699's shared-c lerp2 for w.y / w.z, plus a plain `w.x += dv.x`. The addTo copy for x had taken a uopt
+      colour (f0) for the hoisted w.x reload; the target keeps that w.x in a ugen temp (f10).
+    - 99.25, **callee-saved first-use cost via the BB count:** lim was spilled because uopt's fresh callee-saved
+      cost is 0.25 x BBs (49 BBs = 12.25). lim's split pieces have num 12 / 10, and alpha has 13. Removing the
+      empty `SnowBV3() {}` constructor (each inline default constructor is an edg BB, IDO_CODEGEN kit CCX) lowers
+      the cost. lim then takes f20 and alpha f22, exactly as in the target: lim is picked first, and once f20 is
+      used it is free for lim's other pieces.
+    - The target's f0 temps are named block locals: `{ float d = t->u160 - 5.0f; a = t->u164 / d * (..); }` and
+      `{ float k = ab * t->u168; alpha = k * (255.0f - a) + a; }`. On their own (with the constructor) they cost
+      2.9 points, because the extra LRs split alpha.
+    - Left:
+      - The frame is 192 (target 184). Declaration changes don't move it (drop / v removed, d / k via drop,
+        `register`).
+      - The target has a second zero constant LR in f18 (p / q zeroing at the top and the dv zero stores); ours
+        uses one zero, f16.
+      - ab and the alpha temp are swapped (ours f2 / f12, target f12 / f2).
+      - In the loop, f and the x copy are still swapped.
+    - Small, not landed: `float r = ..; alpha = r;` (99.27, frame 200); `drop` for the u154 scale (99.29, frame 200).
+  - **MIPSpro 7.2.1 check (agent-e's lead):** under tools/ncc721.sh, 47D4 compiles to the same code (99.25) and C90 to
+    worse code (76.7, 607 words, target 592), with no s1 and no hgt / wid flip. Both stay on IDO 7.1 NCC.
+  - **0xC90 (85.23, unchanged).** In the uopt trace, hgt (M-24, pri 5.0) and wid (a CSE temp) take t5 / t4 before
+    the caller-saved registers are exhausted. In the target they colour after t0-t5, with wid in ra first and then
+    hgt in s1. Flat or worse:
+      - a single `if (1) {}` at every statement in the loop body (best: base);
+      - `register` on hgt / wid;
+      - declaration order;
+      - extra `if (hgt / wid / i) {}`;
+      - dropping the existing ones (84.92).
+    Next: lower hgt's priority below the t-register users, or raise six other LRs across the texrect block.
+  - Tools: /tmp/claude-1000/agent-h/r702/ (od72.py = od.py through ncc721.sh, trf.sh = FP rows of the uopt trace,
+    sbs.py side-by-side vs expected, v*.py batches, c1.py / c2.py C90).
+
 ### snoweffects.uso 0x6000+ (agent-e run 639)
 
 - +2 EXACT (commit feb67fb6a on agent-e): 0x8C60 and 0x9FE8, both IDO 7.1 NCC. Own donor
@@ -1412,6 +1446,49 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
 - Scratch: `/tmp/claude-1000/agent-e/w698/`: `t.py` (`score` / `runl` / `lay` print positional diffs, frame and the
   temporary slots), `od.py` (agent-h's objdiff scorer, pointed at agent-e), and `r*.py` (the probe batches).
 
+### snoweffects.uso 0x6000+ (agent-e run 703)
+
+- No new exacts, no commits (nothing beat the run 698 donor; 3564 / 3579 unchanged). No renames. Scratch
+  `/tmp/claude-1000/agent-e/w703/`: `t.py` adds `score7` (the same scorer through `tools/ncc721.sh`) and `adiff`
+  (difflib-aligned diff count, robust to length shifts); `r1..r13.py` are the probe batches.
+- **0x64B8 `+=` temporary order: what the target is doing.**
+  - Naming: A = the temporary bound to the outer `operator*`'s `this` (the inner `v318 * k` result, read back for
+    the second product), B = the temporary bound to `+=`'s `const SV &` (the outer product). Ours A = sp+312,
+    B = sp+300; target A = 300, B = 312.
+  - Block temporaries are allocated last-created-highest: duplicating the statement (`n += X; n += X;`) puts the
+    second statement's two temporaries ABOVE the first's (368 / 356 over 344 / 332, frame +56, no reuse). So ours
+    creates B then A (top-down lowering: the `+=` argument binding first, then the outer call's object), and the
+    target creates A then B (bottom-up).
+  - **The IDO 7.1 front end is the right one.** Through `tools/ncc721.sh` (EDG 2.29) the same donor puts A below B
+    (308 / 320, the target's order), but 2.29 also breaks the module's exact functions (0x4188 184 aligned diffs,
+    0x8D70 44, 0xA10C 127, 0x9884 14, 0x7960 18), and 0x64B8 itself goes to frame 352 with two more s-registers.
+    So the swap is a 2.19 construct, not a front-end difference.
+  - Negatives under 7.1 (all keep 312 / 300, or rebuild the statement): `(b * (c * d))` is a different product;
+    friend `operator*(float, const SV &)` with `d * (b * c)`, `(f184 + spd) * (k * v318)`, `k * v318 * ..`;
+    `SV t = b * c; n += t * d;` (named, inside and outside `{ }`: 265+ diffs, the hops share one register);
+    `const SV &a = b * c;` (same); `const SV &d = whole; n += d;` (79 diffs, frame 344, A still on top);
+    `SV d = whole; n += d;` (81 diffs, frame 336: the same code shape, d below n); `SV d` declared at function /
+    if / block scope and assigned (`d = X; n += d;`, `n += (d = X)`: +16..32 frame); `n = n + X`; by-value
+    `operator+=(SV v)` (same code shape, B becomes an inline local at sp+148 and everything above shifts up 16);
+    template `+=`; out-of-class `inline` definitions after the function (inlining is not parse-time); identity
+    inlines `idv` / `idw` / `idx` / `idr` / `idf` around the inner product, the whole product or the scalar;
+    a different class for the inner result (`SW mulw()`, with or without `operator SV()`); derived-to-base `SV : SV0`
+    with a non-member `operator*(const SV0 &, float)`, `+=(const SV0 &)`, `(const SV0 &)` casts, `SV0` by value;
+    converting-constructor classes `SX(const SV &)` (plain, `*this = (const SX &)v`, `SX : SV` base-init, `SX : SV`
+    memberwise) through `mul()`, `operator*(const SX &, float)` and `operator+=(SV &, const SX &)`: all add 6..24
+    words; `~SW() {}` / `~SV() {}` destructors rebuild the statement (+5..14 words).
+  - Next: the creation order is decided in edg's lowering. A form whose outer call is lowered before the `+=`
+    binding (bottom-up) is what is needed; none of the C++ spellings above does it. The cam v0 / v1 is a
+    ugen-local pick (the cam load is not in uopt's LR table; v1 there would need v0 busy in that block).
+- **0x6B28:** the 4-byte residual is the nested block's op+ binding temporary (target sp+96, ours 92: the
+  `lwc1 104 / 100 / 96` loads at 0x271), not x / y / z; the `if (0) n *= t->f1B8;` word above it pushes it down.
+  Real statements in its place, all worse than the dead statement (25 aligned diffs): none (43), `float f = t->f1B8`
+  named (153), `(const float &)` (43), `if (0) {}` / `(void)t->f1B8` (43), `n *= 1.0f` (129), `SVb n(..)` (177),
+  `SVb n, m` pair (80), one expression (232), `SVb n; n = ..` (123).
+- **0x718C:** the |speed| colour (target f16 for all three `sp < 0 ? -sp : sp`, lo f12; ours the reverse) did not move
+  with an `absf()` inline (three bodies), a named `as` assigned in each test, `0.0f > sp`, `t->lo > |sp|`, a `float lo`
+  local, or code-free `if (t->lo) {}` / `if (sp) {}` / `if (lo != hi) {}` / `if (1) {}` tests at five positions.
+
 ### nameent.uso 9BC + snoweffects below 0x6000 (agent-c run 655)
 
 - **nameent 21 / 21 EXACT** (agent-c f56621038; 3539 / 3579). 9BC's two scale spill slots were one edg
@@ -1691,6 +1768,39 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     f20) is a separate constant web: `(float)0` int-cast literal.
 - NM wraps spell the raw placeholder tokens: the named-call check cannot prove CALL() sites
   whose build path is INCLUDE_ASM.
+
+## heli.uso (agent-g run 700)
+
+- **0xB08: no gain, nothing committed.** The best is still 93.08 % (donor = `r695/c_e3m4.cpp`). Exact count unchanged
+  (3564 / 3579). Harness `/tmp/claude-1000/agent-g/r700/`: srch.py / srch2.py / s3.py (slot-combination
+  searches, which print the objdiff %, the both-masked rows and the per-segment t-def mismatches). In `r695/`:
+  pad.py / padat.py (insert dummy `HI(a) = HI(b);` ring allocations before anchors), and rows.py (diff rows with
+  the padding lines and branch offsets stripped).
+- **Ring padding alone is not the lever.** Seven dummy allocations at the end give the target's head
+  (t7 t8 t0 t1 ...) but score 91.27. The other segments then shift with it. The numbering runs backward from the
+  end, so each segment's register names follow the allocation count AFTER it. Fix the segments tail-first. 15 (the
+  vel / toTgt block) is the first mismatch counting from the end.
+- **Named heading pointer `Vec3 *h = H(self); gl_func_00000000(h);`, used for old / the 3 stores / vel.** This is
+  the target's h LR. The old copy now reloads h into v0 from its spill slot, and vel loads 0(v0), as in the target. Segments 9,
+  11 and 13 then match (only 3 +2, 4 +1, 15 +2 differ), both-masked 87 -> 72 rows, but the score drops to 91.3
+  (registers shifted; `r695/h1.cpp`). H() only on the stores (`d00007`) gives 91.09, both 93. H() on loads
+  (dot, old, vel) without the named variable is byte-identical to FWD.
+- **Segment 15's missing 2 allocations are the op* and op- temp ADDRESSES** (target `addiu t5,sp,136`,
+  `addiu t3,sp,124`). Ours colours them (v0 / v1 / a0) and the target does not. In the target, v0 holds a fresh
+  `addiu v0,s0,300` (toTgt's tg) and v1 the op= parameter temp. Tried and failed:
+  - A fresh `Vec3 *tt = self + 0x12C` declared before the vel statement is NOT folded, but uopt hoists it into
+    all 10 switch cases. Declared after vel, it is folded into 300(s0).
+  - `T(self)`, `((Vec3 *)self)[25]`, `FWD[-1]`, `tg += 2` and `tg[2]` all fold or spill.
+  - `h[-1]` keeps h in v0 and loads -12(v0): regmask 252 (best seen), but 90.99.
+  - `vel` as a block decl, an outer assignment or a direct-init, and `*ps += vel`, change neither count.
+  - Named-result operator* / operator- (`Vec3 r; ...; return r;`) and friend operators also failed.
+    The named-result operator- gives fewer raw rows (536), but scores 90.27.
+- **Case 4's op= parameter temp:** the target computes sp+252 twice there (t8, t4: ugen temps, not CSE'd); ours CSEs
+  it into v1, as the target does in case 5. Block-scoped f, braces and `if (1) {}` change nothing, and the uopt
+  20-load unit counter only reaches 14 in case 4. This accounts for the +1 in segment 3, together with the
+  marker-block `or v1,a0` copy and the jump-table delay slot.
+- Next: find why uopt does not colour the op* / op- temp addresses in the target (read their LRs in a -zdbug:5
+  dump of `h1.cpp` vs the colouring rules). Then apply h1 with the segment 15 fix, so that segments 5-14 line up.
 
 ## heli.uso (agent-g run 695)
 
@@ -1993,6 +2103,31 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   Bss+0x50 pointer goes in s4 before the vertex-count test. There is also a v0/v1 pair in the ambient
   compare and the second walk's mask constants (-2 / -3 / -5 hoisted into s2..s4). Scratch:
   /tmp/claude-1000/agent-a/w654/a/best_A10C.cpp. 0x7FE0 is not started.
+
+## snoweffects.uso 0x7FE0 (agent-a run 701)
+
+- **0x7FE0 NM 99.40 -> 99.42 % in-tree (objdiff report; 52 -> 40 / 800 words differ; every sp offset now matches the
+  target)** (agent-a a593a5b57, gate PASS, no renames, exact count unchanged 3564 / 3579). Scratch
+  /tmp/claude-1000/agent-a/w701/ (t/ = edg temp-order micro tests, g.sh prints -g3 frame names).
+  - **edg block temps (`__V`) are never reused and sit at the top of their block in REVERSE creation order** (micro
+    tests: expression statements, inner blocks, by-value calls never share one). So the target's "swapped" loop-top
+    pair can't be two loop-body __Vs. The target's sp+336 (up * f180) is a **named vector in the if (on) block**
+    (first word below vFC), and the loop body has only d's __V (sp+324).
+  - Block starts carry an inline word when the last outer local's type has a user default ctor (TV / TQ `T() {}`:
+    one `this` word after it). A ctor-less POD (`struct TQ0 { float x, y, z; }`) has none.
+  - The a statement must stay ONE full expression: as two statements, the second op* copies through a3 instead
+    of t1. Form: `TV a = ((TQ &)ua = t->cam->up * idw2(t->f180), (TV &)ua) * (s < 0.0f ? -s : s);`. cam->up is a
+    TQ, whose implicit operator= is a word copy (TV's by-value operator= is float copies). `(TV &)(ua = ...)` /
+    `*(TV *)&(...)` add a 4-byte reference temp; the comma form does not.
+  - The two words ahead of up * f180's r are an inline's dead locals evaluated before it:
+    `idw2(float f) { int g = 0, h = 0; return f; }` on t->f180 (float locals copy f into pool words: 45 words, not
+    40). |s| as a plain `?:` leaves one word after the r, as in the target.
+  - Still left (all colours, unchanged by toggles of idv / idf on fwd, v114, k, f184, vFC, ctor mem-init /
+    `s * x` forms): fwd / up op* y / z (f14 / f2 vs f2 / f14); the |s|, v114 * k, *f184, d-ctor |s| and e.z
+    rotation; the vel statement's cam pointer (v1 vs v0); and the or a1 / addiu t3 preheader order.
+  - **MIPSpro 7.2.1 front end (tools/ncc721.sh, coordinator lead): no.** The run-696 and run-701 bodies compile to
+    802 words (94.0 %), and the integer temp rotation differs from instruction 7 on, in code that is exact under 7.1. 7FE0 is
+    a 7.1 NCC function, so keep the 7.1 donor.
 
 ## snoweffects.uso 0x7FE0 (agent-a run 696)
 
