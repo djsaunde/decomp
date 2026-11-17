@@ -2876,6 +2876,42 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   - al.py: mnemonic alignment;
   - wv.py: the 1/w variable sweep.
 
+### snoweffects.uso 0x28E0 NM 97.96 -> 98.94, frame 520 (agent-c run 778)
+
+- **Three commits on agent-c**, each with gate PASS, 3576 / 3579, the exact set unchanged, and no renames; all 793
+  words, frame 520:
+  - fd6cd4063: 98.50;
+  - 20ebd80a3: 98.88;
+  - 64de17b33: 98.94.
+
+  Scratch: /tmp/claude-1000/c778/ (`q.py`, `sw.py`, `hc.py` fold hill-climb, `s*.txt` specs).
+- **e45 and cy propagation are both solved with an ilod.** The draw-block cx / cy are now one statement each, as
+  in the target (`cx = (row0) * w * halfW; cy = (row1) * w * -halfH;`), and the row sums are ugen temps (f8 / f4).
+  - With plain variables, uopt copy-propagates cy's expression into the compare blocks (the 792-word, mn 29 shape).
+  - The fix: the cx / cy / depth rows read `m[0][k] * p->pos.x` instead of `* x`. That ilod keeps copypropagate
+    from rewriting cy's branch uses, so cy is one register, computed before the first compare. The load CSEs with
+    the draw-block `x = p->pos.x` load, so it costs no code. The w row keeps `x`.
+  - `p->pos.y` / `p->pos.z` work too, but score lower. Neither the cut before the cx row nor the cz-first swap is
+    needed now: the swap is byte-neutral on this base.
+- **Ilod blockers that do not work, or cost code:**
+  - `float (*mp)[4] = m;`: blocks in-block forwarding only. It works for the two-step form (cx / cy stay single
+    LRs, 97.995), but the row sums then live in the variables. One-step + mp is propagated (mp is forwarded first).
+  - `*(volatile float *)&m[k][1]`: +1 addiu (`&m` in a register).
+  - `+ zf1(p->size, 0)` in cy: the fold leaves `mtc1 zero; cvt.s.w; add.s` (+3).
+  - `m[0][1 + zf1(p->size, 0)]`: leaves `sll t6,zero,2; addu t7,sp,t6` (+2).
+  - Dead second definitions (`if (zf1(cy, 0)) cy = ..;`, the ref / `?:` inlines): mn 38-52.
+- **Base: agent-e's run 775 frame set** (tex through lp, B4 / BB via gDPWord, the run-753 `t = ..` temp with
+  `assign`, op* as `r.set(..); return r;`). Stacked with the above, it scores 98.455.
+- **Colours:**
+  - `+ zf1(halfW, 0) + zf1(cx, 0)` in the EE word fixes halfW / cx / depth (98.84).
+  - The size reads go back to a plain `p->size`, with no zf2(w) index, which gives 1 / w f14 and cy f12 (98.94).
+- **Left:**
+  - Draw-block x is f16 and -halfH f18; the target has them swapped. About 300 single-fold probes found nothing:
+    -halfH / x / p->pos.x folds at the compare, size, offX / offY and EE sites, and the row-to-variable mappings.
+  - Int t-register rotations in the draw tail. dl / count are a2 / v1 where the target has v1 / v0.
+  - The temp area and the spill are 4 bytes low: r 172 and spill 112, against the target's 176 / 116. This is
+    agent-e's SNOW_CAM2 spill-slot lead.
+
 ### snoweffects.uso 0x28E0: the draw-block e45 temp (agent-c run 773, research only, no commits)
 
 - **No commit; 97.96 stands (793 words, frame 520, mn 2 / reg 199).** About 600 compiles. Scratch:
