@@ -1686,6 +1686,54 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     allocated while -20 is still held in the same full-expression, or a different dtype pool for s. Wire the
     7.2.1 64B8 into the mp72 donor once it reaches 13.
 
+### snoweffects.uso 0x6000+ under MIPSpro 7.2.1 (agent-e run 718)
+
+- No commits, no renames (3570 / 3579 unchanged). Nothing beat the committed donors (64B8 NCC 13 diffs, 718C 97.28 %,
+  6B28 99.18 %). Scratch `/tmp/claude-1000/agent-e/w718/`:
+  - `ud.sh` = ncc721 front end, then `ugen -O0 -d` on the raw `.B`. It prints edg's ucode tree with every pool word.
+  - `al.py` prints one statement's word allocations: `R` / `A` = float / pointer vreg words, `l` = struct (memory) words.
+  - `fl.py <src> <name> <fn index>` gives the same per source line for a whole function.
+  - `toy*.py` are mini repros, and `p*.py` are the probe batches.
+- **How EDG 2.29 allocates inline words** (read off the `.B` dumps):
+  - Parameter words of statement-bodied inlines are pooled. Each one takes the OLDEST free word of its dtype.
+  - A word reused from an earlier statement stays locked until the end of the current statement. A word first
+    allocated in this statement is freed when its inline ends, and the same statement can reuse it.
+  - Named locals of inlines (`float f = s`, xformB's x / y / z, a `{ float q; }`) always get a fresh word, and that
+    word is never reused.
+  - The front end substitutes a parameter whose argument is a plain variable, so the parameter gets no word, but
+    only in a single-`return` inline that returns a scalar (`idf(q) { return q * q; }`). It never does this for
+    an SV-returning or statement-bodied inline.
+  - const / volatile / register / template parameter types and argument order do not change any of this.
+- **64B8: the target's words are now pinned down.** The target allocates:
+  - a fresh word for the scalar of the first `operator*` (vfp-132), before r1 (-144);
+  - ct3's a / b / c in the three old free words (-20 / -120 / -124);
+  - op*2's scalar fresh at -160, after its return slot (-156); r2 at -172.
+
+  The products then colour f0 / f2 / f12, as in the target. Shown by:
+  - `p5 c2`: the scalar as a derived wrapper `FST(k)` (agent-b's PNameT idea) bound to `const FS &`, read into a
+    named `float f = s.v` in the operator;
+  - `p6 d1`: `mulr(const float &s0) { float f = s0; .. }`.
+
+  Both give exactly that allocation and the f0 / f2 / f12 products. The cost is a memory scalar: FST's temporary,
+  or k itself once its address is taken (+8 frame, `swc1 f20` / `lwc1`). By-value FS with FST, even sliced, copies
+  through `lw` / `sw`, and uopt does not forward it.
+- **The colour needs op*1's scalar to stay off -20, not just the extra word.** `p8 f1`:
+  - A dead `SV::ct4(0, k, k, k, k)` (four float parameters) after `n *= ..` makes the fresh -132 in the statement
+    before.
+  - With it, every op*1 / op*2 word is the target's relative layout, but the frame is +8 (op*2's ct3 / `+=` words).
+  - op*1's scalar is still -20, so the products stay f2 / f12 / f14.
+  - The lock rule above means a pooled float parameter cannot skip three free words. So op*1's scalar needs a
+    non-pooled source that stays in a register. None found.
+  - Flat or worse: `idf` / `idf2` wrappers on k (`idf2` shifts the statement by its named word); `float s = s0`
+    in op*; `return mk3(..)`; `const` / `volatile` scalars; `+k` / `(float)k` into a `const float &`.
+- **718C:** porting the cam / emitter vectors to the POD `SV` (ct3) class is worse (adiff 209 -> 309; h1 / h3).
+  The remaining diffs are register renames (uopt |speed| colour, then the ugen FP ring), with no structural diff.
+- **6B28:** dropping one or all of the x / y / z copies is worse (adiff 25 -> 77..83). `fl.py` shows the op+
+  binding temporary at -140 with the extra `if (0) n *= ..` pointer word (-88) above it; the target has it at -136.
+- Next for 64B8: look for a front-end construct that gives a float a fresh, non-pooled word while it stays a
+  register value (for example a parameter-free inline that reads k from an enclosing inline's named local), or
+  accept the memory scalar.
+
 ### nameent.uso 9BC + snoweffects below 0x6000 (agent-c run 655)
 
 - **nameent 21 / 21 EXACT** (agent-c f56621038; 3539 / 3579). 9BC's two scale spill slots were one edg
@@ -2073,6 +2121,58 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     f20) is a separate constant web: `(float)0` int-cast literal.
 - NM wraps spell the raw placeholder tokens: the named-call check cannot prove CALL() sites
   whose build path is INCLUDE_ASM.
+
+## heli.uso (agent-g run 719)
+
+- **0xB08 NM 93.25 -> 94.44 % (agent-g 872258c52; gate PASS, no renames, 3570 / 3579).** Masked rows (sp + reg)
+  86 -> 82, raw 624 -> 455. The frame is now the target's 0x170. Harness `/tmp/claude-1000/agent-g/r719/`:
+  - v.py: variant scorer (`N=name` with s0.py scores a file as is);
+  - om.py: target -> ours sp-offset map over the aligned rows (`<<` marks a mismatch);
+  - vn.sh: named frame slots via -g3 / md.py, with `{ }` block nesting;
+  - t/: small EDG 2.29 probes.
+- **Lever: the slerp as `slerp(Vec3 *h, const Vec3 &dir, float t)` (h a pointer parameter, called with FWD).**
+  Each component goes through `slc(float sa, float t, float ang, float o, float d, float s)`:
+  `return ff((1 - t) * ang) * o / s + d * sa / s;`, called as `slc(ff(t * ang), t, ang, old.x, dir.x, s)`.
+  - Because sa is an inline parameter, it is coloured (the target reloads it into f16 per component). ugen then
+    evaluates the old-heading term first, as in the target.
+  - slc's parameter order makes no difference.
+  - `Vec3 &hr` + `Vec3 *h = &hr` scores 94.41. The pointer parameter scores 94.44 (reg-masked rows 548 -> 279).
+  - A float local for the cos term inside slc loses (92.9).
+- **Did not pay on this base:**
+  - the late `tg = self + 0x12C; if (1) {}` (93.96);
+  - case 4 through a V3b-typed operator= overload, `.set()` members, or `Vec3(*tg)` (identical or worse);
+  - an addf() / setf() reference helper or `tg->y += f` (q1-q8);
+  - the run 706 phantom `f = f + (HI(0x16C) & 0)...` after `HF(0x11C) += f`. At k = 7 it gives 94.53, both 79,
+    but it cuts the wrong LR: `addiu v1,s0,300` appears, and the temp address stays coloured. Not taken.
+- **Frame layout (most of the 455 raw rows are sp offsets).** vfp = sp - 368 in the target:
+  - -12 ppr, -16 player (t0 spill home), -20 one scalar;
+  - -32 toTgt, -44 dir, -48 dist, **-60 vel**, -72 side, -84..-76 three words;
+  - -88 key, -92 one word, -96 key2, -100 / -104 two words;
+  - -116 the op= by-value parameter temp (first used in case 4);
+  - -124 / -120, then -136 mpos, then -144 / -140;
+  - -156 the dir op- temp, -160 t, -176..-164, -188 X (see below);
+  - -200 ang, -204 s, -216 old, -220 sa;
+  - -232 the vel op* temp, -244 the toTgt op- temp, -256..-248;
+  - -268 fwdAx, -272, -284 axZ, -296 axX, -308 axY (so the axes are if-block locals).
+- **EDG 2.29 allocation rules, from probes in t/:**
+  - All variables of a scope are allocated at scope entry, in declaration order, before any temporary, even when
+    declared mid-block (t6, t15).
+  - Inner-block variables are allocated at block entry, after the temps already allocated (t7).
+  - Used scalars take a word each. Unused scalars take none, but an unused Vec3 does.
+  - `v = expr` on a named local (member operator=, a free `assign(Vec3 &, Vec3)`, through a pointer or a
+    reference) always goes through an extra temp X: the ctor temp, then the parameter temp, then X, then a
+    member-wise copy into v. Only direct-init (`Vec3 v = expr`) copies straight into v (t1-t18).
+  - So the target's vel (-60, no X) is a direct-init at function scope, declared between dist and side. dir and
+    toTgt (X at -188, shared) are assignments.
+  - The target has only one scalar at function scope before toTgt (-20). tg / ps / mode / h / q (ours -96..-120)
+    must live in blocks or not exist.
+  - An attempt with the axes / yaw in the if-block, key in the else-block, key2 / mpos / f in case blocks and
+    vel + side reordered (`mk_l1.py`) lowers reg-masked rows (279 -> 270) but scores 93.45 (both 91).
+- Next:
+  - Find a body shape with one function-scope scalar before toTgt that keeps the codegen: the head as an inline,
+    or tg / ps as expressions. Then move vel / side and the block locals into the target order.
+  - Case 4's sp+252 is still CSE'd. The fix is an LR / unit cut between the two op= copies that does not
+    materialise self+0x12C.
 
 ## heli.uso (agent-g run 714)
 
@@ -2489,6 +2589,37 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   Bss+0x50 pointer goes in s4 before the vertex-count test. There is also a v0/v1 pair in the ambient
   compare and the second walk's mask constants (-2 / -3 / -5 hoisted into s2..s4). Scratch:
   /tmp/claude-1000/agent-a/w654/a/best_A10C.cpp. 0x7FE0 is not started.
+
+## snoweffects.uso 0x7FE0 (agent-a run 720)
+
+- **0x7FE0 NM 99.93 -> 99.97 % in-tree (objdiff report; 10 -> 5 / 800 words differ; frame and sp offsets
+  unchanged)** (agent-a de693e495, gate PASS, no renames, exact count unchanged 3570 / 3579). Scratch
+  /tmp/claude-1000/agent-a/w720/ (tr.sh = h416 trace + lre / ord for 7FE0, sh.sh / absf.sh = key LRs of a variant,
+  pv.py variant runner).
+  - **Cam pointer fixed (priority, not pool membership).** Start from run 715's separated vel `this` (idv through a
+    pointer local, `if (1) {}` after the pos store, lerp3 keeps one dead float). M-124 (a-cam `this` + the `?:`
+    index) has 7 refs in the loop = num 70, den 2. Priority is 10 x refs / den, and den only rises with the range's
+    unit count: (n - 2) / 4 + 2 for this LR. **Six code-free `if (1) {}` at the top of TQ::operator*** (before the
+    products, so `this` is live across them) give den 4 = 17.5, below the stride load's 20: stride v0, a-cam / `?:`
+    v1. 1-5 ifs are not enough (den 2-3); statement-level ifs, `if (this) {}` (adds a use) and dead
+    `idf(...)` statements are flat or worse.
+  - **The side effect is FP.** Every loop block also lands in the loop-wide FP LRs (K255 30 / den, fade 32 / den,
+    K0 51 / den), and the target order K255 > fade > K0 (f20 / f22 / f24) is a near tie (2.143 / 2.133 / 2.04 at
+    base). With the six ifs: K0 > fade > K255. Fix: code-free blocks BEFORE the loop, which only fade and K0 see.
+    `st(c)` / `spd(c)` = `{ if (1) {} if (1) {} return c->state / speed; }` on `t->cam->...` (a non-simple argument;
+    a simple one like `t->fade` is substituted and adds nothing): on the state != 97 and == 98 tests, the
+    `int g = (st(t->cam), 0)` dead int, and the speed < 60 test inside the hits clear. The blocks before fade's
+    def lower K0 only; the ones after lower both. Statement-level `nb();` calls are no-ops.
+  - **Left (5 words): the d ctor's |s| (M-292, f0 vs target f12).** FORCE 326:26 gives 0 diffs, so it is the
+    colour pick alone. Nothing coloured overlaps blocks 91-93 in f0 / f2. The likely target shape is that the
+    fabs_ result shares a pool word with an f12 LR whose own pieces forbid f0 / f2. Candidates: M-20 (pool word 1:
+    the pre-loop fabs_ results, the vel / up op* s, **e's TV(x, y, z) x param**, which is f12 with y / z in f0 / f2
+    in the same block) or M-88 (the `(0, k)` word). But the d statement is the deepest in the frame, and its
+    fabs_ temp is always a FRESH word (-284..-308 over ~60 variants). Flat: ctor param orders and extra params,
+    fabs forms (`?:`, if / return, `+x`, `(0, ...)`, idg wraps, `const float &`), |s| at the call site (the `?:`
+    moves ahead of the copy chain), `(0, ...)` / idf / idv / idw2 on every operand of vel / a / k / d / e, and
+    dummy statements (`s = s;`, `{}`, `(void)k;`) between a / k / d. Next: get the fabs_ temp into a reused
+    word (it must stop being fresh), or find what holds -20 during d.
 
 ## snoweffects.uso 0x7FE0 (agent-a run 715)
 
