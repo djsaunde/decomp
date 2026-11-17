@@ -1585,6 +1585,63 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     - mkc.py: builds the committed body;
     - k/: the uopt trace of the committed state.
 
+- Run 768 (agent-h, commit 24c6020db on agent-h, NM only, no renames; 3576 / 3579, gate PASS, exact set identical,
+  592 words, frame 400, sp offsets exact).
+  - **0xC90: 54 -> 53 positional diffs (objdiff stays 98.90, since it is reloc-aware).** Item 5 is fixed: the depth
+    scale is RoData+0x4, read as `snow_rodata_C90.depthScale` through a 0-based RoData alias (new
+    undefined_syms_auto.txt line). The lo16 then carries the +4, giving the target's `lwc1 f10,4(at)`. The old
+    `snow_ro_4` (a symbol at +4) gave lo16 0.
+  - **Corrected LR map, base 24c6020db.** lm.py prints each LR with its live blocks. In the uopt flow graph:
+    - block 13 runs from the inner if to EE;
+    - blocks 15-19 are the three `if (..) {}` lines;
+    - 20 / 21 are FB, split by nextBI's `if (1)`; 21 also holds drawn++, the E4 count and the E4 pointer;
+    - the clamp arms are 22/23 (xh), 25/26 (yh), 28/29 (xl) and 31/32 (yl);
+    - 33-45 are the s ternaries (B4) and 46-58 are t / B3.
+    - The words:
+      - M-128 (a3): prologue, depth, xh clamp, s-middle.
+      - **M-132 (v0): EE / FB / B4 / B3 counts *and* the yh clamp** (25/26/27), plus the s-inner MAX.
+      - M-228 (v1): the dl temps, plus the **xl clamp** and the s-inner MIN.
+      - M-240 (a1): the yl clamp plus t-outer.
+      - M-236 (a1): the E4 count, block 21 only.
+      - M-124 (t3): the prologue plus s-outer.
+    - Run 765's "e1255 = yh clamp" was wrong. e1255 is the (s16)dsdx CSE (blocks 35/36/40, v0 in both builds).
+  - **What the target's colours say about its word sharing:**
+    - xh, xl, s-outer and depth are all a3, so they are probably one word.
+    - yh, yl and s-middle are all a1, so they are probably one word.
+    - The counts (FB / E4 / B4) are v0.
+    - The yh preset can't hoist because the yh clamp sits on the count word (v0, busy until the FB `sll`). The E4
+      count can't take v0 because M-132 is live in block 21 (the FB count's use).
+  - **The separate-statement gTR (the stock gSPScisTextureRectangle shape) gives that sharing.** Use `g0 = (pkt);`,
+    `w0 = ..;` and `w1 = ..;` as three statements (S1 = o/a3_sb_sw.cpp), and swap primDepth's parameters to
+    `primDepth(int z, GCtx *c)` so the depth takes the first pooled word. Result:
+    - M-124 a3 = {prologue, depth, xh, xl, s-outer}, as in the target;
+    - M-128 = {prologue dl, yh, yl, s-middle};
+    - prologue dl a2, as in the target.
+    - It scores only 98.67 (107 diffs), and `c->me()->next()` in the prologue gives 98.69 (103). Two things are
+      still wrong:
+      1. M-128 takes a2, not a1. The prologue's call argument a1 (tex) is live in block 1, so M-128 is forbidden a1.
+         In the target, the yh word must therefore not be a prologue word.
+      2. M-132 (counts, 37.5) now ranks below M-228 (dl temps, den 3, 50.0), so count / dl come out v1 / v0, the
+         reverse of the target.
+    - An `if (1 + zq(0) * n)` fold in nextBI adds a uopt block (140 diffs), and the n terms count only once.
+  - **Dead ends on the base:**
+    - An `if (..) {}` between FB and E4 (to give the E4 count its own block) gives 591 words.
+    - E4 forms: nextN / next / nextN_1 / nextBI give 590-591 words; nextI_2 / nextI_3 give 592 but the count goes
+      to a0.
+    - A semicolon only before w1 or only before w0 scores 97.0-98.5.
+  - Next:
+    - On S1, take the prologue off the yh word, i.e. a prologue form whose words are not reused by the w0 yh
+      temp.
+    - Then raise M-132 above M-228 with a fold that adds no block.
+  - Tools: /tmp/claude-1000/agent-h/r768/:
+    - lm.py SRC [blocks]: LR map with colours, priorities, live blocks and forbidden sets;
+    - lri.py: a raw LR record;
+    - fg.py: the flow graph;
+    - kr.py: E4-count / yh-clamp registers;
+    - vr.py: variant runner;
+    - a1-a8.py: the batches;
+    - S1.cpp: the separate-statement base.
+
 ### snoweffects.uso 0xC90 y0 t3 / E4 pointer t4 (agent-e run 760, research only, no commits)
 
 - **Fixed, code-free: objdiff 98.598 -> 98.758 on agent-h's run-762 head (c57226a6e).** Positional diffs go from 73
@@ -2706,6 +2763,40 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   - nr.py: positional diffs, ignoring sp offsets and branch targets;
   - t4-t14.py: sweeps.
 
+### snoweffects.uso 0x28E0 NM 96.11 -> 97.96, frame 520 (agent-c run 769)
+
+- **Three commits on agent-c**, each with gate PASS, 3576 / 3579, the exact set unchanged, and no renames; all 793 words, frame 520:
+  - a7d9f38bc: 97.42;
+  - df487872c: 97.49;
+  - 7268c6435: 97.96.
+
+  Mnemonic-aligned diffs 21 -> 2.
+- **Loop-top cx / cy / cz (fixed).** `if (cy) if (cz) {}` forced cy into its own earlier uopt block, so cy was
+  computed first. Without it, cy sinks into its own compare block. The fix is to replace it with folds in the first
+  compare: `if ((cx < -30.0f) + zf8(cx, 0) + zf1(cy, 0) + zf1(cz, 0))`. The folded cy / cz uses keep both in the cx
+  block, so they are computed in the order cx, cy, cz. Adding `+ zf12(cz, 0)` to the cz compare raises the cz temp
+  (e1307) above cy, which gives cx f0, cz f2, cy f12.
+  - The loop-top cx / cz are expression temps (e7 / e1307), not M vars, and the compare folds count on those temps.
+  - M-52 / M-56 / M-48 are the draw-block cx / cy / w.
+  - zf8 / zf12 must be written as one flat `v + v + ...`. Nested zf4 calls change the code (+11 words).
+- **The depth goes into cz before the EE packet** (`cz = m-row2; gDPWord(EE, ((cz * w + 1) * k ...))`). This gives
+  the target's interleave of the depth row with the x0 / y0 conversions. Other placements cost words.
+- **`SnowDLHolder2 *tex` declared last** (agent-e run 767): m / rot move to sp+404 / 340.
+- **1/w -> f14:** fixed by `+ zf4(cz, 0)` in the EE word: `(int)(...) + zf4(cz, 0) & 0x7FFF`.
+- **EE order (fixed):** EE now uses gDPWord, so w0 is stored before the depth. With EE alone this makes the frame
+  528. Changing **B4** to snowW brings it back to 520.
+- **Left:**
+  - **Draw-block cy / depth colours:** we have cy f2 and depth f12; the target has cy f12 and depth f2. Both are pri 30, and cy
+    has the lower LR index. A cz fold in the EE word does not add to M-192's count. Hill-climbs over single and paired
+    folds at 8 sites (sp9) found nothing better.
+  - **Temp area:** the temps and the spill are 8 bytes lower than in the target (228 / 188 / 116 there, 220 / 180 / 108 here).
+    A `float pd[2]` local adds the 8 bytes above the spill, not below it.
+  - Some int t-register rotations.
+- Tools in /tmp/claude-1000/c769/:
+  - q.py now replaces inside the 28E0 body first, so comment text no longer matches by mistake;
+  - sw.py runs a parallel spec sweep;
+  - hc3.py, sp6-sp12.
+
 ### snoweffects.uso 0x28E0 NM 95.44 -> 96.15, frame 520 (agent-c run 763)
 
 - **Commit a395bfa05 on agent-c** (gate PASS, 3576 / 3579, exact set identical, no renames; 793 words, frame 520).
@@ -3347,6 +3438,46 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
 - Tools: `an.sh NAME` (trace + pitch-region picks + pitch window against the target), `cols.py NAME..` (one line
   of the key LR colours / priorities, plus MOV when `mov.s f2,f16` is present), `pk3.py NAME LO HI` (FP picks with
   true register names; lre.py's names are shifted by one FP register). Sweeps: s4..s16.
+
+## heli.uso (agent-g run 770)
+
+- **0xB08 NM 97.84 -> 98.72 % (agent-g 79d9395c2; gate PASS, 3576 / 3579, exact set identical, no renames, 943 words,
+  frame 368).** Raw rows 110 -> 84, register-masked rows 53 -> 15. Scratch: /tmp/claude-1000/agent-g/r770/
+  (`v.py` score, `rd.py` / `off.py` per-row register substitutions, `ring.py` int / FP ring mismatch counts,
+  `lr.sh` + `pk3.py` LR picks with true FP names). Committed source = `d2r.cpp`.
+- **The g4 rotation was two hidden ring effects, found with agent-h's "look where the offset ends" method:**
+  - **Int ring (rows 7..654, +1):** no int ring temp exists after 654, so the extra temp had to be in the pitch.
+    `zf1(HF(0x148), 0)` in the HF(0x148) store address costs one hidden ugen t-ring temp (its `(int)` conversion
+    in an address). Dropping it (or `0 * (unsigned)HF(0x148)`, which changes nothing else) fixes the whole int
+    ring. zf folds on constants (-0.3f, -pi/8) and inside `if` conditions cost nothing; a param-fold
+    (`zu1(x, 0)`) in a store address burns a temp too.
+  - **FP ring (rows 12..932):** the slerp's sin-term word M-220 was uncoloured, so its three reloads went through
+    ring temps (target `lwc1 f16,148(sp)`), which shifted the f4..f10 ring everywhere before them. M-220 needs a
+    join with a pitch-side temp to be coloured.
+- **The lever: `*(float *)(self + 0x148) = (dumf(f), dumf(f), clampP(f, ..));`** The two dumf() calls hold two
+  pooled edg float words to the end of the statement, so clampP's return temp lands on M-220 (checked in the LR
+  dump: M-220 = slerp 56..61 + clamp 94..100). Both rings then line up.
+  - Pads 1 / 3 / 4 are worse (d1 95.3, d3 98.3, d4 95.2). A pad as a separate statement does nothing: words free
+    at the statement end. `dumf` takes a word because it assigns its parameter; an inline whose parameter is
+    not assigned (`idf(x) { return x; }`) is substituted and takes none.
+- **What is left (register-masked 15 + shared structure):**
+  - In d2r the three pooled words are permuted: t / ternary / sa are f16 / f2 / f14 (target f2 / f14 / f16),
+    and the clamp result is f14 (target f12). The target's colours fit **H1**: clampP's v = t's word M-160 (f2),
+    its return = M-164 (f12), and the **lerp value** joins M-220 (f16, as sa).
+  - **`r770/m3c0.cpp` builds H1:** `f = (dumf(pf), dumf(pf), dumf(pf), idm(lerp));` with
+    `idm(float x) { x = x; return x; }` and no clamp pads. Raw 70 (best raw), but objdiff 98.52, because two
+    things are wrong: (a) M-220 (lerp + sa) is f14 and F8 is f16 (target: the reverse), and (b) a second
+    `jal` / `lwc1 f12,44(sp)` swap at 531.
+    - (a) is pick order. M-220 is 11/3 = 3.67 and goes before F8 (e1358 #433, 6/2 = 3.0). Also M-168 (the ternary
+      word, which is also set3's third parameter in block 70) wins the 3.0 tie and takes f14 in block 70.
+    - The target needs F8 picked after M-272 / old-h (4.0) and M-164 (f12), but before M-220 and M-168.
+    - Tried without success: F8 folds in the pitch address (`0*(unsigned)HF(0xF8)` is folded by edg; k >= 2 makes
+      F8 4.0, so it wins the tie and takes f0), in the side.x read address, and in clampP conditions; `if (1) {}`
+      cuts around the lerp; slc cuts; set3 pool pads (`dumq` before Vec3) in operator* / sub / subc.
+  - Shared with the committed source: head add.s order 95..98, 547 jal / lwc1, 585, 2.0f in f18 not f2
+    (602 / 637), 728..801 f12 / f14 / f2, 907 axZ store order, and the tail f6 / f8 swap at 925..933.
+- **Next:** in m3c0, lower M-220 below 3.0 (num <= 8 at den 3; the pitch side has 5 uses) or move set3's pooled
+  words so that M-168 leaves block 70; then fix the 531 swap.
 
 ## heli.uso (agent-g run 766)
 
