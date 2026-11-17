@@ -51,6 +51,12 @@
   `fs_gdlRead{Int,Float,Quad,Vec3}(this + 0x10)` is a hostio parm read slot: `hostio_read<T>Parm_<addr>`
   (same pattern as boot_/game_/edd_read<T>Parm in the other modules).
 
+- **Placeholder calls in -O0 NCC donors (run 801).** `name-placeholder-calls.py` missed target-specific flags on
+  `$(VAR)` targets (`$(GAMELIBS_O0_9204_DONOR): OPT_FLAGS := -O0`), so the -O0 createGame / ColourItem donors
+  verified at -O2 and stayed unnamed; fixed (c788fa119), 31 calls named. Placeholder calls in C++ inline members
+  that are never instantiated (48AEC Ctx, 4BAF4 Ctx4B, 41820 Self::link) emit no jal: tag them
+  `UNNAMED: no-reloc`, naming the instantiated twin's callee in the reason.
+
 ## 2. Map
 
 | range | subsystem | named |
