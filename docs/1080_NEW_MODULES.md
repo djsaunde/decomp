@@ -1734,6 +1734,39 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   register value (for example a parameter-free inline that reads k from an enclosing inline's named local), or
   accept the memory scalar.
 
+### snoweffects.uso 0x6000+ under MIPSpro 7.2.1 (agent-e run 723)
+
+- **0x6B28 EXACT** (agent-e b7545313f; gate PASS, 3571 / 3579, lost: none, no renames). It is now spliced in both
+  build trees from `snoweffects_uso_mp72_nm_e.cpp` (Makefile `SNOW_MP72_E_EX_FUNCS`); 0x718C stays NON_MATCHING-only
+  from the same donor. Scratch `/tmp/claude-1000/agent-e/w723/`: `q*.py` probe batches, `sh.py` / `sd.py` diffs,
+  and `tr6.sh` / `tr7.sh` (agent-h's instrumented-uopt colouring trace for 6B28 / 718C alone).
+- **Lever 1: EDG 2.29 allocates a block's statement temporaries before its named locals.** In the nested spawn
+  block, the op+ temporary (vfp-140) was allocated before u (-152), though u is declared in the same statement. The
+  target has the temporary at -136, a 4-byte word at -140, and u at -152. That is one word moved from above the
+  temporary to between it and u. Declaring z inside the nested block (x / y stay outside) does exactly that. The
+  run 718 "one statement must allocate one fewer word" reading was half of it: dropping a word above alone (e.g.
+  `x = x + v.x` in op+=, which drops the compound-lvalue pointer word) fixes the temporary but moves u and
+  everything below up by 4.
+- **Lever 2: the hoisted u-copy address was a block-interference colour.** The trace (`tr6.sh`) showed
+  K-180 (`lda` of op+'s return temporary) forbidden v0 / v1 by the &vFC / &vF0 ranges in the same uopt block, so
+  it took a0, and as1 hoisted the `addiu a0,sp,52` to the block top. A code-free `if (1) {}` before `return r` in
+  SVb operator+ ends the block after set(). The range then colours v0, and the `addiu v0,sp,52` stays after the
+  last &vF0 use, as in the target. Also tried: ct0 after set (71 diffs), `return *ct0(&r)` (71), ct0 only after
+  set (89).
+- **0x718C (not beaten, 97.28 %).** `instrumented-uopt` reading, in actual registers (ord.py's FP labels are one
+  register high: its `f2` is f0, `f14` is f12):
+  - M-28 is one uopt LR over 16 blocks. It holds the three `|sp|` `?:` values, then (word reuse) the op* scalars of
+    the w / a1 statements and lerpEach's r. Ours colours f12, forbidden {f0, f2, f14}. The target has the whole LR in
+    f16 (|sp| at 0x37, f208 / f20C loads at 181 / 210), so f12 must also be held by an interfering earlier pick.
+  - In the a1 statement, the `|a|` `?:` temporary takes a fresh word (-200). Set's c parameter then reuses it
+    (first allocated in this statement, so it is freed). In the target, |a| is f0 and the three products are
+    f2 / f12 / f14, so the target's |a| word is NOT set's c. That LR membership is the lead.
+  - Flat or worse: lerpEach `const float &r` (|sp| still f12, lo f14); dead `if (0) u *= r` before / after lerpEach;
+    a `float rr = r` copy; named `aa` for |a| (decl / assign / in-expression; +35 ops); dead `if (0) w *= |a|`,
+    a duplicated `if (0) w *= f20C`, and `w = w * ..` (frame +16); a friend `float * SVb` (227..388);
+    `as` |sp| locals (243); decl order of a / sp / r (no change).
+- **64B8:** not attempted this run. Lever 1 (block temporaries before named locals) is untested there.
+
 ### nameent.uso 9BC + snoweffects below 0x6000 (agent-c run 655)
 
 - **nameent 21 / 21 EXACT** (agent-c f56621038; 3539 / 3579). 9BC's two scale spill slots were one edg
@@ -1855,6 +1888,42 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     | ternary fadeIn | 88.16 |
     | inline `snowWrap(cx, cy, cz, &wx, ...)` with by-value coordinates (c goes back to s2, but +9 words) | 78.7 |
 - **0xC90: not reached.**
+
+### snoweffects.uso 0x28E0 NM 90.19 -> 90.25, frame 520 (agent-c run 721)
+
+- **Commit dae85e8dc on agent-c** (gate PASS, 3570 / 3579, no renames; objdiff report 90.30, fz 90.25, 793 words,
+  frame 528 -> 520 = target). The draw block declares no new named locals: the loop's cx / cy hold the screen
+  x / y and `w = 1.0f / w` replaces inv. The callee-save area, m (404..464) and the 508..516 slots now sit
+  where the target has them. (cx / cy alone with a separate inv: 90.21, frame 520, fewer positional diffs.)
+- **Why each of inv / sx / sy gets two LRs: two separate forwardings (c721 tr.sh + -zcopy probes).**
+  - **In-block (readnxtinst):** the bb45 compare `-halfW < sx` and the sz / sx / sy uses of inv read the stored
+    expression, not the variable. That gives the expression LR in bb45.
+    - Spelling the matrix reads through `float (*mp)[4] = m;` blocks it for sx: the tree still has ilods at read
+      time, so `ules{-halfW}{sx}` uses the variable. uopt forwards mp afterwards, and the loads stay `lwc1 K(sp)`.
+  - **Global (copypropagate):** the branch uses in bb46..48 (`sx < halfW`, `-halfH < sy`, `sy < halfH`) are
+    rewritten to the expression (new entries ~590+ in the zdbug:5 table). The non-branch use in bb49 (x0) keeps
+    the variable, even with all of bb49's stores removed. That is the branch-only rule of IDO_CODEGEN's
+    `find_replacements` note.
+  - **Proof:** mp plus `-Wo,-zcopy:0` gives the target's draw-block shape with no mov.s: sx / sy single
+    registers, halfW f30, -halfH f16. -zcopy:0 alone still has the bb45 mov.
+    So the C lever must block both: mp handles the in-block forwarding. Nothing found yet for the global one.
+- **Flat or worse:**
+  - by-value inline params for the draw (83.0);
+  - `snowSet(float &, v)` stores (sx / sy go to memory; 86-89, frame 520);
+  - `snowIn` / `snowLt` compare helpers (inline params are forwarded too; `&&` of int returns adds 10-20 words);
+  - compare spellings: `>` forms, nested ifs, `!(<=)`, parentheses, `+ 0.0f`, `cx * 0.0f +`;
+  - the `float *wp = &w` ilod for inv (w goes to memory, 88.8);
+  - mp on the new base (89.08: the in-block block alone recolours x / y / z).
+- Next: find a code-free spelling that stops copypropagate rewriting a branch use. Candidates:
+  - a def that does not dominate the compare;
+  - a second reaching def of cx (the wrap-block def already reaches it, which is not enough);
+  - an alias that `f_indirectaccessed` / `f_cskilled` reject.
+  The uopt_x.c copypropagate body is lines 20391-24966 of /tmp/claude-1000/agent-h/r687/u/uopt_x.c; the decision
+  is around its offsets +2480..+2730. Tools are in /tmp/claude-1000/c721/:
+  - ev.sh: words / diffs / fz / frame;
+  - evx.sh: the same with EXTRA flags;
+  - tr.sh: the LR trace;
+  - gen*.py: draw-block variants.
 
 ### snoweffects.uso 0x28E0 NM 90.15 -> 90.19, frame 528 (agent-c run 716)
 
