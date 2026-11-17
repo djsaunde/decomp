@@ -2948,6 +2948,60 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   - al.py: mnemonic alignment;
   - wv.py: the 1/w variable sweep.
 
+### snoweffects.uso 0x28E0: the FA v0 block, BA and the r / spill word (agent-e run 786, research only, no commits)
+
+- **Draft (793 words, frame 520), standalone objdiff 98.899 -> 98.916 on main's donor (deab5a229):**
+  /tmp/claude-1000/agent-e/w786/keep/28E0_e786_ba_793w_98.916.cpp (diff: `28E0_e786_ba.diff`, one line).
+  - The edit: the BA packet goes back through gDPWord (was snowW). BA's dl / count are then v1 / v0, as in the
+    target (rows 756-760).
+  - Cost: BA's `_g` is one more edg word, so the spill goes back 116 -> 112. Frame and r are unchanged (r is still
+    172; the sp-offset set differs from the target only in {r 172 / 184, spill 112}).
+  - The word should come back from operator*'s `a` param word (-336, sp 184, between r and the op* copy; agent-c
+    run 782's lead). If that word goes, r moves to 176 and the spill to 116, both as in the target, with BA on
+    gDPWord. So the target probably has BA's `_g` word and no `a` word.
+  - Tried for the `a` word, all inert (same bytes, same 172 / 112):
+    - `s` first (`self->follow * (cam - *lp)`);
+    - op* as a member function, and as a `.mul(s)` member;
+    - a named `mulv()`;
+    - op- with a named r.
+  - Tried for the `a` word, all broken: `const float &s` (796 words), by-value `a` (790), `return SnowV3d(..)` (791),
+    `t = cam - *lp; t *= s` (774).
+- **Draw-tail dl / count: who forbids v0 at FA.**
+  - `-zdbug:5` LR dump: the precoloured **R2 LR is live through blocks 7..8** (`d=[2,4,7..8]`, use in block 6 = the
+    06 packet). Blocks 7..8 hold the int-returning `gl_func_00000000(SNOW_CAM2->view, m)` /
+    `(SNOW_CAM2->obj->rot, rot)` calls and the FA packet.
+  - Fix: void-type the two calls (`extern "C" void gl_func_00000000_snow_v(...);`). R2 then shrinks to `d=[2,4]`,
+    and v0 is free at FA. Alone, this is byte-inert on main.
+  - With FA on `next()`, the FA count joins the draw-tail count word (M-228) and the dl joins M-232. At FA, M-232
+    now spans blocks 8 and 47..56, and M-228 spans 8 and 48..56. The priorities are num/den with den ~ units/2:
+    M-232 is 135/3 = 45 and M-228 is 105/3 = 35. M-232 is coloured first, takes v0, and the dl / count come out
+    v0 / v1: swapped. With int calls, R2 forbids v0 for both, so you get v1 / a0 (agent-c's observation).
+  - FA through `next()` also drops nextN's `n` word (frame 512). A referenced pad `int padw; (void)&padw;` restores
+    520 / 116 at no code cost (unused pads are dropped), but it scores 98.61.
+  - The target's FA (dl v1, count v0) needs the count word coloured before the dl word with R2 out of the way, or an
+    FA-only dl word.
+  - `nextS()` (`int n = dl->count; dl->count = n + 1; return &dl->buf[n];`) gives FA dl v1 with int calls, but count
+    a0 (R2). An `if (1) {}` before `halfW` puts FA in its own block, out of R2. Its words are then single-block
+    ties, so the dl expression wins v0.
+  - **Side effect: SNOW_CAM2 (e881) is t0 only because nextN's / nextM's pooled word M-240 holds a2 at FA and E4.**
+    Every FA / E4 form without it moves SNOW_CAM2 to a2 (rows 16-68, 490-574). In the target, x0 is a2 (row 602,
+    ours a3), so the target's a2 block for e881 is probably x0. That also needs E4 off nextM.
+- **x / -halfH (draw f16 / f18 swapped):** in the m2 dump, draw x (M-44, blocks 40 / 42 / 48) is pri 60/3 = 20, f16.
+  -halfH is the CSE expression e381 (blocks 40 / 42 / 47), pri 50/3 = 16.7, f18. The fix needs e381 > 20 or x < 16.7.
+  agent-c's `zf1(-halfH, 0)` works through a new pooled float word (M-284 = zf1's `v`), not through e381, which is
+  why the loop-top x / wx move. Moving x's uses between `x` and `p->pos.x` (w / cx / cy / cz rows) breaks the code
+  (789-800 words). Not solved.
+- **Climbs:** per-site append (next / nextR / nextN / nextM / nextB / nextS / nextU) x gDPWord / snowW x void-call
+  flags x pads. About 1000 compiles, greedy from 3 starts; the only gain is the BA line. Every gain that needs the
+  pooled-word layout changed is masked by the frame / word coupling.
+- Tools in /tmp/claude-1000/agent-e/w786/:
+  - q.py / ev.sh: replace + score;
+  - nd.py: positional diff (`1` = include sp rows);
+  - tr.sh TAG: the `-zdbug:5` LR dump, giving `iu/TAG/x.lr` / `x.ord`;
+  - hc3.py: the per-site climb;
+  - u.py;
+  - fbase.cpp: main + nextS..nextW + the `_snow_v` decl.
+
 ### snoweffects.uso 0x28E0: spill 116 (agent-c run 782)
 
 - **One commit on agent-c: 76cd5df08, objdiff 98.939 -> 98.942** (793 words, frame 520, mn 2 / reg 104 -> 102).
