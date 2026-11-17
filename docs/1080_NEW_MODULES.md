@@ -2274,6 +2274,44 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     | inline `snowWrap(cx, cy, cz, &wx, ...)` with by-value coordinates (c goes back to s2, but +9 words) | 78.7 |
 - **0xC90: not reached.**
 
+### snoweffects.uso 0x28E0 NM 92.57 -> 94.88 (agent-c run 741)
+
+- **Commits on agent-c** (gate PASS both times, 3571 / 3579, exact set identical, no renames; 793 words, frame 528):
+  - 0c3443c2b: 94.83 % (report);
+  - 6ac466621: 94.88 % (report).
+- **The op* products must be register LRs.** The target's op* does `mul.s f2 / f12 / f14` and then three `swc1`;
+  ours interleaved mul / store through the f4..f10 temps. The fix: the inline computes named floats first,
+  `float x = a.x * s, y = a.y * s, z = a.z * s; SnowV3d r; r.x = x; ...`. Taking `a` by const reference gives frame
+  528; by value gives 536. (`return SnowV3d(a.x * s, ...)` and `a.x *= s` forms are worse.)
+- **wx / wy lose the tie to the op temps when their LRs are created later.** wx, wy and the op- / op* temps all
+  have priority 10, and the tie goes to the lower LR index, which is creation order. The fix: declare
+  `float wz, wy, wx;` and assign them after the `+=` (and, slightly better, after the x / y / z loads). The op- and
+  op* temps then take f0 / f2 / f12 and f2 / f12 / f14 as in the target, wy goes to f16, wz to f26 and K0 to f28.
+- With those two changes, the earlier levers move again:
+  - the volatile halfH read is no longer needed (it costs 2 words);
+  - the 1.0f literal on 1 / w and the sizes, with snowOne on the depth, gives the target's f26 1.0 in the draw
+    block only, and halfW keeps f30;
+  - a z variable in the depth term only;
+  - nested `if (cy) if (cz) {}` brings back the target's cx, cy, cz order (cz finishes after the first compare,
+    so no nop). That brought the word count to 793.
+- **Left:**
+  - In the wrap, x / y / cx / cy / wx are in different registers from the target's (x f18, y f20, z f22,
+    wx f24). The target's z (M-48, priority 80/8 with the depth use) colours before wx; the `if (1) {}` cut does not
+    add a block to wx's LR.
+  - The draw-block z needs one `mov.s` (the z var LR and the p->pos.z expression LR get different colours).
+  - The EE packet order.
+  - Frame 528 against 520. Every declared local has a home, in declaration order. The target has 10 words
+    between cam and m, and spills halfH / i to 332 / 312 below rot (one unknown word at 336 and four between
+    332 and 312), so its declaration list differs from ours.
+- **Flat or worse:**
+  - a separate `inv` (797-798: halfW splits);
+  - all 4096 draw-block operand x / y / z / p->pos combinations, both before and after the new base;
+  - z in every draw term with volatile halfH in any of 5 sites, or a p->pos ilod in cx (796+);
+  - the depth precomputed into `d` or an int local;
+  - cx / cy / cz statement order and 15 empty-if forms;
+  - a random knob climb (about 8k compiles: inv, vol, 1.0 partition, init order / position, operands, if form).
+- Tools in /tmp/claude-1000/c741/: rc.py (knobs + build), grid.py, climb.py, k.py (string probes), ud.py, tr.sh.
+
 ### snoweffects.uso 0x28E0 NM 92.56 -> 92.57 (agent-c run 734)
 
 - **Commit a5fea1c29 on agent-c** (gate PASS, 3571 / 3579, exact set identical, no renames): `wz, wy, wx` declared
@@ -3319,6 +3357,51 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   Bss+0x50 pointer goes in s4 before the vertex-count test. There is also a v0/v1 pair in the ambient
   compare and the second walk's mask constants (-2 / -3 / -5 hoisted into s2..s4). Scratch:
   /tmp/claude-1000/agent-a/w654/a/best_A10C.cpp. 0x7FE0 is not started.
+
+## snoweffects.uso 0x7FE0 (agent-a run 745)
+
+- **No commits, no renames. 0x7FE0 is still NM 99.97 % (5 words, the d ctor's |s| f0 vs f12).** Scratch
+  /tmp/claude-1000/agent-a/w745/: `h.py` (`score(name, src)` = NCC compile + positional diff count vs expected,
+  branch targets normalised, sp offsets kept; `runall()` 24-way parallel; base = w720/b725.cpp scores 5),
+  `g1.py`..`g6.py` the variant sets below. Colour dumps: `w720/tr.sh X.cpp` (uopt `-zdbug:5`, `x.ord` / `x.lr`).
+- **No word-layout simulator was needed:** a full NCC compile of this file takes 0.4 s, so every variant was
+  compiled and scored on bytes directly (~2700 variants this run).
+- **Why the `?:` LR (M-292) takes f0, from the zdbug:5 interference list:** it lives in units 91 / 92 / 93
+  and interferes only with s (f16), the constants (f18..f24) and the uncoloured memory words of v / d.
+  In uopt's register names, dump `f2` = $f0, `f12` = $f2 and `f14` = $f12. So nothing coloured $f0 / $f2 shares
+  a unit with it.
+  - For $f12, M-292 must share units with LRs that are coloured $f0 and $f2 before it, and it must not share
+    a unit with M-20 ($f12).
+  - In the target nothing FP is really live there. So the interferers must come from a merged web: a later
+    statement reusing word -292.
+- **Merge test that proves the mechanism:** e's ctor with params in the order (dummy, y, z, 6 dummies, x)
+  (`g5.py`, `e_1_6_yzx`). edg's first-fit gives d0 -20, y -148, z -172, the dummies -176..-288, and x -292, so
+  e.x merges with the `?:`. The frame stays 384, and the `?:` + e.x LR now interferes with e.y ($f0).
+  - It still scores 53, for three reasons:
+    1. The merged priority (70 / 2 = 35) beats M-172 (26.7), so it takes $f2.
+    2. M-20 loses the e.x refs (pri 18.9) and drops to $f14.
+    3. The param order also becomes the evaluation order, so e loads y / z / x instead of x / y / z.
+  - x must be the 10th R request in its statement, so it cannot be evaluated first. And e.z / e.y cannot carry
+    the merge, because their colours are not $f12.
+- **Flat (5) or worse:**
+  - Statement dummies `dm_PAT()`: all 120 R / A / J patterns of length 1-4, at 11 loop positions (1320
+    variants, best 5).
+  - Pre / post dummy params on the d ctor, or on a `fabs2` used inside it: every one adds a fresh word in the
+    d region (frame 392 / 400).
+  - `if (1) {}` at each ctor body position or around d / e: 5.
+  - Ctor body store orders: 9-11.
+  - e forms: `(0, -1.0f)` scale is 48; member-wise e is 798; swapping d / e is 801.
+  - `pkN(d.., v)` / `stN(d.., v, &o)` wrappers that put a later value on word -292 (w[0], u, tv, `u * 3`,
+    vtx s / t; N = 6-11): the single-use values are forward-substituted (no LR), except the w[0] site, which
+    merges into a block with no $f0 / $f2 LR.
+- **Run 733's "only four older words" re-checked:** with the frame fixed (v at M-284, two holes between v and
+  e's r at M-304, M length <= 308), every older R word is already one of the eight the d statement uses. Extra
+  older R words would have to be fresh words in the frame above v. So the `?:` stays the 10th request, and a
+  fix has to come from a later merge.
+- **Next:** a merge web for -292 that is the LAST R request of a later statement, in a unit where the $f0 / $f2
+  LRs are coloured before it but not M-20. With the merge, its priority must stay below 26.7, which needs
+  den >= 3, i.e. >= 6 units. Candidates are the u / tv region (M-116 $f0 / M-120 $f2, pri 20: the merged
+  priority would have to be < 20) or a re-ordered e whose x is evaluated first.
 
 ## snoweffects.uso 0x7FE0 (agent-a run 733)
 
