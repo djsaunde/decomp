@@ -3234,3 +3234,36 @@ D_b3_23E4_17D7 -> osCicId by the regular binds). binds-left 80 -> 72.
 `gl_26214_aspMainTextStart`, `D_445AC_ga/gb`, `game_uso_D_807FF458`. Most are per-site aliases in
 ambiguous functions: the same hand-XDATA recipe (relocs-per-site dump, then XDATA each site).
 Boot run not attempted (link not at 0).
+
+
+### 18.9 Run 817: the snd 30AF4 donor, glv_2a44, the two blank calls (agent-a)
+
+agent-a run 817, branch agent-a on main f208db9c0 (agent-g's run 814 as landed). Gate PASS
+(ROM byte-identical, 3579/3579, verify-blocks 6/6, clean build OK); CALL check 8314 named calls
+0 mismatches (was 8225), XDATA check 398 sites 0 mismatches (was 387).
+
+| commit | what |
+|---|---|
+| b79f5d075 | tools: `name-placeholder-calls.py plan --tok T` accepts a token that is merely undefined in the object (a relocatable USO object such as timproc_uso_b3 never pins its blank-jal tokens in undefined_syms_auto.txt) |
+| 357a0285a | src: snd_HandleSeqEvent_30AF4 donor 43 XCALL + 11 XDATA; TrkMenu_draw_00002A44 28 `glv_2a44` XCALLs (plan --tok); MCamera_ctor 14 `gl_32e18_blank`, AudioLoad_RelocateFontAndPreloadSamples 4 `gl_25504_AllocSampleCache` |
+| 0618ceb94 | port/gen + undefined.txt regenerated |
+
+**Donor recipe (snd_HandleSeqEvent_30AF4).** The tools do not plan a match_imports donor, but
+the call side is easy to prove by hand: a verify copy of the donor with each call token spelled
+uniquely (`gl_func_emit__sN`, declared like the original) compiled with the donor's own Makefile
+recipe gives IDENTICAL .text and reloc offsets (a jal's symbol does not affect codegen), so each
+source call maps to one jal and its bootup TextReloc target. Renaming the DATA token per site does
+NOT work (IDO CSEs `&gl_state_30AF4` across sites; 493 words differ): read the data token's
+HI16/LO16 pairs off the real object instead and pair them with the source by hand (6 pairs for 11
+source refs: lines that share a CSE'd base share its ROM object). `name-placeholder-calls.py check`
+does cover the donor's XCALLs once spelled (8225 -> 8314 includes its 43).
+
+**Macro-hidden tokens.** `#define gl_func_0001CA10 gl_32e18_blank` / `#define
+AudioHeap_AllocSampleCache gl_25504_AllocSampleCache` hide the sites from `plan` ("no jal");
+spelling the token directly at the sites (no byte change) and rerunning `plan --tok .. --funcs
+port/gen/binds-left.tsv --write` names them.
+
+**Measured.** tenshoe link 19 -> 13 undefined; binds-left 72 -> 66. Left (13, all data aliases,
+agent-c's area): `D_b3_23E4_d1` 5, `D_b1_21D4_d1` 5, `D_76F0_fadeB/C` 4+4, `D_349E0_b` 3,
+`D_2DA4_obj` 3, `D_00000000_j` 3, `gl_26214_aspMainTextStart` 2, `D_445AC_ga/gb` 2+2,
+`D_00000000_i/_a` 2+2, `game_uso_D_807FF458` 1.
