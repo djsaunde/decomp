@@ -3048,6 +3048,47 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   self->visible; a0..a3 / t0 in the packet appends and the tail packets, rows 633-780), the offX / offY index
   (`16(at)` vs `0(at)`, row 619) with the FP ring at rows 614-621, and the B3 div ordering at rows 683-699.
 
+### snoweffects.uso 0x28E0: the dl / count words are pool identity, fixed by next() + void calls (agent-g run 790, research only, no commits)
+
+- **No draft beats main (standalone 98.974 here; in-tree 99.02).** Best structural draft: 98.680, 793 words, frame 520,
+  every dl / count pair as the target (all 9 packets v1 / v0) and x0 a2 as the target, but SNOW_CAM2 goes t0 -> a3
+  and the loop int chain (sw / sz / i / lp, t1..t4 / ra) slides one register. Draft:
+  /tmp/claude-1000/agent-g/r790/keep/28E0_g790_nextvoid_793w_98.680.cpp (diff against main: `28E0_g790_nextvoid.diff`;
+  the extra nextS..nextX / snowNext* / idg* helpers in it are unused sweep spellings).
+  Tools in /tmp/claude-1000/agent-g/r790/: q.py / ev.sh / fz.sh / nd.sh / tr.sh / lm.sh as agent-c run 787 (with -I flags);
+  `dc.py` = the (dl, count) register pair of every `lw X,12(s2); lw Y,4(X)` packet against the target;
+  `spd.py` = row-aligned sp-offset deltas; `sw.py` = fold-site sweep.
+- **Item 1 (x / -halfH) was already fixed by agent-c run 787 (wx carrier); not touched.**
+- **Item 2 is not a priority problem; the counted-use lever cannot fix it with nextN / nextM.** `-zdbug:5` on main:
+  FA's count and E4's count are the old-count word M-232 of nextN / nextM, and the same word M-232 is the *dl* temp
+  of every `next()` site (EE, B4, B3, E7, B9, BA, BB). M-232 is one LR over blocks 8, 47..56, so FA count / E4 count
+  and EE / B4 dl must share a register. The target has count v0 at E4 and dl v1 at B4 (both in block 49), so the
+  target's E4 / FA counts cannot sit in that word. Raising or lowering priorities only permutes v0 / v1 / a2 among
+  the same three words.
+- **What does give v1 / v0 everywhere: FA and E4 both through `next()` AND the two matrix calls void-typed**
+  (`gl_func_00000000_snow_v`, agent-e run 786's R2 fix). Then FA / E4 count = M-228 and dl = M-232, as the other
+  packets. Every other FA / E4 spelling (nextS / nextT / nextU / nextV / nextE / nextH / nextX, `DList *l` locals,
+  free-function appends with GCtx* or DList* params; 288 + 176 compiles) gives a2/v1, v0/v1, v1/a0, or drops a re-load
+  of `c->dl` (791-792 words). Only next/next/void got 9 / 9 pairs.
+- **Costs of next/next and how they were repaid:**
+  - Frame 504: FA loses nextN's n / g pool words (-252 / -256) and E4 loses n (-376). Zero-code pool words restore
+    the target's M map exactly: `snowW(c->nextR(), 0x06000000, idn3(d))` (`idn3(v) { int t = v; int u = t; return u; }`
+    deepens the 06 statement's pool to -256) and `idn2(..)` around the E4 w1 word (+2 words at the bottom; `idn1`
+    single-return inlines get substituted and add nothing). Result: frame 520, the -256..-400 map equal to main's, every
+    sp offset as the target's except the i / lp spill pair (312 / 116 swapped, which is the int chain slide).
+    A user-local `int pad[4]; (void)&pad;` also gives 520, but puts 8 bytes in the wrong place (pool offsets -8).
+  - A dead `or t2,zero,zero` (794 words): the `zf1(halfW, 0)` fold's product item (e844, def draw block, use EE).
+    On main it is coloured a2 and emits nothing; once x0 takes a2 (as in the target) it lands in t2 and ugen
+    materialises it. Dropping the fold gives 793 words; `zf12(w, 0)` in its place recovers part of the colours
+    (98.343 -> 98.680). zf1..zf4 of halfW / -halfW / -halfH in the EE word or the draw compares all re-emit the `or`.
+- **Left on the draft: SNOW_CAM2 (e881, pri 14.75) gets a3.** On main a3 is blocked by x0 (M-212, a3 there) and the
+  phantom e844 (a2); with x0 / y0 now a2 / a1 (target) nothing interferes with e881 in a3. The target's e881 t0
+  needs an LR coloured a3 that overlaps blocks 2..8 or 40..47 (the target's only visible a3 uses are the 06 and EE
+  `_g` pointers, block 6 / 48). Not found: zero folds in the FA word (all 10 forms break the FA colour code, 97.2-97.3),
+  the EE word, the draw compares, offX / offY, the near / far compare (about 330 compiles). A next step: make the EE
+  `_g` (M-368, pri 30, a0 on the draft, a3 in the target) an LR that starts in the draw block, e.g. by moving the EE
+  `c->next()` before the depth row, or a phantom int item coloured a0 in block 48 so that M-368 gets a3.
+
 ### snoweffects.uso 0x28E0: spill 116 (agent-c run 782)
 
 - **One commit on agent-c: 76cd5df08, objdiff 98.939 -> 98.942** (793 words, frame 520, mn 2 / reg 104 -> 102).
