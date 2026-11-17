@@ -2331,6 +2331,80 @@ the shim completes at once.
    loop.
 8. Byte order (17.7 item 3) and audio (15.6) as before; neither stops the boot by itself.
 
+**Run 623 (agent-g, on main b8596e397): blockers 2-5 done.** Commits on agent-g: 12041903d (C++
+donors) and 1d19c1716 (code-symbol data tokens, canaries, osCicId / osResetType). Both src/ edits
+are `#ifdef PORT` only; gate PASS before each (ROM byte-identical, 3288/3288, 6405 named calls 0
+mismatches). Port build (`cmake -S port`, `ninja`): game, uso, ultra, porthost compile.
+
+- **C++ virtual dispatch (blocker 2): the cfront layout, class by class.** `port/include/port_cfront.h`.
+  Under PORT, each donor class with virtuals is declared without `virtual`:
+  - an explicit `char *vptr` member where cfront puts it, after the introducing class's own data.
+    That is +0x28 for the Node prefix, +0x5C for BaseMat, +0x598 for the PolyShape Strip / Rec, +0x18
+    for the SysLib pair in 412E8, and +0 for the data-less K / Base / O0;
+  - one `CF_Vk(R, name, slot, args)` line per virtual. It defines an always-inlined member with the
+    virtual's name that calls `VT_SLOT(vptr, slot).fn(this + delta, ...)`, so the call sites are
+    unchanged;
+  - the constructors write the NCC vtable stores explicitly, using the name the Makefile objcopy
+    gives `__vtbl__*`. Where that name is a shared token, they use the bootup Data offset
+    `uso-data-sites.py` reports instead: LookAtMNode 0x1EAA8, Bb4Base / Mid / Bank 0x20640 / 0x1FBEC
+    / 0x8440, Rec 0x1F7A8;
+  - BasePolyShape's `copy()` keeps the vptr, because the cfront `*this = *o` skips +0x28 (checked
+    in the target).
+
+  Before the change, the gimple of the 219 port C++ units had 56 virtual call sites (OBJ_TYPE_REF)
+  in 30 units and g++ vptr stores in 26 classes in 14 units. Now there are 0 and 0, and `_ZTV*`
+  (17 symbols) and `_ZN11LookAtMNode1gEv` have left the undefined list. The g++ slot index is the
+  cfront slot index (declaration order), checked against every donor comment that names a vtbl
+  offset. Rescan: dump `-fdump-tree-gimple` per unit, then grep `OBJ_TYPE_REF` / `_vptr.`.
+- **Aliasing hazard found on the way (SnowBoard_ctor).** The vptr store went through one spelling
+  and the virtual call's vptr load through `D_00000000`, which binds to the same object only at the
+  asm level (cc-select). gcc treated them as distinct objects and **hoisted the load above the
+  store**. Fixed by spelling both through `port_bootup_bss`. Any function that writes through one
+  token and reads the same object through another (or through a direct `port_*` spelling) can be
+  reordered the same way. A tool check would list the functions whose binds map two tokens onto
+  overlapping blob ranges.
+- **Code-symbol data tokens (blocker 3, generalised).** A scan of `objdump -dr libgame.a` for
+  R_386_32 data operands against function symbols found 14 functions, all bootup.uso:
+  - GameFlow_create / startMode;
+  - Process_update / fadeOut;
+  - Fader_display, ScreenThumbMat_grab, Mountain_display;
+  - EnvSettings_load, QuitProcess_ctor, game_createProcessWindow;
+  - RiderCam_update, gui_centerRows, item_registerTemplates, SnowBoarder_loadBoardModel.
+
+  Each now has a PORT spelling of the site's blob address. **The same token means different
+  addresses in different functions**: `stream_readQuad_000000F0` is Bss 0xF0 in GameFlow_create and
+  GameFlow + 0x134 - 0x44 in game_createProcessWindow. So these are per-site, not aliases. Rescan:
+  0 left, counting immediates with a nonzero addend as well.
+- **Canaries (blocker 4):** `boot_checkStacks_00066AF0` returns at once under PORT (no N64 stacks).
+- **osCicId / osResetType (blocker 5):** port/ultra/misc.c defines `osCicId = 0x17D7` and
+  `PORT_ALIAS`es it to `import_80000310`; `osResetType` (0) is aliased to `D_35360_X`.
+
+**Re-walk (static) after run 623.** SnowBoard_ctor now installs the vtable at Bss 0x80 and calls
+slot 10 through it. App_main, app_runInit / OneFrame and App_softReset's v3 / v4 / v12 / v15 go
+through the ROM vtable slots. The O44 node is built with its Data 0x1F748 vtable, and the CIC
+check passes. GameFlow_create / startMode read the TextWin word at Bss 0xF0, and
+Process_update / fadeOut and Fader_display read GameFlow / gGfxLib. **Still blocks, ranked:**
+1. **Text targets in `port/gen/uso_modules.c`** (item 1 above; agent-a). Every slot that
+   `CF_Vk` / `VT_SLOT` now reads is a NULL fn until it is regenerated. This is the first crash
+   after the boot-time ctor (slot 10 of the SnowBoard vtable).
+2. **Ambiguous / missing binds on the path** (16.6, agent-a): as listed above, plus two:
+   - Process_exit stores `&func_00000000` (a defined placeholder body) where the ROM stores
+     `GameFlow_restart_000116C8`. A non-call function reference is not bound by the binds;
+   - PolyShape_init's `D_00000000+0` is ambiguous between gSysLib and the Rec vtable (the vtable
+     use is now spelled out; the two gSysLib uses still need the bind).
+3. **Mem block header bitfield** (18.3 item 6, `Bf5B5D8`): every heap's `Mem_setBlockType`
+   corrupts sizes on x86. It is the first heap call in App_main (`Mem_init`).
+4. **cfront pointers-to-member** (M3, not boot): game_uso keeps RiderAnim state PMFs (`Pair2`) as
+   cfront `{s16 delta, s16 index, fn}` data. `RiderAnim_update_0000D204` runs them with
+   `(a3->*pm)()`, which g++ decodes as its own `{ptr, adj}`. It needs a PORT spelling that decodes
+   the cfront form, the same way CF_Vk does for virtuals. `A` in the game_uso donors is still a g++
+   polymorphic class: it is only a PMF / pointer type there, with no member access, and must go
+   when the PMF call is respelled.
+5. The aliasing hazard above: audit the functions whose bound tokens overlap.
+6. Unknown, as before: the "FLOW free blocks" heap check, the pad queue depth during boot, the
+   `flags & 4` yield loop.
+7. Byte order (18) and audio (15.6). Neither stops the boot by itself.
+
 ## 18. M1/M2: byte order (run 620)
 
 agent-c run 620, on main 2a1ec167d. Commits on agent-c: 261bc1b15 (blob type map + swap hook,
@@ -2504,3 +2578,114 @@ None of the other bitfield structs is loaded from cartridge data. `include/libul
 - Not checked: every USO's code for byte loads of the Mem header type byte, and every
   match_imports copy for further views of the audio flag words.
 - The accessor work is M4 (audio trusted), **except the Mem header, which is M1**.
+
+### 18.4 Run 624: byte order part 2
+
+agent-c run 624, on main b8596e397. Five commits on agent-c, gate PASS before each (ROM
+byte-identical, 3288/3288); libgame.a and libuso.a build with the port flags, with no new warnings.
+
+| commit | what |
+|---|---|
+| 12da847f5 | **Mem block header (M1):** `Bf5B5D8` is declared `{low:24; top:8}` under PORT, so `Mem_setBlockType` keeps `hdr & 0xFFFFFF` on x86 |
+| d732434c3 | 124 more `stream_read*` / `fs_gdlRead*` copies swap under PORT. `PORT_BE_SWAP16S` is new (`stream_read16_000089FC`), and `fs_gdlRead24_00037CE0` (6 ints) is included |
+| fd10f8156 | audio flag bits read in host order: `AUDIO_FLAGBIT(i)` / `AUDIO_WORDBIT(i)` at 23 mask / shift sites; ADSR state nibble; Stereo re-pack at 3 writes |
+| 1b2f7f089 | `CMD_B3` read-site fix (0x1C0AC conflict); osViModeTable typed; generator `KNOWN` table |
+| 283ba01f9 | charsel / gamegfx images and records typed; shape op 35 CollGrid typed (map5_data) |
+
+**Mem header audit.** No built object, in any module (match_imports and the 8 new USOs
+included), has an lb / lbu / sb / lh / lhu / sh at -16..-10. Grepping `:24` finds no other view
+of the header. Every other Mem_* access is a whole-word mask (`& 0xFFFFFF`, `>> 24`), which is
+order-independent.
+- Not covered: a byte load at offset 0 of a block pointer held in a register. None is known.
+
+**Readers.** The template copies now swap in every module:
+- bootup: 37 + 4 (o0_F1F0) + 3 (tail4);
+- game_uso: 20;
+- arcproc, eddproc, h2hproc, mgrproc, titproc, timproc b1 / b3 / b5;
+- boarder1-5;
+- map4_data_uso_b2.
+
+Kept unswapped:
+- `stream_readS32_00005EF8`, EnvSettings_load's message-id (tag) read;
+- `fs_gdlReadInt_00035AA4`, Parms_load's tag read;
+- `fs_read_00066404`, whose use is unknown.
+
+Every other S32 copy's callers read sizes, counts or fields. The `boot_read*Parm` slots discard
+the size word.
+- Not swapped: `fs_readRecord_00041F90` (68 bytes, layout open).
+
+**Audio (port.h).** Field i of a flag word is counted in declaration order from the word's first
+byte. `AUDIO_FLAGBIT(i)` = `1 << (i & 7)` within byte i / 8; `AUDIO_WORDBIT(i)` = `1 << i` in the
+word. These are the host masks; IDO's are `0x80 >> (i & 7)` and `0x80000000 >> i`. Each site is
+`#ifdef PORT host #else IDO #endif`:
+- `enabled` (`>> 31`): GetChannelIO; GetLayerSamplesLeft x3 (and layer bit3, `<< 3 << 1`);
+  SequencePlayerProcessSound;
+- ChannelProcessSound: `CH_CHANGE_FREQSCALE` (byte 1), `CH_CHANGED_VOLUME` / `CH_CHANGED_PAN`
+  (word bits 9 / 10), notePropertiesNeedInit `& 1` / `& 0xFFFE`;
+- SeqLayerDecayRelease `bits0 &= ~8` (field 4);
+- clears: DisableSampleStates (note enabled), InitSequencePlayers (layer enabled),
+  SequenceChannelDisable (enabled / finished), and match_imports AudioSeq_InitSequencePlayer
+  (5 clears; this is the body the port compiles);
+- ADSR: `state:4` is the high nibble on the host. NoteInit `(b & ~0xF0) | 0x10`, NoteDisable
+  `&= ~0xF0`.
+
+`port_stereo_from_ido()` re-packs the Stereo byte field by field, so the 2-bit `bit2` keeps its
+value. It is applied at `2BB7C` (`cmd & 0x7F`), `2AD1C` (script byte) and `273B8` (SET_STEREO
+`arg.asUbyte`).
+
+A host test checks the mapping against gcc bitfields.
+
+Bitfield **views** of the same words need no change. Both compilers allocate every view in the
+same direction, so a view stays consistent with the audio.h declaration. This covers
+BF_000295BC, Fl_2978C, ElemFlags1CF68, GlPooledFlags (the SeqChannelSetLayer import),
+Audio_AdsrUpdate's Env and the 2AD1C / 27804 Stereo views.
+
+The post.c copy of SeqChannelSetLayer (`c |= 0x80` ...) is a mask site, but the port compiles the
+import body, so it was left alone.
+
+**Open:** `AudioCmdArg.asUbyte` / `asUShort` read from a word written as `asInt`. On LE they
+read the low bytes, not the high ones. Check the QueueCmd writers (M4).
+
+**Typing (port-gen-blob-types.py).** A new `KNOWN` table holds C-side layouts, applied last. Shape
+op 35 is walked.
+
+| data | layout |
+|---|---|
+| bootup Data 0x1C0AC | gl_cmd_30AF4, u32. `CMD_B3` (lb +3, the BE low byte) is `(u8)gl_cmd_30AF4` under PORT, in both copies |
+| bootup Data 0x2D700 | osViModeTable: 42 x 0x50 records, types 0x00-0x29. Each is u8 type + 3 pad, then 19 u32 |
+| charsel Data | 6 x 0x10220 blocks. Each holds texels (0x10010) and a TLUT (0x200), both u8, then the record {0x110, 0x100} u32 + 2 ptr |
+| gamegfx Data | 5 images at its exports (0x0, 0x848, 0x1C50, 0x33B8, 0x3E10). Each has an 8-byte {0, 1} header (u32 x 2; reader not located), then texel bytes |
+| CollGrid (op 35) | see below |
+
+**Collision grid format** (gdl/coll.h `CollGrid`, BasePolyShape +0xA0, read by CollShape_query):
+- `{s32 w, h, x0, z0; f32 cellW, cellH; s16 *lists; s32 *cells}`;
+- `cells[z * w + x]` is an index into `lists`, or -1 for an empty cell;
+- each list is a -1-terminated run of s16 triangle indices into the shape's tris (CollTri
+  `tris[i]` pairs with `shape->tris[i]`).
+
+map5_data:
+- shape stream 0x9A4: op 35 grid; op 27 121 verts at 0x30; op 28 200 tris at 0x308; op 29 2
+  mats at 0x948;
+- grid at 0x11944: 128 x 128 cells from (-500, -500), cell 7.87 (about 1008 units square);
+- cells 0x1944-0x11944, lists 0xA30-0x1942;
+- the second export 0x9D4 is a non-shape stream (ops 1000 / 1003 / 100 / 109-111: a node or prop
+  stream), and is 42 bytes unknown.
+
+So map5_data holds a small mesh, not a full course. The other mapN_data modules are not blobs
+yet, and the generator will type their grids the same way once they are.
+
+**Coverage:** unknown 52.2% -> **9.7%**. u8 65.8%, u32 7.5%, zero 5.9%, u16 5.2%. 0 conflicts.
+charsel, gamegfx and map5_data are 0% unknown. The largest remaining:
+- bootup Data 64 K (34%);
+- fire 9 K;
+- titproc 5 K;
+- n64proc 4.5 K;
+- the boarder banks, 2.6-3.9 K each.
+
+**Next:**
+1. Find the gamegfx header reader and confirm u32.
+2. Find the genproc charsel record reader and name the fields.
+3. Type the mapN_data streams when they become blobs.
+4. The AudioCmdArg sub-word reads.
+5. `fs_readRecord_00041F90` (version.bin) layout.
+6. fire Data, and the remaining 34% of bootup Data.
