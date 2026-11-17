@@ -539,6 +539,89 @@ bytes hold i386 stack addresses (`0xfffda208`, `0xffb31c08`). With `setarch -R` 
 are identical. Some save struct is written with stack pointers or uninitialised stack bytes in it.
 state.log is unaffected.
 
+#### 9.4.2 Run 846 (agent-a): parm tags, menus, input scripts
+
+**Cause of the stale "Air Make" label: byte order of the parm tags, not a texture cache.**
+`CourseItem_drawLabel` picks the label sprite row from `SelItem::Info.ixn`, and `ixn` was 0
+(its ctor default) for every item. Parms_load compares each stream record's 4-byte tag, read
+unswapped by `fs_gdlReadInt_00035AA4`, with the parm's tag word ("ixn\0") from the USO Data.
+port-gen-blob-types' access pass had typed those words u32 (they are loaded with `lw`), so the
+blob build swapped them. No tag matched, and every Parms_load in genproc / bootup / game / heli /
+snoweffects (330 tag words) skipped its records. The objects kept their ctor defaults: the
+course labels, the SelectWin colours, the rider, board, camera and item parms.
+
+Fix (d999a0486): `port-gen-blob-types.py` step 4c types a word that is lw-typed u32 and holds
+three letters / digits + NUL as `str` (source `tag`). ItemMgr_Load drops its run-822 tag swap,
+which had been matching the swapped ItemType tags; both sides are now in cartridge order.
+
+The fix reaches well past the label:
+- the course names change with DR (Crystal Lake -> Crystal Peak);
+- the stat bars and headings take their colours, and "Ready" / "3" are red;
+- **the camera is no longer NaN, and the 3D renders** (the title flyover, the lodge select
+  room, the course). The smoke run reports camera NaN fields 0. agent-g, run 841: please
+  re-check the projection on top of this.
+
+**Other fixes:**
+- **km/h readout** (game side): SpeedGadget_setSpeed's 10..99 and >= 100 arms called sprintf
+  with no value. The ROM sets a2 = a1 once, in a delay slot, so i386 printed stack garbage
+  ("12292108"). The C now passes a1 in every arm; the bytes are the same.
+- **Options segfault** (MainOptions_buildMenu / mgr_initMatchRace): `*(s32 *)0xA0000284 ==
+  0x240B17D7`, an IPL3 word in KSEG1. Under PORT the test compares `PORT_N64_WORD_A0000284`
+  (port.h), taken to be the retail value. This is not verified on hardware; it enables the
+  Replay row and the 4th course of the level-1 match race.
+- **cfront layout misses:** viewrec_uso_ncc.cpp, viewrec_uso_ncc_2d0.cpp and
+  nameent_uso_ncc.cpp declared `virtual`s, so g++ put its vptr at +0 and shifted every member
+  by 4: the Options screen crashed in list_append. They now use port_cfront.h (`char *vptr`
+  at +0x28, CF_V0 dispatchers).
+- **main.c:** SIGSEGV / SIGBUS / SIGFPE / SIGILL now print `PORT: signal N at step S` and a
+  backtrace, then exit 128 + N.
+
+**Input scripts (port/host/):**
+
+| script | what it covers |
+|---|---|
+| `title_idle.input` | no input: the title and the attract demo |
+| `time_attack.input` | the race to the finish of the first 2000 steps |
+| `options_tour.input` | DU wraps to Options; the rows; Records; back |
+| `trick_attack.input` | DD timing not verified: it reached mode 3, Match Race |
+| `match_race.input` | Match Race: level, rider, board (fresh dir) |
+| `vs2p.input` | PADS 2; the split rider / board / course selects |
+
+**Screen verdicts:**
+
+| screen | verdict |
+|---|---|
+| title | OK |
+| language | OK |
+| main menu | OK (2P VS greyed with one pad) |
+| select rider | name, flag and coloured stat bars OK; the rider model is 3D (now visible) |
+| select board | board name, stats and the portrait box OK |
+| course select | labels now follow the cursor |
+| Ready / 3 | red, plausible |
+| race HUD | time, damage bar, km/h and minimap OK |
+| Options / Records | OK |
+| 2P selects | OK |
+
+**Open:**
+- **GO!** is drawn dark maroon with a pink rim. Its sprite is RGBA32 (no TLUT), so a CI
+  palette byte-order bug is ruled out; the colour comes from the texels or from prim / env. Not
+  verified against hardware.
+- **Match Race select crash (agent-c run 845's item 5): fixed.** In mode 3, app_launchGenProc loads
+  genproc, charsel, charsps and charfir, but not charmap (+0x18 of the bootup Data 0xC510 path
+  table). CourseList_createItem's cases 0 / 1 still take their charmap arm (MODE != 2), and the
+  item loop always runs i = 0..7. The ROM jump table (genproc RoData 0x3C0) matches the C cases,
+  and both mode reads are gInputMgr + 0x34.
+  On the N64, uso_bindImports leaves an import from an unloaded exporter unresolved. The site's
+  lui / addiu keep their in-place addend, which is 0, so PolyShape_ctor gets NULL and BasePolyShape
+  skips the parse (`if (a2 != 0)`). The port's static XDATA handed out the unloaded blob instead.
+  The fix is `port_uso_importData(file, addr)` (port/uso/uso.c: addr while the module is loaded,
+  else NULL), applied to the 8 charmap sites through the CMAP() macro in timproc_uso_b5_D884.c.
+  **Any other XDATA into a mode-optional USO has the same hazard.** match_race.input now reaches
+  Select Level (Normal, 4 courses), the rider and the board.
+- Contest and Training were not visited.
+
+Contact sheet: the scratchpad's final846/sheet846.png.
+
 ### 9.5 FP environment
 
 - **Boot.** `osInitialize` calls `__osSetFpcCsr(0x01000800)`: in the kernel at
@@ -4509,6 +4592,66 @@ G_VTX chunk (140 of them, contiguous at 0x0888CC70..) has vertices 1 and 2 repla
 0), and the first TRI1 of each chunk uses them. The vertex data is not a plain ROM copy (the v0 bytes are
 not in the ROM aligned), so it is built at load / run time: find the writer of chunk+0x10..0x2F (a
 watchpoint on 0x0888CC80, or a print in the course mesh builder).
+
+### 18.21 Run 847: spike polygons, course rows, the board's NaN matrices (agent-g)
+
+agent-g run 847, branch agent-g on main 5ad5a6743: 51400992a, b59d1ccf5, 6064c6faa. Each gated (ROM
+byte-identical, 3579/3579, verify-blocks 6/6, check --order 0 wrong, clean build OK, port gate PASS).
+Three game-side root causes; after them the attract
+demos render the course (slope, fences, cliffs, houses, lake, sky) and the full rider (body, jacket,
+board, shadow, reflection) with no NaN model matrix in 10000 frames (before: 2-3 per frame in 10 of
+48 sampled 3D tasks).
+
+**1. Spike polygons: Vtx locals assumed contiguous (51400992a).** PolyShape_shade_00049DBC (NCC donor)
+builds a face's three Vtx in the separate locals sp50 / sp60 / sp70 and passes `&sp50` to
+PolyShape_addFace / gfx_findFaceVtxs, which index v[0..2]. IDO lays the three out back to back; the
+host compiler does not, so v[1] / v[2] were read from unrelated stack (a stale gfx_texImageBytes frame:
+`0x0808b57e` is its return address into gfx_texelBytes, `0x08a0b530` the BaseMat it pushed). Every course
+G_VTX batch therefore carried the same two junk vertices ((0, 0, -19074), alpha 0) and its first
+triangle became a spike. PolyShape_makeEdgeVtxs (sp48 / sp58 to gfx_findFaceVtxs) had the same shape.
+Under PORT both now declare one array and name its elements with macros.
+
+**2. Course rows dropped: an alias token pinned at 0 (b59d1ccf5).** port-gen-binds' load_pins read only
+numeric `tok = 0x...;` lines of undefined_syms_auto.txt, so `bu_63b4_c57c = snd_soundObjCreate_0000057C;`
+(MapProp_display's RoData base, 0x57C in the matching link) got pin 0 and aliases.ld bound it to
+`port_bootup_rodata+0x0`. Its degrees-per-radian constant (RoData+0x5B0) was then read from +0x34
+(0.0f): angle / 0 = inf, fcos(inf) = 0 (the |x| >= 2^28 "give up" path), the row-window vector went
+inf / NaN and clipRowLo / clipRowHi came out 127 / 7 (empty), so PolyShape_clipRows dropped nearly every
+course row: the black areas and missing slope. Alias tokens now take their value from build/tenshoe.elf
+(the only such line today); aliases.ld regenerated (one line). Found by printing MapProp_display's A / B
+/ fn (they were inf / NaN) and then fcos's argument (inf).
+
+**3. NaN board matrices: AnimPose written across two locals (6064c6faa).** anim_blendPose (NCC donor game_libs_ncc_62A2C.cpp) calls
+`anim_unpackKey(o, key1, &p.v)`, which writes a whole 0x28-byte AnimPose: trans and scale land in
+`Pair p` (0x18), the quaternion in `q[4]`, which IDO places right after p. On the host q was elsewhere,
+so key1's quaternion was stack garbage and math_quatSlerp(&x.quat, q, frac) produced a huge y: board_a's
+local matrix had -inf on its diagonal and ±1e31 off it (translation still sane), its child DefMNodes went
+NaN, and MNode_display (mtxMode 6, the shadow / mirror pass) emitted G_MTX all -32768: the orange /
+red / dark slabs across the view (the board, its shadow and its reflection). Under PORT p and q are one
+struct. Found with a NaN check in gfx_loadMatrix / gfx_multMatrix (return address -> MNode_display),
+then node names (board_a under "top", DefMNode under board_a / chest_jnt_2), then the local matrices.
+
+**Bug class.** 1 and 3 are the same hazard: IDO-era code passing the address of one local to a callee
+that reads or writes past it into the next declared local(s). It survives every byte-match check (IDO's
+layout is the matching one) and abi-scan cannot see it. Grep for it when a donor passes `&local` of a
+struct-sized object to a function taking an array or a bigger struct.
+
+**Frames** (`port/tools/capture.sh -b <build> -n 10000 -f 601 -e 400`), in /tmp/claude-1000/agent-g/r847/frames:
+before_spikes_t004201.png / after_spikes_t004201.png (fix 1), before_rows_sheet.png /
+after_rows_before_anim_sheet.png (fix 2), before_anim_t002601.png / after_anim_t002601.png (fix 3),
+after_all_sheet.png (all three; 54 tasks to step ~10000).
+
+**Still open.**
+- Black regions remain in a few camera fly-ins (tasks 1001 / 10201: steps 612 / 5212, demo starts). Not
+  row clipping (forcing rows 0..127 changes nothing), not culling (cull bits cleared changes nothing); a
+  software transform of the dump finds no triangle covering those pixels, even clipped. So the game emits
+  no geometry there: either the camera looks past the course strip (backdrop missing / not loaded) or a
+  camera-path / LOD bug. Next: the course's backdrop shapes and the fly-in camera path.
+- Demo 3 (from step ~7006) is a split-screen race: each half is its own gfx task, so a per-task replay
+  shows the other half black (replayer / capture behaviour, not the game; agent-a: carry the framebuffer
+  between the two tasks of a frame, or composite odd + even tasks).
+- Task 2601: arch-shaped rock / tree-textured course geometry in the sky over the lake; course shape,
+  identity model matrix. Unverified whether it is legit cliff geometry seen from a rolled camera.
 
 ## 19. M2: graphics transport (agent-a, run 820)
 
