@@ -6309,7 +6309,7 @@ classes and adds X64Pn (a prototyped declaration's parameter class differs: int 
 float against double, structs) and X64REG (the caller loads an argument register, from DWARF
 `DW_TAG_call_site_parameter`, that the definition does not read; extra integer registers alone are
 trailing K&R arguments and pass). SRET is kept only for structs of 16 bytes or less. At the end of run
-863: 37 X64P + 19 X64REG + 2 VRET, listed by the gate step. Left: AudioThread_QueueCmdF32 (6 callers
+863 (commit 776bdfb9d): 38 X64P + 12 X64REG + 2 VRET, counted by the gate step. Left: AudioThread_QueueCmdF32 (6 callers
 pass a float, the definition takes the int bits), snd_SetPlayer0ChannelParams_2F9D4 / snd_ScheduleSeq /
 snd_UpdateChannel10Emitter, the CourseGadget_setVec4 / setFloat2 DataManager family (5 USOs),
 math_perspectiveF from Window_setupView, gui_drawStringScaled, hostio_addFloat, light_setF124,
@@ -6322,7 +6322,10 @@ test_ultra / test_fs / test_backup as 64-bit, the same smoke, compare its state.
 smoke's (the `/N` host address after r0's fields dropped), and run abi-scan --x64. It is **report-only**:
 the line is INFO and never counts as a failure, until the traces match; then it becomes PASS / FAIL on
 divergence (and on the race / modes scripts). `PORT_GATE_BUILD64=0` skips it (it adds a full build,
-~3 minutes at -j8).
+~15 s with a warm compiler cache, a few minutes cold). Commits: c980ff055 (abi-scan --x64, the
+step), 776bdfb9d (the fixes); the landing gate passes (3579/3579, port gate PASS with build64 INFO).
+Seen once: the gfx step failed in a fresh PORT_GATE_TMP (`No rule to make target .../f3d-obj/lus/gfx_opengl.o`,
+port/gfx/fast3d/Makefile); it passed on the next run. A parallel-make race in a fresh dir, unrelated to M6.
 
 **Next:** the frame-223 divergence. The rider's quaternion differs on the first physics step with the
 position equal, so the orientation path (SnowBoarder_updateOrient, the QNode / DNode quaternion code,
