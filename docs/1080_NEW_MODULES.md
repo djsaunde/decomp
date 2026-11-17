@@ -3002,6 +3002,39 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   - u.py;
   - fbase.cpp: main + nextS..nextW + the `_snow_v` decl.
 
+### snoweffects.uso 0x28E0 NM 98.94 -> 99.02 (agent-c run 787)
+
+- **Two commits on agent-c**, gate PASS each, 3577 / 3579, exact set identical, no renames, 793 words, frame 520:
+  - 13094d5af: 98.97 (r at sp+176; every sp offset now equals the target's);
+  - 65f13a71f: 99.02 (all FP colours up to the draw tail match).
+
+  Scratch: /tmp/claude-1000/c787/ (`q.py` / `ev.sh` / `nd.sh` = diff that ignores branch targets; `lm.sh TAG` =
+  edg M map below -256; `st.py TAG` = the `+=` statement's word allocation sequence; `sps.py TAG` = sp-offset set
+  against the target in M space; `tr.sh` / `tm.sh` as run 782).
+- **r: edg releases an inner inline's fresh param words when the inline ends; old pool words stay locked.**
+  `st.py` on the `+=` statement: op- takes the four old A pool words (a, b, the ctor's `this`, set's `this`), so
+  op*'s `a` had to be fresh (-336), between the return copy and r. With the ctor calling a single-return
+  `SnowV3d &set3(a, b, c) { return (x = a, y = b, z = c, *this); }`, set3's result takes the old -244 and its
+  `this` a fresh -308 word; that word is released when set3 ends, so op*'s `a` reuses it and r lands at -344.
+  The layout under -304 is then 3 R + 1 A word, which is run 749's "3 ctor R params and one unused word".
+  M drops to 396; BA through gDPWord adds the `_g` word back (M 400, frame 520, spill 116). This is what agent-e
+  run 786 predicted.
+  - Ctor `{ x = a; y = b; z = c; }`: a reuses -244, but s goes fresh (the ctor's R params stay locked), frame 528.
+- **x / wx: the draw-block x def put x's uopt LR into block 40, where the p->pos.x load item (e381) is also
+  live, so they could never share a register.** The target has both in f18. Fix: carry the draw x in wx
+  (`wx = p->pos.x; w = m[0][3] * wx + ..`); wx is dead in the draw block. x's LR then ends at the wrap blocks.
+  With run 782's `zf1(-halfH, 0)` fold on the third compare, wx now outranks y / z (90/6 = 15.0 vs 14.29) and
+  steals f20; `+ zf1(y, 0) + zf1(z, 0)` on the first loop compare lifts y / z to 15.7. Result: x f18, wy f16,
+  wx f24, -halfH f16, draw x f18, as the target.
+  - Other carriers: wy / wz / cz keep the loop-top swap; cx / w change the code (794 words, frame 512).
+  - **Single-LR x (cx / cy / cz rows on plain x) with a dead-def copy-keep `if (zf1(x, 0)) x = 0.0f;` before the
+    draw compare** stops cy's copy-propagation (agent-g run 781's lever) and also fixes x / wy (with zf4(wy) in
+    the axis index), but it loses the e381 spilltemp item: 6 temps, frame 512 (98.13). The target has the e381
+    item, so its x is not one LR.
+- **Left:** the int draw-tail rotations (dl / count a2 / v1 vs v1 / v0 at rows 85-90 and 633-639; t8 / t9 for
+  self->visible; a0..a3 / t0 in the packet appends and the tail packets, rows 633-780), the offX / offY index
+  (`16(at)` vs `0(at)`, row 619) with the FP ring at rows 614-621, and the B3 div ordering at rows 683-699.
+
 ### snoweffects.uso 0x28E0: spill 116 (agent-c run 782)
 
 - **One commit on agent-c: 76cd5df08, objdiff 98.939 -> 98.942** (793 words, frame 520, mn 2 / reg 104 -> 102).
