@@ -237,6 +237,45 @@ No renames.
   course*3*16 spellings, and the 0x3364 levers (do-while, `show = 1` after the call).
 - **Not started:** 0x3878 (records draw, 431 lines) and 0x3F24 (erase-select pad handling, 272 lines).
 
+### agent-b run 693: viewrec 0x3878, the edg pool-word route to the setColor `.livereg` (no commits)
+
+No commits, no renames (nothing to gate). 3878 is still NM 98.7 % (ndiff 11).
+
+- **The ugen mask walk, read in full** (`ugen.c` `L42d828`, the `Umst` case of `f_eval`). It walks the node list
+  from the `mst` up to the first `cup` / `icuf` / `cia` / op 0x97. It ORs in the register of every `str` with
+  mtype R (register = offset / 4, plus the next register for 8-byte stores), and of every `par` node (register =
+  offset2 / 4, so argument registers only). At the `cup` (`L42df98`) it adds `| 0xE`, and a cup flagged 0x100
+  adds 0x5FFF0000 / 0xFFFFF000. Neither ever covers s0..s8. **So the s5 / s6 / s7 bits can come only from a
+  register `str` placed between setColor's `mst` and `cup`.**
+- **uopt never emits a self-copy.** A scan of 300 uopt outputs under /tmp/claude-1000 (`ugen -d`, `w93/selfcp.py`)
+  finds no `str Rn <- lod Rn`. Any register store in the window therefore emits code. The target's window has no
+  s5 / s6 / s7 instruction, and its 427 words leave no room for one. The mask route needs a ucode shape that has
+  not been observed.
+- **MIPSpro pool words do alias across inlines, but nothing lands in the window.** Toy `w93/t/t1.cpp`, with
+  `.B` dumped through `ugen -O0 -d`:
+  - `grid(S *s, int r)` puts s at -24 and r at -28.
+  - A later `sc(float *c, int x)` puts c at -24 and x at -28, so x is r's pool word.
+  - edg emits the parameter store BEFORE the `mst`, and uopt copy-propagates it away. The window holds only the
+    a0 / a1 / a2 stores.
+  - `x = x;` and `r = r;` produce no ucode at all.
+- **On 3878 itself:**
+  - Grid loop moved into an inline (`vrGrid(self, col, blink)`, or with rows / cols parameters): ndiff 20. That is
+    the base 11 plus frame slots; the window and mask are unchanged.
+  - setColor through one- and two-hop `int` wrappers, and wrappers that take r / 1 / 2 as arguments
+    (`vrSetColR2(col, a, r, 1, 2)`): byte-identical to the base.
+  - Combining the inline grid with each of those wrappers: unchanged.
+- **Other tries, all flat:**
+  - `v = (int)(255.0f * askFade); setColor(.., v, ..)` for v = r / j / i / a: copy-propagated, identical.
+  - An uninitialised `int u;` read after setColor (`if (u) {}`, `switch (u)`, `u == 1`, a block copy): uopt drops
+    the read entirely, so only the frame changes.
+- **What is left.** as1's `jal` defines only the caller-saved set (kit CDLVI), so s5 / s6 / s7 stay live through
+  setColor. Any READ of $21 / $22 / $23 on the `$45` path before the epilogue restores would therefore block the
+  pull, not only a read inside the window. The read must be one that uopt does not see as a use: a uopt-visible
+  use homes r, or reloads the constant, at `$45`. It must also be one that as1 deletes after its liveness pass,
+  such as a dead `move tN,$21` (run 670 mm7).
+- Scratch: `.../scratchpad/agentb/w93/` (`run.sh` compile + ndiff + mask, `mk.py` / `v1.py` / `v2.py` variant makers,
+  `t/` toys, `dump.sh`).
+
 ### agent-b run 686: snoweffects 0x559C EXACT; viewrec 0x3878 line joins flat (+1 exact)
 
 Commits on agent-b: 2a76794b6 (559C NM 97.3 -> 99.0 %), 8683fba2f (559C EXACT, donor promoted to the matching
@@ -815,6 +854,30 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   - 15D0 (NM donor, 18 diff lines): the 4188 copy lever on `t` (`SnowTex &tr = *t; SnowTex *tc = &tr;`) at any
     1-2 packet sites or prefix / suffix sets is flat (18). Not yet traced with units.sh.
 
+- Run 694 (agent-h, commits 9ae3b52bf + ee8e71bd8 on agent-h, NM only, no renames, no exacts; 3564 / 3579, gate PASS).
+  - **0x47D4 NM 94.58 %** (objdiff; new donor src/snoweffects_uso/snoweffects_uso_ncc_nm_h.cpp, own Makefile block
+    SNOW_NM_H, aliases gl_func_00000000_snow_46bc / _snow_4714). The r671 draft landed at 89.96; then **only the x
+    component** goes through agent-g-style `float &` helpers that copy the old value
+    (`lerpTo(float &a, float f, float b) { float c = a; a = (b - c) * f + c; }` and `addTo(w.x, dv.x)`,
+    `addTo(w.y, -lim)`), y / z stay plain: w.x becomes a uopt LR in f2 as in the target, alpha moves to a
+    callee-saved register and the frame is the target's 184 (94.58). Helpers on all three components make the three
+    copies one-block LRs that all interfere (f2 / f12 / f14, worse). uopt's interference is per basic block, so the
+    target's w.y / w.z sharing f0 means they are not one-block uopt LRs there.
+  - Left on 0x47D4: f is f0 and (float)i f12 where the target has f12 / f14 (one more caller-saved LR in the loop), so
+    lim stays caller-saved f18 (target f20, alpha f22). Flat or worse (objdiff, scorer r694/od.py): `if (1) {}` /
+    `if (i) {}` / `if (f) {}` / `if (t) {}` between the lerps (432 combos); a shared `c` for y / z (block, loop or
+    function scope, plain or via a `float &c` helper parameter); `const float &f`; `register f`; f before `w = P`;
+    setf() on the point stores (w18 / w1C / vel; vel is 80.8); setf on lim.
+  - Trace note: in iu/tr.sh (ord.py) the FP labels are shifted by one: trace "f2" = real f0, "f12" = f2, "f14" =
+    f12 .. "f22" = f20 (the first callee-saved, cost 12.25).
+  - **0xC90** (84.92, agent-c's donor file, not committed): `if (hgt) {} if (wid) {}` after the texrect gives 85.15
+    and a few more code-free lines 85.23 (as1 line effects, not the registers). The target keeps hgt in s1 and wid
+    in ra (callee-saved: the loop's GPR pressure fills t0-t5 / ra), which pushes i to s2 and the scaled() return-temp
+    address to s3; ours keeps hgt / wid in t5 / t4, so i takes ra and the address s1. Next: find what extra
+    caller-saved GPR LRs the target has across the texrect block (uopt trace: F=snoweffects_uso_func_00000C90).
+  - Tools: /tmp/claude-1000/agent-h/r694/ (od.py = parallel-safe one-function objdiff scorer: NCC compile + a
+    temp objdiff.json against expected/; tv.py variant runner; var3o.py / var6.py 47D4 searches; c1.py / c2.py C90).
+
 ### snoweffects.uso 0x6000+ (agent-e run 639)
 
 - +2 EXACT (commit feb67fb6a on agent-e): 0x8C60 and 0x9FE8, both IDO 7.1 NCC. Own donor
@@ -1235,6 +1298,35 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   values are the target's lo16s: Data+0xA34 for the default colour, vtables at 0x0 / 0x838 / 0x850 (map them from the
   `lui/addiu` pairs at 0x9354 / 0x940C / 0x959C). The draft is 246 / 247 words, so it fits.
 - 0x9E10: not reached.
+
+### snoweffects.uso 0x6000+ (agent-e run 692)
+
+- No new exacts (3561 / 3579 on agent-e). Commits on agent-e: 9ec27ab61 (0x9328 NM spliced, 95.7 %), eb771ab33
+  (0x6B28 98.6 -> 99.1 %; the commit message says 98.9, the gate report says 99.13). Gate PASS before each, no renames.
+  0x9328 / 0x9E10 were then re-scoped to agent-b.
+- **0x9328 wired:** donor `src/snoweffects_uso/snoweffects_uso_ncc_nm_e9.cpp` (only the ctor from the draft), Makefile
+  `SNOW_NM_E9_DONOR` (non_matching only), objcopy renames: ctor -> snoweffects_uso_func_00009328, SNode / GdlParmBase
+  ctors, `__nw__FUi`, mem_new -> 0-pinned `snowe9_*`, vtables -> `snowe9_vtbl_*` pinned at **0x0 / 0x838 / 0x850 / 0x868**
+  (the lo16s in the target; a 0-pinned vtable would be wrong here). 246 / 247 words, so the NM .text is 4 bytes
+  shorter, which is fine (the existing NM donors already leave it 16 bytes short).
+- **0x6B28:** `t->cam->fA20 == 0.0f` (not `0.0f == ..`) gives the target's `mtc1 zero,f16` before `lwc1 f18`. Putting the
+  spawn statements in a nested `{ }` below `float x, y, z;` homes the op+ temporary (`t->vFC * ..` bound to
+  operator+) below x / y / z (vfp-136, as in the target): edg places a block's temporaries ahead of its named
+  locals, so the nested block moves the temporary under them.
+  - Left: one inline word between the two n products. The target's r2 is at vfp-100, ours at -96; u, r and the op+
+    r then follow it, one or two words lower. A `mul2(float s) { float k = s; .. }` for the second product adds that
+    word (r2 / u / r / op+ r all land on the target) but also pushes the nested temporary down (to -140) and the frame
+    to 240. The u-copy address is hoisted into a0 (target: `addiu v0` at the copy).
+- **0x64B8 (unchanged, 19 diffs):** the block temporaries for `n += cam->v318 * k * (f184 + spd)`. The `this` temporary
+  of the outer op* is always at vfp-32 and the += argument temporary at -44 (the target has them the other way round).
+  None of these moved them: a non-member / friend / by-value op*, member `sc()`, `const SV` return, the
+  `n.operator+=` / non-member += / `addv()` forms, a different class for the first product (the temporaries are
+  grouped by type, but the SW group still went first), `(const SV &)` casts, a `const SV &d` local, zero-code
+  `if (0)` / `SV();` statements in the block (these add temporaries, and none are reused), and padding declarations
+  before the function. The cam pointer v0 / v1 did not move with `(t + 0)`, `me()` hops, `cam[0]`, or trailing
+  `if (k) {}` / `if (spd) {}`. Next idea: find which statement in the target frees an SV temporary that edg then
+  reuses (in r1, the duplicated-statement probe, reuse did happen: three temporaries, not four).
+- 0x718C: not reached.
 
 ### nameent.uso 9BC + snoweffects below 0x6000 (agent-c run 655)
 
@@ -1753,6 +1845,31 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   Bss+0x50 pointer goes in s4 before the vertex-count test. There is also a v0/v1 pair in the ambient
   compare and the second walk's mask constants (-2 / -3 / -5 hoisted into s2..s4). Scratch:
   /tmp/claude-1000/agent-a/w654/a/best_A10C.cpp. 0x7FE0 is not started.
+
+## snoweffects.uso 0x7FE0 (agent-a run 690)
+
+- **0x7FE0 NM 97.85 -> 99.30 % in-tree (objdiff report; fz 99.28, 66 / 800 words differ)** (agent-a 2623b087c, gate
+  PASS, no renames; still 3561 / 3579). Scratch /tmp/claude-1000/agent-a/w690/ (vr.py, rm.py = per-instruction
+  register map ours -> target, rw.py = ring writes in a `-S` listing, ft.sh = forcing uopt).
+  - **The lever: the ramp's range `hi - lo` is a uopt LR in the target.** Every f4 / f6 / f8 / f10 in the body
+    differed (also before the ramp), as a consistent ring relabelling. The target's `sub.s $f16,$f2,$f14` sits
+    ahead of the |v| branch in f16, a uopt colour (shared with s), not a ring temp. `w = t->hi - t->lo;` ahead of
+    `float f = (fabs_(v) - t->lo) / w;` fixed all ring registers and the ramp's lo / f colours (f14 / f2). A new
+    named local (`float r`) costs a frame word (392); reusing `w` (assigned t->f164 later) keeps 384.
+  - The instrumented ugen (h384 `u/out/NCC`) trace does NOT reproduce the real NCC's initial FP queue here
+    (f4 / f6 swapped vs the `-S` listing); read ring order off `NCC -S` instead.
+  - Left (all in the loop): (1) op* result colours y / z = f14 / f2 where the target has f2 / f14 (and the *|s|,
+    v114 * k, *f184 families shifted the same way); single-LR forcing (19 LRs x 4 colours) gives at most +0.04, so
+    it is LR membership, not priority. (2) Frame: up * f180's r is 2 words lower in the target (two holes above it,
+    ours 0), then 1 hole before *|s|'s r (ours 2), and the e / d words 1 lower; the two loop-top __Vs are swapped.
+    (3) v0 / v1: the `?:` index (ours v0) vs the stride loads (ours v1) are swapped, with the a-statement cam
+    pointer. (4) the or a1 / addiu t3 order.
+  - No change (byte-identical): do-while forms, `++i`, `stride > i`, `<= stride - 1`, the pointer locals moved
+    before the fade / into the for-init / into the loop / joined onto the for line, `i = 0` before them. The three
+    instructions are all on the for line in ugen's preheader (`addu $11; addu $12; move $5`), and as1 pulls them up
+    in that order, so the order is uopt's preheader order, not line-driven. Worse: unsigned / short i, a pointer
+    increment local, the k index as an if / else, `TV a(up * f180, s)` through the by-value ctor, a named
+    `fabs_(s)`, `TCam *c`, dropping g / h, `return TV(...)` / member-wise op*, a friend op* (identical).
 
 ## snoweffects.uso 0x7FE0 (agent-a run 688)
 
