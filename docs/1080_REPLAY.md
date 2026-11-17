@@ -121,4 +121,49 @@ of both the RAM buffer and the SRAM area (6400 * 4 = 0x6400 bytes).
 - Resolved (run 495): `replay_addInput` is now `input_addRacePad`. InputMgr +0x100 racePads
   are the pads that input_pauseRacePads / input_unpauseRacePads pause (pad_setPause); it does not
   record anything.
-- viewrec.uso (the replay viewer, ROM 0x642346) has no splat code segment.
+- viewrec.uso: see the next section (it has a code segment now and is fully named).
+
+## viewrec.uso: the records / options screens (agent-a run 796)
+
+viewrec.uso ("GENNewRecords Process", ROM 0x642312) is not only a replay viewer: it is the records and
+options module (course times / scores, arcade records, erase, replay the saved ghost, sound, language).
+Types: include/viewrec.h. Sources: src/viewrec_uso/viewrec_uso.c plus the C++ donors
+(viewrec_uso_ncc.cpp, _ncc_2d0.cpp, _mp72_3878.cpp, _mp72_4990.cpp, which keep their own layout mirrors).
+
+Classes (the Node name strings in Data; vtables read from the Data Reloc section, slot 3 update, 4
+handleMsg, 13 drawGui; the proc field each ctor result is stored in by GENNewRecordsProcess_ctor):
+
+| class | ctor | size | vtable | proc field | proc->mode (VR_MODE_*) | shown by |
+|---|---|---|---|---|---|---|
+| GENNewRecordsProcess | 0x2D0 | 0xE0 | Data+0x18 | - | - | the title flow (mode = ctor arg 2) |
+| MainOptions | 0x1748 | 0x58 | Data+0x98 | mainOptions | 0x10000 | vr_backToMainMenu |
+| RecordOptions | 0x1B4C | 0xA0 | Data+0x118 | recordOptions | 0x1000 menu, 0x2000 times, 0x4000 scores, 0x8000 arcade | vr_showRecordOptions |
+| EraseOptions | 0x36B4 | 0xC8 | Data+0x198 | eraseOptions | 0x80000 select, 0x2000000 confirm | vr_showEraseOptions |
+| ReplayOptions | 0x4518 | 0x9C | Data+0x218 | replayOptions | 0x4000000 | vr_showReplayOptions |
+| SoundOptions | 0x4854 | 0x98 | Data+0x298 | soundOptions | 0x40000 | vr_showSoundOptions |
+| LanguageOptions | 0x5200 | 0x70 | Data+0x328 | languageOptions | 0x20000 | vr_showLanguageOptions |
+
+The main menu rows (MainOptions_buildMenu) are the vr_show* callbacks; the Replay row is added only
+when the word at 0xA0000284 is 0x240B17D7, and it is disabled when no ghost is saved
+(Backup_ghostGetMode == 0). Data+0x3A0 is a 1-slot vtable whose slot is vr_resetColours.
+
+**Replay.** ReplayOptions_drawGui shows the saved ghost (Backup_ghostGetCourse / Rider / Board /
+Mode - 1, vr_drawGhostRow); ReplayOptions_input on A / Start sets GameFlow procState =
+Backup_ghostGetMode + 6, nextProcState = 1 and fades out, so the title flow runs the ghost's mode
+(time / trick) in replay; B returns to the main menu. viewrec never calls replay_saveGhost or
+pad_startPlay itself.
+
+**Erase.** EraseOptions_selectInput picks the set (0 course times, 1 course scores, 2 arcade, 3 ghost,
+4 all) and for 0 / 1 a course on the 2 x 4 grid; the set goes into proc->nextMode (VR_ERASE_*).
+EraseOptions_confirmInput (yes / no) calls Backup_sessionResetCourseTimes / Scores (session, course),
+Backup_sessionResetArcade / Ghost (session), or for "all" Backup_resetAll_0000B710 and a game-flow
+restart (procState = nextProcState, GameFlow +0x84 = 0, +0x88 = 1).
+
+Helpers: vr_loadSprites / vr_initLabels (sVrSprites / sVrLabels; vr_initLabels re-runs on handleMsg
+21, "recaching language"), vr_pushMenu / vr_popMenu (proc->menuStack), vr_drawBackground,
+vr_drawTitleArrows, vr_drawCenteredLabel, vr_drawFooterLabels, vr_drawRankRider, vr_drawTimeDigits,
+vr_drawTime ("%d[%02d]%02d"), vr_drawNumber ("%07d"), vr_drawTrickLabel. vr_emptyStub_00000278 /
+280 / 288 are unreferenced `jr ra` stubs with no Sym entry.
+
+Open: RecordOptions +0x84 / EraseOptions +0x58..0x68 / ReplayOptions +0x5C..0x7C, +0x84.. (layout
+constants no viewrec code reads); GENNewRecordsProcess +0x80..0x84 and +0x8C..0x94.

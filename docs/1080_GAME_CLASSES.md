@@ -39,6 +39,7 @@
 - [30. Run 555: U64BGWall fields, Tv1, ScreenThumbMat, input.h on race.h, GameFlow.titleFlags](#30-run-555-u64bgwall-fields-tv1-screenthumbmat-inputh-on-raceh-gameflowtitleflags)
 - [31. Run 558: Tv1Callback, game.uso marker tags / rumble patterns / parm tags, the C234 marker query](#31-run-558-tv1callback-gameuso-marker-tags--rumble-patterns--parm-tags-the-c234-marker-query)
 - [32. Run 563: C234 CollShape.shape, SnowBoarder.boardBin, Sun / CourseMarker data constants, pattern H](#32-run-563-c234-collshapeshape-snowboarderboardbin-sun--coursemarker-data-constants-pattern-h)
+- [36. Run 799: course objects (heli / checkpoint / fire / balloon)](#36-run-799-course-objects-heli--checkpoint--fire--balloon)
 
 ## 0. State for porters (agent-g run 575, final wave)
 
@@ -1569,3 +1570,38 @@ reloc's Sym + K); every changed .o is objdump-identical (text / data / rodata, r
   codegen: RaceTracker_findGates' `table + kTag_chk_D680`). Value claims accept `f32 V, text`.
   Several "import-base data reads" were objects: import_00020098 / D_n64_100_f = gInputMgr (bootup
   Bss+0xF8; +0x18C locked, +0x190 fader), import_8005C348 = gGfxLib (Bss+0x3C168; +0x240 mainWindow).
+
+## 36. Run 799: course objects (heli / checkpoint / fire / balloon)
+
+> agent-g run 799, 2026-11-17, branch agent-g (6399423ab rename, 19dd5db96 calls, c39fdd81a fields,
+> 28cba8e6d donor git mv). Gate PASS on each; 3579/3579 exact, ROM byte-identical.
+
+Header: `include/game/course_objects.h` (plain C, size / offset asserts; the C++ donors keep their own mirrors).
+
+| class | size | base | fields (offset: name) | functions |
+|---|---|---|---|---|
+| HeliItemType | 0x54 | ItemType | 0x48 bodyShape ("heli"), 0x4C bladeShape ("helib"), 0x50 sprite | HeliItemType_ctor, HeliItemType_create |
+| Heli | 0x174 | QNode | 0x108 startPos, 0x114 target, 0x120 offset, 0x12C look, 0x138 heading, 0x144 roll / pitch / yaw, 0x150 maxSpeed .. 0x164 slerp, 0x168 marker, 0x16C mode, 0x170 mode2 | Heli_defaultCtor, Heli_ctor, Heli_loadData, Heli_handleMsg (9 reset / 7 store), Heli_resetFlight, Heli_placeAtMarker, Heli_display, Heli_update |
+| HeliRotor | 0x118 | QNode | 0x108 spinSpeed, 0x10C axis | HeliRotor_ctor, HeliRotor_update |
+| HeliMarkerItem | 0x40 | ColourItem | 0x3C id ("hem" id 8 = the Heli start) | HeliMarkerItemType_create, HeliMarkerItem_load |
+| FireTmpl | 0x68 | ItemType (unk40 = Sprite) | 0x48 envColour "Env", 0x58 primColour "Prim" | FireTmpl_* |
+| Fire | 0x94 | SNode | 0x88 sprite, 0x8C frame (0..7), 0x90 alpha | Fire_* |
+| Balloon | 0x9C | SNode | 0x88 off "Off.x/y/z", 0x94 speed "Speed", 0x98 phase | Balloon_* |
+| ShapeTmpl | 0x4C | ItemType (unk40 = PolyShape) | 0x48 model | BalloonTmpl_create, CheckpointCylTmpl_create |
+| CheckpointCyl | 0x10C | SNode | 0x88 time "Time", 0x8C postA / 0xCC postB (CollCylinder; the posts' world positions are their CollObj.pos, +0xA4 / +0xE4) | CheckpointCyl_*, CheckpointCyl_isBetweenPosts (45C) |
+| CheckpointBox | 0xCC | SNode | 0x88 coll (CollCylinder), 0xC8 tmplArg | CheckpointBox_* |
+| CheckpointBoxTmpl | 0x50 | ItemType | 0x48 boxArg, 0x4C model ("flag") | CheckpointBoxTmpl_create |
+
+- Function names: 27 renames (heli 26 + checkpoint 45C), with the evidence for each in renames.tsv. Virtuals whose
+  class is unknown keep the address: heli_emptyVirtual_00000458 / _000019C4, heli_getItemPosStub_000019CC,
+  heli_read{Float,Vec3,Quad,Int}Parm_<addr>.
+- The 0xB08 donor is now `src/heli_uso/heli_uso_mp72.cpp` (was `_nm`). Its 18 placeholder calls are named
+  (fsin, math_acosf, ItemMgr_queryType, math_atan2s_00068044, math_quatRotateAxisAngle ...). Its 20 raw sites
+  stay raw with same-line `RAW: donor-mirror` / `data-table` comments; no lines were added, because the donor
+  is byte-fragile. The other raw sites (heli_uso_ncc.cpp RoData+0x74, the "hem" tag word, balloon RoData+0x1C)
+  are `RAW: data-table`.
+- Census after: heli / checkpoint / fire / balloon have 100 % real names, 0 calls left, 0 unjustified raw sites
+  and 0 unnamed-unjustified.
+- Open: the marker item's module vtable (Data+0x18) and the classes of the empty virtuals need the Data-reloc
+  table. These four USOs use a different directory layout from `scripts/uso_original.py ordinary()` (after the
+  inner magic, the records are not 12-byte `type/size/flag` headers), so the vtable slots were not decoded.

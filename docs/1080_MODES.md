@@ -167,6 +167,59 @@ headers are C++-safe so the NCC donors can include them.
 - **Data files** the modes load: rom/version.bin, rom/anims.bin, rom/flowimgs.bin, rom/tricks.bin, the
   per-mode sprite / font images opened through `gui_spriteLoad`, and the gadget Parms records.
 
+## trnproc (training) and nameent (name entry): readability (agent-b run 797)
+
+Both modules were decompiled after the first readability pass (docs/1080_NEW_MODULES.md, agent-c
+runs 631-655). Run 797 named and typed them. Commits on agent-b: 0facad35a (**pure rename**, 59
+functions + 3 `_ref` aliases), 67ea42ff3 (tool output: 95 CALL sites in the two NCC donors),
+49020eeff (headers + field conversions). Gate PASS each time (3579/3579, ROM byte-identical).
+
+**trnproc.uso (module 27): "TRAINRace Process".** The tim / trk template without records:
+- `trn_main` (entry object Data+0x18, slot at Data+0x24): 0 GenProc, 1 `trn_openSession` (no
+  session: GameFlow.session = 0), 2 build `TrnRace_ctor` and run it, 3 `trn_closeSession` (empty),
+  4 quit.
+- **TrnRace** (include/game/trnproc.h, 0x6BC; vtable Data+0x1B8): RaceProcess + `dataManager`
+  (0x6A8) + `trickDone[12]` (0x6B0, the lesson done bits, loaded / saved with settings_get8 /
+  set8). Overrides: slot 20 `TrnRace_onRaceOver` (fade out, `TrnRace_restart`, fade in: a run
+  never ends, it restarts), 21 `TrnRace_onEndTimerDone` (+0x504 = 0), 25 `TrnRace_onPauseSelect`.
+  Pause rows: `TrnRace_pauseContinue` / `pauseRestart` (-> `TrnRace_forceEnd`: phase END) /
+  `pauseQuit`.
+- **TrnDataManager** (0x19C, RaceTracker subclass, vtable Data+0x138): slot 2 `display`, 3
+  `update`, 10 `reset`, 11 `onCheckpoint` (arms the lesson; `course` = the gate's +0x88 < 21),
+  12 `onTrickStart` (the lesson's trick seen -> `trickDone`), 13 `onTrickEnd` (landed: set the
+  done bit, `nextLesson`, `buildLessonInputs`). Lessons are TrickTable entries
+  (`isLessonAvailable` = unlock mask vs the player's bits); `drawLesson` draws the title and
+  the input list (`inputs[32]` at 0x118, 255 = new line); `drawResults` / `scrollResults` are
+  the 12-row results screen (Start).
+- Per-TU helpers: `trn_streamRead{S32,F32,Quad,Vec3}`, `Parm{Int,Float,Quad,Vec3}_read_<addr>`,
+  `TrnItemType_create`.
+
+**nameent.uso (module 33).** Two classes (include/game/nameent.h):
+- **NameEnterProcess** ("NameEnter Process", vtable Data+0x80, 0xD4) = the base the mode modules
+  call NameEntry (include/game/nameentry.h). `NameEntry_init(self, session)` is called by
+  app_launchNameEnt and every mode's onRaceOver; `NameEntry_startEntry` (app only) goes straight to
+  phase 1. Slot 12 `NameEntry_handleInput` runs slot 14 + phase, slot 13 `NameEntry_drawGui` draws
+  the frame / board (`drawFrame`, `drawBoard`, or `clearScreen`) and slot 17 + phase. Base slots:
+  14 `updateResult` (empty; Tim / Trk override it: Start -> phase 1 when the session has a new
+  record, else fade out), 15 `updateEntry` (commit the name to GameFlow +0x158 / +0x15C and the
+  session once `entered`, else run the wheel's input), 16 `updatePhase2`, 17 `drawEntryOverlay`
+  (empty), 18 `drawExitOverlay` (draws the wheel; the mode overrides call it), 19 `drawPhase2`,
+  20 / 21 `nopSlot20` / `nopSlot21`.
+- **NameEnterMessage** (vtable Data+0x18, 0x11C): the letter wheel. `NameEnterMessage_ctor`,
+  slot 2 `display`, slot 3 `update` (42 entries: letters, 39 space, 40 back, 41 END). Typed in
+  the NCC donor (struct NeEntry).
+- **For agent-h (nameentry.h owner):** `NameEntry.entry` (+0x50) is the record
+  **BackupSession** (Tim / TrkNameEntry_update pass it to Backup_sessionHasNew; nameent writes the
+  name to it), and +0x54 is the NameEnterMessage. nameent.h's NameEnterProcess has the full
+  layout; merging the two (one struct) is a hand edit in nameentry.h.
+
+**Left raw (justified):** trnproc `TrnDataManager_onCheckpoint` gate +0x88 (`RAW: unknown-object`);
+nameent donor: the Data+0x158 image copy (`data-table`) and the inlined Node vptr store
+(`donor-mirror`). The tim-template levers in `TrnRace_onPauseSelect` (`self[0x48 / 4]`,
+`v0[0x7C / 4]`, `if (1) {}`) and `TrnItemType_create`'s `p1[0x40 / 4]` stay as written (not
+counted as raw casts). `trnproc_uso_func_00000000` / `nameent_uso_func_00000000` (empty, Text+0)
+keep their sentinel names (`UNNAMED: sentinel`).
+
 ## H2. Mode / process modules: titproc, h2hproc, arcproc, mgrproc, eddproc, n64proc, gui, boarder1-5 (agent-h run 460)
 
 > agent-h run 460, branch agent-h on 8239918e8: efb3336fb (78 names) and 16f7cbcb8 (110 names), both pure
