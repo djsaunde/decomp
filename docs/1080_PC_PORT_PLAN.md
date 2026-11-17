@@ -2715,3 +2715,37 @@ charsel, gamegfx and map5_data are 0% unknown. The largest remaining:
 4. The AudioCmdArg sub-word reads.
 5. `fs_readRecord_00041F90` (version.bin) layout.
 6. fire Data, and the remaining 34% of bootup Data.
+
+### 18.5 Run 806: the paused port branches on current main
+
+agent-g run 806, branch agent-g on main ed68143d6 (3579 functions; the 8 new modules decompiled).
+Gate PASS before every commit (ROM byte-identical, 3579/3579, 7940 named calls 0 mismatches).
+
+| commit | what |
+|---|---|
+| 1a51d5147, 05899c9ac | port-wip-g 12041903d (cfront virtuals). Conflicts against main's CALL naming; B1B4 / 4FBA4 ctors now keep one named call, with only the vptr store under PORT |
+| c6480c7e2 | port-wip-g 1d19c1716 (boot blockers), clean |
+| 61032b873, fb93c60fb, 55d0b6e83, f9b99fb93, c9ae1e30a | port-wip-c 12da847f5 / d732434c3 / fd10f8156 / 1b2f7f089 / 283ba01f9, clean. ad6d0a069 dropped |
+| fc2b908d6 | port-wip-a tools only: name-data-sites.py (XDATA), uso_call.h XDATA, port-gen-binds / -uso XDATA hooks, include_asm handling, port-gen-decls K&R fix. c531782ec's INCLUDE_ASM exclusion is inert now (0 such functions); a's generated files not taken |
+| c850e4b03 | tools: (1) the call scanner blanks `#ifdef PORT` branches. fd10f8156's duplicated `if (...) {` heads had silently cut `check` from 7940 to 7669 named calls (game_libs_post.c 431 -> 160); (2) npc re-execs with `sys.orig_argv` (wrappers lost `--lib` under a python without pyelftools); (3) port-gen-decls takes its C++ units from sourcemap.tsv; `OPTIONAL_TAIL` for gui_fontAdjustAdvance |
+| 9bac6243c | src PORT fixes: 40070's cherry-picked Base ctor still called `dbg_printThreads` (the pre-618 placeholder); viewrec ncc forward decl of vr_backToMainMenu; snoweffects 9328 `GdlParmBase_ctor` = Parms_addParm (Makefile objcopy rename the port does not apply; a scan of every `--redefine-sym` against aliases.ld finds no other) |
+| 3c2b51d90 | port/gen, sourcemap and undefined.txt regenerated |
+
+**Compile census** (gcc 11.4, `-m32 -malign-double`, port CMake): **480 / 480 units, 0 failures**
+(252 C, 228 C++), 3222 kept functions (13.2: 462 units, 2931 functions). libgame.a: 0 missing,
+0 defined twice, 0 duplicated globals. libuso.a, libultra.a, porthost build.
+
+**Binds:** aliases 3879 (1072 call, 2807 data); 1893 pairs bound; left 146 (129 ambiguous,
+16 unnamed, 1 unresolved). uso_modules.c: 30 modules, 3488 Text targets bound, 1 not in the port.
+Blob types: 11.5% unknown; **snoweffects Data is 80% unknown** (24 K), fire 96%.
+
+**undefined.txt: 143 -> 114** (plumbing 17 -> 13, match_imports 5, data aliases 24 -> 18, libc 26,
+unreferenced 27, other 4, C++ cross-donor 39 -> 21).
+
+**Link** (agent-e's i386 sysroot, `-DPORT_LINK=ON`): test_ultra PASS, test_fs 23 / 0. tenshoe:
+**53 undefined** (main: 81): 18 plumbing tokens (`D_00000000`, `gl_func_00000000`,
+`timproc_uso_b5_alias`, `glv_2838`, `gl_func_emit*`, ...), 15 data aliases, 16 C++ cross-donor
+ctors / methods, 4 audio hooks (`port_audio_*` x3, `glv_2a44`).
+
+**Not done:** applying `name-data-sites.py plan --write` to the source (the XDATA naming of the 129
+ambiguous pairs); the new modules' binds-left entries.
