@@ -4097,6 +4097,66 @@ may capture only one RCP task per frame; 5777 tasks / 3000 frames).
 - The B3C bare-token audit.
 - A ROM-side trace (emulator) to compare the procState 4 at 2533 against the real demo length.
 
+### 18.17 Run 836: sweeps of run 830's bug classes (agent-e)
+
+agent-e run 836, branch agent-e on main 3998bae47: d973a1ece (tool), 99e2c21cf (src, PORT only /
+ROM-neutral XCALLs), 83d432c58 (port/gen/decls_cpp.h). Gate PASS (ROM byte-identical, 3579/3579,
+verify-blocks 6/6, check --order 8339 named / 0 wrong, 0 defined-token calls, clean build OK).
+Note: `gate-landing-tree.sh` gates `$LAND_WT` (default projects/1080-agent-d): pass
+`LAND_WT=<your worktree>`.
+
+**Class 1, bare calls through a token the port defines.** port-gen-binds binds only tokens the
+port library leaves undefined, so a bare token that the port defines keeps its own definition.
+Method: every jal reloc of every proven function (object bytes = ROM) against a name in
+port/sourcemap.tsv, resolved to its ROM TextReloc callee and compared to the token; the
+CALL-named sites are taken out; a function whose PORT view has no bare site left is fine.
+- `tim_drawTime_00001340` / `trk_drawScore_000013B8` (timer / score HUD): ALL their calls were
+  spelled `tim_main(...)` / `trk_main(...)`, real functions on the port. 25 sites named per site
+  (`plan --tok tim_main --tok trk_main`).
+- SnowBoarder_reset (fixed in 830), the cfront ctors in 6204 / E9FC (PORT ctors) are clean.
+- **cam_updateView's `game_uso_func_00000000(...)` (B3C:252) is correct**: its ROM callee IS
+  game_uso's Text+0 function. Same for boarder1-4 / map4b2 readQuadParm and SnowFall_rotateNormal /
+  setPlaneDist (their module's Text+0 functions). agent-g: nothing to do there.
+- Gate: `check --order` now runs `check_port_defs` (~5 s, 520 functions); the selftest un-names
+  tim_drawTime's sites and requires a failure.
+
+**Class 2, float bits / float types across the call.** Method: a `-Wconversion` port build (int ->
+float at a call argument) intersected with the gimple dumps' call-argument conversions, a
+float-literal scan (a float constant whose integer value is f32 bits), and a DWARF scan of the
+linked tenshoe: every DW_TAG_call_site's caller-side declaration (call_origin) against the
+callee's definition found from the call instruction (return type class, parameter classes,
+struct returns). Found and fixed:
+- `math_vec3Length_0005BBCC` was a K&R pass-through `void f(void) { sqrtf(); }`; port-gen-decls gave
+  the C++ callers `int f(...)`: they pushed a double and read eax (9 sites: RiderCam_update x2,
+  SnowChaseActorCam_update, game_uso 3558, heli x2, 3B9C0, 5F5F0, 5F984 x2, 64388). PORT body
+  `float f(float)`; decls_cpp.h regenerated. (C callers worked only because gcc compiled the body
+  to a tail jmp.)
+- PORT_FBITS: absrot_matrix4's `o->x138` / `x134` (game_libs_ncc_33094) and gfx_calcPerspNorm's
+  `nearWord` / `farWord` (ScreenWindow::run, game_libs_ncc_4C5E4: perspNorm).
+- Left as harmless: int vs float prototype mismatches with no conversion (same 4 bytes on the
+  stack), struct4 vs int, QNode_ctor's `(f64 0.0, f32 0.0f)` vs `(f, f, f)` (same 12 zero bytes).
+
+**Class 3, struct returns.** The DWARF scan covers both directions (any caller declaration vs
+any definition, C or C++), with the callee's `ret $4` read from the code. Note gcc's C ALSO pops
+the hidden pointer (`ret $4`): the drift comes from an out-pointer spelling against a by-value
+definition, not from the language. Two more were wrong (now called by value under PORT):
+SnowAI_steer -> SnowAI_aimAlongSegment (game_uso_591C, the AI steering; C definition in 7C1C
+pops) and BallRotator_applyArcball -> math_arcballPoint. The 6A30 / 71E0 callers expect the pop
+(their PORT_SRET_NOPOP has no effect there, and the definition pops: consistent). The other 830
+sites are consistent.
+
+**Class 4, raw ROM / file bytes read as words.** Method: every shipped call of the DMA / PI /
+fs read primitives, minus the reader templates. Fixed: AnimData_load (AnimKey {s32, f32} swap32,
+resident frame data s16 x 7 swap16), AnimData_readFrames (streamed frames swap16), fs_readRecord's
+rom/version.bin word 0. anims.bin was listed as "at extraction" in 18.2, but extract.py swaps
+nothing. Checked and left: RcpMgr_ctor's 0xB0000B70 DMA (the rspboot ucode, never parsed on the
+port), fs_piReadWord (SRAM / host-io words written and read by the same shim), Backup_read (SRAM
+the port writes itself). **Still open:** TrickTable_readEntry (tricks.bin, layout not decoded),
+ImageFile texels (agent-a's byte-order work).
+
+**Next:** run the title demo again (the chase camera's distance, the anims and the timer HUD
+all changed); fold the DWARF ABI scan into a gate step (it needs a linked port build).
+
 ## 19. M2: graphics transport (agent-a, run 820)
 
 > agent-a run 820, 2026-11-17, on branch agent-a: 7c91a2e27 (dumper, hook, tests, reader), e6bda5949
