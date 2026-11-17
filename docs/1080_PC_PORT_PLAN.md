@@ -515,7 +515,7 @@ script (`port/host/input_script.c`; example `port/host/time_attack.input`):
 The 3D scene is black and camera fields are NaN (`cam=ffc00000`) through the race (agent-g, projection).
 The km/h readout shows 0.
 
-**Crash (agent-c, audio).** On the clean tree the race load segfaults at step ~1380:
+**Crash (agent-c, audio).** [Resolved: the 0xB5 byte-order fix 755392718 was not on this branch's base; plan 20.1.] On the clean tree the race load segfaults at step ~1380:
 - `AudioSeq_SequenceChannelProcessScript` (`src/game_libs/game_libs_o2_2BB7C.c:541`), case 0x98:
   `(*channel->dynTable)[value]` with `dynTable == NULL`;
 - called from AudioSeq_SequencePlayerProcessSequence (2C7A4.c:340), AudioSeq_ProcessSequences
@@ -5139,3 +5139,60 @@ scripted input (agent-a run 843, `--input`): then check SRAM 0x230.. holds big-e
 ghost replays identically after a reload. A cross-check against a real emulator `.sra` from the US ROM
 would be the last word (none in the repo).
 
+
+### 20.1 Run 845: the race-load audio crash, a deterministic save, the race with scripted input (agent-c)
+
+**1. The 0x98 / NULL dynTable crash at race load (9.4.1): already fixed on main by 755392718 (the 0xB5 /
+0xB2 byte order, 15.10).** agent-a's branch (6ea217c19) was cut from bcf38948a, before that commit. Proof:
+- 6ea217c19 built as is, `--input time_attack.input --audio-out` with `PORT_AUDIO_DAC=1` (that tree's opt-in
+  DAC model): segfault at step 853 in the same channel-script code; the same tree plus 755392718 only: runs
+  2000 steps into the race.
+- current main (with or without `--audio-out`, now DAC by default): no fault in 2000 / 6000 / 16000 steps;
+  a temporary check at 0x98 / 0xB5 / 0xB6 logged no NULL-dynTable use in a 6000-step race run.
+The mechanism is 15.10's: the byte-swapped 0xB5 offset starts a channel inside sample data; which garbage
+command (0xB6 at address 0x1, or 0x98 through NULL) faults first depends on the heap, i.e. the timing.
+No new audio change; seqrender --course never ran the 0xB5 path (15.10), the game's player-2 seq 26 does.
+
+**2. SRAM determinism (plan 20, 9.4.1's ~35 bytes).** The two PORT scratch records in
+`Backup_resetOptions` / `Backup_resetGhost` (game_libs_tail.c) were uninitialized host stack:
+options `pad15[3]` (SRAM 0x20D-0x20F) and the ghost header's `bits` 14-31 + `unkC` (0x218-0x21B high
+half, 0x224-0x227); the checksums at 0x210 / 0x228, the mirrors (0x7FDD.., 0x7FF5..) and the header hash
+followed. The ROM never writes those bytes either (resetOptionsData / resetGhostData set only their own
+fields), so the N64 saves stack garbage there too. Fix (PORT only): both scratch records are
+zero-initialized, so a fresh save is a pure function of the ROM. test_backup now requires zeros there (it
+used to copy them from the save). Two ASLR runs (30-step boot, and the 2000-step time-attack script):
+SRAM and state.log byte-identical.
+
+**3. The race with scripted input.** `time_attack.input` minus the course change (DR at 1300), so Crystal
+Lake (the first course), plus `F 1460-20000 STICK 0,80`, 16000 steps (~6 s wall): no crash, race state 1
+throughout. The rider descends from y 275600 to ~22000 by step ~6800, then **loops**: respawned at
+(-16645, 22654, 161343) with speed ~5, falls straight down (x / z fixed) 8200 units in ~150 steps, respawned
+again, forever. On course 2 (the script as committed) the same kind of loop starts at step ~2900 (respawn
+at (-27600, 278000, -139000), an arc, respawn every ~175 steps). The stick x ±10 changes nothing (dead
+zone); stick 0,0 stops the rider at step ~4450 in the same fixed-x/z fall loop. A respawn that never meets
+the ground looks like a port collision / physics fault (the camera NaN of 9.4.1 may be related), not
+missing steering; so the finish line, the results screen, the game's replay playback and a real ghost save
+are NOT reached yet (the recorder runs: 9.4.1). Next: find why the respawned rider never collides
+(ground query at the respawn point).
+
+**4. In-race SFX: issued and audible.** A temporary log of AudioThread_QueueCmd from race load
+(step 1381) to 4000: player 0 channels 1 / 3 get volume (0x01), pan (0x03), freq (0x04) and IO (0x06)
+every frame (channel 3's freq scale follows the speed, 0.66..1.15, IO5 = a speed bucket; channel 1 stays
+at volume 0 on this course), and player 2 gets one-shot SFX via channel 0 IO4 (ids 0x3C, 0x08, 0x0B,
+0x09 ...; 0xFF stops them). With the course music muted (the 0x82 for player 1 dropped, debug only), the
+race part of `--audio-out` still has a continuous rider bed (RMS ~1400-2000) with peaks of 22k-29k at the
+player-2 one-shot steps (2207, 2447, 3196). Whether each is the scrape / wind / landing needs a listen.
+
+**5. Crash outside audio: Match Race character select (any save).** Script `START@480, A@560, A@640`
+(Match Race) -> `sys_fatal("Invalid Shape cmd 64853")` at step ~654. A second run of time_attack.input
+in a directory whose 1080.sram came from a first run hits the same (the save clears the language-menu
+flag, so A@560 lands on Match Race). Backtrace: BasePolyShape_parseCmd (game_libs_post0b.c) <-
+BasePolyShape_parse (o2_52CD4.c:184) <- BasePolyShape_ctor <- PolyShape_ctor <- CourseList_createItem
+(timproc_uso_b5_D884.c, the charmap arm) <- SelItemsMgr_ctor (8FC8.c:388) <- GenSelectChar_ctor <-
+app_launchGenProc (o0_8AE4.c:33) <- mgr_procMain <- GameFlow_startMode. The shape stream is
+`port_charmap_data + 0x1B4`, all zeros: charmap.uso is not loaded (app_launchGenProc loads it only when
+gInputMgr mode != 3 && != 5; Match Race is mode 3 and loads charsps instead), yet CourseList_createItem's
+case 0 takes the charmap arm when mode != 2, and SelItemsMgr_ctor creates the 8 course items for i = 0..7.
+On the N64 the unresolved charmap import would not be a zero page either, so the port is diverging
+earlier: the open question is which of (the mode value, the list's createItem vtable slot / arg2 in mode
+3, the jump-table arm) differs. Not fixed in run 845.
