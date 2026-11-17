@@ -3367,6 +3367,102 @@ hang with `kill -INT $(pgrep -x gdb)`.
 gfx_queueGfxTask); then title flow. Sweep the audit list on the title / race paths before they are
 hit.
 
+### 18.11 Run 821: node streams from the data, bootup / game remainders, the last reader templates (agent-c)
+
+agent-c run 821, branch agent-c on main bde103ad0: 1c79f3f3e (`scripts/port-gen-blob-types.py` +
+`port/gen/blob_types.tsv`), 569eedbb1 (`#ifdef PORT` reader swaps). Gate PASS before each commit
+(ROM byte-identical, 3579/3579, verify-blocks 6/6, clean build OK).
+
+**Node command streams.** ProcNodeList has exactly one caller in the ROM
+(SnowBoarder_loadBoardModel, bootup Text 0xB47C), and nodelist_walk / dispatchList / dispatch are
+called only from inside the interpreter, so the streams cannot be found from call sites. They are
+now found from the data. A word `1000` at a symbol / pointer target is parsed with the grammar:
+- known ops (0, 100..120, 1000..1019) with argc <= 16;
+- 1003 opens a walk, and that walk's own 0 word closes it;
+- the list ends at a depth-0 0 word;
+- 1017 targets are followed.
+
+Result: the two rider lists (bootup 0xA924 and 0xABBC; the closing 0 at 0xBBF0 was untyped
+before) and **map5_data 0x9D4**: an MNode with a name, scale (10000 x 3), rotate and translate,
+around a 1003 shape. No other module (title, gui, map4, boarder1-5, charsel / charfir / charsps)
+has a 1000-headed stream. A scan of every module for op words 1000..1019 finds only coincidental
+values outside bootup and map5. Those modules' assets are shape / material / texture streams,
+which were typed already.
+
+**Shape op 30** (BasePolyShape +0x48 count, +0x6C table): the table holds PolySeg
+`{s32, u16 v[2]}` records. PolyShape_makeEdgeVtxs reads v[] as u16. The table was not typed
+before (bootup 0x20CBC).
+
+**bootup Data (the run-815 list), with the readers:**
+- 0x1A2E0: OoT synthesis.c `D_801304B0` u16[8] (unreferenced in OoT too).
+- 0x1BC60: OoT seqplayer `sSeqInstructionArgsTable`, bytes.
+- 0x1C128: snd_ResetVolumeLevels' 11 f32 volume steps.
+- 0x1C320: a byte permutation.
+- 0x1E21C: sys_fatalHaltLoop's `gl_fatalHaltExitCombo`, s32.
+- 0x1E9A4: f32 identity and vec4.
+- 0x1F984: 4 x u16[10]. Typed by the values only; the reader is not located.
+- 0x20350: 12 f32 vec3. The str rule had typed 0x203C8's `0.5f` as the string "?".
+- 0x20598: 3 f32 vec3.
+- 0x20D2C and 0x21130: flag-only shape streams, u32.
+- 0x211E0: the fault_printFlags `{mask, bits, name}` tables, 82 records.
+- 0x21AC8: math_mtxChain series f32.
+- 0x21AF0: math_mtxToQuat `next[3]`.
+- 0x2D690: `__osThreadTail`.
+- 0x70E8 / 0x1FC74: table heads.
+- RoData 0x24E0: f64 1.0.
+
+**game Data:**
+- 0xCC4: s16 pairs (lh 0xCC4 / 0xCC6).
+- 0x1068: an s32 table.
+- 0x109C: rumble bytes.
+
+**genproc:** the s32 tables. **boarder3 0x3B28:** s16[3] x 231.
+
+**New rules:**
+- RoData literal-pool words that no access typed become f32 when the value is a plausible float
+  near 1 (6 words).
+- A string may now start with `\n` if it has at least 3 printable characters.
+
+**Unknown blob bytes, before / after (0 conflicts both):**
+
+| module / section | before | after |
+|---|---:|---:|
+| all blobs | 6,005 | **3,019** |
+| bootup Data | 2,961 | 1,774 |
+| bootup RoData | 405 | 389 |
+| boarder3 Data | 1,400 | 14 |
+| genproc Data | 323 | 191 |
+| game Data | 189 | 55 |
+| map5_data Data | 42 | 0 |
+
+The rest of the unknown bytes are almost all 1-3 byte gaps: string tails, single-`\n`
+strings, and RoData pads. Non-zero unknown runs of 4 bytes or more:
+- bootup Data: about 12 gaps between strings;
+- bootup RoData: 0x2371, a u8 table (bytes either way);
+- game RoData: 0x1BA (`\nNULL\n` tags, bytes).
+
+**Reader templates (18.2).** `PORT_BE_SWAP32S` is now in 29 more copies:
+- balloon (2), checkpoint (2), heli (4), trnproc (4);
+- snoweffects (15, four families);
+- game_libs fs_gdlReadInt_00032D84 / fs_gdlReadQuad_00032DC0 (hostio_readQuadParm).
+
+Every int-reader caller either stores the value or skips the Parm tag. None compares a tag.
+
+Still unswapped, on purpose:
+- AnimData_load, TrickTable_readEntry, ImageFile texels, Backup_read: bulk reads, handled at
+  extraction or kept as bytes;
+- stream_readS32_00005EF8: the EnvSettings tag;
+- fs_read_00066404.
+
+The title path readers (titproc, flowimgs ImageFile cmds, gui, n64proc via game_libs) were
+already swapped. **The 18.2 to-do list is closed.**
+
+**Next:**
+- The port build was not run in this run. Regenerate the blobs, rebuild, and check the
+  run-819 boot gets no further byte-order faults from the data.
+- 0x1F984's reader.
+- Sub-word reads of int fields in code (run 819's bug class 4): an audit, not blob typing.
+
 ## 19. M2: graphics transport (agent-a, run 820)
 
 > agent-a run 820, 2026-11-17, on branch agent-a: 7c91a2e27 (dumper, hook, tests, reader), e6bda5949
