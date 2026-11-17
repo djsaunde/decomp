@@ -25,7 +25,7 @@ first; this plan does not repeat them.
 16. M1: link plumbing (CALL names, bound placeholder calls, data blobs / aliases, port/uso)
 17. M1: libultra shim and main loop (17.8: SysApi, port/fs, boot-path trace)
 18. M1/M2: byte order (USO blob type map + swap, rom/*.bin readers, bitfield audit)
-19. M2: graphics transport (feasibility on WSL2, PORT_GFX_DUMP / DLMP, dlreplay)
+19. M2: graphics transport (feasibility on WSL2, PORT_GFX_DUMP / DLMP, dlreplay; 19.6: Fast3D in f3dreplay, golden tests)
 
 ---
 
@@ -3806,3 +3806,86 @@ the 64-bit one. The 32-bit game -> DLMP -> 64-bit GL -> PNG path is closed.
      PORT edit lands. The dumper only records them as IMAGE references, so this does not affect a dump.
 4. **Dump cost.** The dumper is unmeasured on a real frame. Hash sets keep it linear. If whole-run
    dumping is too slow, use `PORT_GFX_DUMP_EVERY`.
+
+### 19.6 Run 824: libultraship's Fast3D in the replayer, golden tests (agent-a)
+
+> agent-a run 824, 2026-11-17, branch agent-a: bb0a2c56d (LUS patch 0005 + docs) and 41311fe73 (f3dreplay,
+> golden tests). The gate passed before each commit. Code: `port/gfx/fast3d/`, `port/gfx/gold.c`,
+> `port/gfx/golden/`.
+
+**Build.** `port/gfx/fast3d/setup-lus.sh` fetches LUS at the pin and prism-processor (the GLSL template
+preprocessor of the OpenGL backend, at the commit LUS pins; **MIT**, which closes 14.3 item 8 for it) into
+`<monorepo>/tools/lus/`, and applies the patch series. There is no submodule yet; that stays the plan for the
+in-process build (`port/third_party/README.md`).
+- Only four LUS sources are compiled: `interpreter.cpp`, `backends/gfx_opengl.cpp`, `debug/GfxDebugger.cpp` and
+  `resource/type/Texture.cpp`. They build against `fast3d/shim/` (headers named like the Ship / spdlog / ImGui /
+  SDL3 ones they include) and `ship_shim.cpp`.
+- The resource manager serves only the shader template (`shaders/opengl/default.shader.glsl` from LUS's
+  `src/fast`); every OTR lookup misses. Console variables read `LUS_CVAR_<name>` from the environment.
+- Host g++ 11.4 `-std=c++20`, the `tools/gl-dev` headers, libEGL / libGL.
+
+**Feeding Fast3D (the conversion choice).** The dump is rebuilt **at its original addresses**: every chunk
+goes into anonymous pages mapped `MAP_FIXED_NOREPLACE` at the same 32-bit address. A PIE 64-bit process
+leaves the low 4 GB empty, so this works both for the synthetic arena (0x00200000) and for a real `-m32`
+dump (0xF7xxxxxx: `test_port_gfx`'s dump renders). Every pointer operand (G_VTX, G_MTX, G_MOVEMEM,
+G_SETTIMG, CIMG / ZIMG) is then a valid host pointer as it is.
+- Only the lists change. Each DL chunk is widened to 16-byte `F3DGfx {uintptr_t w0, w1}`, and each G_DL operand
+  (call or branch) is pointed at the widened target. Rewriting every pointer operand into the chunk copies
+  would have needed a per-opcode table; this way only one opcode is rewritten.
+- This is 11.5 item 7's 4 GB arena with base 0. The same idea serves the in-process M6 build.
+
+**Fast3D gaps found (embedding and coverage):**
+1. **Low addresses are dropped (fixed by patch 0005).** `gfx_set_timg_handler_rdp` ignores a G_SETTIMG at or
+   below 0x0FFFFFFF unless `dladdr` finds it in a loaded module. That hit every texture and TLUT load in the
+   replayer. It would also hit the in-process 32-bit game, whose brk heap follows the non-PIE executable at
+   0x08xxxxxx. Patch 0005 adds `gfx_register_raw_address_range(start, size)`. The port must register its
+   heap / arena; f3dreplay registers its mappings.
+2. **`Interpreter::Init` resets the ucode to F3DEX2.** Call `gfx_set_target_ucode(ucode_f3dex_line3d)` after
+   Init (and again after any re-init).
+3. **No GUI means no view.** `ViewportMatchesRendererResolution()` compares against `mGameWindowViewport`,
+   which only Fast3dGui (ImGui) sets. Left at 0x0, Fast3D draws into an offscreen game framebuffer, then
+   clears the window at the end of `Run()`, so the frame comes out black. A port without the LUS GUI (the
+   replayer, and possibly the shipping port) must set `mGameWindowViewport` to the window each frame.
+4. **mask = 0 clamps.** LUS clamps texture coordinates past the tile when masks / maskt are 0. Real hardware
+   reads on through TMEM. 1080's loads set masks wherever they wrap, so this is cosmetic. The golden
+   `tex_rgba16` scene wraps with mask 4, which renders correctly.
+5. **Checked, no gap:**
+   - 1-cycle translucency in 1080's cycle-1-only render words (`XLU_SURF` 0x404240, a ZB_XLU form): it
+     blends correctly, so the 11.4 / 14.3 item 6 worry about `use_alpha` does not apply to these words.
+   - G_LINE3D (patch 1) draws both widths.
+   - 2-cycle fog with `G_MW_FOG` and the 2-cycle `lerp(T0, T1, PRIM_A) * SHADE` multi-texture both work.
+   - COPY and 1-cycle TEXRECT (the F3DEX 1 E4 / B4 / B3 triple) and partial scissors work.
+6. **Not exercised yet:**
+   - lighting (NUMLIGHT, lights movemem) and texgen / lookat;
+   - LoadTile sub-rectangles;
+   - G_SETPRIMDEPTH sprites;
+   - CULL_FRONT;
+   - the per-window partial Z clear;
+   - the 14.1 read-back API (patch 3).
+
+   These are the next scenes to add.
+
+**Golden tests.** `gold.c` builds 11 scenes from generator code, in the GBI 1 forms of 11.1 (no ROM data):
+`fill`, `shade`, `tex_rgba16`, `tex_ci` (CI4 / CI8 + TLUT), `tex_ia_i` (IA8 through XLU, I4), `combine`,
+`multitex`, `fog`, `texrect`, `xlu` and `line3d`.
+- Each scene goes through the real dumper (`dlump_task`) and is checked with `dlump.py --check`.
+- Each is rendered by f3dreplay on llvmpipe and compared by PNG sha1 with `port/gfx/golden/golden.sha1`. Its
+  header names the reference renderer (llvmpipe, LLVM 15.0.7, Mesa 23.2.1).
+- `make -C port/gfx test` runs them on the 64-bit host and says SKIP when tools/lus or the GL headers are missing.
+  `make -C port/gfx golden-update` rewrites the hashes; look at the PNGs in `<OUT>/golden-out/` first.
+- The renders were checked by eye before the hashes were taken. Three consecutive runs gave identical hashes.
+
+**Real frames: not yet.** The port build of this branch (main 89e0b3bd3 + these commits; `cmake -S port`
+with `PORT_LINK=ON`, `run32 tenshoe --rom ... --frames 300` with `PORT_GFX_DUMP`) segfaults after the
+second "video mode 320x240" line, before the first gfx task, so no capture exists. This matches agent-g's
+run 822 crash in RcpMgr_queueTask on frame 1. Once the boot gets past it, the capture is
+`PORT_GFX_DUMP=<dir> PORT_GFX_DUMP_COUNT=300`, then `dlump.py --total <dir>/*.dlmp`, then
+`f3dreplay <dir>/gfx_000001.dlmp out.png`.
+
+**Next.**
+1. More scenes for the item 6 features.
+2. A read-back round trip: f3dreplay writes the patch-3 colour / depth answers next to the PNG.
+3. The first real capture as soon as the boot reaches a gfx task.
+4. In process: the same f3dreplay core (arena registration, the widened lists, the viewport) behind
+   `port_gfx_task` once the port links LUS (a). For M6 the widening goes away.
+
