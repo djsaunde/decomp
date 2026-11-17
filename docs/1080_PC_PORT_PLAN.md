@@ -2923,3 +2923,172 @@ fields of the ambiguous +0 object to the +4 object. Sites hidden in header macro
   `D_00000000_a/_i/_j`, `D_4D16C_a`-type unnamed ucode, `gl_26214_aspMainTextStart`,
   `game_uso_D_807FF458`, `D_b3_23E4_17D7`.
 
+
+### 18.7 Run 812: cfront pointers-to-member, the aliasing-hazard audit (agent-a)
+
+agent-a run 812, branch agent-a on main dd5d48ed5: ec3964bc5 (PMF), cc507aef0 (audit tool + boot
+fixes). Gate PASS before the commits (ROM byte-identical, 3579/3579). tenshoe link unchanged
+(37 undefined). Items 4 and 5 of the run-623 "Still blocks" list.
+
+**PMFs (item 4).** The ROM's PMF records are 8 bytes, `{s16 delta, s16 index, fn | vptrOff}`. The
+dispatch (edg's, in RiderAnim_update_0000D204; the same as the C MemberCallback_invoke /
+_00007BF4) works like this:
+- `index < 0`: call `fn(this + delta)`;
+- otherwise: the vptr is at `(this + delta) + vptrOff`, or `+ 0x28` when vptrOff and delta are
+  both 0. The slot is the `{s16 delta, fn}` entry at `vptr + 8 * index` (1-based), called with
+  `this + delta + slot.delta`.
+
+Equality is a 2-word compare. A ROM scan (Data words with a Text reloc at +4 and a head index < 0)
+finds 59 PMFs, all non-virtual `{0, -1, fn}`:
+- game Data 0x840 (Sun) and 0xDB0..0xF58 (RiderAnim states; the null PMF `{0,0,0}` is at 0xDC8);
+- bootup Data 0x7520 (Tv1), 0x1EA38 / 0x1EA40 (Node_Save / Load), 0x1EEC0 / 0x1EEC8 (ItemMgr),
+  0x20638 (BaseMat_sendImage).
+
+`port_cfront.h` now has `PortCfPmf`, with that `==` / `!=` and an `operator->*` that decodes
+the record. The 8 game_uso donors that use PMFs take `typedef PortCfPmf PM;` and a
+non-polymorphic `A` (explicit cfront vptr) under PORT: D204, 10694, 10840, 10A0C, E35C, F060,
+F13C and F6D4. Their call and compare sites stay as written. No other donor uses `->*`, `.*` or a
+PMF type.
+
+**Open, blob typing (agent-c's generator):** port-gen-blob-types.py types each PMF head as **u32**
+(a "field" from the word copies), so on the host it reads delta = -1, index = 0, which is a
+virtual call through garbage. This breaks the new decoder and the existing C
+MemberCallback_invoke (Sun's visCallback, Tv1) alike. Checked in uso_blobs.swapped: game 0xDB0 is
+`ff ff 00 00`. Only game 0xF38 ("unknown", unswapped) happens to be right. The fix is in the
+generator: an 8-byte Data record with a Text reloc at +4 and a head index of -1 (the vtbl rule,
+extended past index 0) gets its head typed **u16 x 2**, overriding the u32 field. That covers the
+59 heads listed above.
+
+**Aliasing hazard (item 5).** `-fno-strict-aliasing` is already in PORT_ARCH_FLAGS, and it does not
+cover this hazard. gcc's decl-based disambiguation assumes that two distinct extern objects never
+overlap, and no flag turns that off. I tested gcc 11 `-m32 -O2` with each of:
+- `-fno-strict-aliasing`;
+- `weak` decls;
+- `-fno-tree-pta`;
+- `-fno-tree-fre -fno-tree-pre -fno-gcse`.
+
+In every case gcc still reuses a load of `tokB+0x80` across a store to `tokA+0x80`. Even two
+decls with the same asm label but different C names stay distinct. Only one C object, at known
+offsets, makes gcc see the overlap.
+
+`scripts/port-alias-audit.py BUILD [--boot] [--all] [--emit FUNC..] [--reuse]` works like this:
+1. It recompiles each cc-select unit to `.s` without the rename (compdb from ninja; about 3 min
+   at -j8).
+2. It resolves each data reference through the unit's port-bind lines, aliases.ld and direct
+   `port_*` spellings.
+3. It lists the pairs in one function that overlap at run time but not to gcc, with a write
+   (HAZARD).
+
+`--emit` prints the fix as a scoped `#ifdef PORT` `#define T (*(__typeof__(T) *)(port_x + 0xK))`
+before the function and an `#undef` after it. A per-addend bind token that lands on the same
+bytes becomes the spelling instead. Boot set: the App_main call closure, the title-flow roots,
+and n64proc / titproc.
+
+- **Fixed (boot, 10):** App_main, app_initSystem, BasePolyShape_initGeomGlobals_00052674,
+  fs_gdlSeekFile, gfx_end, hostio_start, snd_HandleSeqEvent_30AF4, snd_UpdateChannel10Emitter,
+  snd_UpdateTimers, snd_dispatchEvent. Boot HAZARD rows: 73 -> 0.
+- **Listed, not fixed (32):**
+  - bootup: BalloonTmpl_create, TreeTmpl_create, Tv1Tmpl_display, game_initDdm_00002C94,
+    SnowBoarder_ctor (12), item_registerTemplates (14), SnowBoarder_reset, game_setupMode,
+    game_createMap (35);
+  - checkpoint: CheckpointBox/CylTmpl_create;
+  - game_libs: snd_TickChannel8Fade (11), hostio_dispatch (5), `_GLOBAL__sub_I_gGfxLib_412E8_a`,
+    AudioThread_UpdateImpl, AudioThread_ProcessCmds (6), AudioLoad_DiscardFont,
+    snd_SetLevelRampTarget;
+  - match_imports: BasePolyShape_genPointNormals, BoardList_createItem (15),
+    CharacterList_createItem (16), snd_SetPlayer1Channel15IO_2D910 (136), snd_SoundObjUpdate,
+    snd_SoundObjUpdateChannel;
+  - other modules: heli HeliItemType_create, mgrproc MGRRaceProcess_updateSub2 / onEndTimerDone,
+    timproc_b5 gen_createScene_00008DB4, GenSelectChar_ctor, SelItemsMgr_ctor (30),
+    CourseList_createItem (25), LevelList_createItem (25).
+
+  For each one, `--emit FUNC` gives the block. None of them needs a per-addend bind. In
+  game_setupMode and AudioLoad_DiscardFont, `D_00000000` is a plain bind there, so it is
+  `#define`d for that function only.
+- **Blind spots:**
+  - accesses through a register pointer (only the `&T+N` / `lea` form is visible; `--all` lists
+    address-taken pairs within 0x100 bytes for review);
+  - an asm-label decl next to a plain decl of the same name (XDATA; src/ has none today).
+
+### 18.7 Run 813: bootup Data typed (blob byte order part 3)
+
+agent-c run 813, branch agent-c on main 26d9acb8b. Gate PASS before the commit (ROM
+byte-identical, 3579/3579, clean build OK). This section is uncommitted.
+
+| commit | what |
+|---|---|
+| 95e428846 | port-gen-blob-types.py: op 32 remap count fix, indexed direct accesses, static display lists, node command streams + SkinBone tables, 9 bootup KNOWN layouts; blob_types.tsv regenerated |
+
+**Typing bug fixed: shape op 32.** The remap array (+0x70, 3 u16 per entry) has its own count:
+the command's arg 0 (+0x74, BasePolyShape_parse case 32). The generator used nVerts. boarder3
+0x4094 has 231 entries for 155 vertices, so the tails of the remap arrays in boarder1-5 were left
+big-endian (0x22E-0x390 bytes each).
+
+**New rules:**
+- **Indexed direct access.** A LO16 load / store whose base register gets an `addu` between the
+  HI16 and the LO16 (`lui; addu; lw %lo(sym)(r)`) is an indexed element. It is extended forward
+  like "index". This covers snd_SoundObjUpdate's f32 curves (0x1C330 / 0x1C3B0 / 0x1C430) and the
+  genproc / titproc / mgrproc s32 tables (205 sites).
+- **Static display lists.** An address the code takes that parses as immediate GBI1 commands
+  (opcode >= 0xAF) up to G_ENDDL is typed as a display list. Example: gfx_initRDPState's RDP init
+  lists at 0x224D0 / 0x224F0. Before, only DLs holding a relocated address word were found.
+- **Node command streams.** These are the streams of Node / MNode / QNode_doCommand:
+  `{argc << 16 | op, args}`, with no end op.
+  - The rider node list (bootup Data 0xA924..0xBBF0, the one SnowBoarder_loadBoardModel uses)
+    parses exactly to its end, so it is typed u32. Relocated args stay ptr.
+  - Op 114 targets are s16[10] transforms (pos, quat / 32767, scale; QNode case 0x72).
+  - Op 1003 with fn = skin_cmdSkinMgr (Text 0x7D280) gives its SkinBone table: `{s16 count,
+    s16 pad, SkinWeight *}`, with weights `{s16 vert, s16 weight}` (gdl/skin.h). These are at
+    0xC12C and 0xBC30..0xBD34.
+- KNOWN layouts no longer retype relocated words (ptr / audio).
+
+**KNOWN layouts (bootup Data)**, with evidence in the script:
+- the RSP ucode DMEM images 0x11990..0x17D50 (RcpTask_setUcode*'s ucode_data) and aspMain's data
+  image 0x1D340 (0x2E0): bytes. Only the RSP reads them; the port's mixer has its own copy of the
+  resample LUT.
+- gfx_drawFbSplash's 128x128 u16 splash at 0x22A30. It was 32 K of "unknown" with false strings.
+- math_atanLookup's 1025 u16 at 0x2AA60, and math_acosf's 2049 u16 at 0x2C650.
+- __osViInit's 3 OSViMode records at 0x2E530.
+- the course descriptors 0x67F0..0x6E30 (s32 COURSE_OP_* streams, game_createMap).
+- the record / options defaults 0xD268..0xD430 (s32), from Backup_resetCourseData /
+  Backup_resetArcadeData and the per-course times / scores.
+- the 34 op-114 transforms that tile 0xA0F8..0xA3A0 (the stream reaches 20 of them).
+
+**The {0, 1} image header has no reader on the ROM.** Of the 159 relocated references to the 149
+tex:hdr images (142 R_MIPS_32, 17 HI/LO addiu, in every module, imports followed), all point at
+header + 8, the texels. None point at the header word or at +4. The header is never read
+through a reference. Typing it as two u32 is a no-op for any s32 reader and harmless otherwise.
+
+**Unknown bytes, before and after.** "non-zero run" counts the bytes of unknown runs that hold a
+non-zero byte; "nz bytes" counts the non-zero bytes themselves. game_libs has no Data of its own:
+bootup.uso's Data / RoData serve both game_libs and bootup_uso, so its row is the bootup row.
+"game" is game.uso.
+
+| module / section | size | unknown before | after | non-zero run before | after | nz bytes before | after |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| bootup (+ game_libs) Data | 190064 | 54625 (28.7%) | 4083 (2.1%) | 52943 | 2413 | 34442 | 984 |
+| bootup (+ game_libs) RoData | 9632 | 432 | 405 | 58 | 31 | 34 | 23 |
+| game Data | 4880 | 231 | 191 | 176 | 136 | 84 | 65 |
+| game RoData | 640 | 86 | 86 | 78 | 78 | 61 | 61 |
+| boarder1 / 2 / 4 / 5 Data | | 2630 / 2200 / 2192 / 2121 | 6 / 2 / 14 / 17 | | 0 | | 0 |
+| boarder3 Data | 32848 | 3390 | 1400 | | 1388 | | 993 |
+
+All blobs together: 68,960 (6.0%) -> **7,067 (0.6%)**, 0 conflicts. The fresh port build
+generates the blobs from the new map. tenshoe's link still stops on the known undefined symbols
+(18.6).
+
+**Left in bootup Data (984 non-zero bytes)**, all small:
+- the snd float tables 0x1C24D / 0x1C76C (prefix bytes before the indexed runs);
+- game_initDdm 0x71A4;
+- SnowBoarder 0x8170 / 0x84E4..0x8660 (mixed f32 / s32 records);
+- the audio 0x1BC5A;
+- 0x20D2C, 0x21AD0, 0x20598, 0x203B0, 0x1F984;
+- 0x1A2E0 (4 words, no reader).
+
+None of these is on the boot path before the title. boarder3 0x3B28 (231 x s16[3], an unreferenced
+sibling of its remap array) is the largest run left in any module.
+
+**Next:**
+1. The remaining SnowBoarder / snd records, by their readers.
+2. Scan the other modules for node command streams (only the bootup rider list is wired).
+3. bootup RoData's 31 bytes, and game.uso Data / RoData.
