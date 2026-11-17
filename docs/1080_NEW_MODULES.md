@@ -1364,6 +1364,46 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     - al.py: register-normalised alignment;
     - sbs.py: side by side.
 
+- Run 750 (agent-h, commit 5a9160b4b on agent-h, NM only, no renames; 3574 / 3579, gate PASS, exact set identical,
+  592 words, frame 400).
+  - **0xC90 NM 96.83 -> 97.09 %**: two code-free `if (c) {}` lines right after the EE packet, plus B4 appending through
+    nextBI(). c's priority goes 6.76 -> 7.5 (135 / 18), above y0, so **c takes t2 as in the target**.
+    - Use weights differ by nesting: one `if (c) {}` inside the inner `if` adds about 10 to num, one at the top of the loop
+      body about 2.4. Several ifs on one source line change the code (576 words), so put each on its own line.
+    - The two ifs sit inside y0's span, so y0 drops to 40 / 6 = 6.67 and now loses t3 to the E4 pointer gt (30 / 4 = 7.5).
+      The target needs p > c > y0 > gt. c and gt tie at 7.5, and c wins on the lower LR index. A block inside gt's span is
+      always inside y0's span too (y0 is used in w1), so y0 cannot be pushed between them this way. Pair scans over
+      {c, y0, gt, p, x0, `1`} x every loop site (17k builds), 3000 random triples over 17 variables, and a colour-objective
+      beam all stayed at 97.09. A `if (gt) {}` after the texrect sends gt to ra.
+    - Per-packet next-form grid (4^5): EE nextBI / FB nextN / E4 nextI / B4 nextBI / B3 nextN is best. **E4 must stay
+      nextI.** With nextN, the w0 clamp temps get fresh words (J-240 / J-244) instead of the count / dl words (J-132 /
+      J-228). That is right in principle: the target's xh / yh clamp results are a3 / a1 with the presets hoisted before
+      the FB count, while ours are v1 / v0 because they share the count / dl LRs. But it loses the s0 save and 2 words
+      (590).
+  - **Coordinator's levers (agent-e 64B8):**
+    - Callee return types: the view-matrix call typed `void` through a `gl_func_00000000_snowh_view` alias, and the dl
+      call typed as returning a pointer, give identical bytes. A `((void (*)(...))..)` cast gives jalr. This NCC has no
+      namespaces.
+    - The single-`return` inline rule: none of the C90 inlines takes a plain-variable argument that needs a word.
+  - **Tail count (plan items 1 and 3):**
+    - Any change to the tail's words alone takes the function to 590 words. Changes tried: an existing variable as the
+      count (`d = c->dl->count; c->dl->count = d + 1;`), and `me()` hops.
+      Reason: the tail count shares word -128 with the texrect's MAX temps (M-128, a3). Losing the tail blocks drops
+      M-128 to 6.6, and the texrect recolours.
+    - `c->me()->me()->next()` on all six tail packets, plus `c->me()->next()` in the prologue, with scratch[] removed:
+      592 words, frame 400, offsets exact, loop-layout diffs 15, but 96.93. The tail count then shares the loop count's
+      word (J-132; the target also has one v0 count for loop and tail). That word is forbidden v0 / a0 / a1 because the
+      prologue's next() uses word -132 for `this`, which pulls the prologue's call block into the LR. Next step: a
+      prologue form that keeps -132 out of the prologue. Then the shared count can take v0 (the target's loop / tail
+      count) and dl v1.
+  - Tools: /tmp/claude-1000/agent-h/r750/:
+    - cr.py: colour / pri / den of the key LRs;
+    - sw.py, pr.py, rs.py, bm.py: site / pair / random / beam scans of `if (v) {}`;
+    - one.py: a single variable at every site, with colours;
+    - nx.py: per-packet next-form grid;
+    - me.py / me2.py / me3.py: me()-depth grids, prologue form x tail depth x scratch;
+    - v5.py / v6.py: callee-type probes.
+
 ### snoweffects.uso 0x6000+ (agent-e run 639)
 
 - +2 EXACT (commit feb67fb6a on agent-e): 0x8C60 and 0x9FE8, both IDO 7.1 NCC. Own donor
@@ -2329,6 +2369,32 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     | ternary fadeIn | 88.16 |
     | inline `snowWrap(cx, cy, cz, &wx, ...)` with by-value coordinates (c goes back to s2, but +9 words) | 78.7 |
 - **0xC90: not reached.**
+
+### snoweffects.uso 0x28E0 NM 94.88 -> 95.04, frame 520 (agent-c run 749)
+
+- **Commit d17635bb7 on agent-c** (gate PASS, 3574 / 3579, exact set identical, no renames; 793 words, frame 520).
+- **Frame map via the edg word dump.** `NCC -g3` + agent-g's `md.py` gives named M slots (c749/vn.sh); agent-a's
+  `fl.py` (c749/fl.py, fixed to pick the 2nd function's tree) gives every pool word per line. Target in M space
+  (sp - 520): cam -12, m -116, rot -180, halfH -188, i -208, `+=` caller temps C* -268 / C- -280, op- return copy
+  -292, op- ctor temp -304 (+ 3 ctor R params and one unused word), op* return copy -332, op* r -344.
+- **Fixes:**
+  - all loop variables in function scope, halfH and i after rot (order: cam c halfW p d x y z w cx cy m rot last
+    halfH cz sz sw x0 i y0 wz wy wx). Code bytes unchanged; the caller temps then land on -268 / -280.
+  - M 416 -> 408: the gDPWord macro's `Gfx *_g` is a named block local, so every packet costs a fresh word.
+    An inline `snowW(Gfx *, unsigned, unsigned)` has pooled parameters instead. Site choice matters for registers:
+    0x06 + EE + E4 is best (search over subsets, c749/sw2.py).
+  - coordinator lever (single-return inline): `operator*` as `{ SnowV3d r; return (r.set(..), r); }` makes `a` a
+    pooled A word (needs the extra pool words from snowW at 0x06). reg-diffs 308 -> 303.
+- **Left / leads:**
+  - C* / C- are allocated C- first in every form tried (64 op- / op* / += signature + body combinations, member
+    and friend, by value / const ref). The target has C* first.
+  - op* r at -348 (target -344, right under the return copy): s also needs a pooled R word. Ctor via
+    `set(a, b, c)` makes s pooled but then `a` goes fresh (set's `this` takes the A word).
+  - The target spills t4 at sp 116 with M 400 and frame 520 (frame = round8(M + 108 + 4 * spills) fits two spill
+    slots); ours spills at 108.
+  - **snowW on the EE site only, with the ctor body as `set(a, b, c)`** (c749/v/r1_2.cpp): reg-diffs 277 (from 303), positional diffs 451
+    (from 613), but 794 words (over the 793 cap). Find one word elsewhere and it is the next base.
+  - Callee return types (void blank jals for the 4 non-value calls): no change.
 
 ### snoweffects.uso 0x28E0 NM 92.57 -> 94.88 (agent-c run 741)
 
@@ -3450,6 +3516,33 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   Bss+0x50 pointer goes in s4 before the vertex-count test. There is also a v0/v1 pair in the ambient
   compare and the second walk's mask constants (-2 / -3 / -5 hoisted into s2..s4). Scratch:
   /tmp/claude-1000/agent-a/w654/a/best_A10C.cpp. 0x7FE0 is not started.
+
+## snoweffects.uso 0x7FE0 (agent-a run 748)
+
+- **0x7FE0 EXACT (NM 99.97 % -> 100 %, ROM byte-identical).** Donor renamed `snoweffects_uso_ncc_nm_a.cpp` ->
+  `snoweffects_uso_ncc_7fe0.cpp`, spliced on both build paths (Makefile `SNOW_7FE0_FUNCS`); the callees go through
+  the existing 0-pinned aliases `gl_func_00000000_snowa_v` (0x4374), `_snow_46bc`, `_snow_4714` (the USO jals are
+  blank). Scratch /tmp/claude-1000/agent-a/w748/ (`hh.py` on w745/h.py, `tr.sh NAME` = uopt colour trace of
+  `v/NAME.cpp`, `g12`..`g21` the sweeps, `cmpo.py` .o byte + reloc compare).
+- **The merge partner for the |s| word (M-292) is the rgba[2] colour value, not e.x.** In the target the three
+  rgb[k] float values are f0 / f2 / f12 and share one uopt unit (the rgba block). The rgba[2] statement becomes
+  `mixq(0, 0, 0, 0, 0, 0, 0, 0, fade, (float)t->cam->rgb[2])` with
+  `inline float mixq(float d0..d7, float f, float c) { d0 = d0; ..; return c + (255.0f - c) * f; }`: the 8 dummies
+  and f take the nine older R words, so c is the 10th request and lands on -292. The merged LR then interferes with
+  rgb[0] / rgb[1] (f0 / f2) and takes f12.
+  - **The dummy arguments must be constants.** With `s` as the dummy argument (a load per dummy), 7 or more dummies
+    grow the rgba block past uopt's block size, so c lands in a new block (no interference, still f0).
+  - The merged LR has num 80. At den 2 (priority 40) it is coloured before the rgb values (30). Two code-free
+    `if (1) {}` after `a = fabs_(a)` in the d ctor give n = 6, den 3, priority 26.7.
+  - Those loop blocks change the loop-wide 0.0f / fade colours (f24 / f22 swap, 30 words). A per-site sweep of the
+    pre-loop code-free blocks (`st0` / `spd1` on the state != 97 test, `st0` on == 98, `st5` on `int g`) fixes it.
+    Six 0-diff combinations exist (block total 6, e.g. 0/1/0/5, 0/1/1/4, 0/2/0/4).
+- **e.x on -292 also fixes |s| but cannot match** (`v/b012_1_0.cpp`, e ctor `(int, d0, y, z, 6 dummies, x)` plus one
+  ctor block for den 3): M-20 loses e.x's refs (18.9 < M-176's 20), so op*1 z / k / M-20 recolour. Moving TQ::op*'s
+  blocks out of the up-op* `s` range plus `idi6()` blocks around the k index (`g11`: TQ 4-5 ifs + idi6 1-2 ifs) fix
+  M-20 and the cam pointer (9 diffs). What stays is e's load / multiply order (y, z, x), which the param order fixes.
+- The coordinator's factory-function lever (a plain-variable argument substituted in a declarations-plus-return
+  inline) was not needed. Callee return types match the context header (void 0x4374, int 0x46BC, void 0x4714).
 
 ## snoweffects.uso 0x7FE0 (agent-a run 745)
 
