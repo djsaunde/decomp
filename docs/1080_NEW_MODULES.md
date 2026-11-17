@@ -1004,6 +1004,45 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   - Tools: /tmp/claude-1000/agent-h/r702/ (od72.py = od.py through ncc721.sh, trf.sh = FP rows of the uopt trace,
     sbs.py side-by-side vs expected, v*.py batches, c1.py / c2.py C90).
 
+- Run 709 (agent-h, commits 4aa3bd66c NM 99.85 + 04e4d1373 EXACT, no renames; 3569 / 3579, gate PASS each).
+  - **0x47D4 EXACT** (new matching donor src/snoweffects_uso/snoweffects_uso_ncc_47d4.cpp, own Makefile block
+    SNOW_47D4_DONOR in both trees; the NM_H file now holds only 0xC90). Steps from 99.25:
+    - **Frame 192 -> 184: no extra named temps.** The u160 - 5 (`d`), ab * u168 (`k`) and u154 (`s`) block locals
+      each cost a word. Reusing function-scope floats for them costs none, and **which variable a piece reuses
+      sets its uopt colour** (the piece joins that variable's LR). Final: `ab = t->u160 - 5.0f; a = .. / ab ..`,
+      `|u4C|` into f, `ab = f * t->u168; alpha = ab * ..`, `f = t->u154`. That fixed the loop's f / x-copy swap and
+      the ab / alpha-temp swap (u4C load f0, |u4C| f12, product f0). Searched as a d x abs x product x s matrix
+      (r709/v3.py, v8.py, v17.py); most cells are 1-10 words off.
+    - **Second zero constant without a frame word:** agent-g's `{ int z = 0; x = z; }` gives the separate zero
+      (f18, apart from the f16 compare / loop zero), but the block z is a frame word. Reusing the function's int:
+      `i = 0; t->p.x = i; ..` (p / q) and `i = 0; dv.set(i, i, i);` (dv) costs nothing.
+    - **v0 / v1:** `void operator=(SnowBV3 o)` (no `return *this`) puts the vel.set pointer in v0.
+    - **Frame order:** locals are laid out top-down in declaration order (`cam; alpha, lim; P, Q; i; dv; a, f, ab`
+      gives P 160 / Q 148 / dv 132), then each inline's param / local words at the inline's FIRST expansion in
+      source order (later expansions reuse them), then block locals as their blocks open. So `dv.scale(f)` and
+      `dv.set(i, i, i)` before the loop move scale's / set's words ahead of the loop's `w` (sp+88 -> the target's
+      sp+72); vel.set in the loop then reuses set's words.
+    - Param words appear only when the inline needs a home for the param: a param used more than once with a
+      non-variable argument (`fab(t->u4C)` adds one; `ratio(i, t->stride)` with n used once adds none), and
+      `this` of a member called on a non-variable object.
+  - **0xC90 (85.23, unchanged)**, probes (r709/c1-c4.py):
+    - The target frame has v / __V / r at sp+220 / 204 / 192 (ours 236 / 220 / 196). Ours has 3 words between
+      __V and r: scaled()'s named x / y / z. Dropping them gives the target's three offsets but 81.0 (the f0 / f2 /
+      f12 products need them), and the frame top moves 16 down. So the target has 4 more words above the loop
+      (function scope) and no inline locals in scaled(). Function-scope `float x, y, z` + an `mk3(x, y, z)`
+      by-value builder: 85.19, frame 416 (the words don't land where expected).
+    - Ours spills sy to its home slot (sp+368); the target spills 3 FP values to the bottom spill area (88-96).
+      The target also has `self->tex` as a uopt LR (a1) at entry, and dl / count in a2 / v1 (ours v1 / a2);
+      a local tex copy or a getDL() inline gives no change.
+    - Ctors: `SnowV3c() {}` 83.2; + a copy ctor 82.6, but the normalised diff drops 824 -> 705 (597 words, target
+      592) with the GPR picture unchanged (hgt / wid still t5 / t4, i ra). Worth a second look with the
+      copy-ctor build as the base.
+    - GPRs: the target has x0 / y0 / y0 << 2 / x0 + wid in t0 / t3 / t5 / a2 (ours a1 / a3 / t3 / a0), i.e. more
+      interfering LRs in a0-a3 / t1-t2 across the texrect block; that is what pushes wid to ra and hgt to s1.
+  - Tools: /tmp/claude-1000/agent-h/r709/ (fr.py = variant runner printing objdiff %, frame, sp offsets and the
+    positional diff count; dd.py = branch-normalised opcode diff vs expected, `dd.py file.cpp [fn]`; fc.py = the
+    C90 runner; md.py = -g3 local map for 47D4; b3-b7.cpp the 47D4 steps).
+
 ### snoweffects.uso 0x6000+ (agent-e run 639)
 
 - +2 EXACT (commit feb67fb6a on agent-e): 0x8C60 and 0x9FE8, both IDO 7.1 NCC. Own donor
@@ -1561,6 +1600,45 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   it beats 13 diffs. Then port the POD + ct3 / ct0 class set to 6B28 and 718C. Under plain POD, 718C's |speed|
   already colours f16 (the target's). 7.1 gives the same on that POD source, so this is a class-shape lever for
   either compiler, not compiler evidence.
+
+### snoweffects.uso 0x6000+ under MIPSpro 7.2.1 (agent-e run 713)
+
+- **0x6B28 / 0x718C NM donor moved to 7.2.1** (agent-e 9692b0d1c; gate PASS, 3569 / 3579, no renames). New
+  `src/snoweffects_uso/snoweffects_uso_mp72_nm_e.cpp` (Makefile `SNOW_MP72_E_*`, tools/ncc721.sh, NM-only).
+  objdiff: 718C 97.07 -> 97.28 %, 6B28 unchanged at 99.18 %. 64B8 stays on the NCC donor (`SNOW_NM_E_FUNCS`).
+- **Compilers.** 718C is 7.2.1: its chained op* temporaries (`v3B0 * f20C * |a|`, `v114 * .. * f210`) sit at
+  sp+320 / sp+308 in the target, which is EDG 2.29's order; the 7.1 donor has them swapped. 6B28 has no chained
+  temporary, and both front ends give the same frame and code. It sits between two 7.2.1 functions, so it is
+  filed with them. The run 698 `if (0) x *= ..` float-temporary levers still pay under 7.2.1 in both functions
+  (removing them: 6B28 +18 diffs, 718C +15), and so does 718C's `{ int sc[2]; sc[0] = 0; }`.
+- **64B8: not beaten (s1 = 15 real diffs, NCC donor 13).** The cause is now known; the fix is not.
+  - **Tools** (scratch /tmp/claude-1000/agent-e/w713/): `vm.py` lists uopt's `isvar` offsets with `v` for vreg
+    words (via `d6.sh` = ncc721 + `-zdbug:6`). Unlike `-g3`, this shows the inline-parameter VREG words.
+    `g3.sh` + `md.py` / `fv.py` give the `-O2 -g3` names. `/tmp/claude-1000/agent-g/r689/lrb.py uoptlist <bb>`
+    (on a `-zdbug:5` dump) lists the LRs live in one block.
+  - **Words in the `n += v318 * k * (f184 + spd)` statement** (vfp; sp = 344 + vfp):
+    - op*1: s = -20, this = -16, r1 -140, ct3's a / b / c = -120 / -124 / -144 (-144 is NEW, after r1).
+    - op*2: return slot -156 (sp 188), s = -144 again, r2 -168, ct3's a / b / c NEW at -172 / -176 / -180.
+    - Target: -128, one extra word at -132, r1 -144, return slot -156, one word at -160, r2 -172.
+  - **-20 is the function-scope `?:` temporary of `spd = speed < 0 ? -speed : speed`.** Every later float
+    parameter reuses it first: op*='s s and op*1's s. That gives one uopt LR across 8 blocks (adj 29.7, coloured
+    f0), so op*1's a / b / c get f2 / f12 / f14. The target has f0 / f2 / f12. The target's frame fits op*1's s
+    taking a NEW word (-132) while a / b / c take -20 / -120 / -124: then a shares -20's f0, there is no new word
+    after r1, and op*2's s is the new word after its return slot (-160). No spelling found so far does that.
+  - **Flat or worse:**
+    - op*= spelled as set() / ct3(this) / set4(.., s) / mulBy() / a comma return / const s / a block float;
+    - op* via set(), named p, mulTo, a ct4 with s, `float q = s`, or `s * x`;
+    - a friend `float * SV` in any operand order; `(n *= ..) += ..`;
+    - `if (1) {}` / `do {} while (0)` between the statements. This does split the uopt block, but -120 / -124
+      are shared with the op- statement, where -20 is live;
+    - spd through if / else, or an inline fab() (which adds a -24 vreg, frame +4);
+    - dead float-parameter inlines (no ucode, so no word).
+  - Partial hits:
+    - `set4(x * s, y * s, z * s, s)` in op*= puts r1 at the target's -144, but recolours the n *= products.
+    - set() in op*= puts r2 / the -160 word at the target's place, but the frame is +8.
+  - Next: find a front-end shape where op*1's s is not handed the free -20 word. Try a float parameter
+    allocated while -20 is still held in the same full-expression, or a different dtype pool for s. Wire the
+    7.2.1 64B8 into the mp72 donor once it reaches 13.
 
 ### nameent.uso 9BC + snoweffects below 0x6000 (agent-c run 655)
 
