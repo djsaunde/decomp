@@ -4653,6 +4653,55 @@ after_all_sheet.png (all three; 54 tasks to step ~10000).
 - Task 2601: arch-shaped rock / tree-textured course geometry in the sky over the lake; course shape,
   identity model matrix. Unverified whether it is legit cliff geometry seen from a rolled camera.
 
+### 18.22 Run 849: one tag convention; whole-frame capture (agent-a)
+
+agent-a run 849, branch agent-a on main 1d727331e: dbb00bc2d (revert of 5ad5a6743), 473c59edd (tag typing,
+was d999a0486), f903ce883 (km/h), 0dad08891 (crash backtraces, input scripts), b8f22f98c
+(port_uso_importData), 9d2a948e2 (f3dreplay --then, capture.sh -M). Run 846's b9f38d8f7 was dropped: agent-c's
+1d727331e covers it (nameent / viewrec cfront, the boot-word checks).
+
+**Tag convention: cartridge byte order everywhere.** A 4-char tag stays as its bytes: blob words typed `str`
+(port-gen-blob-types step 4c, source `tag`, 330 words), and the readers do not swap (fs_gdlReadInt_00035AA4,
+ItemMgr_Load). 5ad5a6743 (swap the Parms reader, blob tags host-order ints) is reverted; the two together cancel.
+Evidence (title demo, TAGLOG prints in Parms_load / ItemMgr_Load, not committed):
+- host-order convention: ItemMgr 31 misses, among them hel / hem / tv1 with an ENABLED descriptor (the descriptor's
+  tag word was never typed u32, so it stayed cartridge order while the file tag was swapped): the heli items never
+  load. And EnvSettings (a third reader: COURSE_OP_SUN registers sun / len / lt0 / lt1 with map_addEntry, then
+  Node_Load of the env file) never matches: the Sun / LensFlare Parms (rot ele scl mat col / fin dlv dfm) load 0
+  times in 2500 frames.
+- cartridge convention: every ItemMgr miss is flag-gated (chk 2, gtr / gtl 1, sn3 0x400 vs mode 0x13C), as the ROM
+  behaves; Parms 0 misses; the Sun / LensFlare / colour parms load.
+- an unrecognised tag word defaults to unswapped (= file order); the host-order convention needs every tag word
+  recognised as an int, and 2-char tags like "tv\0\0" (bootup Data 0x7E40) are typed str.
+- the game prints tags as strings: "Parm '%s' ignored", "Dup parm '%s'", "Loading ItemType '%s'", "ItemType not
+  found '%s'".
+- no code immediate is a tag: no lui / ori pair in any built object forms 3 letters + NUL (only 'KMC\0' in
+  osInitialize and a gfx combine word).
+
+**Verified (merged tree):** time_attack.input: course names follow the cursor (Crystal Lake -> Crystal Peak), the
+stat bars are coloured, km/h shows (117 / 37 km/h: the >= 100 arm prints). match_race.input reaches Select Level /
+Rider / Board; options_tour.input reaches Options / Records and back to the title. Title demo: 3D on every sampled
+step, 0 NaN / Inf in cam / rider fields.
+
+**OPEN, blocker for the title demo: SIGSEGV at step 2511** (end of attract demo 1, flow 4,1,1) on the merged tree
+only: origin/main runs 10000 frames, and this convention before agent-c's c16a6b2e1 / 1d727331e ran 10000 frames.
+eip = ecx = 0x089CE840, a HEAP address (inside sArena): a call / return into a data pointer. sp[0] = 0x0067696C
+("lig\0", the snow-lights ItemType tag). The rider trace diverges from main's at step 225 (r0 velocity). Not the
+item types (skipping hel / hem / bal / ba2 / tv1 / sn3 / sun / len in ItemMgr_Load still crashes) and not the Sun /
+LensFlare parms (skipping rot..col / fin dlv dfm in Parms_load still crashes). Registers / stack came from a SA_SIGINFO
+LD_PRELOAD handler (/tmp/claude-1000/agent-a/r849/segv/segv.c, built with tools/i386-sysroot/gcc32 -shared; it
+also stubs signal() so main's handler doesn't replace it; the ELFCLASS32 warnings are from the 64-bit timeout).
+The live stack is not a usable chain (Node_update / App_Update words are stale); a check in Node_update's slot-3
+call (game_libs_ncc_38728.cpp) for a target past etext printed nothing, so it is another indirect call. Next: find the function that jumps to the heap pointer, then which object's vtable / callback
+it read (the env lights lt0 / lt1 now load: check their consumers first).
+
+**Whole frames (9d2a948e2).** `f3dreplay in.dlmp out.png --then in2.dlmp ...` runs one frame list that calls each
+task's root in turn, so the colour / depth images carry across a frame's tasks. Each dump's lists are widened from
+its own words (the game patches 23 shared DL bytes between the split-screen halves); other data is mapped once
+(0 differing bytes at steps 1700..9900). `capture.sh -M` renders each step as one image (png/fNNNNNN_sSTEP.png).
+Demo 3's split screen now renders whole with the 1080 logo overlay; the title demos show the overlay over the 3D.
+Golden tests: 19 scenes match. Sheet: /tmp/claude-1000/agent-a/r849/cap_whole/sheet.png.
+
 ## 19. M2: graphics transport (agent-a, run 820)
 
 > agent-a run 820, 2026-11-17, on branch agent-a: 7c91a2e27 (dumper, hook, tests, reader), e6bda5949
@@ -5395,3 +5444,56 @@ speed) are the board / wind bed. Not checked by ear.
 - slowdown 0x960 sits at 5 for most of the race;
 - the name-entry board is a grey box without letters (2D, agent-a);
 - the spike polygons (agent-g).
+
+### 20.3 Run 850: the race gate, steer-search, the speedometer, slowdown (agent-c)
+
+**Why the run-848 script stopped working.** agent-g's run 847 fixes (PolyShape_shade / makeEdgeVtxs /
+anim_blendPose adjacent locals) changed the physics. /tmp/claude-1000/c848/steer1.input now rides to
+~65 % and the rider retires at step 4987: health falls to -9 after repeated crashes. Inputs that worked
+before do not fit the new physics.
+
+**Trace field e0=** (port/trace.[ch], the PORT collector in game_uso.c): DataManager entries[0] gives
+pct, speed, finished and health. A goal and a retire both end in race state 2. Use pct == 100 for
+the goal and health <= 0 for a retire.
+
+**port/tools/steer-search.py.** It replaces the scratch steer.py. Each 60-step window holds a stick x
+from {0, ±40, ±80} (y 80), with one window of lookahead. Each candidate is re-run from boot (about 2 s),
+5 in parallel. Score: pct + 0.1 x health. A retire is excluded. When every candidate in a window
+retires, the search backtracks one window. After the goal, probe runs place the menu tail:
+- name entry (flow 12) when the time is a top-3 record: A x5 = "AAA" + END, then Best Times -> A;
+- TimMenu -> View Replay;
+- after the replay: DD, DD, A, DL, A (Update Ghost -> Yes).
+
+`--tail-only SCRIPT` rebuilds only the tail. On main 1d727331e the search took 65 s:
+- Goal! at step 4621, 1'44"08 (3rd place);
+- port/host/race_crystal_lake.input; the ghost reload script is race_crystal_lake_ghost.input.
+
+**Gate step `race`** (port/tools/race-check.py, ~7 s, runs in the default gate). Each run starts in a
+fresh dir. Checks:
+- the goal happens at the script's `# GOAL` step;
+- View Replay r0 is bit-identical to the race from start to goal (3154 steps);
+- after a new process reloads the 1080.sram, the ghost r1 is bit-identical too.
+
+A deliberately broken stick fails all three checks. On failure the gate prints the steer-search
+command. A physics-affecting fix legitimately breaks the script, so regenerate it and commit it with
+that fix.
+
+**Speedometer: covered by agent-a's ca1db5292 (run 846/849).** The value fed to the gadget is right:
+- e0 speed = rider dnode.speed / 2 (SnowBoarder_update -> RaceTracker_setEntrySpeed, a prototyped
+  float);
+- RaceTracker_update passes (int)speed.
+
+The 0 / 3 km/h readout came from the two SpeedGadget_setSpeed arms (10..99 and >= 100) that called
+sprintf without a value. With that patch applied locally, the HUD read 70 / 56 / 73 / 88 km/h at steps
+1700 / 2200 / 2400 / 2900, against e0 speed 70.9 / 56.5 / 73.9 / 88.0. This rules out a units, float-ABI
+or byte-order problem.
+
+**Slowdown (rider +0x960): game behaviour, not a port bug.** A temporary probe on the race above found
+slowdown 0 on 2652 of 3154 race frames. RiderAnim_stateRide clears it. On a hit (hitKind 1..5),
+RiderAnim_updateSlowdown adds st1..3 / sl1..2 = 5 per frame. It stops once the value passes
+stm 40 / slm 20 with the board in contact. Then slowCrash = 1 (the crash animation), and the value
+resets when the ride resumes. The parms read sane: st 5,4,3, stm 40, sl 5,5, slm 20. The run-848
+"sits at 5" came from the pre-847 / pre-fix physics.
+
+**Pending:** agent-a run 849 (the parm-tag byte-order reconcile) may change rider parms and physics
+again. If it does, re-run steer-search after rebasing.
