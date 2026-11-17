@@ -77,6 +77,15 @@ Then, in order:
    `toolchain-i386.cmake`, creates `tools/cmake-venv/` (cmake + ninja) if
    missing, and ends with a C / C++ / cmake hello-world self-test. If
    `gcc -m32` already links it says so and exits 0.
+9. **Play the PC port live** (plan §19.11) — with an X display (WSLg gives
+   `DISPLAY=:0`) and the i386 sysroot of step 8, from the game repo:
+   `port/tools/play.sh` (or `port/tools/play.sh -b <built port tree>`). It fetches
+   the 64-bit LUS / GL / Xlib headers without sudo on first use
+   (`port/gfx/fast3d/setup-lus.sh`, `port/gfx/replay/setup-gl-dev.sh`,
+   `port/gfx/fast3d/setup-x11-dev.sh`), builds the 64-bit presenter and the 32-bit
+   `tenshoe`, opens a 960x720 window and runs the game in real time. Keys:
+   arrows / WASD stick, X or Space = A, Z = B, C = Z, Enter = START, Q / E = L / R,
+   IJKL = C buttons, TFGH = D-pad, Esc quits. No sound yet.
 
 ## 2. The gate — run this before every commit, no exceptions
 

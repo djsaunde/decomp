@@ -5458,6 +5458,79 @@ in step with the GPU on demand:
 3. Re-check the Sun's depth units (0xFFFC far) once agent-g's projection fix lands. Then capture a race with a
    CrystalGuy / MetalGuy rider (ScreenThumbMat) and a tv1 course item to exercise the colour path on real frames.
 
+### 19.11 Run 856: the live presenter, option (c) of 19.1 (agent-g)
+
+> agent-g run 856, 2026-11-17, branch agent-g. The game is now **playable in a window on this machine**: the
+> 32-bit tenshoe runs as before, and a 64-bit presenter renders its gfx tasks live through Fast3D and sends
+> the keyboard back. Command (from the game repo; needs an X display, WSLg gives `DISPLAY=:0`):
+> ```
+> port/tools/play.sh                       # builds what it needs on first use, then plays
+> port/tools/play.sh -b <built port tree>  # an existing PORT_LINK=ON build (with this change)
+> ```
+
+**Architecture.**
+```
+ tenshoe (i386, PORT_LIVE=<name>, --realtime)            presenter (x86-64, X11 + EGL, LUS Fast3D)
+   port_gfx_task -> build_task (= the PORT_GFX_DUMP          creates /dev/shm/<name> (live_shm.h)
+     DLMP image, same bytes) -> port_live_task          ->   ring: 3 slots x 48 MB, one slot = one step
+   main.c step end -> port_gfx_step_end -> publish           newest frame: chunks copied to their own
+     (ring full: drop the frame, never wait)                 32-bit addresses (persistent 1 MB blocks),
+   host_read_pads <- pads[4] in the header           <-      lists widened, tasks composited (--then),
+   host_poll_events <- quit flag                     <-      Run, eglSwapBuffers; X keys / js0 -> pad 1
+```
+- **Transport:** `/dev/shm/<name>`, header + a single-producer / single-consumer ring (`port/gfx/live_shm.h`,
+  4-byte fields only, the same layout in both ABIs). The game appends each task's DLMP image to the step's
+  frame and publishes it at the step end (`port_gfx_step_end`, a weak hook in main.c's `step()`), labelled
+  with the step of its first task (= steps.txt; SysLib.frameCount has already advanced at the step end). A
+  full ring drops the frame, so the game keeps real time; the presenter renders only the newest frame when
+  it falls behind.
+- **Presenter** (`port/gfx/fast3d/presenter.cpp`, `make -C port/gfx/fast3d presenter`): f3dreplay's model kept
+  alive. Data chunks are copied to their own addresses in a persistent arena (1 MB blocks mapped on first use,
+  MAP_FIXED_NOREPLACE, registered for patch 0005). Fast3D's texture cache is keyed by address, so a TEXTURE /
+  TLUT chunk whose bytes differ from the arena's invalidates [addr - 32 KB, end) (patch 0004) before the copy.
+  The lists are widened per task each frame, the step's tasks are called from one frame list (f3dreplay
+  `--then`) behind the SETZIMG prologue (19.9). Window: Xlib + EGL on the X display (`setup-x11-dev.sh`
+  fetches the Xlib headers; libX11.so.6 is on stock WSL2), SDL was not needed. The window backend's
+  SwapBuffersEnd is eglSwapBuffers, no vsync.
+- **Input:** the presenter's key state -> `LivePad` pads[0] in the header -> `port_live_read_pads` in
+  host_headless.c's `host_read_pads` (an `--input` script still wins). Keys: arrows / WASD stick (Shift
+  half), X / Space = A, Z = B, C = Z, Enter = START, Q / E = L / R, IJKL = C, TFGH = D-pad, Esc quits. A
+  Linux joystick (`/dev/input/js0`, Xbox layout) is read when present (not tested: WSL has none). Window close
+  / Esc sets `quit`, which ends the game's run loop (`host_poll_events`); the game sets `gameExited`.
+- **Pacing:** the game runs its fixed 30 Hz step with `--realtime` (play.sh passes it); the presenter shows
+  frames as they arrive.
+
+**Measured (WSLg, d3d12 on the AMD GPU, scale 2):** 30 frames/s from boot to the attract demo; frames 0.2 MB
+(logos) to 9.9 MB (attract race, texture strips), render 5 - 9 ms per frame; 1 - 34 frames dropped per 600 to
+850 steps, all at first-use shader compiles. No texture dedupe was needed (two memcpys of 10 MB per frame).
+
+**Verified:**
+- the presenter's frames are **byte-identical** to f3dreplay `--then` of the same steps' dumps (PNG `cmp`, steps
+  300 and 580, PORT_GFX_DUMP_STEPS run alongside PORT_LIVE, scale 1);
+- **input:** `--inject 600:Return:d,604:Return:u,650:x:d,654:x:u` sends synthetic X key events (XSendEvent to the
+  window, back through the X server into the normal event loop): the title goes to English / Japanese and then to
+  the main menu (Match Race / Time Attack / ...) in the presenter's frames;
+- the M32 `make -C port/gfx test` (test_port_gfx links port_live.c) passes; the matching gate and port-gate pass.
+
+**Limitations / next:**
+1. **No live audio.** The machine has no libpulse / libasound (64-bit or 32-bit); WSLg's PulseServer is at
+   `/mnt/wslg/PulseServer`. Next: carry the AI buffers in the frame (a LIVE audio record) and play them in the
+   presenter through libpulse-simple fetched like the X headers (`apt-get download libpulse0 ...`).
+2. **Framebuffer model (agent-a's 19.10 / run 855):** FB_READ / FB_DEPTH chunks travel in every frame but are not
+   answered; the planned interface is a reply area in the shm header: the presenter serves them with patch 0003's
+   read-back at the end of the frame's Run and writes the 320x240 RGBA5551 image / the depth pixels back, keyed by
+   the frame seq; the game's port_fb copies them into the requested images before the next step (one frame of
+   latency, the N64's). FB_WRITE (debug paths only) is not composited.
+3. Fixed window size (scale x 320x240, no resize / fullscreen). Only pad 1 is driven.
+4. A run with PORT_LIVE renders nothing in-process; with `-DPORT_GFX_FAST3D=ON` (option (a)) PORT_LIVE is
+   unnecessary.
+
+**Changes outside the new files (agent-a's port/gfx kept minimal):** port_gfx.c (dump_task split into
+build_task + the file write; live_task; port_gfx_step_end), port/gfx/Makefile (test_port_gfx links port_live.c),
+port/gfx/fast3d/Makefile (the presenter target), main.c (the weak port_gfx_step_end hook, port_live_close),
+host_headless.c (pads / quit from the presenter), CMakeLists.txt (port_live.c). New: live_shm.h, port_live.[ch],
+fast3d/presenter.cpp, fast3d/setup-x11-dev.sh, port/tools/play.sh.
+
 ---
 
 ## 20. M5 prep: saves (agent-c, run 844)
@@ -5711,3 +5784,45 @@ Frames: /tmp/claude-1000/agent-c/r853/cap_name/png (5440 board, 5480 / 5540 / 56
 
 **Gate:** no new step (the race step covers the physics; the mode scripts are ~2-4 s each and could
 become a "modes" step that checks: trick points > 0, training lesson advances, 2P VS result).
+### 18.25 Run 855: the depth-clear model (sun / flare headless), render to texture (name-entry board) (agent-a)
+
+agent-a run 855, branch agent-a on 79a5aa6: **863a455bb** (port_gfx.c Z-clear model), **3ff19825d**
+(f3dreplay render to texture + port/tools/sram-slow-records.py). Both gated (ROM byte-identical,
+3579/3579, clean build OK, port gate PASS incl. race: goal 5121, replay, ghost). Frames:
+/tmp/claude-1000/agent-a/r855/frames.
+
+**1. Sun / lens flare headless.** Sun_measureVisibility reads 9 Z pixels (0xFFFC = sky) of the
+N64 Z image, which nothing wrote without an in-process renderer (read 0xFFFF: visibility 0,
+Sun_display returned). port_gfx_task (not PORT_GFX_FAST3D) now walks a task that has pending
+depth reads and applies the game's own Z clear to the image in memory, as the RDP does: G_SETCIMG
+z (the game masks it to 24 bits, so the full pointer comes from the port_fb_read_depth request),
+fill cycle, G_SETFILLCOLOR 0xFFFCFFFC, G_FILLRECT 0,0..319,239 (and the 192x96 replay pass's own
+clear), big-endian, only into images some task named with G_SETZIMG. Approximation: no geometry,
+so headless the sun is never occluded (it shows behind trees / mountains). PORT_FB_ZCLEAR=0 turns
+it off. In-process Fast3D is unchanged (real depth read back). Game state: state.log over a 9700-
+step race + replay is identical in every physics field; only the trace's r0 `/animState` field
+differs (it prints a pointer-like value at attract step 222+; a trace oddity, not the model).
+sun_before / sun_after_s8700.png (replay: sun + flare ring + elements), sun_after_s6900.png.
+
+**2. The grey name-entry board.** Cause: render to texture. The replay 3D task draws into an
+offscreen 192x96 RGBA16 image (G_SETCIMG width 192 at 0x9b8f80, scissor 192x96, its own 192-wide
+Z clear) and the overlay task textures the board from it (G_SETTIMG fd1000bf 0x089b8f80, TEXRECTs);
+Fast3D ignores G_SETCIMG, so the replay landed in the frame's top-left and the board showed the
+image's never-written memory (grey). Not the cfront layout, not a texel byte order, not PORT_RDP16.
+f3dreplay --then now renders tasks whose colour images are all < 320 wide in a pass of their own,
+writes the pixels back (big-endian RGBA5551) into the arena where other tasks load that image,
+and draws the frame from the remaining tasks; the board shows this frame's replay (N64: previous
+frame's). The "no letters" part: the letter wheel / NAME ENTRY row appear only after A on the
+"Nth place" board; they render correctly (nameentry_after_s6190.png: NAME ENTRY A_ _, wheel
+SPC DEL END A B C D, the replay with the sun in the board). agent-c's run-853 dumps re-rendered:
+agentc_s5540_after.png ("3rd place" board with the replay).
+**Open:** in-process Fast3D has the same render-to-texture gap (each task is its own Run /
+EndFrame; it would need the offscreen task's top-left region read back into the image's full
+pointer + texture-cache invalidate, and not presented).
+port/tools/sram-slow-records.py IN OUT: all course times -> 9'59"97..99, resealed (1 SRAM write on
+boot). Not needed with main's regenerated race script (3rd place), kept for other courses / modes.
+
+**3. GO!** Not settled. At step 1440 of this build the 3D GO! letters draw pink-red, translucent,
+with a light rim (go_s1440.png), not the run-846 dark maroon (that predates run 851's lt0 / lt1
+record fix, a plausible cause, unverified). The 32x32 RGBA32 texture in that task (0x09126ca8) is a
+whitish chrome map modulated by shade (G_CC_MODULATERGBA); the GO! draw itself was not isolated.
