@@ -33,3 +33,4 @@ test_*.s
 
 # Derived training/evaluation manifests
 exports/
+.claude/settings.local.json
