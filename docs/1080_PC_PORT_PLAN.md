@@ -5965,7 +5965,15 @@ emulation of that combine over the frame without the sprite matches Fast3D's out
 per channel over 3940 pixels (go/emucmp.png). Dark texels -> maroon 621d38, bright -> pink ff8b8e, at 67 %
 opacity over the snow: the "pinkish red, translucent" look is what the game's own PRIM / ENV produce.
 
-**3. Win-screen box: not renderer-side (back to agent-c).** The green box is a 32x64 RGBA16 TEXRECT at
+**6. f3dreplay crash on Trick Attack's after-goal overlay (agent-c run 860): fixed.** ImportTextureIA8 read
+0x089ed5a6: the GOAL! sprite's LOADTILE pieces load rows 187..203 of the 72-wide IA8 image 0x08add1c8; the dump
+holds only those rows, so the image's base page was unmapped / unregistered, patch 0005 rejected the G_SETTIMG,
+and Fast3D loaded the PREVIOUS image (0x089eaca0, 56 wide) at the new offsets (0x089eaca0 + 56*187 + 30). Fix:
+f3dreplay and the presenter map + register the page / block of every G_SETTIMG address in the lists. Open: Fast3D
+itself keeps a stale texture_to_load after a dropped G_SETTIMG (a LUS patch; not done, it re-fetches the shared
+tools/lus for every agent).
+
+**3. Win-screen box: not renderer-side; agent-c confirms it is the intended Normal level sign.** The green box is a 32x64 RGBA16 TEXRECT at
 (144,108) (overlay task, PRIM*TEX0, prim alpha 0xfe) of texture 0x089ae330 = flowimgs.bin +0xfc5ac: the
 green-circle trail-difficulty sign (its neighbours in flowimgs are the blue square and black diamond,
 win/neigh.png). It decodes correctly; it also shows on the Round 2 intro. Whether the N64 draws it there
