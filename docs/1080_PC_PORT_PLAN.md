@@ -4683,7 +4683,7 @@ stat bars are coloured, km/h shows (117 / 37 km/h: the >= 100 arm prints). match
 Rider / Board; options_tour.input reaches Options / Records and back to the title. Title demo: 3D on every sampled
 step, 0 NaN / Inf in cam / rider fields.
 
-**OPEN, blocker for the title demo: SIGSEGV at step 2511** (end of attract demo 1, flow 4,1,1) on the merged tree
+**FIXED in run 852 (18.24: an sret pop mismatch in SnowAI_finishRun). Was OPEN, blocker for the title demo: SIGSEGV at step 2511** (end of attract demo 1, flow 4,1,1) on the merged tree
 only: origin/main runs 10000 frames, and this convention before agent-c's c16a6b2e1 / 1d727331e ran 10000 frames.
 eip = ecx = 0x089CE840, a HEAP address (inside sArena): a call / return into a data pointer. sp[0] = 0x0067696C
 ("lig\0", the snow-lights ItemType tag). The rider trace diverges from main's at step 225 (r0 velocity). Not the
@@ -4791,6 +4791,97 @@ Sheets: courses_lake_peak_forest.png, courses_village_dragon_deadly.png, courses
   path / course markers or a collision difference (the class of c16a6b2e1).
 - The speed readout shows 0 or a garbage value (122870...) in races (agent-c's speedometer).
 - Sun / flare in captures: see above (agent-a).
+
+### 18.24 Run 852: the step-2511 crash was an sret pop mismatch; the convention lands (agent-a)
+
+Branch agent-a = origin/main d83578d2f + the cartridge tag convention (473c59edd, dbb00bc2d cherry-picked)
++ two commits: the fix (30a053172) and the regenerated race script (2c9339811).
+
+**Root cause of the SIGSEGV at step 2511 (closes the 18.22 OPEN item).** Not an item type or a Parms group:
+the newly-loaded objects only change the physics, and with them the title demo's CPU rider (SnowAI) now
+reaches the finish at step 2511, so SnowAI_update dispatches aiState 1 -> SnowAI_finishRun for the first
+time. SnowAI_finishRun (game_uso_ncc_6A30.cpp) and SnowAI_recoverStuck (game_uso_ncc_71E0.cpp) declared
+`PORT_SRET_NOPOP Vec3 SnowAI_aimAlongSegment(...)` (caller pops the hidden pointer), but the shipped
+definition is the cfe donor game_uso_7C1C.c, a C function returning Vec3 by value, which ends `ret $4`.
+Every call left esp one word high; the epilogue popped ebx / esi / edi one slot off and `ret` took the
+next word: the function's own argument, the SnowAI object (eip = ecx = 0x089CE840, sp[0] = "lig\0" was
+just the word above). Fix: drop PORT_SRET_NOPOP on those two declarations (empty in the ROM build).
+How it was found: the 32-bit SA_SIGINFO handler (/tmp/claude-1000/agent-a/r852/segv/segv.c) printing
+sp[-24..] showed the popped ebx / esi / edi at sp[-4..-2] and 0x089CE840 at sp[-1] (a `ret` one slot
+high, not a call); dumping the object at eip gave its cfront vtable (slot 3 = SnowAI_update, aiState 1).
+- Rule: PORT_SRET_NOPOP belongs only where the C side spells the sret as an explicit out-pointer
+  (definition ends in a plain `ret`). Checked the other users: cam_toTargetLocal_000023D4 and
+  SnowAI_aimWeave end in a plain `ret` (correct). abi-scan's SRETPOP rows list `def_pops=1` for these
+  callers but cannot see the caller-side attribute; a check that reads the caller's post-call esp
+  adjustment would have caught it (not done).
+- Note for 18.23's "attract demo 1 rider stuck on the rock wall": on this tree (cartridge convention)
+  the demo rider rides through (speed 0x43xxxxxx = 130..230 at steps 1300..2500) and finishes at 2511;
+  the trace is identical to before the fix up to the crash, so the convention, not the fix, changed it.
+  SnowAI_recoverStuck had the same drift: with the fix a stuck CPU rider's recovery reads its locals
+  correctly.
+
+**Verified on the merged tree (port build /tmp/claude-1000/agent-a/r852/pb):** title demo 10000 frames rc 0,
+0 NaN / Inf (rider and camera). time_attack (race state 1 at the end), match_race, options_tour,
+trick_attack, vs2p, title_idle: rc 0, 0 NaN.
+
+**Race script regenerated** (port/tools/steer-search.py, 310 runs, 133 s): the race now starts at 1433;
+Goal! at step 5121 (race time 3661 steps, about 2'00": not a top-3 time, so the script has no name
+entry). race-check: goal / replay (3689 steps bit-identical) / ghost (reload bit-identical) PASS.
+race_crystal_lake_ghost.input (menus only) unchanged.
+
+**EnvSettings under this convention:** stream_readS32_00005EF8 reads the tag word unswapped (file
+order) and EnvSettings_load compares it with the handler ids from the str-typed blob keys (cartridge
+order): no swap needed there (agent-g's afcc46f50 is the host-order counterpart; drop it with this).
+
+**Still open:** the grey name-entry board (needs a top-3 finish to reproduce; the new script is not
+one: a faster steer line or a synthetic SRAM with slow records would reach it); sun visibility in
+headless runs (no depth image: Sun_measureVisibility reads 0xFFFF).
+
+### 18.25 Run 854: why the attract-demo rider rammed the wall; the CPU rider on every demo (agent-g)
+
+(Asked for as 18.24; agent-a's run 852 took it.) agent-g run 854, branch agent-g on agent-a's run-852 tip
+2c9339811 (the cartridge tag convention + the SnowAI sret-pop fix), one commit on top (the gate check
+below). afcc46f50 (run 851's EnvSettings swap) is not on this branch: dropped, as 18.24 says.
+
+**Root cause of 18.23's wall-ram: the CPU rider never steered.** SnowAI_steer returned at
+`if (helper_ptr == 0) return;` on every frame, so SnowAI_applyStickInput never ran and the rider just
+slid straight down the fall line into the rock wall left of the lake run. helper_ptr comes from
+SnowAI_updateMarker -> SnowAI_findNearestMarker_0000A374 -> ItemMgr_findType_0003EA98 with the key
+`*(int *)kMarkerTypeTags_548[targetNode]`, a 4-char string ("mrk", "mk1".."mk9", "mkl", "mkr") read as a word.
+That string is str-typed in the blob (cartridge byte order: key 0x006b726d on the host), while on main
+d83578d2f (host-order convention, a0bac7a1d) the course's 12 marker ItemTypes registered host-order tags
+(0x6d726b00, 0x6d6b3100, ...). findType never matched. Printed per call (temporary AIDBG prints in
+SnowAI_steer / A374 / findType, not committed): before, `tag=006b726d r=0` and the type list in host order;
+on agent-a's tree, the types are cartridge order and `r` is the "mrk" ItemType from frame 1.
+**So the fix is agent-a's convention (991d86f1c / bf1474d6a), no SnowAI change needed.** This is a third
+tag reader class besides Parms / ItemMgr_Load / EnvSettings: game code that builds an ItemType key from a
+Data string. Under the cartridge convention every such key and every registered tag are file-order bytes.
+
+**AI correctness after the convention (checked by eye from per-frame prints of targetNode / altNode /
+modeFlags / aimMode / marker flags / aim vector / yaw / unk3C / out flags):** the target marker advances
+along the course, fork branches switch targetNode (tn 0 -> 3 / 8 / 5 / 1 / 2 / 11), out flags 1 / 4 / 8 /
+0x20 / 0x40 / 0x80 fire, the pickFork / scanNodes paths run (mf 1 17x, mf 2 2x), no NaN / Inf in any AI
+value, the finish marker (flg 0x400) triggers SnowAI_enterFinish. aimMode 1 (weave) never runs in the
+demos or Match Race: weaveLead is RoData 0xF8 = -100000 (only far behind a rival), ROM behaviour.
+ItemMgr_findType misses over 30000 title frames: only ItemMgr_Load's flag-gated types (gtr gtl chk hem
+hel sn3 cfr tv1), as 18.22 says.
+
+**30000-frame title-demo loop (agent-a's tree), rc 0:** 14 demo passes, every rider gets down its
+course; no 120-step window with the rider moving < 1500 units. Max e0 pct per pass: demo 1 (Crystal
+Lake) 100 (the goal at ~2511) on the first pass, 94-95 on later ones (the demo timer ends first); the
+split-screen Crystal Lake race 90-94; the second course (start y 302726) 72-76 when its timer ends.
+The 2-rider demos keep both riders moving (r0 / r1).
+
+**Match Race AI opponent** (agent-c's /tmp/claude-1000/agent-c/r853/in/mr2.input menus + STICK 0,60 to
+step 9000; the shipped match_race.input stops in the select menus on this tree): the CPU rider (r1)
+reaches the finish marker at step ~4100 (rival lead -231453: the straight-stick human retired at 33 %),
+then stops in SnowAI_finishRun; round 2 (7250..) starts and the CPU rider again rides at 170-233.
+
+**Gate guard (commit):** port-gate.sh smoke now also requires the attract demo's CPU rider to reach
+60 % (trace e0 pct) when the run has >= 2000 frames: 74 % at 2000 with steering, ~35 % against the wall
+without it.
+
+**Still open:** match_race.input's menu steps on the current tree (agent-c run 853).
 
 ## 19. M2: graphics transport (agent-a, run 820)
 
