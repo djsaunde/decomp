@@ -3810,6 +3810,36 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
 - **Next:** in m3c0, lower M-220 below 3.0 (num <= 8 at den 3; the pitch side has 5 uses) or move set3's pooled
   words so that M-168 leaves block 70; then fix the 531 swap.
 
+## heli.uso (agent-g run 781)
+
+- **0xB08 EXACT (agent-g 0d3ec4e89 NM 99.15, a0ccd8bd1 NM 100.0, 619872257 matching build; gate PASS each, report
+  3577 / 3579, exact set identical, no renames, 943 words + pad, frame 368).** heli: 26 / 26. Scratch:
+  /tmp/claude-1000/agent-g/r781/ (`v.py`, `lrv.sh NAME` = M-220's LR and pick cost, `fm.py` = frame-offset map
+  of aligned rows). Committed source = `c28.cpp`.
+- **0d3ec4e89, rows 312..322 (q in v0):** a dead def right after case 2's lookup, `if (zp(p, 0)) p = 0;` with
+  `zp(v, z) = z * (int)v`. uopt folds it only after copy propagation, so p is multi-def at copy-prop time and
+  stays a variable. The call result is then copied into p (the copy coalesces into v0) instead of being propagated as
+  R2, so R2's LR ends at the copy and no longer reaches q's block, and q takes v0. Reusing p for q
+  (`p = *(p + 0x2C)`) together with this fold is worse (frame words move with dum4A's arguments). The same fold in
+  q's block, or inside an inline load helper (`ld2Cz`), also works.
+- **a0ccd8bd1, rows 531 / 547 (agent-e run 780 edits, on top of 0d3ec4e89):** the lerp value goes in g (the roll
+  value in dist), with no dumf pads and no idm().
+  - The mechanism is a uopt COST split (IDO_CODEGEN "needsplit"). The trace line `COL ... save=13 best=10`
+    shows that M-220 is coloured while its num (13 appearances) is above f16's call-crossing cost (10).
+  - When num <= cost, `split(A, c, 1)` keeps the piece out of the call blocks. The def-only blocks 58 / 60 / 62
+    then stay in memory, so the sin result is stored at its def, before the cos argument reload, and as1 fills
+    the jal slot with `lwc1 f12,44(sp)`.
+  - Any edit that takes the pitch appearances off M-220 does this. Two examples: a fourth `dumf(pf)` (but idm()'s
+    parameter is then a new word, M-312, which pushes the uopt temps 4 lower), or one dumf (idm then takes
+    M-164, so the lerp value is f12, not f16).
+- **619872257, matching build:** HELI_NM_FUNCS is spliced on both builds, and heli_uso.c has a placeholder body
+  (as for 0x8A8).
+  - The splice renames the donor's .rodata relocs to `heli_uso_func_00000B08_rodata`, pinned at 0x78.
+  - The target's jump table is at RoData+0x7C, with the doubles after it unpadded. So the donor has one 4-byte
+    const word, `heli_roPad_b08`, ahead of its literals. Every donor offset is then target - 0x78. With no pad,
+    the 4 references below the first double are off by 4 at either pin.
+  - The donor file keeps its `_nm` name (renaming it is a separate git mv).
+
 ## heli.uso (agent-g run 777)
 
 - **0xB08 NM 99.08 -> 99.13 % (agent-g a9b42d1a8 99.10, f64b6905a 99.11, 12f9f5cba 99.13; gate PASS each, 3576 / 3579,
