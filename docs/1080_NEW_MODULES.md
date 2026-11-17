@@ -3089,6 +3089,46 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   `_g` (M-368, pri 30, a0 on the draft, a3 in the target) an LR that starts in the draw block, e.g. by moving the EE
   `c->next()` before the depth row, or a phantom int item coloured a0 in block 48 so that M-368 gets a3.
 
+### snoweffects.uso 0x28E0 NM 99.02 -> 99.81 (agent-c run 791)
+
+- **One commit on agent-c: 562425d9a** (gate PASS, 3577 / 3579, exact set identical, no renames; 793 words,
+  frame 520, sp offsets unchanged). Positional diffs 150 -> 83, mnemonic diffs 2 -> 0. All three assigned items
+  are fixed:
+  1. **Row 619 `16(at)` vs `0(at)`** was the depth scale, not offX: `snow_ro_10 = 0x10` put the 0x10 in the
+     reloc, the target has it in the instruction. Read it through a 0-based RoData alias as C90 does:
+     `struct SnowRoData28E0 { float ro[4]; float depthScale; }; extern "C" SnowRoData28E0 snow_rodata_28E0;`
+     (`snow_rodata_28E0 = 0` in undefined_syms_auto.txt replaces the snow_ro_10 line).
+  2. **FP ring rows 614-621:** the EE depth adds a plain `1.0f` (was `(float)snowOne()`). The constant is then
+     loaded before the cz * w product, as in the target.
+  3. **B3 divide order (rows 683-699):** this was an int ring rotation, not a scheduling problem. The target's
+     0xB3000000 w0 constant (t7) is still live at the first divide, so the quotient goes in t6 and the texH load
+     in t8 (which as1 cannot hoist past the divide checks). That is the gImmp1 / `_SHIFTL(dsdx, 16, 16)` form:
+     mask the quotient before the shift, `((A / sw & 0xFFFF) << 16) | ((B / sz) & 0xFFFF)`. The same edit also
+     fixed the self->visible t8 / t9 rows (485-567). Lesson: when a B3 / B4 / FA packet's ring is one off, try
+     the gbi.h `_SHIFTL` masks literally.
+- **Left (all uopt int colouring, 83 diffs):** FA dl / count (rows 85-90), y0 a3 vs a2 (603), EE g a0 vs a3
+  (615-629), E4 dl / count (633-639), B4 g (666-668), B3 g (677-710), tail packets (767-780).
+- **Draft toward those, not committed (99.56, 108 diffs, 793 words, frame 520):**
+  /tmp/claude-1000/c791/keep/28E0_c791_h02_eeg_a3_793w_99.56.cpp. Rows 603-710 match the target there
+  (y0 a2, EE g a3, E4 dl / count v1 / v0 and g a0, B4 g a0, B3 g a1). Four edits on the commit:
+  - E4 through plain `next()` (drops the nextM word M-240 out of block 49; M-240 had forced y0 off a2). That
+    loses 8 frame bytes; `{ int padw; (void)&padw; }` after the BB packet puts them back (frame 520, spill 116,
+    no code).
+  - x0 / y0 raised from 15 to 25 with two zero-code uses each, `+ 0 * (x0+x0+y0+y0 ..)` on the E4 w1 low half.
+  - EE through a block-scoped `Gfx *ge` (declared at the top of the draw `if`) with direct w0 / w1 stores, plus
+    two `+(int)ge` terms in the same fold. ge then spans blocks 48-49, pri (30 + 20) / 2 = 25: it ties x0 / y0
+    and loses on index order, so it is coloured after E4 g (30, a0), x0 (a1) and y0 (a2), and gets a3 as in the
+    target. One or three ge terms are 794 words.
+  - What it breaks: SNOW_CAM2 (e881, pri 14.75) now gets a3 instead of t0, because nothing coloured a3 interferes
+    with it any more (in the commit y0 did). That shifts sw / sz to t0 / t1 and the loop's t2-t5 / ra rows
+    135-450. The target needs an a3 LR in one of e881's blocks (2, 4, 5, 8, 40, 41, 47). The obvious one is EE g
+    live in block 47, but an earlier `ge = c->next()` (before x0, before y0 or before cz) moves code (794-796
+    words). The 47 / 48 split sits right after cz; moving cz first is 792 words.
+  - FA through `next()` (without nextN) gives dl / count v0 / v1, swapped. Void-typing the two `m` / `rot` calls
+    (`gl_func_00000000_snowa_v`) does not fix the swap on this base.
+- Tools in /tmp/claude-1000/c791/: q.py / ev.sh / nd.sh as run 787; nn.sh (also ignores sp offsets); gen2-4.py
+  (the ge / x0 / y0 / next-site sweeps).
+
 ### snoweffects.uso 0x28E0: spill 116 (agent-c run 782)
 
 - **One commit on agent-c: 76cd5df08, objdiff 98.939 -> 98.942** (793 words, frame 520, mn 2 / reg 104 -> 102).
