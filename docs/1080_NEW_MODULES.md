@@ -1735,6 +1735,43 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   - Tools: /tmp/claude-1000/agent-h/r779/: pv.py (JSON variant runner: replacement lists or prologue strings),
     both.py (side-by-side range), C3repo.cpp (committed body, absolute include), v1-v21.json (batches), o/ (outputs).
 
+- Run 783 (agent-h, research only, no commits; 0xC90 stays 99.18 / 22 diffs, 592 words, frame 400).
+  - **Why the pooled E4 count adds a block: uopt's block-size split.** It is not the inline's structure. Block 21 is
+    the straight line from the FB pointer through drawn++, x1 / y1 and the E4 append up to the xh ternary. Every
+    pooled-parameter E4 form (atE / atN0 / next / xA / nR, with or without dummies and q pads) adds a few IR ops there.
+    That pushes the block over the size limit, and uopt splits it inside E4: M-132 becomes 21:2/1 22:1/0, e762 22/23,
+    and the extra block changes the loop's colouring, so s3 is lost (589-590).
+    Proof: drop the y1 `+ z0(0) * ((int)p + (int)p + y0)` terms from those variants and the split goes away
+    (M-132 21:3/1, one LR for both counts, v0).
+    `if (1) {}` anywhere between FB and E4 gives the same 589 / s3 loss, so the target has **no** block boundary
+    between the FB and E4 counts, and the two counts must be one LR (M-132).
+  - **Budget lever (byte-identical on the committed body):** move the y1 terms out of block 21 into the `if (y0) {}`
+    before FB, as `if (y0 + z0(0) * ((int)p + (int)p + y0)) {}`. `if ((int)c + ..) {}` also works. Moving them to
+    the B3 / B4 / E4 w1 or to `if (p)` gives 595.
+  - **With that budget, `c->atE1(0, c->dl->count)`** gives the E4 count on M-132 (v0), the dl on e861 (v1) and no
+    extra block, all as in the target. The member is
+    `Gfx *atE1(int d0, int n) { d0 = d0; dl->count = n + 1; return &dl->buf[n]; }`.
+    The named n is gone, so the frame needs a named pad: `int q = 0;` in primDepth (or B4 / B3 / after `if (p)`)
+    gives frame 400.
+    The result is still 591 words (349 diffs). The old named E4 count (M-228) was what held a1 in block 21. Without
+    it, the xh CSE e762 (pri 25) takes a1 instead of a2, and as1 then hoists xl into a2 early (one word lost).
+  - **What is missing:** an LR coloured a1 that is live in block 21 / 22 and outranks e762. In the target that is yh:
+    its preset `or a1,zero,zero` sits at the FB top only because a1 is free there; ours is v0, busy with the FB count.
+    With no yh dummy (K0), yh lands on M-128 (tex / yh / s-middle, a1) at pri 21. But M-128 is not live in block 21,
+    so e762 still takes a1. Next step: a form that makes M-128 (or yh's word) live through block 21 and raises it
+    above 25 with no IR in block 21.
+  - Dead ends:
+    - `dmK(..)` as a statement, or `+ dmK(..)` in an expression: edg folds it completely (no effect).
+    - `(dmJ(..), z0(0)) * v` steering in block 21: J has no effect.
+    - `z0(0) * ((int)m ..)`: 595 / frame 408.
+    - EE pointer as a parameter (primDepthP(depth, c->next() / nextN / me()->next)): 88-89 %.
+    - Random climbs over E4 form x yh dummy x if-line counts x z0 sites x tail c-terms (8000 evaluations) stay at 22.
+  - Tools: /tmp/claude-1000/agent-h/r783/:
+    - pvb.py: JSON runner, which can start from a previous output via `@@BASE@@`;
+    - srch.py / srch2.py + run_s*.py: random climb;
+    - C5.cpp: base with the y1 terms moved and the atE* / pad defs;
+    - lm: use ../r776/lmall.py.
+
 ### snoweffects.uso 0xC90 y0 t3 / E4 pointer t4 (agent-e run 760, research only, no commits)
 
 - **Fixed, code-free: objdiff 98.598 -> 98.758 on agent-h's run-762 head (c57226a6e).** Positional diffs go from 73
