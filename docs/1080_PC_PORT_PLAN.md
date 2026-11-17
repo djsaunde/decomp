@@ -4702,6 +4702,96 @@ its own words (the game patches 23 shared DL bytes between the split-screen halv
 Demo 3's split screen now renders whole with the 1080 logo overlay; the title demos show the overlay over the 3D.
 Golden tests: 19 scenes match. Sheet: /tmp/claude-1000/agent-a/r849/cap_whole/sheet.png.
 
+### 18.23 Run 851: EnvSettings tags, the charmap import, the six courses (agent-g)
+
+(Asked for as 18.22; agent-a's run 849 took it.)
+
+**Conflict with 18.22 (agent-a, the cartridge-order tag convention).** afcc46f50 follows the convention
+on main today (a0bac7a1d: tag readers swap, blob tag words typed u32 = host-order ints). agent-a's
+473c59edd reverts that (blob tags typed `str`, readers unswapped). Whichever lands second must drop the
+other's reader change: under the cartridge convention stream_readS32_00005EF8 must NOT swap (drop
+afcc46f50's hunk and 7e6ec91c7's comment); the EnvSettings tags then match because 0x7EE8 is `str`.
+Either way the observable result is the same (sun / len / lt0 / lt1 load). On this branch (main +
+the three commits) the title demo runs 10000 frames rc 0 with the env records loading, so 18.22's
+SIGSEGV at step 2511 is not caused by the lights loading by itself.
+
+agent-g run 851, branch agent-g on main 1d727331e: **afcc46f50** (bootup, PORT only), **504a89e79**
+(genproc, PORT only), 7e6ec91c7 (port.h comment). Each gated (ROM byte-identical, 3579/3579, clean build OK, port gate PASS).
+Frames in /tmp/claude-1000/agent-g/r851/frames.
+
+**Fly-in black regions (tasks 1001 / 10201) and the arch over the lake (task 2601): gone, no change
+needed.** Both were the camera under the course: in run 847's build the demo rider fell through the
+ground (y 231775 -> 219884 between steps 500 and 600 there, the camera following), and agent-c's
+gTriEdgeNext fix (c16a6b2e1) keeps it on the slope. With the same sampling as 18.21
+(`-n 11000 -f 601 -e 400`, demos_now_sheet.png) every 3D task renders the course; steps 612 and 5212
+show the slope and fences.
+
+**1. EnvSettings record tags (afcc46f50).** stream_readS32_00005EF8 (EnvSettings_load's tag) read the
+word unswapped, but game_createMap registers the handlers with `*(int *)&sStr_sun_7EE8` / len / lt0 /
+lt1 from bootup Data 0x7EE8, a u32 blob block, i.e. host-order values. No tag matched, so every
+course skipped its sun, lens-flare and both light records (the size word let the skip stay in sync,
+so nothing crashed). Sun_readParms never ran (rot / ele 0: the sun at (0, 0, 16e6), on the +z
+horizon), the flare kept its ctor elements, and lt0 / lt1 (lt1 is the shadow light,
+gfx_setShadowLight) kept ctor defaults: the projected rider shadow fell along the default light as
+long slabs beside the rider. After: Crystal Lake's records are sun 76 / len 404 / lt0 28 / lt1 28
+bytes, each handler consumes exactly its size; Sun rot -36.72, ele -2.88, mat 8; the shadows sit
+under the rider (before_env / after_env_race_sheet.png, *_t005177_s2700.png). port.h's comment on the tag
+readers now says they swap (7e6ec91c7, comment only).
+
+**2. charmap import while charmap.uso is not loaded (504a89e79).** Second launch with a save after a
+race (here: steer1.input from an existing 1080.sram) died at step 572 with `sys_fatal: Invalid Shape
+cmd 64853`, in CourseList_createItem (genproc 0xD884) <- SelItemsMgr_ctor <- GenSelectChar_ctor <-
+app_launchGenProc, mode 3 (Match Race: the saved language skips the language menu, so A at 560
+picks Match Race). app_launchGenProc loads charmap.uso (the course-map shapes) only when the mode is
+not 3 or 5, but CourseList_createItem's arms 0 / 1 run when mode != 2 and use the genproc import
+from charmap (Sym 347 etc., value 0 in the file). On the N64 that import is unresolved, so the shape
+pointer is 0 and BasePolyShape_ctor skips the parse; the port bound it statically to
+port_charmap_data + 0x1B4 (an unloaded, zeroed blob) and parsed garbage. Under PORT the 16 charmap
+sites of CourseList_createItem and its sibling (timproc_uso_b5_DF14.c) now pass 0 while charmap.uso
+is not loaded (port_uso_isLoaded). After: Match Race with that save runs (level, rider, Round 1
+Crystal Lake, race to step 3000; after_charmap_matchrace_with_save.png). General point: a static
+XDATA / alias bind to a module that can be absent is the port's version of an unresolved import;
+other genproc imports (charfir 8 sites at 0x92D0.., charsps 0xDB28..) are guarded by the same mode
+tests as their loads.
+
+**Race frames** (`capture.sh -i steer1.input -F ...`, Crystal Lake, after both fixes):
+- textures: snow detail, trees, rock faces, fences, houses, the balloons and the lake reflection
+  (mountains mirrored) render; nothing missing found.
+- fog: the course FogParms are min 996 / max 1000 (G_MW_FOG 0x7D00 / 0x8400), colour b7e0ff,
+  alpha 0, loaded from the file (gfx_loadQuadIntInt, the reads swap): fog only at the far plane.
+  The trees' TreeTmpl fog is 993..997, 0.17 grey, alpha 1. No game-side fog bug seen.
+- sun / lens flare: the sun now has its parms but is never drawn in headless captures: in tenshoe
+  without Fast3D nothing writes the depth image, so Sun_measureVisibility reads 0xFFFF (not the
+  0xFFFC "far") at all 9 samples, count 0, visibility 0, fade < 0.1 and Sun_display returns. f3dreplay
+  does serve the requested pixels (`fb depth: 9 far` in many race tasks) but cannot feed them back.
+  **For agent-a:** a headless model of the depth clear (the G_FILLRECT of 0xFFFC on the Z image) or
+  replay-to-game feedback is needed before the flare can show in captures.
+- particles: snow spray (white dots behind the board) and the board trail render.
+- shadow: the projected silhouette now has the lt1 direction (compact, under the rider). Its colour
+  is G_SETPRIMCOLOR 0x00000070 after the fix (0x6C6C6C70 before, from default light values): black,
+  alpha 0.44, drawn with the static DL at 0x0880EC90 (G_CC_PRIMITIVE, G_RM_AA_OPA_SURF 0x00442048,
+  1-cycle, no Z), so the alpha is not used and the shadow is opaque black. That is what the display
+  list says; whether the hardware shows it darker / lighter is a renderer question.
+- far mountains: textured and banded only by their own texture at 3x (after_env_big3900.png); no
+  game-side cause found.
+
+**Courses** (time_attack-style inputs with N x DR; Mountain Village / Dragon Cave / Deadly Fall with
+a save whose options unlocks = 0x00FF, seqStep = 5 (SRAM 0x1F8 / 0x7FC8, sums at 0x210 / 0x7FE0
+adjusted): /tmp/claude-1000/agent-g/r851/unlock.sram). Each loads, races and renders to step 2800:
+Crystal Lake, Crystal Peak, Golden Forest (sunset cliffs), Mountain Village, Dragon Cave (night,
+moon), Deadly Fall, and Trick Attack's Half Pipe (to "Goal! New Record") and Air Make. No crash.
+Sheets: courses_lake_peak_forest.png, courses_village_dragon_deadly.png, courses_halfpipe_airmake.png.
+(Straight-stick inputs leave the rider against walls on Mountain Village / Dragon Cave; not a bug.)
+
+**Still open.**
+- Attract demo 1: from step ~1400 the demo rider runs into the rock wall left of the lake run and
+  stays there at speed 4-13 until the demo ends (2533), every loop (6100.., 10500..; speed 155 at
+  1300, 95 at 1400, 12 at 1500). The demo is not an input replay (pad_startPlay is never called in
+  the first 400 frames of the attract loop), so the rider is CPU-driven: look at the CPU rider's
+  path / course markers or a collision difference (the class of c16a6b2e1).
+- The speed readout shows 0 or a garbage value (122870...) in races (agent-c's speedometer).
+- Sun / flare in captures: see above (agent-a).
+
 ## 19. M2: graphics transport (agent-a, run 820)
 
 > agent-a run 820, 2026-11-17, on branch agent-a: 7c91a2e27 (dumper, hook, tests, reader), e6bda5949
