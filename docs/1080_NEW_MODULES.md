@@ -2794,6 +2794,53 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   - nr.py: positional diffs, ignoring sp offsets and branch targets;
   - t4-t14.py: sweeps.
 
+### snoweffects.uso 0x28E0: the draw-block e45 temp (agent-c run 773, research only, no commits)
+
+- **No commit; 97.96 stands (793 words, frame 520, mn 2 / reg 199).** About 600 compiles. Scratch:
+  /tmp/claude-1000/c773/:
+  - `lrq.sh TAG`: draw-block LRs;
+  - `nodes.sh TAG LO HI`: per-node `expoccur` from `-zdbug:2`;
+  - `perm.py`: statement-order grid;
+  - `evr.sh`: `VR=-Wo,-varref,N` diagnostic;
+  - `col.py`: cy / depth registers.
+- **Item 1 (cy / depth swap) is solved, but the gain is eaten by a cascade.** Swap the loop-top `cy = ..` and
+  `cz = ..` statements, so cz's row comes first. The loop-top code is unchanged (only the x / y / z register
+  renames below). M-192 (the depth) then gets LR index 253 and M-52 (cy) gets 270, so the depth wins the
+  pri-30 tie. Result: depth f2, cy f12, 1/w f14, as in the target. The LR index is set where the variable is
+  first assigned in code, not by declaration order. Declaring cz before cy does nothing.
+  Draft: keep/28E0_A_czfirst_cy12_dep2_793w_97.70.cpp.
+- **The cascade: e45 (pri 15) beats M-284 (-halfH, also pri 15) on index.**
+  - e45 now interferes with cy's f12, so it takes f16. -halfH moves to f18, and x / y / z move to f20 / f22 / f24.
+  - Net: reg 199 -> 237.
+  - `(-halfH < cy) + zf1(-halfH, 0)` in the third `&&` operand raises -halfH (sv 2.0), and -halfH gets f16 back.
+    e45 then takes f18 and x / y / z still shift (reg 235).
+  - The target has no free callee-saved FP register over blocks 41-42: f28 is the 0.0 constant and f26 the 1.0.
+    So e45 must not exist at all.
+- **What e45 is:**
+  - It is the PRE temp of the cx row sum (base row 534: `add.s f12`, target `f8`).
+  - uopt block 41 = 1/w, sw, sz, `cx = row0` (plus the cy-row m loads). Block 42 = the two scalings and the first
+    compare. It is a straight-line node pair (varref boundary, kit XXXV).
+  - The m[i][j] elements are separate M variables (M-100 / M-84 / M-96 / M-80 ..), so each one is a counted load.
+  - The boundary does not move for `-varref` 19..24. It moves earlier at 18 and later at 28.
+  - Any order of the six statements (sw, sz, both rows, both scales; 89 orders) compiles to the same bytes.
+  - In the target, the cx row sum and the cx scaling are in one block. The row sum is a ugen temp, and cy is
+    computed before the first compare.
+- **Moving the boundary before the cx row** (+1 counted load in the sw / sz index, e.g. `zf1(halfW, 0)` in both;
+  equivalent to varref 18) removes e45. But cy is then copy-propagated into the compare blocks (the 792-word,
+  mn 29 shape, reg 196). Neither a dead `if (zf1(cy, 0)) cy = 0.0f;` second def nor one-step cx / cy forms keep
+  cy in place. `if (zf1(cx, 0)) cx = 0.0f;` gives 794 words, mn 9: halfH is reloaded at 561, and e45 stays.
+- **Negatives:**
+  - The depth in wz / wy / wx: joins their LRs.
+  - Folds `if (zfK(cz, 0)) {}` / `if (1 + zfK(cz, 0)) {}` at the EE block.
+  - `zf8` / `zf1` instead of `zf4` in the EE word.
+  - `if (1) {}` before / after the rows (mn 18-56).
+  - Any 4-way gDPWord / snowW x next / nextN / nextR choice for the E7 / B9 / BA / BB tail: 144 forms, all >= 199.
+    The forms that move the t4 spill to 112 change the frame.
+- **Next:** find how the target keeps cy un-propagated with both cy statements in the compare block. The
+  run-729 `*(volatile float *)&halfH` ILOD idea is one candidate. Do it in the boundary-before-cx shape, then
+  stack the cz-first swap on top.
+  The 8-byte temp gap (item 2) and the int ring (item 3) were not reached.
+
 ### snoweffects.uso 0x28E0 NM 96.11 -> 97.96, frame 520 (agent-c run 769)
 
 - **Three commits on agent-c**, each with gate PASS, 3576 / 3579, the exact set unchanged, and no renames; all 793 words, frame 520:
@@ -3557,6 +3604,36 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     (602 / 637), 728..801 f12 / f14 / f2, 907 axZ store order, and the tail f6 / f8 swap at 925..933.
 - **Next:** in m3c0, lower M-220 below 3.0 (num <= 8 at den 3; the pitch side has 5 uses) or move set3's pooled
   words so that M-168 leaves block 70; then fix the 531 swap.
+
+## heli.uso (agent-g run 774)
+
+- **0xB08 NM 98.72 -> 99.08 % (agent-g 9312742a5 99.02, ae89b7023 99.06, 95c0f004e 99.08; gate PASS each, 3576 / 3579,
+  exact set identical, no renames, 943 words, frame 368).** Raw rows 84 -> 20; the 15 register-masked rows left are
+  all structural. Scratch: /tmp/claude-1000/agent-g/r774/ (`v.py`, `rd.py`, and `pp.sh` / `pk4.py NAME LO HI all`
+  for the picks, named locals included). Committed source = `c22.cpp`.
+- **9312742a5 banks agent-e's run-771 edits on the m3c0 form** (`b08_e771.cpp`: mq / set3q, the trailing cut in subc,
+  the yaw+yaw fold). The same edits on d2r score about 98.3, so m3c0 (the lerp in idm()'s parameter = M-220) is the
+  base.
+- **Found on m3c0 (superseded by e771, but the mechanism holds):** clampP's dead `if (zf1(v, z)) v = lo;` reads v
+  before v is redefined, so uopt propagates that read to the lerp word (M-220's 95:1/0 use). `zf1(lo, z)` keeps the
+  copy (v is still multi-def) and drops the use, so M-220 splits at pri 2.0: m3c0 98.52 -> 98.80. On e771 the same
+  change is worse (98.22), because e771 needs M-220 joined.
+- **ae89b7023: the g / HF(0x144) swap (rows 769..784).**
+  - The cause: g (M-256) was one LR joining the yaw-region g and the three angle values (pri 3.33, f2). The target
+    has g f14, HF(0x144) f2 and the angles f2.
+  - Putting the angle values in `f` (dead after the clamp) splits g off.
+  - The angle variable then took f0 before the zero constant did. agent-e's run-756 int-hh form fixes that:
+    `hh = 0;` is stored to the five 0.0f slots, and the zero web picks first at 4.0.
+  - `dumf(g)` is dropped (it no longer has any effect).
+- **95c0f004e:** axZ and axY are now written x, y, z. This fixes the 907 swc1 order and the f6 / f8 swap at 925..933.
+- **Left (shared structure):**
+  - row 53: the addu operand order;
+  - rows 95..98: the head add.s / addiu order;
+  - rows 312..322: v0 / v1;
+  - rows 531 and 547: the jal / lwc1 delay slot;
+  - row 585: the target's bc1fl delay slot is the join's `lwc1 f4,0(v0)`. The target keeps HF(0x154) in f0 across
+    the clamp join and reloads it in the clamp arm; ours reloads it at the join. `dumf(HF(0x154))` in place of
+    `dumf(HF(0x164))` in the vel statement gives the arm reload, but costs +1 word (99.084, raw 35).
 
 ## heli.uso (agent-g run 766)
 
