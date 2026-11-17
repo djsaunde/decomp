@@ -1524,6 +1524,44 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   with an `absf()` inline (three bodies), a named `as` assigned in each test, `0.0f > sp`, `t->lo > |sp|`, a `float lo`
   local, or code-free `if (t->lo) {}` / `if (sp) {}` / `if (lo != hi) {}` / `if (1) {}` tests at five positions.
 
+### snoweffects.uso 0x6000+ under MIPSpro 7.2.1 (agent-e run 707)
+
+- No commits, no renames (3568 / 3579 unchanged). The 7.1 donor `snoweffects_uso_ncc_nm_e.cpp` stays (64B8 13 real
+  diffs). Scratch `/tmp/claude-1000/agent-e/w707/`: `v.py` / `rep.py` (score7 + aligned diff + an opcode-only diff +
+  the copy-shape detector `tell2.py`), `e*.py` probe batches. Best 7.2.1 draft: `keep_64B8_mp72_s1.cpp` (also `s1.cpp`).
+- **Verdict: 0x64B8 is a 7.2.1 (EDG 2.29) function.** The deciding feature is the `n += v318 * k * (f184 + spd)`
+  temporary order (run 703): 2.29 lowers it bottom-up (A below B, the target's order) in every variant, 2.19 never
+  does. Nothing else in 64B8 separates the two front ends once the classes are spelled 2.29-style (below): with
+  POD classes both front ends give the same object except that A / B pair. 0x6B28 / 0x718C: not settled this run
+  (same family and structs, so probably 7.2.1 too; their 7.2.1 drafts were not retuned).
+- **Lever 1, struct copy shape (the reason 7.2.1 looked wrong):** under 2.29, ANY user-declared constructor on the
+  class makes the chained by-value copies (op result -> return temp -> named / bound object) come out
+  `lw 0; lw 4; sw 0; ..`; the target (and 2.19 with or without ctors) has `lw 0; sw 0; lw 4; lw 0(dst); sw 4; ..`.
+  Make SV / SVb POD (no ctors at all) and all five 64B8 copies take the target's shape. Mini repro:
+  `m2.py` / `m3.py` / `m4.py`. heli B08 shows the same thing: its target copies are all the 2.19 shape, and its mp72
+  donor has 3 of 7 the wrong way round (B08 insns ~427 / 595 / 635). Its `Vec3` has ctors: try a POD Vec3 there.
+- **Lever 2, ctor blocks without a ctor:** removing the ctors also removes the blocks that EDG's constructor
+  `if (this != 0)` test creates. At -O2 uopt folds the test but keeps the block boundaries, and those split
+  the float pool-word live ranges. Without them the set() pool words cross calls and go to f20-f30 (+16 frame,
+  spd spilled). Fix, still POD: `static void ct3(SV *p, float a, float b, float c) { if (p != 0) { p->x = a; ..} }`
+  (`SV r; ct3(&r, x * s, ..); return r;` for SV::operator*), and `template<class T> T *ct0(T *p) { if (p == 0)
+  p = (T *)snow_nw(sizeof(T)); return p; }` with `ct0(&r)` in SVb::operator*, SVb operator+ and SV operator-. A
+  test that leaves p possibly null (`if (p == 0) p = new; if (p != 0)`) keeps a real `beqz`; `if (p == 0) p =
+  new;` alone, or no test, gives the f20+ colouring again. Result: the opcode-only diff goes 23 -> 0, length 404.
+- Then the 7.1 levers must be undone or replaced. `float f = s` in SV::operator*= costs 8 bytes under 2.29 (drop it).
+  The lerp factor goes in a named `float r` declared with x, y, z at the loop top (`float x, y, z, r;`) instead of
+  reusing k. Draft s1: frame 344 = target, 15 real diffs (7.1 donor: 13).
+- **Left in s1 (15):** the v318 * k product. The target has it in f0 / f2 / f12, stored at sp+200, with the cam
+  pointer in v1. Ours has f2 / f12 / f14 at sp+204, cam in v0. The next operator* temporary is at 176 vs 172.
+  So one word below sp+172 is extra and one between 212 and 300 is missing. These are the same words as the
+  7.1 donor's cam v0 / v1 residual, but here the A / B pair is right. No effect: `if (0) n *= k;` before / after,
+  a dead float in operator+=, `{ float q = k; .. }` (+8), dropping `ct0(&v)` on the xformB vector (no change, so
+  it is gone from s1).
+- Next: wire s1 as `snoweffects_uso_mp72_nm_e.cpp` (tools/ncc721.sh, NM-only; drop 64B8 from SNOW_NM_E_FUNCS) once
+  it beats 13 diffs. Then port the POD + ct3 / ct0 class set to 6B28 and 718C. Under plain POD, 718C's |speed|
+  already colours f16 (the target's). 7.1 gives the same on that POD source, so this is a class-shape lever for
+  either compiler, not compiler evidence.
+
 ### nameent.uso 9BC + snoweffects below 0x6000 (agent-c run 655)
 
 - **nameent 21 / 21 EXACT** (agent-c f56621038; 3539 / 3579). 9BC's two scale spill slots were one edg
@@ -1645,6 +1683,34 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     | ternary fadeIn | 88.16 |
     | inline `snowWrap(cx, cy, cz, &wx, ...)` with by-value coordinates (c goes back to s2, but +9 words) | 78.7 |
 - **0xC90: not reached.**
+
+### snoweffects.uso 0x28E0 NM 88.9 -> 90.15 (agent-c run 712)
+
+- **Second commit (90.15 %, 789 words, positional diffs 663 -> 574)**: a random 2-4-knob perturbation climb
+  (rp.py) from the first commit found `if (cy) {} if (cz) {}` with no sw copy and packets
+  nextR (0x06) / nextN (FA) / nextM (E4, `int n = count++; return &buf[n];`) / next elsewhere.
+  nextM is added to the in-tree GCtx. Commit b5c75e217 (gate PASS, 3569 / 3579, no renames); frame 536 vs 520.
+
+- **First commit** af526c5fa on agent-c (90.03 %, gate PASS, no renames): body 791 words (limit 793), c in s2, frame 568.
+  Three changes from the run-704 draft:
+  - **`if (cy) if (cz) {}`** (nested, two blocks fewer than three separate ifs) instead of `if (cz) {} if (cy) {}`;
+  - `sw = sz` used only as the texW divisor (sw in the x0 / x0 + sw sites cost the extra words);
+  - per-site next / nextN packets: nextN on the 0x06 / FA / B4 / BA001301 / BB packets, next elsewhere.
+  Found by coordinate descent over per-site packet kind, 16 empty-if spellings, the three sw sites, fadeIn
+  form and the op- ctor (tools: /tmp/claude-1000/c712/gen.py, cd.py / cd2.py, rp.py; `ev.sh tag genome`).
+- **Ctor stripping (agent-h run 702 lever) does not help here:** POD SnowV3d (no ctors, op- builds r field by field
+  or by aggregate init) cuts c's block count only 46 -> 45 and loses the target's op- store / copy schedule:
+  90.43 -> 87.6. Declaration order of halfW / halfH, x / y / z and inv is a no-op (identical bytes).
+- **tr.sh float names are shifted by one pair:** a `col=fN` in the colour trace is the real f(N-2) (`35` is f30).
+  With that: x / y / z f18 / f20 / f22 (as in the target), inv f28 and sx f30 (`35`, M-260) because every
+  caller-saved register is forbidden in bb44..49 when they are coloured (pri 6.67).
+- **What is left is float pressure in the draw block.** The target has inv f14, sx f0, sy f12 (caller-saved),
+  halfW f30 for the whole function, and the global K1.0 LR coloured f26 in the draw block (one `mtc1 at,$f26`
+  for both `1.0f / w` and `+ 1.0f`). Ours: halfW and K1.0 are split with every piece at sv = 0 (never coloured),
+  so halfW spills (588 / 544(sp)) and 1.0 is materialised twice. K1.0 is function-wide because the fadeIn
+  `alpha = 1.0f` store also uses it.
+- Next: lower the caller-saved pressure in bb44..49 so inv / sx / sy colour first (then halfW and K1.0 keep their
+  homes); the frame (536 vs 520 after the second commit) is the other half.
 
 ### snoweffects.uso 0x1E60 EXACT; 0x28E0 leads (agent-c run 704)
 
@@ -1842,6 +1908,31 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     f20) is a separate constant web: `(float)0` int-cast literal.
 - NM wraps spell the raw placeholder tokens: the named-call check cannot prove CALL() sites
   whose build path is INCLUDE_ASM.
+
+## heli.uso (agent-g run 710)
+
+- **0xB08 NM 93.21 -> 93.27 % (agent-g commit e0ac9773e; gate PASS, no renames).** Exact count unchanged (3568 / 3579).
+  Draft `/tmp/claude-1000/agent-g/r710/d4.cpp` (= the donor). Harness `/tmp/claude-1000/agent-g/r710/`: pg.py (parallel
+  greedy over a candidate spec, 16 jobs), c*.py (specs), plus r706/var.py and r695/m.sh.
+- **Lever: ctor-less operator* through a by-value setter.** `V3b r; set3(r, x * s, y * s, z * s); return *(Vec3 *)&r;`
+  (`set3(V3b &, float, float, float)` inline). The args are evaluated before the stores, so the three mul.s issue
+  before the swc1s, as in the target. The temp is a one-use LR in a t-reg (t4 / v1 / t7 for op* temp / return / vel,
+  target t5 / v1 / t8). A plain `V3b r; r.x = x * s; ...` interleaves mul and store (90.97). Named float locals
+  (`float a = x * s, ...`) batch the muls but each costs a frame slot (91.7). Plus `if (1) {}` before the
+  `HI(0x170)` test (+0.016; the only `if (1) {}` position that moves anything on this base).
+- **Not combinable:** the late `tg = self + 0x12C` on this base folds to 300(s0) again (92.80). The H() heading
+  pointer gives both-masked 82 but 91.8. op- through set3 / V3b (85.9), a separate ctor-less sub() for toTgt
+  (87.5), and op* as `Vec3 r; ...; return r;` with the default ctor (92.9) all lose.
+- **agent-e's POD lead (no ctors, `ct3(&r, ..)` with `if (p != 0)`, `ct0(&r)` with `if (p == 0) p = new`):** with Vec3
+  POD and op- through ct3 (`r710/p2.cpp`) the switch-case region is structurally right (masked diff rows 376 vs 460).
+  But the slerp / vel / toTgt region is worse and it scores 92.64. On p2, op* through ct3 or ct0 + ct3, H(), the late
+  tg and an `if (1) {}` sweep all lose. An op- returning a ctor-ful `Vec3C : Vec3` temp scores 92.2. A POD
+  `Vec3P` with a by-value operator=, used only for the switch's V3() copies on d4, gives identical bytes.
+  Empty `Vec3() {}` ctors on the named locals change nothing (V3b locals give identical bytes).
+- **Register picture (d4):** the HF(0x154) LR gets f14 (target f0), HF(0x150) f0 (target f2) and dist f2 (target
+  f12). The vel op* scale register follows from that.
+- Next: p2 (POD) plus the slerp / vel registers. Its remaining structural rows are the heading pointer (48(sp)
+  spill), the vel / toTgt temps (`addiu v0,s0,300`, `t3,sp,124`), the side-block 2.0f and the lerp mov.s.
 
 ## heli.uso (agent-g run 706)
 
@@ -2205,6 +2296,35 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   Bss+0x50 pointer goes in s4 before the vertex-count test. There is also a v0/v1 pair in the ambient
   compare and the second walk's mask constants (-2 / -3 / -5 hoisted into s2..s4). Scratch:
   /tmp/claude-1000/agent-a/w654/a/best_A10C.cpp. 0x7FE0 is not started.
+
+## snoweffects.uso 0x7FE0 (agent-a run 708)
+
+- **0x7FE0 NM 99.42 -> 99.61 % in-tree (objdiff report; 40 -> 13 / 800 words differ; frame and every sp offset still
+  the target's)** (agent-a 2e6523b41, gate PASS, no renames, exact count unchanged 3568 / 3579). Scratch
+  /tmp/claude-1000/agent-a/w708/ (ddn.py = word diff with sp offsets masked, so colour work can run while the frame
+  is off; fsweep.sh / role.sh = forcing sweeps; ins.py = insert one line at every statement; pv.py variant runner).
+  - **The trace's FP colour names are off by one register here.** In the h414 / h416 trace and `.lr` files, colour
+    24 printed "f2" is really **f0**, 25 = f2, 26 = f12, 27 = f14, 28 = f16, 29 = f18 (check it against the asm: s
+    prints "f18" but is f16, the zero constant prints "f26" but is f24). Run 690's "M-20 col f14" was f12. For
+    FORCE, use the numbers (24 = f0).
+  - **Step 1, `(0, k)`:** `TV d(*v114 * (0, k) * t->f184, s)` gives the first op*'s s its own pool word (k stays a
+    named float at -88). The |s|, k, *f184 op* colours then match the target (k division f12; x / y / z f0 / f2 / f14),
+    but one extra frame word appears (392) and the rest swaps f2 / f12 globally.
+  - **Step 2, frame:** d's ctor `TV(TV v, float a) { a = fabs_(a); ... }` (|s| written back into the parameter, no
+    named `a`) removes one word, and the frame is back to 384 with every offset matching (57 words, all f2 <-> f12).
+  - **Step 3, the swap:** M-20 (pool word 1: the pre-loop fabs_ word, the lerp fraction, the fwd / up s) outranked
+    M-172 (the ctor's y word): 30.4 vs 26.7. **`if (1) {}` at the top of TV::operator*** (before `TV r(...)`) fixes
+    every s / y / z colour and the pre-loop |v| words: 57 -> 13. Statement-level `if (1) {}`, `do {} while (0)`,
+    `goto L; L:;` and `if (1) {}` in any other inline (TV / TQ ctors, TQ op*, idw2, fabs_, idv, lerp3, lerpf, the
+    d ctor, operator= / += / *=) are flat or worse. In NCC the empty `if` only counts inside an inline.
+  - Flat or worse on the way: lerpf parameter orders, lerp3 dead-local forms, `idf()` / `v =` / `w =` for the lerp
+    fraction, `x * 1.0f` / `+ 0 * (int)b` / `b = b` in the ctor, one / two `(this + 0)` hops in op*, a shared
+    `float c` in op*, a 4-arg ctor, products computed inside the ctor, `idv(idv(...))`.
+  - **Left (13 words):** (1) the `or a1` / `addiu t3` / `addiu t4` preheader order (3); (2) the vel statement's cam
+    pointer, v1 where the target has v0 (5). In the trace, M-124 (an op* pool pointer, def in unit 53, uses in 54)
+    takes v1 because M-128 (pri 125, idv's &cam->fwd) holds v0 in unit 53. In the target the cam load is probably a
+    ugen temp, not M-124. (3) d's ctor |s|: f0 where the target has f12 (5). `a = a < 0 ? -a : a`, `(0, s)`, and
+    `if (1) {}` in the ctor are flat; `idf(s)` as the argument breaks the frame (97 words).
 
 ## snoweffects.uso 0x7FE0 (agent-a run 701)
 
