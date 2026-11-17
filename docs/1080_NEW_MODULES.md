@@ -2911,6 +2911,40 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   - al.py: mnemonic alignment;
   - wv.py: the 1/w variable sweep.
 
+### snoweffects.uso 0x28E0: spill 116 (agent-c run 782)
+
+- **One commit on agent-c: 76cd5df08, objdiff 98.939 -> 98.942** (793 words, frame 520, mn 2 / reg 104 -> 102).
+  Gate PASS, 3576 / 3579, exact set identical, no renames. Scratch: /tmp/claude-1000/c782/ (`q.py` / `ev.sh`
+  as run 778; `tm.sh` = agent-e's spilltemp map on this tree; `lo.sh` = FE M; `tr.sh` = the run-414 colouring
+  trace; `cd.py` / `pair.py` = append-spelling descent; `hf.py` / `lt.py` = fold sweeps).
+- **The spill is fixed (sp+116, target), confirming agent-e's run-775 model.** The spilltemps are handed out in
+  uopt item-index order, and the item index is the order of first appearance in the code. `lp = &self->lastCam;`
+  as the first statement (before `cam.x = SNOW_CAM2->..`) makes the lp address item 7 and SNOW_CAM2 item 14, so
+  lp takes T0. M stays 400, ntemps 7.
+  - Side effect: lp's pick now ties i's (both pri 2.583) and wins on index, so lp took t3 and i t4. A dead
+    `i = 0;` before it gives i the lower index again (t3 / t4 as the target).
+  - tex can no longer go through lp, so it goes through d: `d = (int)self->tex; d = gl_func(((SnowDLHolder2 *)d)->dl);`
+    (v0 as the target; p / x0 / i as the carrier cost 11-13 reg).
+  - Other routes, all worse: a separate SNOW_CAM2 item in the draw block (`(SnowCam2 *)*(int *)(..)`) also gives
+    spill 116, but the top item loses the draw-block interference and moves t0 -> a1 (reg 116). A named
+    `SnowCam2 *g` re-read at each site keeps t0 everywhere, but its home makes M 408 (spill 108); reusing d / y0 /
+    sz / sw / x0 as the carrier drops a spilltemp (frame 512).
+- **r (sp 172, target 176) is the op* `a` parameter.** In the ugen dump the op* expansion allocates the result temp
+  (-332), then `a` (A, -336, a fresh word), then r (-348). `s` reuses the R pool word -308. The target has r
+  directly under -332, so `a` must not get a fresh word before r. Not fixed by: a member `operator*(float) const`,
+  swapped parameters, `const float &s`, a pointer copy of `a`, by-value `a` (790 words), op- in any of its forms,
+  or splitting the statement.
+- **x / -halfH:** a `zf1(-halfH, 0)` fold on the third compare (`(-halfH < cy) + zf1(-halfH, 0)`) or on the offX
+  index gives the target's draw-block pair (x f18, -halfH f16). But the loop-top x and wy then swap (f18 <-> f24),
+  so reg goes 102 -> 108. No second fold among about 200 (loop-top compares, wx / wy / wz ifs, axis index, the
+  run-778 hc.py sites) repairs the loop top. The draft is /tmp/claude-1000/c782/b7.cpp.
+- **Draw-tail int rotation:** pool-word identity, not priority. At FA (nextN) the pool words are -228 `this`
+  (v0), -240 dl (a2), -232 count (v1). The target needs count in the v0 word and dl in the v1 word, which is the
+  layout E7 / B9 get from `next()`. With `next()` (or a macro / free-function append) at FA, the -228 word holds
+  the count, but its LR gains a unit where v0 is forbidden, so it gets a0 (reg 177). No single-site or
+  06/FA-pair change among 11 spellings, including agent-h's C90 `n + zc(0) * n + zc(0) * (n + n)` forms, beats
+  the base. The forcing uopt (h416) aborts when bp 0 is forced to v0..a0.
+
 ### snoweffects.uso 0x28E0 NM 97.96 -> 98.94, frame 520 (agent-c run 778)
 
 - **Three commits on agent-c**, each with gate PASS, 3576 / 3579, the exact set unchanged, and no renames; all 793
