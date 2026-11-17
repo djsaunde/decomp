@@ -237,6 +237,49 @@ No renames.
   course*3*16 spellings, and the 0x3364 levers (do-while, `show = 1` after the call).
 - **Not started:** 0x3878 (records draw, 431 lines) and 0x3F24 (erase-select pad handling, 272 lines).
 
+### agent-a run 738: viewrec 0x3878, uopt toys for a code-free register read after `$45` (no commits)
+
+No commits, no renames (nothing to gate; `make` ROM OK on agent-a). 3878 is still NM 98.7 % (ndiff 11). Scratch
+/tmp/claude-1000/agent-a/w738/ (`t/t.sh X.cpp` = toy compile + ugen listing; `v/r.sh name ANCHOR REPL ...` = 3878
+variant + ndiff + any `$21..$23` read after `$45`; `v/o*.s` = `.s` oracles run with the run-733 `asm.sh`).
+- **Self-copies cannot arise in uopt.** uopt live ranges are block-granular, so the source and the destination of a
+  copy are both live in the copy's block and always interfere. Toys `x = r; while (x < 100) { g(x); x += 3; }` and
+  `x = r; do { ...; x = h(x); } while (...)` give different registers (s0 / s1) or a spill, never `str R <- lod R`.
+  This explains agent-b's scan of 300 outputs (run 693).
+- **Every uopt-visible read of r after `$45` costs a word.** r has no reaching def on the B -> `$45` path, so uopt
+  stores r at the grid exit (`sw $21,96(sp)`) and reloads it at `$45`. The reload is a DEF, so the pull stays
+  legal; as1 deletes the now-dead reload, but the `sw` stays (+1 word, ndiff 12). This holds in small toys too (no
+  register pressure needed), for `if (r) {}`, `f(r)`, `if (r == 3)`, and an empty loop `for (k = r; k < 4; k++) {}`.
+  The constant-1 / constant-2 LRs are rematerialised (`li`) at `$45` the same way (run 670).
+- **r defined on both paths (`r = 0;` before the if, and `for (r = 0; ...)` kept) plus `if (r) {}` after** (`y1`):
+  426 words, no store or reload, and uopt drops the in-loop init as redundant. But `move s5,0` then sits in B,
+  before the bc1f, and s6 / s7 are still pulled (ndiff 11). The target has the def after the bc1fl, in C. So at the
+  uopt level r is NOT live at `$45` in the target: if it were, uopt would put a def or a reload on the B path. The
+  as1-level read must be one uopt never saw.
+- **Dead stores that uopt keeps:** only the init of an induction variable that LFTR removed (toy `for (r = 0; r < 4;
+  r++) g(r * 2)` leaves a dead `move $2,$0` in the preheader). That init sits in the loop preheader, so it cannot be
+  after `$45` without a loop there, and every loop emits code (even `for (k = 0; k < 1; k++)` and empty loops).
+  Late-folded dead copies (`idx = r; rowIdx = 5; if (rowIdx == 4) ...`, an empty-trip loop) are removed; only
+  the frame grows.
+- **NEW as1 fact (`.s` oracle): every label named by a data `.word` seen before the function's `.end` is a
+  target of EVERY jump-table `jr` in that function.** One extra `.word $40` (the outer grid head; or `$41`, the
+  inner head) gives the target word-for-word (ndiff 5 = the reloc false diffs). That holds as a 6th table entry,
+  as a separate `.rdata` word before `$46`, as a `.data` word inside the function, and as a `.data` word at the top
+  of the file. After `.end` it has no effect. The live-in of `$40` among s0..s8 is exactly {s4, s5, s6, s7, s8},
+  so this one edge explains all three bits. This extends kit CDLVI: the jr liveness is the union of the live-ins of
+  all labels taken as data words, not only of this table's targets. **It does not explain the ROM:** the ROM
+  table (RoData +0x10) is 0x3D30, 0x3D30, 0x3D48, 0x3D64, 0x3D94 (the case blocks), and no viewrec data word holds
+  a grid address (0x3BB8..0x3CC4). ugen labels are unique per file, so an earlier function's table cannot alias
+  `$40` either. A scan of every `.s` listing under /tmp/claude-1000 found label words only in switch tables.
+- Also flat: `.alias` / `.noalias $21,$sp` at `$45` (11); a `$21` temp in the `trunc.w.s` macro after `$45`
+  (11); ugen / as1 at -g1 / -g2 (556 words) and -g3 (= -g0); `.sdata` / `.rdata` / `.data` switches in C (11).
+- **What is left.** as1 sees a register as live through only three things: a real read, a `.livereg` bit, or a
+  jump-table edge. In the target none of these left a byte or a data word, and uopt did not see the read. The
+  remaining candidates are a ugen artifact that has not been observed yet: a `.livereg` bit from a window `str`
+  that emits nothing, or a jr target set taken from somewhere other than data words. Or a front end / compiler
+  build whose as1 input differs from ncc721 + the 7.1 back end. The 7.2.1 as1 could not be rerun here
+  (`tools/forensics/x_mipspro744` is gone; run 393 found every as1 from 5.2 on identical on mgrproc).
+
 ### agent-a run 733: viewrec 0x3878, the as1 liveness route narrowed (no commits)
 
 No commits, no renames (nothing to gate). 3878 is still NM 98.7 % (ndiff 11, 426 vs 427 words). Scratch
@@ -1882,6 +1925,48 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   register value (for example a parameter-free inline that reads k from an enclosing inline's named local), or
   accept the memory scalar.
 
+### snoweffects.uso 0x718C / 0x64B8 under MIPSpro 7.2.1 (agent-e run 736)
+
+- **0x718C EXACT** (agent-e 465c3eedb; gate PASS, 3572 / 3579, lost: none, no renames). It is now spliced in both
+  build trees from `snoweffects_uso_mp72_nm_e.cpp` (Makefile `SNOW_MP72_E_EX_FUNCS`; `SNOW_MP72_E_FUNCS` removed).
+  Scratch `/tmp/claude-1000/agent-e/w736/`: `k.py` (`run` = score + objdiff + non-sp count + the frame-relative sp
+  offsets), `d.py` `sim()` (edg word layout from `w718/fl.py` in ~0.4 s, no back end), `pi.py` / `pg.py` (parallel
+  word-layout search, then compile only the layout hits), `pk.py` (the colB search).
+- **Method: work in edg's M space, not in sp.** uopt keeps edg's frame layout: sp offset = frame + M offset, and the
+  frame is round8(M length + 104) for this function (`def mtype=M length=N` in the `.ud` dump; 264 -> 368, 268 / 272
+  -> 376). Every vreg word (R / A / J) takes a 4-byte hole even when it is coloured. So list the target's struct
+  temporaries as M offsets (target sp - 368) and count the words between them.
+- **The three fixes, each found from that count:**
+  - Scalar region one word too many: `n` (the `a != 0` test) is a separate named int. Reusing `go` drops it
+    (registers unchanged). This replaces run 732's `int sc[1]` pad, which had pushed everything the wrong way and only
+    lined up the upper sp offsets through the frame growing by 8.
+  - Lower region: `w.asg(t, t, <product>, t, t)`, an op= with code-free pointer parameters around the by-value copy
+    `o`. Parameters of a call are allocated after its arguments are expanded, so the two leading ones are fresh words
+    above o (copy 2 words lower) and the trailing ones fresh words below it (a1 / a2's temporaries 3 words lower).
+    Leading R parameters reuse the freed product words instead (no shift); the type pattern decides which words are
+    fresh. Statement-level `dm_X(..)` dummies changed nothing here: they took only old words.
+  - M length 272 -> 264: the colour block's named c0 / c1 / c2 / f become `colB(q0, f, m0, c0, p, t)` with c1 / c2
+    named inside. f and c0 are pooled parameter words (old words, no frame cost); q0 / m0 choose which old words, so
+    f lands on a word that colours f2 and c0 on one that colours f14 (16 placements tried, one exact).
+- **Rules confirmed:** pooled words are reused strictly oldest-first by offset (not by release order: a dummy
+  statement that locks R-24 before a2 leaves a2's order unchanged). A param word can therefore never be younger than
+  a word allocated later in the function, which is why a2's `z` product needs a fresh word unless the colour block
+  gives one up.
+- **0x64B8 (not beaten; NCC donor stays 99.91 %).** mp72 s1: 13 non-sp diffs, all in op*1 (`v318 * k`): products f2 /
+  f12 / f14 vs target f0 / f2 / f12, `this` in v0 vs v1, r1 at sp+204 vs 200 and r2 176 vs 172.
+  - M-space reading: the target has exactly one more word before r1 (r1 -144, ours -140) and none between r1 and the
+    return slot l-156 (ours has op*1's fresh ct3 c at -144). That is run 718's allocation: op*1's s fresh, ct3's
+    a / b / c all old.
+  - `m1(q0, q1, q2, s)` with three R dummies gives s fresh at -132 and r1 at -144 (the target's r1), but ct3 then takes
+    three fresh words (frame 352, 28 diffs). Under oldest-first + lock-until-statement-end there are only three old
+    pool R words (-20 / -120 / -124) at that statement, so s cannot be fresh while ct3 reuses all three. s has to be
+    a non-pooled word, and no source form found gives one without a memory scalar (k is in f20 from line 56 on).
+  - v1 vs v0: nothing in the target holds v0 across 177..182 (no v0 use from 140 to 260), so it is a colour choice
+    for op*1's `this` word, not a conflict. Leading A / R dummies on `+=` (addX) or op*2 do not move it
+    (13 or worse); `+=` parameters are allocated after the op* expansions.
+- Next for 64B8: a non-pooled float word for op*1's s that stays a register (e.g. a scalar single-return inline
+  layer whose substituted parameter feeds a named local), or the A-word placement for op*1's `this`.
+
 ### snoweffects.uso 0x718C / 0x64B8 under MIPSpro 7.2.1 (agent-e run 732)
 
 - **0x718C NM 98.14 -> 99.95 %** (agent-e 7cbaa7e2c 99.85 %, 37d75951b 99.95 %; gate PASS both times, 3571 / 3579,
@@ -2534,6 +2619,32 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     f20) is a separate constant web: `(float)0` int-cast literal.
 - NM wraps spell the raw placeholder tokens: the named-call check cannot prove CALL() sites
   whose build path is INCLUDE_ASM.
+
+## heli.uso (agent-g run 739)
+
+- **0xB08 NM 95.39 -> 95.76 % (agent-g 9119c7161; gate PASS, no renames, 3571 / 3579, exact set identical).**
+  `dir = tg->sub(*ps)` (the ctor-less, end-cut sub() of run 735) and `toTgt = (*(Vec3 *)player).subc(*ps)` (same
+  body, `if (1) {}` first). dir's op- result temp (sp+212) stops being a coloured this-or-new join value (target
+  `addiu t3,sp,212`, ugen), so the op= temp sp+252 takes v0 as in the target, and the toTgt loads match. With
+  toTgt on the end-cut sub() too it is 95.54 (the 2.0f constant then loads late, f14); toTgt start-cut + dir
+  start-cut 92.99; both cuts in toTgt's 95.54. Harness `/tmp/claude-1000/agent-g/r739/` (`pv.py` = r730's with
+  base / w here; `xb.sh` = dbg.sh with `as1 -xbbdbg 9` -> `x.o.xbb`).
+- **Case 4's sp+252 follows the case LABEL VALUE, not the body.** Bodies made identical (case 4 cut to the two
+  copies, case 1 cut to the two copies): case 4 still hoists `lda -116` into v1, case 1 does not. Swapping the
+  labels of the case-1 and case-4 bodies moves the hoist with label 4; swapping 4 and 5 keeps both hoisted; moving
+  case 1's body before case 4 / case 3 / case 2 in source order changes nothing. So it is uopt's CFG order from the
+  xjp table (index 3 and 4), not the statements. Removing the `+=` lines or the stores from case 4 changes nothing.
+  The target hoists only label 5. Not found yet: what in the table-order walk separates 4 from 5 in the target.
+- **Case-6 default slot = as1 xbb candidate order (TOOLING_DECOMP "as1 xbb internals", kit CDLVI).** `-xbbdbg 9`:
+  the bound check is bb24 (weight 4), the exclusive default bb25 and the jump block bb26 (both 7); xbb tries bb25
+  first and moves `addiu $2,$16,276` (line 256). The target needs the default numbered after the jump block (a
+  second predecessor through the table side) or unreachable for xbb (`.alias` after case 6's `b`). Kit CDLVI's
+  zero-byte struct copies do not port: EDG 2.29 rejects `char c[0]` (error 3187), and an empty C++ struct copies
+  one byte (`lbu` / `sb`; the slot does flip to the `sll`, 92.35-95.03). `case 6` + `default` moved to the top of
+  the switch also flips it (90.09, uopt reshuffles). The blocks after case 4's and case 5's `b` are already
+  weight 65534 in ours (their v1 lda LR's `.alias`), so a uopt LDA LR ending in case 6 would do it.
+- **Next:** a uopt address LR ending in case 6 with no surviving code (two uses of one global's address whose
+  temps as1 deletes) in C++; or the table-order rule for case 4 (uopt `-zdbug` block order around label 37).
 
 ## heli.uso (agent-g run 735)
 
