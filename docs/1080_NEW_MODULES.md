@@ -1579,6 +1579,41 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
 - NM wraps spell the raw placeholder tokens: the named-call check cannot prove CALL() sites
   whose build path is INCLUDE_ASM.
 
+## heli.uso (agent-g run 695)
+
+- **0xB08 NM 92.4 -> 93.1 % (agent-g commit 257cc75a2; gate PASS, no renames).** Exact count unchanged (3564 / 3579).
+  Rows (`r695/m.sh`): raw 564 -> 569, both masked 102 -> 98. Draft `/tmp/claude-1000/agent-g/r695/c_e3m4.cpp` (= the
+  donor). Harness `/tmp/claude-1000/agent-g/r695/`: v.py (string-replace variant + score; `BASE=` env picks the base),
+  dif.py (sp-masked opcode diff), tdef.py (t-reg defs), seg.py (t-reg defs per call-separated segment), units.py /
+  mpu.sh (agent-h's instrumented uopt run behind the mp72 front end; code is identical to the normal build).
+- **Clamp arms (+0.2):** the target writes the clamp result register in every arm (`mov.s f2,f12` / `mov.s f2,f0`
+  for yaw, f12 for pitch). A nested ternary gives an inner temp plus a copy. `clampf()` written as
+  `if (v < lo) return lo; if (hi < v) return hi; return v;` writes the return register directly; the yaw clamp goes
+  through it too (`yaw = clampf(yaw, -0.3f, 0.3f)`). The pitch clamp stores through a reference (`clampTo`, +0.03).
+- **toTgt through ps (+0.4):** `tg = (Vec3 *)((char *)ps + 0x50)` (= self + 0x12C) puts the toTgt loads in the
+  target's order (the loads use 80(a2) where the target uses 0(v0) with `addiu v0,s0,300`, so the base register still
+  differs). Moving `tg = self + 0x12C` before the vel statement hoists the address into every switch case (10 copies).
+- **Head t-ring, solved in principle:** ugen's ring is t1 t2 t3 t9 t4 t5 t6 t7 t8 (t0 apart), and the head's start
+  register is set by the TOTAL number of ring allocations in the function (one dummy `HI(a) = HI(b);` at the end
+  shifts the head by one ring step). Ours has 93 t-reg defs, the target 100; adding 7 gives the target's head
+  `t7 t8 t0 t1 t1 t0 t2`. Per call-separated segment (`seg.py e.txt x.txt`) the target has +2 in the marker /
+  switch head, +1 in case 2, +1 + 1 in the slerp's x / y stores, -1 in the old copy, +3 in the vel / toTgt block.
+  The missing ones are temp ADDRESSES the target puts in t-regs (`addiu t5,sp,136`, `t8,sp,308`, `t3,sp,124`,
+  `t3,sp,212`) where ours uses v0 / v1 or folds the address, plus the heading pointer.
+- **Heading pointer (agent-b's idea):** `static inline Vec3 *H(char *s) { return (Vec3 *)(s + 0x138); }` for the three
+  slerp stores (normalise / old / vel through it change nothing more) reproduces the target's spilled pointer
+  (`addiu a0,s0,312; jal; sw a0,..(sp)`, `lw tN` per store) and +3 ring allocations, but scores 92.50 (from 93.08).
+  The old copy still loads the pointer into t3 (target v0), and t (HF(0x164)) is loaded before the dot product
+  (target: after it, spilled to its home 208). Moving `t = HF(0x164)` after the ang line shifts the ring (90.5).
+- **The f16 -> f2 copy after the lerp:** uopt never forwards a float store to a later load of the same field (through
+  self, through the reference, or through a named `float &`); the target's copy is a VARIABLE. `f = lerpTo(...)`
+  with `lerpTo` returning `d = expr` gives the exact shape (c.lt.s / swc1 / mov.s) but with f's registers (expr f2,
+  copy f0; target expr f16, copy f2), 91.1; another variable for the result adds an FP LR and -pi/8 loses f18.
+  `return d = d + (t - d) * k` into clampf (agent-b): 89.95. uopt's 20-load unit counter: every `HF()` is one counted
+  load (self is a parameter); `p = self;` + `PF()` on the fwdAx lines cuts the count with identical code.
+- Next: the vel / toTgt block temps in t-regs (by-value operator= temps, the op* temp), the old copy pointer in v0,
+  then the H() stores and the 7-allocation ring together.
+
 ## heli.uso (agent-g run 689)
 
 - **0xB08 NM 88.9 -> 92.4 % (agent-g commits 7a9605497, 19b2c308b; gate PASS each, no renames).** Exact count
@@ -1845,6 +1880,29 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   Bss+0x50 pointer goes in s4 before the vertex-count test. There is also a v0/v1 pair in the ambient
   compare and the second walk's mask constants (-2 / -3 / -5 hoisted into s2..s4). Scratch:
   /tmp/claude-1000/agent-a/w654/a/best_A10C.cpp. 0x7FE0 is not started.
+
+## snoweffects.uso 0x7FE0 (agent-a run 696)
+
+- **0x7FE0 NM 99.30 -> 99.40 % in-tree (objdiff report; 66 -> 52 / 800 words differ)** (agent-a cd257a936, comment
+  139d0158a; gate PASS both, no renames; exact count unchanged). Scratch /tmp/claude-1000/agent-a/w696/ (pv.py
+  parallel variant runner, fv.py variant runner + `-g3` frame names, sl3.sh one-line frame names, ops.py FP dest
+  registers of the loop's op* expansions, rs.py random toggle search, t/ small edg pool tests).
+  - **Lever: identity inlines on a NON-TRIVIAL argument add an edg pool word.**
+    `inline float idf(float a) { return a; }` and `inline const TV &idv(const TV &v) { return v; }`.
+    `TV a = up * f180 * idf(fabs_(s))` puts *|s|, v114 * k and *f184's r on the target's slots (-232 / -256 / -268)
+    and fixes the v0 / v1 of the a statement's cam pointer and of the `?:` index. `vel = idv(t->cam->fwd) * f188`
+    on top gives 52. Wrapping a SIMPLE argument changes nothing: edg substitutes it straight into the body with
+    no pool word (`idf(t->f180)`, `idv(t->cam->up)`, `idv(*v114)`, `+x`, `(0, x)`, `*&x`, casts are all
+    byte-identical). Empty inlines (`void nop(float) {}`) also allocate nothing.
+  - Small edg tests (`t/`): of N identical `o[k] = u[k] * q;` statements, the 2nd allocates all-new pool words,
+    the 3rd reuses all but one, and the 4th / 5th reuse everything. Reuse lags by a statement. A scalar statement in
+    between (`s = 1`, `o[5].x = fabs_(s)`) does not change this.
+  - Left (all in the loop): fwd / up op* y / z colours (ours f14 / f2, target f2 / f14). Putting idf on op*'s first
+    component moves the fwd z to f14 but y to f12, and the pre-loop fabs_ colours break (82 words). up * f180's
+    r is still at -208 (target -216, with two words above it). The loop-top __Vs are still swapped (swapping the
+    a and d statements swaps them, so the later statement's temp is the higher one). The vel statement's cam
+    pointer is v1 (target v0) and the or a1 / addiu t3 order is unchanged. A 14-toggle random search (idf on the
+    ramp fabs_, lerpf, ctor components, the lerp fraction) found nothing below 52.
 
 ## snoweffects.uso 0x7FE0 (agent-a run 690)
 
