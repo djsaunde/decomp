@@ -3584,6 +3584,79 @@ The C scan found 119 lines.
 
 **Coverage limits:** see the tool's docstring. A narrow access whose wide twin is in an unrelated function (calls go through placeholder relocs, so there is no interprocedural link) is not seen, and neither are `D_00000000`+0 data references (one root per site). The 56 "lone sub-offset" narrow fields (no access at +0 of their word) are a review list: a sample was checked (MorphPolyShade s16[3], PolyShape / Sprite +0x1E s16, GameFlow settings bytes, SnowBoarder +0x9A2 lh in 4 functions), and all were declared narrow; the rest are unchecked.
 
+### 18.11 Run 822: frame 1 to the title demo's game_init (agent-g)
+
+agent-g run 822, branch agent-g on main 2f16f6e23 (run 819 as landed). Gate PASS on the
+committed tree (ROM byte-identical, 3579/3579, verify-blocks 6/6, clean build OK); CALL check
+8314 / 0 mismatches, XDATA check 447 sites / 0 mismatches (+1: Process_exit).
+
+| commit | what |
+|---|---|
+| 59c1e27e2 | tools: port-gen-binds donor pins; port-gen-uso data-only USO closure; port_cfront.h `CF_CTOR_NEW` + port-gen-build / cc-select ctor entries |
+| 07d30c55a | src (PORT only): K&R pass-throughs, Process_exit XDATA, 6 `port_ctor_*` entries, Node_doCommand ROM table, ItemMgr_Load tag swap |
+| e65085da2 | port/gen regenerated |
+
+**How far.** `tenshoe --frames 3000 --trace state.log`: the frame-1 RcpMgr fault is gone; the
+N64 logo (n64proc) runs, fades and quits; GameFlow_restart starts the title mode (titproc):
+tit_procMain -> game_init loads game.uso, effects.uso, map7_data.uso ("Slalom Course"),
+bg4tex.uso, builds the BGBox, the map, the items, then game_setupDemoSolo -> SnowBoarder_ctor
+-> the rider anims -> SnowBoarder_loadBoardModel -> ProcNodeList -> skin_cmdSkinShape ->
+MNode_updateChildren: **SIGSEGV at 0xa6635** (not diagnosed: a node child / matrix pointer
+read from the board data). state.log (flow = procState, nextFlowMode):
+
+```
+F 0..197    flow=0,0  rand=228889ec   N64 logo (N64DEMO procState 0)
+F 198..220  flow=1,0  rand=396d392b   procState 1: Process_fadeOut, Fader runs (sys_randf moves)
+F 221       flow=0,1                  QuitProcess -> GameFlow_restart -> title mode; crash in game_init
+```
+The trace is written every frame now (the F line is after the step; nothing to fix).
+
+**Fixes, by class.**
+1. **K&R pass-through** (run 819 class 1): `math_orthoF` called `math_mtx4Identity()` with
+   mf riding in a0; on i386 it took a stack word, the RcpMgr, and wrote the identity over it
+   (RcpMgr.unk00 = 1.0f: the 0x3f800054 fault). Also gfx_listAppend_0004E214 (the light in
+   a1), gfx_thunk_00046B44, AnimPlayer_getKeyFrame / getKeyTime (AnimDataMgr_lookup's a1:
+   "Missing AnimGroup 16662"), AnimDataMgr_loadFile (AnimGroup_load a1 = self, left by the
+   leaf AnimGroup_init), AnimData_waitFrames. **agent-e: skip these 7 audit rows.**
+2. **A code address stored as data through a placeholder token** (no jal, so CALL never named
+   it): Process_exit's `D_00000030 = func_00000000` is &GameFlow_restart_000116C8; spelled
+   `XDATA(func_00000000, GameFlow_restart_000116C8, 0x0)`. Without it the logo never left
+   procState 1. Grep found no other such site.
+3. **match_imports donor pins.** A donor is linked alone with its tokens at the
+   match-origins-<f>.ld values, then bind-native-relocations.py renames each reloc symbol to a
+   carrier whose undefined_syms value the ROM link adds. port-gen-binds used the token's own
+   undefined_syms value (usually absent, 0), so 36 aliases were wrong: game_init's
+   `bootup_27E8_ref_7334` etc. (the rom/game.uso path: "usoLoad() error loading file") at Data+0,
+   the GfxLib scale words at +0 instead of +0x1FC, SnowBoarder_update's desc / root words,
+   bu_d900 descs, D_E354_1C73C_c (was +0, now +0x1C73C). Pin = origins value + carrier value
+   (32-bit wrap: snd_updatePlayer's -0x44 + 0x44 = 0).
+4. **Data-only USOs** (bgNtex, mapN_data, the board models, effects) had no port module: the
+   course table's words into bg4tex were 0 (U64BGWall_ctor read cfg = 0). port-gen-uso now
+   keeps every data-only module a kept module's Data / RoData relocs reach (26 -> 58 modules,
+   ~6 MB of blobs); blob_types.tsv types them (agent-c: please review the new modules' rows).
+5. **cfront ctors called with this == 0** (BGBox_ctor(0, ..), Sprite / Shadow / QNode /
+   BasePolyShape / CoolGadget ctors): the port aliased the name to gcc's C1 ctor, which neither
+   allocates nor returns this. Each donor now has `extern "C" Cls *port_ctor_<name>(Cls *self,
+   ..) { return CF_CTOR_NEW(self, Cls, (..)); }` (placement new, else `new Cls`: the class's
+   operator new), and port-gen-build aliases the name to it, keeping the binds on the mangled
+   body via `port-alias: NEW port_ctor_NEW C1`.
+6. **Pinned donor jump tables.** Node_doCommand's donor (REPLACE_FUNC_BODY, its jump table
+   renamed onto the ROM's at RoData 0x1A1C) matched .text only; its case labels were wrong.
+   The ROM table: 0x64 name, 0x65 attach, 0x66 default, 0x67 set-global, 0x6C handle (the
+   skinmgr streams carry `0x0001006C <handle>`). The port spells the ROM arms (`NDC_*` under
+   PORT; the ROM labels unchanged). MNode_doCommand / QNode_doCommand tables look consistent
+   with source order (not proven). Other `*_rodata`-pinned donors deserve the same check: the
+   port compiles their C tables.
+7. **Byte order (agent-c):** ItemMgr_Load read the file's 4-char type tag raw while the
+   ItemTypes' tags come from bootup Data words typed u32 (swapped): "no st0". The tag read is
+   now swapped under PORT (18.2's "ItemMgr_Load's tag read must stay unswapped" predates the
+   u32 typing of 0x7E50..). Any other tag compare between a file and a blob word needs the
+   same care.
+
+**Next:** the MNode_updateChildren fault under skin_cmdSkinShape (board model node stream,
+boarder1.uso data now loaded: check the blob typing of the stream and the skin shape's child
+links), then the title demo's first race frame.
+
 ## 19. M2: graphics transport (agent-a, run 820)
 
 > agent-a run 820, 2026-11-17, on branch agent-a: 7c91a2e27 (dumper, hook, tests, reader), e6bda5949
