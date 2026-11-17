@@ -237,6 +237,40 @@ No renames.
   course*3*16 spellings, and the 0x3364 levers (do-while, `show = 1` after the call).
 - **Not started:** 0x3878 (records draw, 431 lines) and 0x3F24 (erase-select pad handling, 272 lines).
 
+### agent-b run 697: snoweffects 0x9E10 EXACT, 0x9328 NM 95.7 -> 99.6 % (3565 / 3579, +1 exact)
+
+Commits on agent-b (gate PASS before each, no renames): 5dea1bd50 (0x9328 NM gain), 04b111c85 (0x9E10 exact + episode).
+My own 0x9328 wiring was discarded once agent-e's e9 donor landed; the gains are in `snoweffects_uso_ncc_nm_e9.cpp`.
+
+- **0x9E10 EXACT (C, both build paths).** Two levers:
+  - the null test re-reads the field (`if (*(int **)(type + 0x40) != 0)`) instead of testing the head local. This
+    gives the target's `beqz aN; or a1,aN` delay-slot copy (the 0x7D8C sibling does the same);
+  - the re-read value is passed to list_append as an extra, unused third argument
+    (`list_append(item + 0x10, head, *(int **)(type + 0x40))`). That colours it a2 with the head copy in a1, and
+    item goes to v1. Without the extra argument, item and the test value swap (a2 / v1). This is the "invisible
+    extra arg" lever (IDO_CODEGEN kit II). The callee is bootup list_append (uso-imports.py), which takes 2 args,
+    so a2 is ignored. C++ inline-member forms (attach / attach2 / a ListE::add hop) all keep the head in a1 with
+    `beqzl`.
+- **0x9328 (99.63 %, 247 / 247 words).**
+  - ParmC's inline ctor takes its name AFTER the three Colours: `ParmC9(o, val, lo, hi, PName n, fl)`. The edg name
+    temp is then created after the Colour temps, as in the target. The GdlParmBase call reloads it from its word
+    (lw 0xA0 -> 0x84) instead of forwarding it.
+  - The bodies store `f20 = 0` before `v = val` (ParmC) and `f14 = 0` before `v = val` (ParmI).
+  - With offsets normalised, the only code difference left is the +0x234 / +0x238 store order (ours 568 before
+    564). None of the 120 orders of the five int stores, or the 24 orders of the four body groups, changes it.
+  - **Frame (192 vs 224).** Ours homes the edg temps bottom-up in creation order (n1 at 120 ... n5 at 184); the
+    target homes them top-down (n1 216, n2 212, val 196, lo 180, hi 164, n3 160, n4 156, n5 152). The `-g3` mdebug
+    shows edg declares them in reverse creation order (`__V` at M-8 is n5), so cfe's top-down decl-order homes come
+    out mirrored. The target looks as if edg declared them in creation order. The pool area below is also 32 bytes
+    bigger in the target.
+  - No effect: inline empty destructors on PName / Colour, `char *` names converted inside the ctors, implicit
+    `char *` -> PName conversion. Placement-new member construction gives frame 216 but changes the null-check
+    shape (`beq`).
+- **viewrec 0x3878: not worked** (budget went to the two above). One lead for next time, in ugen `f_eval` Umst
+  (`/tmp/claude-1000/h384/u/ugen_i.c` L42df98): when the cup node's word at +44 has bit 0x100 set, ugen ORs
+  0x5FFF0000 into the int mask. If that mask is register-indexed (bit n = $n) before `f_emit_regmask`, this covers
+  s0..s7. Next: find which cup attribute sets 0x100, and whether a call spelling sets it.
+
 ### agent-b run 693: viewrec 0x3878, the edg pool-word route to the setColor `.livereg` (no commits)
 
 No commits, no renames (nothing to gate). 3878 is still NM 98.7 % (ndiff 11).
@@ -878,6 +912,29 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   - Tools: /tmp/claude-1000/agent-h/r694/ (od.py = parallel-safe one-function objdiff scorer: NCC compile + a
     temp objdiff.json against expected/; tv.py variant runner; var3o.py / var6.py 47D4 searches; c1.py / c2.py C90).
 
+- Run 699 (agent-h, commit 0c61a7bab on agent-h, NM only, no renames, no exacts; 3564 / 3579).
+  - **0xC90 moved** from agent-c's snoweffects_uso_ncc_c.cpp (SNOW_C_NM_FUNCS) to agent-h's
+    snoweffects_uso_ncc_nm_h.cpp (SNOW_NM_H_FUNCS), with run 694's code-free lines: objdiff 84.92 -> 85.23. agent-c's
+    file keeps the snow_gGfxLib extern (0x28E0 uses it); 0x270 / 0x28E0 unchanged (100 / 88.89).
+    Flat or worse on top: named x1 / y1 (84.41), named xs / ys shifts (84.09), a named packet `Gfx *g` (79.7), named
+    ds / dt steps (69.8). The target puts hgt / wid in s1 / ra; the GPR trace is not done yet.
+  - **0x47D4 (94.58, unchanged): the y / z half is found.** One `float c` shared by y and z inside ONE inline whose
+    reference parameters are the destinations (`lerp2(float &a, float &a2, float f, float b, float b2) { float c = a;
+    a = (b - c) * f + c; c = a2; a2 = (b2 - c) * f + c; }`) gives one uopt LR (num 60) coloured f0, which is the
+    target's w.y / w.z in f0 (exact loop lines). A plain block `float c` is forwarded to the w.y load and gets no LR.
+    So do `float &y = w.y` refs and pointer forms. Separate helpers give three LRs that interfere.
+    The shared c still loses net (94.30): f (num 40 = def + 3 uses) outranks the x copy (num 30), so f takes f2 and
+    c_x f12 (the target has c_x f2 and f f12). One more caller-saved LR also pushes lim off f18: alpha takes f20, lim is
+    spilled (+16 frame, 200 vs 184).
+    Priority ties go to the lower LR id (trace column 2; f = 159 < c_x = 166). `c = (b - c) * f + c; a = c;` gives c_x
+    num 50 (f2, f f12, as the target), but the sum then lands in f2 instead of a ugen temp (92.5).
+    Flat or worse: `* 1` / `+= 0` on c or f, block splits (`if (1) {}` / `if (i) {}` / labels) between the f definition
+    and the lerps, (float)i via `fi`, f by `const &` (spills f), a separate f for x (recomputes the div), a
+    ld / st helper pair (cx goes to memory).
+    Next: give c_x one more counted reference without a register def, or f one fewer. Then fix lim vs alpha (target
+    lim f20, alpha f22).
+    Drafts: /tmp/claude-1000/agent-h/r699/ (l2.cpp shared-c, x2def.cpp, lp.py loop-window diff, mk*.py batches).
+
 ### snoweffects.uso 0x6000+ (agent-e run 639)
 
 - +2 EXACT (commit feb67fb6a on agent-e): 0x8C60 and 0x9FE8, both IDO 7.1 NCC. Own donor
@@ -1328,6 +1385,33 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   reuses (in r1, the duplicated-statement probe, reuse did happen: three temporaries, not four).
 - 0x718C: not reached.
 
+### snoweffects.uso 0x6000+ (agent-e run 698)
+
+- No new exacts (3564 / 3579 on agent-e). Commit b4d7dfc02 on agent-e (NM donor `snoweffects_uso_ncc_nm_e.cpp` only), gate
+  PASS, no renames. objdiff: 0x64B8 99.896 -> 99.906, 0x6B28 99.134 -> 99.182, 0x718C 96.989 -> 97.070.
+- **Lever: edg float temporaries.** A multi-use scalar parameter of an inline operator gets a 4-byte edg temporary, and
+  where that word lands moves every inline temporary below it.
+  - 0x64B8: `SV::operator*=(float s) { float f = s; .. }` puts the v318 * k result at the target's sp+200 (was 204).
+    The `(f184 + spd)` parameter of the outer operator* was the word between r1 and the return slot; with the named f
+    it moves above r1, as in the target. 19 -> 15 positional diffs (2 of those are RoData relocations).
+  - 0x6B28: a dead `if (0) n *= t->f1B8;` between `SVb n = v318 * f1C4` and `n += v3B0 * f1B8` gives the missing word
+    between the products: r2 at sp+132, the later temporaries at 68 / 40, frame stays 232. It also moves x / y / z 4 bytes
+    low (92..100 vs 96..104), so the gain is small. `mulk(float s) { float k = s; .. }` on either product, a single
+    expression, `n.operator+=`, `{ }` / `if (1)` around the += and the `SVb n(..)` form are all worse.
+  - 0x718C: `if (0) w *= t->f20C;` after `w = v318 * f208` (no other position or scalar did better).
+- **0x64B8, still open (13 real diffs):**
+  - The 300 / 312 swap of the two += temporaries. None of these moved it: the float-first friend operator*
+    (`(f184 + spd) * (v318 * k)`), named `mulr` / `mulv` helpers (by-ref and by-value), base-class `SV0` parameters with
+    `(const SV0 &)` casts (kit LXX), `(SV &)` / `(const SV &)` casts on the inner product, a `const float &` scalar, a
+    `const SV &w` alias inside +=, an `add()` forwarder, and `const SV &` / `SV(..)` forms for v.
+  - Dead SV statements (`if (0) n += ..`) add 24 to 48 bytes of new temporaries and none of them are reused. `?:`,
+    `&&` and `sizeof` forms are folded away before any temporary is allocated.
+  - cam v0 (target v1): `(*t->cam)`, `t[0].cam`, a member op-, a friend op*, a pointer op- argument and
+    reordered statements all keep v0. `(this + 0)` hop accessors (c1 / cx on SnowEm, w1 / wx on the cam) and `me()`
+    hops cost +8 frame (pointer temporaries get homes) and still give v0.
+- Scratch: `/tmp/claude-1000/agent-e/w698/`: `t.py` (`score` / `runl` / `lay` print positional diffs, frame and the
+  temporary slots), `od.py` (agent-h's objdiff scorer, pointed at agent-e), and `r*.py` (the probe batches).
+
 ### nameent.uso 9BC + snoweffects below 0x6000 (agent-c run 655)
 
 - **nameent 21 / 21 EXACT** (agent-c f56621038; 3539 / 3579). 9BC's two scale spill slots were one edg
@@ -1449,6 +1533,35 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     | ternary fadeIn | 88.16 |
     | inline `snowWrap(cx, cy, cz, &wx, ...)` with by-value coordinates (c goes back to s2, but +9 words) | 78.7 |
 - **0xC90: not reached.**
+
+### snoweffects.uso 0x15D0 / 0x1A18 / 0x2310 EXACT (agent-c run 691)
+
+- Commit bc0eab37b on agent-c (gate PASS, 3566 / 3579, no renames). The donor
+  `snoweffects_uso_ncc_nm.cpp` is now spliced in both trees (`SNOW_NM_FUNCS`); the 1E60 draft stays out.
+- **The holder was a hop temp.** Every packet goes through `hop()` = two `(this + 0)` hops over `next()`.
+  - Inside a live unit the hop copy is forwarded away. Where a uopt unit cut (20 counted loads; agent-h's
+    run-687 counter) falls inside a hop chain, the copy lives across the cut and keeps refs on both sides.
+  - With cuts inside packets 4 / 6 / 8 / 10, the hop word spans units P2..P12 with priority 4 (> the
+    packets' 3), so it takes a1 before them: the target's a2 / a3 rotation. All-hop keeps ctx / dl / count
+    in v0 / v1 / a0; mixing hop and plain packets splits those pool words.
+  - A cut after count 3..6 of a packet's own loads straddles the hop chain; after 1, or after the pointer
+    def, it does not.
+- **Placing the cuts:**
+  - SNOW_PH loads go in the packet's w0 argument, one count each. A phantom on the pointer expression
+    creates a new pointer temp and wrecks the colouring.
+  - One `if (1) {}` after the SetTImg packet makes the P1 | P2 cut.
+  - The FA packet's old phantoms are removed, so the last cut falls after the EndDL packet's dl use
+    (v1 as in the target).
+  - The N1 hooks are dropped: their `_g * 1` expression LR took a3 ahead of packet 3.
+  - P4 (LoadTile) uses `hopI` (unnamed result); it fixes the t-ring offset and the scheduling.
+- Not in the target structure: 0x1A18's texture is IA8. In 0x2310 the preamble int stores go one per line
+  (ascending store order).
+- Method: /tmp/claude-1000/c691/
+  - un.sh: per-line counts and cuts, wrapping agent-h's units.sh.
+  - one.sh: compile, then show the packet sequence and the multi-unit LRs.
+  - g2.py build2: per-packet kind, phantoms, `if` sites, hooks.
+  - cd2.py / mini.py: coordinate descent and minimisation.
+- 0x28E0 was not reached this run.
 
 ### snoweffects.uso 0x270 EXACT; 15D0 family / 0x28E0 (agent-c run 683)
 
