@@ -2961,6 +2961,54 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   - al.py: mnemonic alignment;
   - wv.py: the 1/w variable sweep.
 
+### snoweffects.uso 0x28E0: B3 mask, tail block cut, SNOW_CAM2 t0 (agent-h run 792, research only, no commits)
+
+- **Three code-free levers, all 793 words / frame 520 / every sp offset unchanged.**
+  - **B3 divide order (rows 683-699): mask the first quotient.** Write `((((texW << 10) - 1024) / sw) & 0xFFFF) << 16`
+    (the C90 `_SHIFTL(dsdx, 16, 16)` shape). The `& 0xFFFF` folds away, but it changes ugen's temp order, so texH
+    loads into the first dividend's register (t8). as1 can then no longer hoist that load above the break checks.
+    That one edit also fixes the t-register rotation from row 683 to the end (99.02 -> 99.755 in-tree objdiff on main).
+    agent-c's run 791 commit already has it.
+  - **Tail pointers a0 a1 a2 a0 (rows 742-780): append E7 through a block-cutting inline.**
+    `Gfx *atB(int n) { if (1) {} return &dl->buf[n]; }` and `gDPWord(c->atB(c->dl->count++), 0xE7000000, 0)`.
+    - uopt colours per block. Before the change, the tail split after B9, so BA and BB shared a block (a0 / a1).
+    - The cut inside E7 moves the split so E7, B9 and BA share one block (a0 a1 a2) and BB starts a new one (a0),
+      as in the C90 tail.
+    - The count is a pooled inline parameter, so the frame is unchanged; `nextBI` (named n) costs the spill slot.
+  - **B4 / B3 pointers a0 / a1 (rows 666-710): the same `atB(c->dl->count++)` on B4.**
+- **Results (standalone objdiff, `q.py` / `ev.sh`):**
+
+  | Base | Before | After |
+  |---|---|---|
+  | main (99.02) | 98.974 | **99.831** (74 diffs, reg 19) |
+  | agent-c run 791 committed | 99.768 | **99.844** (71 diffs, reg 16) |
+
+  - The main version (`keep/28E0_h792_main_793w_99.831.cpp`) went through the in-tree build: GATE PASS, 3578 / 3579,
+    exact set identical, report.json fuzzy 99.874. The worktree was restored afterwards.
+  - On c791 the levers are E7 + B4 via atB; diff in `keep/c791EB.diff`. What is left is only rows 85-90 (FA dl / count),
+    603 (x0), 615-629 (EE pointer) and 633-653 (E4).
+- **SNOW_CAM2 t0 in agent-c's EE-a3 draft (h02_eeg_a3):**
+  - **It is a uopt block-size split.** e881 (SNOW_CAM2) is live in block 47 (x0 / y0, the offX / offY loads). The EE
+    pointer `ge` (M-368, a3, priority 25) started in block 48, so a3 was free for e881.
+  - Drop the zf4(cx) fold from the offY index. Block 47 then has less IR, and `ge = c->next()` falls inside it:
+    M-368's blocks become 47..49, it interferes with e881, and e881 takes t0 (`-zdbug:5` LR dump: `bb=47:0/1,...`).
+  - **Keep cx's priority with the same fold on the first draw compare**: `(-halfW < cx) + zf4(cx, 0)`.
+  - **i / lp (t3 / t4):** add `+i` to the E4 `0 * (..)` fold (M-208 priority 2.38 -> 3.15, above e58's 2.58).
+  - **sw / sz (t1 / t2):** swap the two size definitions (`sz = ..` first, then `sw = ..`).
+  - Result: `keep/28E0_h792_eeg_cam_t0_793w_99.794.cpp` (diff `keep/eeg_t0.diff`), 82 diffs, rows 17-69 / 135 /
+    442-450 / 526-590 / 600-710 / tail all match.
+  - Left: FA (85-90), the trunc into t1 instead of t2 (526 / 528), and the ra / t5 swap of the op* / op- return-copy
+    addresses (K-332 / K-292, rows 136 / 253-307 / 449 / 722).
+  - The sw / sz colours cannot be moved with `0 * (sz..)` / `0 * (sw..)` terms. Each term moves the priority by
+    10 / den, which jumps over e881's 14.75 (36 probes).
+- Scratch: /tmp/claude-1000/agent-h/r792/
+  - `q.py` / `ev.sh` / `nd.sh`: as c787;
+  - `tr.sh TAG`: LR dump;
+  - `lrq.sh TAG`: e881 colour;
+  - `tp.py`: tail pointer registers;
+  - `it.sh`: in-tree objdiff;
+  - `keep/`.
+
 ### snoweffects.uso 0x28E0: the FA v0 block, BA and the r / spill word (agent-e run 786, research only, no commits)
 
 - **Draft (793 words, frame 520), standalone objdiff 98.899 -> 98.916 on main's donor (deab5a229):**
