@@ -4754,3 +4754,64 @@ compares words from that buffer, it has the RiderAnim bug.
 2. Wire the 11.2 read-backs with `bswap` (big-endian), so the Fader mode-1 path, ScreenThumbMat, Tv1 and Sun see
    real pixels.
 3. Re-capture past task 221 once agent-g's fix lands.
+
+### 19.10 Run 838: the white panels (port/fs) and the framebuffer model (agent-a)
+
+> agent-a run 838, 2026-11-17, branch agent-a on 853081eb5: 782c84181 (port/fs), 80ea2fd2b (port/gfx framebuffer
+> model), 0d6ad6df8 (game `#ifdef PORT` hooks). The gate passed before the commits (ROM byte-identical, 3579/3579,
+> named calls 0 wrong, jump tables OK, clean build OK); `make -C port/gfx test` (19 golden scenes, in process ==
+> f3dreplay) and `test M32=1` pass; test_fs 107 / 0.
+
+**The white panels were not a framebuffer reader. They came from port/fs (782c84181).** The 240x155 / 144x15 RGBA32
+and 80x12 IA8 images are the title logo's gui sprites: ImageFile records (+0x20 w / h, +0x24 fmt, +0x28 data
+offset, +0x2C size) read lazily by `ImageFile_acquire` from the ImageFileMgr's archive handle: `fs_setHandle`,
+`fs_gdlSeekFile(0, dataOffset)`, `fs_gdlReadFile`. The game closes that handle after the directory pass and keeps
+using it. On the N64 that works, because `fs_openFile` allocates a new struct and `fs_closeFile` is a no-op. The port
+returned closed handles to a 64-slot pool, so the next open re-aimed the handle at another file. The seek (0xB99DEE)
+then fell past the new window (limit 0x913F8E), `raw_read` returned 0 bytes, and the `mem_new` texels stayed 0xFF.
+Handles are now never reused (static pool in order, then calloc). After the fix the title shows the "1080 TenEighty
+SNOWBOARDING / (c) 1998 Nintendo / Press START" logo, full size and then small in the corner during the demo, with
+"Press START" blinking (capture from task 590, `-e 1`).
+
+**The framebuffer model (80ea2fd2b, `port/include/port_fb.h`).** The colour / depth image in game memory stays the
+place the CPU reads and writes, in the N64 format (RGBA5551 / Z, big-endian per 19.9, 320 wide). The port keeps it
+in step with the GPU on demand:
+
+| hook (game side) | meaning | in process (`port_fast3d_task_fb`) | dump mode (option b) |
+|---|---|---|---|
+| `port_fb_read_color(img)` | the CPU reads this colour image this frame | patch 0003 read-back of the frame (320x240, `bswap`) queued before `Run()`; copied into `img` after it if the task's G_SETCIMG names it (low 24 bits); then the texture cache drops `img` | `DLUMP_FB_READ` chunk (no data); f3dreplay reads back, reports, `--fb-out` writes the image |
+| `port_fb_read_depth(zimg, idx)` | the CPU reads Z pixel idx | `ReadbackRequestDepth` before / `ReadbackGetDepth` after; stored big-endian at `zimg[idx]` (0xFFFC = far) | `DLUMP_FB_DEPTH` (u32 indices); f3dreplay reports far / nearer |
+| `port_fb_cpu_wrote(img, x, y, w, h)` | the CPU wrote a rectangle of a displayed image | **TODO**: composite over the window (logged once) | `DLUMP_FB_WRITE` (rect + pixels); f3dreplay composites it over the PNG |
+| `port_fb_texture_written(addr, n)` | texels / palette rewritten by the CPU | `TextureCacheInvalidateRange` (patch 0004) | nothing (a dump renders from scratch) |
+
+- Colour reads stay wanted for 4 tasks after the last request, which is one frame of latency, as on the N64: the
+  readers read the buffer on screen. Depth reads and CPU writes are one-shot. They stay pending until a task whose
+  G_SETCIMG / G_SETZIMG names their image has run: the 2D task between two 3D tasks does not consume the Sun's
+  depth reads. The task's images come from the dump's IMAGE chunks, or from `mRdp` in process.
+- **Game hooks (0d6ad6df8, all `#ifdef PORT`):** ScreenThumbMat_grab_0000E740, Fader_buildTexture (frame read only
+  when `mode != 0`), Tv1Tmpl_stepPicture_00007D04 (both screens' texels invalidated after the blits) and
+  Sun_measureVisibility are the readers. gfx_drawFbChar_00046790, gfx_clearFbRect_00043468, gfx_drawFbSplash_00048184
+  and dbg_fillFbRect are the writers. Not hooked: GfxLib_hostioSendFbB (HostIO only) and Mat_fromFrameBuffer (no
+  caller; 11.2).
+- **What the capture needs** (`PORT_FB_LOG=1`, 5000 tasks: boot, title and attract demo): **0 colour reads, 0 CPU
+  writes**, about 2 depth pixels per task, and 100 texture writes. The depth pixels are the Sun's 9 points, one Sun
+  in the demo course. The texture writes are the Fader mode-0 fills. No ScreenThumb (board model 6 / 7), Tv1 or
+  Fader mode-1 runs in this stretch. The in-process colour path is therefore exercised only by the unit tests
+  (test_dlump's FB chunks, and f3dreplay on synth.dlmp: "fb read: drawn by this task, 42616 of 76800 pixels
+  non-black"). In the real dumps (tasks 600-680), 21 3D tasks carry `FB_DEPTH`, and all 9 pixels are served each
+  time (mixes of far and nearer while the 3D projection is still wrong, 19.9).
+
+**Found, not mine:**
+- `tenshoe --frames 3000` segfaults (no PORT TRAP line) on main's build without these changes too (run 834's build).
+- `scripts/gate-landing-tree.sh` gates `projects/1080-agent-d` unless `LAND_WT` is set. `LAND_SCRATCH` must exist.
+- The shared `projects/1080-decomp/baserom.z64` was rewritten (mtime 11:37) during one gate run, and the named-call
+  check read a 32 KB file ("module not resolvable" for every file). The rerun passed.
+
+**Next.**
+1. In-process compositing of `port_fb_cpu_wrote` rectangles (a GL texture blit after `Run()`). Only debug paths and
+   the uncalled splash write today.
+2. In process, each task is its own StartFrame / Run / EndFrame. If the window is not preserved between the 3D and
+   2D tasks of one frame, a colour read-back after the 2D task sees only the 2D layer. Check this when (a) first runs
+   on a multilib machine.
+3. Re-check the Sun's depth units (0xFFFC far) once agent-g's projection fix lands. Then capture a race with a
+   CrystalGuy / MetalGuy rider (ScreenThumbMat) and a tv1 course item to exercise the colour path on real frames.
