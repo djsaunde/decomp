@@ -3584,6 +3584,76 @@ The C scan found 119 lines.
 
 **Coverage limits:** see the tool's docstring. A narrow access whose wide twin is in an unrelated function (calls go through placeholder relocs, so there is no interprocedural link) is not seen, and neither are `D_00000000`+0 data references (one root per site). The 56 "lone sub-offset" narrow fields (no access at +0 of their word) are a review list: a sample was checked (MorphPolyShade s16[3], PolyShape / Sprite +0x1E s16, GameFlow settings bytes, SnowBoarder +0x9A2 lh in 4 functions), and all were declared narrow; the rest are unchecked.
 
+### 18.13 Run 827: bitfield audit finished, FIND_SERIAL, the narrow-read review list (agent-c)
+
+agent-c run 827, branch agent-c on main 65e5004b6. Gate PASS before each commit (ROM byte-identical,
+3579/3579, verify-blocks 6/6, clean build OK). The changed units compile under the port flags with no
+new warnings; `make -C port/audio test`: 147 + 264 passed, 0 failed.
+
+| commit | what |
+|---|---|
+| 49d13aa00 | audio flag bits in host order at 9 more IDO-mask sites (below) |
+| adf111315 | port/audio: gAudioHeapInitSizes +0..+4 swapped as two s16 (was s32): tatumsPerBeat |
+
+**Bitfield inventory.** Every bitfield declaration in include/, src/ and port/ (C and C++), grouped by struct:
+
+| struct(s) | storage | status |
+|---|---|---|
+| audio.h `Sample` + views (gl_258C0_Sample, Desc25BFC, Desc258, gl_21498_Bits, B22398) | u32 word 0, cartridge fonts | done (15.6 re-pack); FinishSlowLoad `medium` fixed now |
+| audio.h `SequencePlayer` + views (gl_201B8_Obj, gl_235E4_Rec, Fl_2978C, BF2A7D8, gl_27E24 / gl_28604 / gl_26790 / gl_2B5F4 SeqPlayer, 26D64's u8 `flags`) | u32, runtime | views consistent; masks: 624 + 3 sites in ProcessCmds now |
+| audio.h `SequenceChannel` + views (BF1_000295BC, BF_000295BC, gl_2B09C / gl_2B5F4 Channel) | u32 bytes 0-1, runtime | 624 + SequenceChannelEnable, InitSequencePlayerChannels now. InitSequenceChannel clears all 8 bits of byte 0 (order-free) |
+| audio.h `SequenceLayer` + views (AA30, ObjFlags2AB34, GlPooledFlags, gl_27E24 / gl_2ABC0 / gl_291C0 / gl_2AD1C / gl_2B09C / gl_2B5F4 Layer) | u32 / u8, runtime | 624 + SeqLayerDisable now; the post.c SeqChannelSetLayer mask copy is not compiled (import body uses GlPooledFlags) |
+| audio.h `NoteSampleState` + views (gl_1CC98_Elem, ElemFlags1CF68, gl_dcb4 / gl_aud SampleState, gl_27804 bitField0/1, gl_28604_Note, 8356 union) | u32 bytes 0-1, runtime + gDefaultNoteSub (bit-reversed in 15.6) | 624 + NoteSetResamplingRate `hasTwoParts` now |
+| audio.h `AdsrState.action` + views (gl_27E24 / gl_28604 AdsrBits, 29CCC Env, Gl29000Obj f60) | u8, runtime | 624 (NoteInit / NoteDisable) |
+| audio.h `Stereo` + views (2AD1C, 27804) | u8, **script bytes** | 624 (`port_stereo_from_ido` at the 3 byte writes); the other asByte uses are `= 0` / `== 0` |
+| `Bf5B5D8` Mem header (post0b) | u32, runtime | 624 (reversed under PORT) |
+| `d14c_flags` (timproc b5) | - | members never used; its function is ported from the match_imports copy |
+| kernel / rmon (kernel_000_c, 014, 022_d) | - | excluded (port/ultra) |
+
+No other C / C++ file has a bitfield; match_imports has only context_game_libs_post.h's audio views.
+All views of one word declare the same fields in the same order, so the member accesses agree on
+both compilers. Only mask / shift / byte spellings and ROM data were at risk.
+
+**Method (mask sites).** A C-level scan of the audio driver (post.c up to snd_UpdateTimers, the 17
+audio o2 donors, the 3 audio match_imports, the ncc donor), filtered to the body the port compiles
+(port/sourcemap.tsv): every `& | ^` with a constant, every shift, every `< 0` sign test, and every
+constant store to a container byte. 354 + 12 lines reviewed by hand. New fixes (all `#ifdef PORT`):
+- AudioThread_ProcessCmds (donor 26D64): `recalculateVolume` (|= 4), `applyBend` (&= ~1 / |= 1) and the
+  `enabled` test (`>> 31`) that gates every channel command. On x86 that test read bit 31 (byte 3).
+- AudioSeq_SequenceChannelEnable: `enabled = 1` / `finished = 0` (0x80 / 0xBF): channels never started.
+- AudioSeq_SeqLayerDisable (`enabled = 0`, `finished = 1`); AudioSeq_InitSequencePlayerChannels
+  (`enabled = 0`).
+- Audio_NoteSetResamplingRate: `hasTwoParts` (byte 1 mask 2) set / clear.
+- AudioLoad_FinishSlowLoad: `medium = MEDIUM_RAM` (byte 0 `&= ~0x0C`; the font swap re-packs Sample
+  word 0, so on the host this cleared codec bits).
+The 18.3 / 18.4 lists had missed these. The remaining hits are value arithmetic (GBI packing,
+script command bytes, table indices), already-guarded sites, or bitfield-member spellings.
+
+**FIND_SERIAL: clear.** The only sender of tag 0xE in any built object (scan of every `li 14; sw sp`
+next to a call) is `Node_sendMsg14` (post0b): payload = &req.buf and payload +4 = `short a1_save`, an
+s16 store. Sender and receiver (Node_handleMsg's s16 read at +4) agree on both byte orders.
+
+**The narrow-read review list.** Rebuilt from `port-partial-read-audit.py --dump`: windows with only
+narrow accesses, none at the word's +0, at least one read used. 95 windows (run 825 quoted 56 for a
+narrower filter):
+- 20 stack locals (a narrow local or struct field in one function): safe.
+- 26 audio globals / AudioContext aliases: each offset resolves (DWARF of audio.h, -m32) to a narrow
+  AudioContext member (samplesPerFrameTarget, specId, numSynthesisReverbs, the font cache ids, ...).
+- The rest read declared narrow members (Backup time / name bytes, InputMgr ghost and options bytes,
+  SoundObj, Note / Layer / Channel bytes, AnimData.numFrames, AudioTableHeader.unkMediumParam
+  (swapped s16), Instrument byte 3). InputMgr +0x17D (pad17C) is written by mgrproc with an `sb`.
+- **One real bug**: `gAudioHeapInitSizes` (+0x1CDD0) was swapped as s32[4], but AudioHeap_Init
+  reads the s16 tatumsPerBeat at +2, so the host read the other half (0x1400 for 48). Fixed in
+  audio_swap.c (adf111315) and covered by test_audio_swap.
+- The same check over the other audio_swap ranges (bootup Data globals with code accesses) finds
+  only word accesses on the word ranges.
+
+**Open.**
+- Commit adf111315's message says "about 107x too slow"; the factor is 0x1400 / 48 = 107 in the
+  tempo-scale divisor, but the sign of the effect (slow or fast) was not checked.
+- The mask scan is C-level and covers only the audio driver, because no other file has bitfields. If a new
+  bitfield view is added, re-run the scan.
+
 ### 18.11 Run 822: frame 1 to the title demo's game_init (agent-g)
 
 agent-g run 822, branch agent-g on main 2f16f6e23 (run 819 as landed). Gate PASS on the
