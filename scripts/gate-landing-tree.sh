@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # §2 gate (docs/HANDOFF_NEW_MACHINE.md §2) on the landing worktree. Env: LAND_WT (default projects/1080-agent-d), LAND_SCRATCH (log dir).
-#: make + cmp, non_matching_objects, refresh-report, exact-set diff vs origin/main, sentinels. Never pushes.
+#: make + cmp, non_matching_objects, refresh-report, exact-set diff vs origin/main, sentinels, PC port (scripts/port-gate.sh; PORT_GATE=0 skips). Never pushes.
 set -uo pipefail
 SELF_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export PATH="/home/danjs/code/decomp/tools/build-venv/bin:$PATH"
@@ -86,5 +86,18 @@ if [ "${SKIP_CLEAN_BUILD:-0}" != 1 ]; then
   git worktree remove --force "$CL"
   if [ $crc -ne 0 ]; then echo "   !! clean build failed (CI would break); see $LOG-clean-*.log"; tail -4 "$LOG-clean-objs.log" "$LOG-clean-nm.log" 2>/dev/null; exit 8; fi
   echo "   clean build: OK"
+fi
+# the PC port (run 839): everything above checks the matching build only, so a merge could break
+# the port build (a K&R parameter type against a C++ caller, a dropped PORT fix, stale port/gen).
+# scripts/port-gate.sh: port/gen + sourcemap regenerate to the committed files, the i386 PORT_LINK
+# build (0 errors, 0 undefined, no new gated warnings), test_ultra / test_fs / gfx golden / audio
+# regress, a headless tenshoe smoke run and the DWARF ABI scan. ~90 s, so on by default;
+# PORT_GATE=0 skips it. Skipped when the tree predates the script. Last, so a port failure
+# still shows the whole matching result above
+if [ "${PORT_GATE:-1}" != 0 ] && [ -x scripts/port-gate.sh ]; then
+  echo "== gate: PC port (scripts/port-gate.sh)"
+  LAND_WT="$WT" PORT_GATE_TMP="$LOG-port" scripts/port-gate.sh >"$LOG-port.log" 2>&1; prc=$?
+  grep -vE '^== port gate: /' "$LOG-port.log" | sed 's/^/   /'
+  if [ $prc -ne 0 ]; then echo "   !! port gate failed; see $LOG-port.log (PORT_GATE=0 skips it)"; exit 11; fi
 fi
 echo "== done. report.json left modified in $WT for commit; NOT pushed."
