@@ -4877,7 +4877,7 @@ step 9000; the shipped match_race.input stops in the select menus on this tree):
 reaches the finish marker at step ~4100 (rival lead -231453: the straight-stick human retired at 33 %),
 then stops in SnowAI_finishRun; round 2 (7250..) starts and the CPU rider again rides at 170-233.
 
-**Gate guard (commit):** port-gate.sh smoke now also requires the attract demo's CPU rider to reach
+**Gate guard (6f00cae7d; landing gate + port gate PASS on it: 3579/3579, ROM byte-identical, race step PASS):** port-gate.sh smoke now also requires the attract demo's CPU rider to reach
 60 % (trace e0 pct) when the run has >= 2000 frames: 74 % at 2000 with steering, ~35 % against the wall
 without it.
 
