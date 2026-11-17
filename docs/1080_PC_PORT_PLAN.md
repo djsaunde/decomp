@@ -5931,6 +5931,56 @@ samples it (the N64's one-frame lag). test_inproc `-s` renders dumps as one step
    colour d3dee7 and alpha 0..0x0d, so it is probably not the GO! draw. The GO! draw was not isolated.
 4. FB_WRITE (debug paths) is still not composited in the presenter.
 
+### 19.13 Run 861: depth-reply window, sky depth / GO! / win box settled, resizable presenter (agent-a)
+
+agent-a run 861, branch agent-a on 34be13c8a: **7f573dfe1** (depth replies: a window around each asked pixel),
+**19a679f72** (presenter resize / F11, f3dreplay F3D_ZLOG). Gate: ROM byte-identical, 3579/3579, port gate PASS. Frames:
+/tmp/claude-1000/agent-a/r861 (strip3.png, sky/kcmp.png, sky/zoom.png, go/emucmp.png, go/tex_on_green.png,
+win/box.png, win/neigh.png, F/small.png, M/sheet.png).
+
+**0. fb-reply re-verify on main (after the 858 / 859 merge).** Replies arrive (2296 taken, 0 torn), but the
+A/B at step 2250 showed the sun glow through the cliff WITH replies too (run 859's "replies hide it" was a lucky
+frame). Cause: the reply is 1-2 steps old, the clear model resets the whole Z image each task, and
+port_live_fb_apply only stored an answer where the game asked about the same pixel again; the sun moves about a
+row a step, so its new 3x3 samples read the clear (far). Fix: the presenter answers each asked pixel's
++-6 window (LIVE_FB_DEPTH_R, up to 1024 answers, LIVE_FB_VERSION 2) and the game stores every answered pixel.
+After: steps 2240-2254 no glow behind the cliff, it returns as the sun clears the edge (2256-2258);
+`--no-fb-reply` draws it throughout (strip3.png: top with replies, bottom without). Depth pixels stored over
+2300 steps: 2010 -> 189446. presenter `--png-steps A-B` limits PNGs to a step range.
+
+**1. Sky depth (steps 1642-1715): Fast3D is right, no fix.** Headless dumps 1640-1720 (gfx 3061-3207) replayed
+with f3dreplay (`F3D_ZLOG=1` prints each FB_DEPTH answer): (69,16..20) z fd20..fd3c. Bisecting the triangles
+(NOOP-ing TRI1s in the dump) finds the writer: the forest band DL 0x08835920 (28 tris, tree-line billboards,
+2-cycle FOG_SHADE / XLU blend, Z_CMP|Z_UPD, CVG_X_ALPHA). Their texel alpha at that pixel is >= 0.99 (a shader
+threshold sweep: discards only at < 2.0), i.e. opaque trees: the sun sits behind the tree line, the glow is drawn
+over it (sky/zoom.png: trees vs the band removed). The N64 writes Z there too (Z_UPD, full coverage), and its
+compressed Z for z18 ~0x3F48C is ~0xD230, not 0xFFFC, so Sun_measureVisibility sees it as occluded on hardware
+as well. The Fast3D <-> N64 Z encoding difference (linear 14-bit vs exponent / mantissa) cannot change the
+`== 0xFFFC` test except for geometry within the last 1/4096 of the depth range.
+
+**2. GO! colour: verified correct.** The GO! is not a 3D model: it is a 136x72 IA8 sprite (0x089f0470, chrome
+GO! art with alpha) drawn by the overlay task as 5 TEXRECT strips at (92,84), combine
+(PRIM-ENV)*TEX0+ENV, alpha TEX0A*ENVA, PRIM ff8b8e, ENV 621d38 alpha 0xab, blend IN*A + MEM*(1-A). A Python
+emulation of that combine over the frame without the sprite matches Fast3D's output to 0.035 / 255 mean error
+per channel over 3940 pixels (go/emucmp.png). Dark texels -> maroon 621d38, bright -> pink ff8b8e, at 67 %
+opacity over the snow: the "pinkish red, translucent" look is what the game's own PRIM / ENV produce.
+
+**3. Win-screen box: not renderer-side (back to agent-c).** The green box is a 32x64 RGBA16 TEXRECT at
+(144,108) (overlay task, PRIM*TEX0, prim alpha 0xfe) of texture 0x089ae330 = flowimgs.bin +0xfc5ac: the
+green-circle trail-difficulty sign (its neighbours in flowimgs are the blue square and black diamond,
+win/neigh.png). It decodes correctly; it also shows on the Round 2 intro. Whether the N64 draws it there
+(position / visibility) is game logic: agent-c to check the object that draws it (likely the next course's
+difficulty sign).
+
+**4. Upscaling at 3x:** race HUD, title logo, select rider / board / course frames checked (M/sheet.png,
+M/title.png, M/board.png, hudcrop.png): no strip seams or filtering artefacts beyond patch 0009. The blocky
+board-silhouette edges are texel-level alpha cut-outs (the N64 shows the same at 1x).
+
+**5. Presenter resize / fullscreen:** the window is resizable (min 320x240); each frame renders straight into
+the largest centred 4:3 rectangle (mGameWindowViewport + mCurDimensions; patch 0003's read-backs honour the
+offset). F11 toggles EWMH fullscreen. Verified: `--inject 900:F11:d` -> 2560x1440 letterboxed frames, depth
+replies still served (F/small.png).
+
 ### 20.5 Run 857: checkpoints, the Match Race win, options persistence, the modes gate step (agent-c)
 
 Branch agent-c on origin/main 384c40ad6: 2f9a83eed (trace cd= / trn=), 878be00f3 (steer-search,
@@ -5977,6 +6027,66 @@ screen shows a green box with a circle in the middle of the "Advance to next rou
 >= `# CHECKPOINTS`), contest (points, an extension), training (lesson 0 -> 2), vs2p (race end 3679, next
 round 4238), match (goal; `# WIN` -> before the CPU), options (save, reload in a new process). Each
 failure prints the steer-search command or the script to edit.
+
+### 20.6 Run 860: pause -> Quit, Match Race records in SRAM, the level sign, Trick Attack's goal (agent-c)
+
+Branch agent-c on origin/main 34be13c8a. Commits: e00d7d8dd (Match Race pause -> Quit; the modes match
+check reads the record back), ba8f5f4ce (Trick Attack to the goal). Gate (matching + port): PASS.
+
+**The in-race pause menu works; run 857's "first down closes it" does not reproduce on main.** Frames
+(capture.sh -F ... -M) of Match Race (arcproc menu: Continue / Retire / Restart / Quit) and Time Attack
+(Continue / Retry / Change Course / Change Board / Change Rider / Quit) show the cursor moving on DD and
+on the stick held down. It also moves on presses 6 steps after START and on 1-step presses. The cursor row
+blinks (it is not drawn every frame), which can look like a missing row. The input chain is right:
+- pad_decodeButtonMap: D-down 0x400 -> 0x8, A -> 0x100, START -> 0x40000;
+- pad_update: stick y < -0.5 -> 0x8000;
+- PauseMenu_update: 0x8008 moves the cursor down, 0x2004 moves it up;
+- the race process: 0x100 / 0x40000 pressed then released selects the row (m26).
+
+**Match Race records persist.** match_race.input now continues after the Round-1 win:
+1. A, A: Round 2 (race state 1 at 4401).
+2. START at 4600, then DD x3, then A: Quit (flow 5).
+3. The session closes (mgr_closeSession -> Backup_closeSession(session, 3)), and the name entry follows
+   (the 1'19"16 win time is a top-3 Crystal Lake time): A A A END = "AAA".
+4. Best Times, A: the title at 5365.
+
+The SRAM then holds records[2] (Crystal Lake) entry 0 = name AAA, 1'19"16 (bytes 00 00 00 00 00 01 13 10
+at 0x68), and the mirror at 0x7E38 matches. A new process on that file shows Time Attack Crystal Lake's
+HUD BEST TIME 1'19"16 (records_reload.input; capture -F 1600). That boot does 1 SRAM write (the header)
+and leaves the file byte-identical: no chunk reset. Quitting from Round 2 returns to the title, not the
+main menu. One won round changes no unlock: the arcade chunk (0x190) is unchanged. Unlocks after a whole
+level (4 courses) are still not checked.
+- `modes` match check: with `# RECORD m'ss"hh`, that time must be saved under AAA (primary = mirror), and
+  records_reload.input in a new process must give rc 0 and leave the file unchanged. The run adds ~1 s.
+- steer-search --mode match writes the same tail (MATCH_TAIL) and reads `# RECORD` back from its run's
+  SRAM. `--tail-only` now covers match mode, and it reproduces the committed F lines.
+
+**The win screen's "green box with a circle" is the game's level sign, not a bug.** It is mgr_loadSprites
+sprite import_80263D30, id `(level - 1) | 0x200000`, a 32x64 RGBA16 image: a white trail sign with a green
+circle. The Select Level screen's Normal card is the same "Green Circle PASS"; the circle is the ski-trail
+difficulty mark. The game draws it:
+- mgr_drawResults_000023FC (the NCC donor): at (0xA0, 0x8C), centred, whenever race.result != 2. It comes
+  first in the overlay DL, under the "ADVANCE TO NEXT ROUND" sprite at (0xA0, 0x78).
+- MGRRaceProcess_drawIntro: at (0xA0, 0x9C), on the "Round 2 / Crystal Peak" screen.
+
+The texture decodes cleanly big-endian at 32 wide, and the renderer draws exactly that image.
+
+**Trick Attack reaches the goal** (port/host/trick_attack.input, regenerated). The settings:
+- STEER_TRICK_ACTS=fast: x 0 / +-20 / +-40 / +-80 at full lean; jumps only with x 0 / +-40.
+- STEER_POINTS_W=0.2, STEER_POINTS_CAP=150, STEER_JUMP_UNTIL=1700: two early tricks (234 pts), then steering
+  for speed.
+
+All 5 checkpoints are passed, Goal at 4524 (run 857: 3 checkpoints, Time Up at 62 %). The search takes 116 s
+and is deterministic. The greedy line is chaotic: late jumps cost the speed the 4th and 5th checkpoints
+need. steer-search now writes `# GOAL` in trick mode, and the modes trick check then requires pct 100. Each
+scored candidate in trick_main now carries its own action, so a backtrack across STEER_JUMP_UNTIL stays
+correct.
+
+**For agent-a: f3dreplay segfaults on Trick Attack's post-goal overlay task.** The 3D task renders, and
+`dlump.py --check` passes. The overlay holds 51 IA8 / RGBA32 TEXRECTs, and nothing looks out of range.
+Repro: `f3dreplay /tmp/claude-1000/agent-c/r860/f3dcrash/gfx_008838.dlmp out.png` (step 4530;
+gfx_008978 = step 4600 also crashes; gfx_008837 is the 3D task, which is fine). Capture:
+`capture.sh -i port/host/trick_attack.input -n 4800 -F 4530 -M`.
 
 ## 21. M6: 64-bit (agent-g, run 862)
 
