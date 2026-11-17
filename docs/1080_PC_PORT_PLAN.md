@@ -1836,6 +1836,59 @@ Open:
   seqrender's `--title` plays 0xA3 at 0.44 s. In the boot, mode 1 runs at retrace 1, possibly before
   app_runInit's snd_PlayPlayer0Seq0 or while spec 1 is still loading; trace the order.
 
+### 15.10 Run 840: the DAC-model fault (0xB5 byte order), DAC model on by default, the logo sound, demo SFX (agent-c)
+
+**1. Title demo "Out of DMA slots" (main fabb4f8ce, every run, ~step 230).** Not audio: run 836's
+`PORT_BE_SWAP16S` in AnimData_readFrames' streamed path sits between fs_gdlReadFileAsync and the bare
+`return;`. On the N64 that `return;` hands back v0 = the DMA slot (AnimDataMgr_getSlot stores it as
+`pending`, AnimData_waitFrames -> fs_gdlWaitFile -> dma_wait frees it); on i386 the swap call left eax
+garbage, so no slot was ever freed and the 9 slots ran out in SnowBoarder_update. Fix (PORT only):
+keep the slot, swap, `return slot`. Title demo runs 1800 steps again.
+
+**2. The DAC-model fault: a byte-order bug in channel command 0xB5 (and 0xB2).**
+AudioSeq_SequenceChannelProcessScript read the dyntable / sequence u16 natively:
+`unk_22 = ((u16 *)dynTable)[value]`. Sequence data stays big-endian on the host (ScriptReadS16 builds
+its words from bytes), so the offset came back byte-swapped. Path: player 2 plays seq 26 (= seq 1,
+the rider-sound sequence; snd_PlayPlayer2Seq(0, 0) = cmd 0x82021A00); its channel at 0xEB does
+`C2 0154` (dyntable), `60` (ldio 0), `F2` (rbltz), `B5`, `CF 010C` (stptrtoseq) and `2F xxxx`
+(startchan 15). Table entry `02 9A` read as 0x9A02: channel 15 started at seqData + 0x9A02 (past the
+0x320-byte sequence, in sample data), executed `4F 29 FB AA FA 7E FA ...` (a startchan 9 at 0xFBAA,
+a branch to 0x7EFA), ran a few thousand bytes of zeros and garbage and hit `B6` with dynTable NULL
+-> read at address 0x1. **It happened in both timing modes** (the garbage channel starts in the
+default run too, at the same moment); whether the garbage faults depends on what the audio heap
+holds there, which the DAC timing changes. seqrender never plays seq 26 on player 2, so it never
+ran 0xB5. Fix (PORT only, game_libs_o2_2BB7C.c): 0xB5 and 0xB2 compose the u16 from bytes.
+Debugging recipe: a per-channel ring of (pc - seqData, cmd) in ProcessScript plus a log in
+AudioSeq_SequenceChannelEnable of offsets past the sequence (a channel started outside its seq is
+the tell).
+
+**3. The DAC model is on by default** with `--audio-out` (PORT_AUDIO_DAC=0 turns it off). Title demo,
+1800 steps: 1919424 frames = 59.98 s for 3598 retraces (59.97 s), was 62.96 s; peak 32768, RMS 5704,
+clipped 199 (0.005 %), badAddr 0, unknownOps 0. Without --audio-out the headless host still reports
+osAiGetLength 0 (560-frame buffers), so plain runs and traces are unchanged.
+WAV: /tmp/claude-1000/c840/tenshoe_title.wav (default) and tenshoe_title_nodac.wav (PORT_AUDIO_DAC=0,
+before the 0xB5 fix was applied to it: 62.96 s).
+
+**4. The N64 logo sound (0xA3): the game's own command order, not a port bug.** Boot order (traced
+with a backtrace in AudioThread_QueueCmd): App_main -> GameFlow_startMode -> n64_procMain -> mode 1:
+snd_StopAudioCmds(1) (ResetAudioHeap: the F9 commit), F8, player setup + 0x82000000 (player 0 seq 0),
+F8, snd_PostEvent(0xA3) (0x06000001 = 0x23); N64DemoProcess_ctor posts 0xA3 again; then App_main ->
+app_run(Init) queues its own snd_PlayPlayer0Seq0 (0x82000000). snd_UpdateTimers commits nothing while
+the spec change runs (D_2D37C_mode == 1 -> AudioThread_CheckSpecChange), so the first commit (frame
+10, after the reset's 18 updates) carries all of it; after the second F8 the IO writes and the second
+0x82 are processed in one ProcessCmds call, and the restarted player 0 clears channel 0's IO before
+its script reads it. The order and the gating are the ROM's, independent of timing, so the N64 should
+behave the same. seqrender's `--title` plays 0xA3 at 0.44 s only because it issues app_runInit's 0x82
+before the mode-1 event (proof: skipping app_runInit's 0x82 in tenshoe gives the sound at 0.4 s and
+channel 0 IO1 = 35 at retrace 23). Left as is; if real hardware does play it, the difference is not
+in the command stream.
+
+**5. Demo SFX: none in the title demo, by the game's gate.** The whole 60 s title run queues 57 audio
+commands. snd_updatePlayer runs every demo frame with a live SoundObj, but snd_SoundObjUpdate returns
+at once when the music-mode word (bootup Data 0x1C0A8, D_cfg_E354) is 0, and the attract demo keeps
+mode 0 (the title music); the race SFX need mode 4 (timproc's snd_playSeq(4, course) at a real race
+load). Checking scrape / wind / landing needs a race run (a replay through the menus), not the demo.
+
 ## 16. M1: link plumbing
 
 Run 612 (agent-a), on main e58ff9d67, commits f46b22b3d and cc6a576df on agent-a. The goal is a
@@ -4240,6 +4293,65 @@ ImageFile texels (agent-a's byte-order work).
 
 **Next:** run the title demo again (the chase camera's distance, the anims and the timer HUD
 all changed); fold the DWARF ABI scan into a gate step (it needs a linked port build).
+
+### 18.18 Run 839: the port gate (agent-e)
+
+agent-e run 839, branch agent-e on main bc3b36ee2: f42944519 (src, PORT only), 2e7ceb2a3 (tool);
+monorepo d3e4726 (gate-landing-tree.sh, not pushed).
+
+**`LAND_WT=<wt> scripts/port-gate.sh [--regen] [--update-baselines]`** (1080 repo). Needs the
+matching build in the tree. ~85 s; one line per step; exit = number of failed steps; logs in
+`$PORT_GATE_TMP` (default `$TMPDIR/port-gate-<wt>`). Times on this machine:
+
+| step | s | checks |
+|---|---|---|
+| gen-map | 10 | port-sourcemap.py + port-gen-build.py reproduce the committed sourcemap*.tsv / port/gen |
+| build | 9 | fresh `-DPORT_LINK=ON` i386 build: 0 compile errors, 0 undefined symbols, no gated warning beyond `port/tools/port-gate-warnings.tsv` |
+| gen-lib | 17 | port-gen-decls / binds / uso (from the built game objects, as agent-g's regen.sh) + port-gen-blob-types.py reproduce port/gen |
+| test_ultra, test_fs | 0 | |
+| gfx | 21 | `make -C port/gfx test`: 19 golden scenes (llvmpipe) + test_dlump |
+| audio | 18 | `make -C port/audio regress` (53 cases) |
+| smoke | 1 | `tenshoe --frames 2000` from a clean dir: rc 0, 2000 trace lines, no NaN / Inf in r<N>= |
+| abi | 4 | `port/tools/abi-scan.py` (18.17's DWARF scan) vs `port/tools/abi-baseline.tsv` |
+
+- The generators write in place: the gate snapshots port/gen + sourcemap*.tsv and restores them
+  (default), or keeps them and rebuilds (`--regen`; commit the result as tool output).
+- Gated warning classes (the build adds `-Wreturn-type -Wimplicit-function-declaration
+  -Wimplicit-int`, no codegen change): -Wreturn-type, implicit declarations / int, int <-> pointer
+  casts, incompatible pointer / int conversion, builtin-declaration-mismatch, C++ -fpermissive.
+  Key = file, function, class, message (no line numbers), with a count: a new key or a higher
+  count fails. Baseline today: 308 keys / 498 warnings (230 -fpermissive, 57 return-type,
+  19 implicit declarations, 2 int-to-pointer).
+- ABI baseline: 104 accepted findings (P 62 int / float same-size pairs, SRET 4 = 28C0_rotate x3
+  and SnowAI_aimWeave, SRETPOP 4, UNPROTO 34). A new one fails; a fixed one is reported.
+- `gate-landing-tree.sh` runs it last (after the clean-checkout build), on by default,
+  `PORT_GATE=0` skips it, exit 11.
+- **test_ultra's argument is an SRAM image it WRITES (32 KB)**. Run 839 passed it the ROM path
+  once and truncated the shared projects/1080-decomp/baserom.z64 (restored within ~1 minute from
+  the sha1-checked tenshoe.z64, 79cd1166). The gate passes a scratch file.
+
+**Results on main (bc3b36ee2) + f42944519:** all PASS except **audio: course0 / course1** hashes
+differ from regress-golden.tsv (BE17F822 / 4DBB67AF vs EF99C528 / 991FD7AE). Same at c63d1fe2a,
+the commit that wrote the golden list, so the golden came from a pre-rebase tree: agent-c to
+re-check and `make regress-update` if intended. Until then landings need `PORT_GATE=0` or fail
+with exit 11.
+
+**Found and fixed (f42944519):**
+- Run 836 broke the boot: tenshoe died at frame ~231, `sys_fatal: Out of DMA slots`. Bisected to
+  79cdd106c. AnimData_readFrames' streamed path ends in a bare `return;` in an int function: the
+  ROM returns fs_gdlReadFileAsync's slot in v0, AnimFrameCache keeps it as `pending` for
+  AnimData_waitFrames. With the PORT_BE_SWAP16S after the read, eax was garbage, so no slot was
+  ever waited. PORT returns the slot. 2000 frames now run (rc 0).
+- mgr_initMatchRace_00000700 (C++ NCC donor) had no return statement: g++ -O2 emitted no `ret`
+  (it falls into `.cold`). PORT `return 0`.
+- port/undefined.txt is not gated: `cmake --target undefined` on a PORT_LINK tree rewrites it
+  (178 -> 72 symbols, libc now listed). It is a report, not a generator input.
+
+**Open (not gated):** the camera target goes NaN at frame 1619 (`cam=` fields 3-5 = 0xffc00000
+from a camera cut, the eye jumps). Before run 836 it went NaN at 2380 and SIGSEGV'd at 2625: likely
+the same bug as agent-g's crash. The smoke line prints the count. The 47 C "control reaches end
+of non-void" and 3 bare `return;` warnings in the baseline are the same class as the
+AnimData_readFrames bug when a caller uses the value: worth one audit pass.
 
 ## 19. M2: graphics transport (agent-a, run 820)
 
