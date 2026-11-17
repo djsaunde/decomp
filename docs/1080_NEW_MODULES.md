@@ -1196,6 +1196,47 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     - al.py: opcode alignment;
     - show.py: side by side.
 
+- Run 737 (agent-h, commit 45619b2b2 on agent-h, NM only, no renames; 3571 / 3579, gate PASS, exact set identical).
+  - **0xC90 NM 94.08 -> 94.41 %**, 592 words, frame 400. **The whole frame map now matches the target**: v / __V / r
+    at sp+220 / 204 / 192 (were 256 / 236 / 224), sp-offset mismatches 7 -> 1.
+    - **Loop-scope words:** `int y0, z; Gfx *ge, *gf, *gt, *g1, *g2; int x1, y1;` declared before `SnowV3c v`,
+      with `float w` after v. The packets go through the named pointers: `gW(g, w0, w1)`, and a `gTR(g0, pkt, g1,
+      pkt2, g2, pkt3, ..)` texrect whose RDPHALF packets use `gImmpV(g, pkt, ..)`. None of them declares a `_g` block
+      word. x1 = x0 + wid and y1 = y0 + hgt are assigned after the FB packet.
+    - With the loop words in place, w below v gives the target's 16-byte v-to-__V distance. The extra word
+      between w and __V in the old layout goes away. With w above v, v is 1 word low.
+    - The frame bottom must lose 2 words to stay at 400: the BB and the last BA tail packets reuse the function-scope
+      `g` (`g = c->next(); gW(g, ..)`). A climb over all 15 tail pairs picked (1, 5).
+    - Code is unchanged by the declarations themselves (94.08 with pointer variables and the old frame). The gain is
+      the frame offsets plus nextN() on the E4 packet (94.12 -> 94.41).
+  - **EDG word facts (NCC 7.1, `fl.py`):**
+    - An inline with a named local declared *without* an initialiser (`int n; return &dl->buf[n = dl->count++];`)
+      gets a fresh word per expansion, so each packet gets its own count LR. Frame +8 per use. nextN's
+      initialised `int n = ..` reuses one pooled word.
+    - Code-free `dumN(x..)` dummies (agent-g's mp72 trick, `a0 = a0;` bodies) do **not** lock words under NCC 7.1:
+      the parameter words are freed after the statement. In 34 of 40 sites x arities nothing changed.
+    - A fresh count word on the EE packet (+1 tail g to keep the frame) is 94.38: its count then takes v1 and dl v0.
+  - **Why the count is still a2 (uopt trace, `tr.sh`):** the count (M-128) is pri 21.4 (171 / 8 blocks). Five pri-30
+    one-block LRs (FB pointer, nextN's shared n for E4 / B3, g2, two CSEs) interfere with it and take v0 / v1 / a0 /
+    a1 first. The target's EE packet is a1, so it is coloured after the camera CSE (a0, pri 21): its LR spans more
+    than one block. `if (y0) {}` between `ge = c->next()` and the fill drops the EE pointer below 21, but costs
+    objdiff (94.17), and count stays a2.
+  - **Prologue self->tex:** the target has `lw a1,44(a0)`. `gl_func_00000000(self->tex->dl, self->tex)` gives a1,
+    but then the t-ring starts at t6 instead of t7 (93.41). The target consumes one ugen t-register before c's lui
+    with no code.
+  - Next:
+    - shorten the count LR to 5 blocks or fewer. Candidate: per-packet fresh-word counts at the right packets,
+      with the frame kept by the tail g set;
+    - the FB colour order (target: col[0], col[1], alpha, col[2]);
+    - yl's late s16 (target keeps y0 << 2 unsigned in t5 until w1).
+  - Tools: /tmp/claude-1000/agent-h/r737/:
+    - r.py: runner printing (objdiff, words, frame, positional diffs, sp mismatches, loop layout diffs, sp addiu
+      offsets);
+    - g4.py: knob builder (clamp letters, term orders, x1 / y1 placement, `if` sites, per-packet next form incl.
+      fresh nextF / nextG, tail g set, dummies);
+    - hc4.py: climb under the 592-word / frame-400 / offsets constraint;
+    - v*.py: the batches.
+
 ### snoweffects.uso 0x6000+ (agent-e run 639)
 
 - +2 EXACT (commit feb67fb6a on agent-e): 0x8C60 and 0x9FE8, both IDO 7.1 NCC. Own donor
@@ -2091,6 +2132,31 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     | ternary fadeIn | 88.16 |
     | inline `snowWrap(cx, cy, cz, &wx, ...)` with by-value coordinates (c goes back to s2, but +9 words) | 78.7 |
 - **0xC90: not reached.**
+
+### snoweffects.uso 0x28E0 NM 92.56 -> 92.57 (agent-c run 734)
+
+- **Commit a5fea1c29 on agent-c** (gate PASS, 3571 / 3579, exact set identical, no renames): `wz, wy, wx` declared
+  in that order (the target's loop-top init order). 792 words, frame 520.
+- **The third 1.0 group is reached by the existing two-way lever.** snowOne on 1 / w, sw and sz (literal on alpha
+  and depth) gives exactly the target's draw block: 1.0 loaded into f26 right before the div, and alpha and depth
+  rematerialised with `lui / mtc1`. It scores lower (91.87) because the callee-saved register the 1.0 LR frees goes
+  to another constant: -30.0 takes f30, and halfW stays in f28.
+  - Splitting the wrap constants (`(float)snowK(-30)` etc., all 2048 subsets of the 11 sites) only moves the
+    freed register to the next constant: 60.0, then the alpha / depth 1.0. Best 92.31.
+  - In the target, wx sits in a callee-saved register (f24, shared with -halfW in the draw block), so there is
+    no spare one. Our wx is in f2: in the uopt trace (c734/tr.sh) wx (M-260) interferes only with cx, x and y.
+    Next lead: find why the target's wx LR is long enough to interfere with cy / cz / wy (or crosses randf).
+  - Third-group spellings at alpha or depth (unsigned / short inline, float inline, `static const float`,
+    `(float)1u`, a float inline param): each merges with the literal or the snowOne group. A double inline
+    emits cvt.s.d.
+- **z reload / EE order.** The target's EE packet stores come after x0 / y0 and the depth's m loads because z is
+  in f22 (no p->pos.z load stuck behind the header store). A z variable in every draw-block term reproduces that
+  order (573 positional diffs against 697), but halfW is then split and spilled (798 words, frame 528).
+  Computing depth into an int first (new local or reused `d`), or a gDPWord that reads w1 first, gives frame 528
+  and puts the t5 / ra address LRs in s4 / s5.
+- halfH declared after rot gets 336 (the target spills to 332), but m / rot move up 4: no gain.
+- Flat: empty-if placements, FA packet next kinds, sx / sy draw-block variables (frame 528), the rc2 climb
+  (c734/rc2.py: 1.0, 0.0 and wrap-constant sites, packet kinds, the z form).
 
 ### snoweffects.uso 0x28E0 NM 90.25 -> 92.56 (agent-c run 729)
 
