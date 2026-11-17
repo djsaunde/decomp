@@ -1867,7 +1867,7 @@ the tell).
 clipped 199 (0.005 %), badAddr 0, unknownOps 0. Without --audio-out the headless host still reports
 osAiGetLength 0 (560-frame buffers), so plain runs and traces are unchanged.
 WAV: /tmp/claude-1000/c840/tenshoe_title.wav (default) and tenshoe_title_nodac.wav (PORT_AUDIO_DAC=0,
-before the 0xB5 fix was applied to it: 62.96 s).
+with the fix: 62.96 s, RMS 5656).
 
 **4. The N64 logo sound (0xA3): the game's own command order, not a port bug.** Boot order (traced
 with a backtrace in AudioThread_QueueCmd): App_main -> GameFlow_startMode -> n64_procMain -> mode 1:
