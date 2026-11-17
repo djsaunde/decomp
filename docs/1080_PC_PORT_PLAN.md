@@ -1550,6 +1550,85 @@ field goes into a set, so a shared sample, book or envelope swaps once.
   `port_audio_frame()` 2 x frames times, and capture `host_audio_queue`. The `PortAudioStats` counters
   (`badAddr`, `unknownOps`, `unk19`) are the first checks.
 
+### 15.7 Run 829: seqrender, the first audible output (agent-c)
+
+agent-c run 829, branch agent-c on main c134a6aa0. Commits f13fc66d2 (case labels + audit tool),
+275d61e26 (seqrender, host AI hooks, translate). Gate PASS before each (ROM byte-identical,
+3579/3579, verify-blocks 6/6, clean build OK). This section is uncommitted.
+
+**The harness (`port/audio/tools/seqrender.c`, CMake target `seqrender` with `PORT_LINK=ON`).**
+Same objects as tenshoe (whole-archive game / uso / ultra / audio, aliases.ld), own main, no boot:
+1. ROM -> port/ultra, `osInitialize`, `port_uso_init` + `port_sysapi_install` (as port_game_boot).
+2. SnowBoard_ctor's audio part: `fs_gdlFileInfo` of rom/audio_seq.uso / audio_wave.uso /
+   audio_bank.uso (0x1E978 / 0x3F2A8 / 0xB848), `snd_Init(seq, bank, wave)` -> AudioLoad_Init.
+3. 4 settle steps, app_runInit's `snd_PlayPlayer0Seq0` (seq 0 on player 0).
+4. `--seq N` = `snd_PlayPlayer1SeqDefault(N)`; `--event M[:S][@SEC]` (up to 8) =
+   `snd_seqEventDbg_00000148(M, S, 0)` (what n64proc / titproc / timproc's snd_playSeq call);
+   `--sfx K [--sfx-at SEC]` = `snd_PostEvent(K)`.
+5. Per 30 Hz step `snd_FrameUpdate` (snd_UpdateTimers -> ScheduleProcessCmds) then two
+   `port_audio_frame` (app_runOneFrame's order). AI buffers -> 16-bit stereo 32000 Hz WAV.
+6. A modelled DAC (osAiGetLength = frames queued minus 32006 / 60 per retrace, through the new
+   `host_headless_set_audio_clock`): the driver's feedback then picks 528..544-frame buffers as on
+   hardware. With the headless 0 every buffer is 560 frames and the output runs 5 % long
+   (10.5 s of WAV per 10 s of game).
+Prints peak / RMS / clipped samples, PortAudioStats (badAddr, unknownOps, unk19, rawPointers),
+and the music player's tempo (`--tatums N` overrides gAudioHeapInitSizes.tatumsPerBeat for
+experiments; `SEQRENDER_DEBUG=1` dumps the command ring).
+```
+run32 <build>/seqrender --rom baserom.z64 --event 1 --seconds 60 --out title.wav
+run32 <build>/seqrender --rom baserom.z64 --seq 6 --seconds 60 --out seq06.wav
+```
+
+**Bugs found and fixed.**
+1. **Switch case labels vs pinned jump tables** (new class; `port/tools/jumptable-audit.py`). A donor
+   whose table is pinned to the USO's (`<func>_rodata`) matches whatever its labels say, as long as
+   the bounds and the arm order agree. gcc builds the table from the labels. The audit compares each
+   game_libs donor's own .rodata table with the ROM words: 27 donors, **5 wrong, all one entry off**.
+   `AudioThread_ProcessGlobalCmd` (0x82 INIT_SEQPLAYER ran SyncLoadSeqParts: **no sequence ever
+   started**; 0xF9 spec change did nothing), `AudioThread_ProcessCmds` (OoT's 0x47..0x4E),
+   `snd_SoundObjEventIndex` (bits 1..32), `dbg_threadStateName` (OS_STATE 1/2/4/8),
+   `Node_doCommand` (0x64 name, 0x65 parent, 0x67 global, 0x6C handle: **boot path, agent-g**).
+   Relabelled in place, except Node_doCommand (#ifdef PORT: its true labels change IDO's table
+   density and so the bytes; the audit keeps reporting it for the ROM build, expected).
+   dbg_threadStateName needed phantom `case 3: case 5: case 6: case 7:` for the same density reason.
+2. **FILTER addresses**: AudioSynth_ProcessNote / AudioSynth_FilterReverb put the pointer itself in
+   the 0x07 words (OoT's aFilter does too; the RSP keeps 24 bits), not K0 - 0x80000000. The mixer
+   added 0x80000000 and crashed in mix_filter on the first note with a filter. translate_k0 now
+   uses an address that is already inside the port image (__executable_start .. sbrk(0)) as it is.
+3. **Gate hole (not fixed, for the gate owner)**: `make all` did not rebuild a changed donor
+   (game_libs_o2_26790 / 26D64 / 2E290 / 343F4 objects stayed at their 07:34 build), so the first
+   gate run PASSed on stale donors. Rebuilding them by hand showed dbg_threadStateName's relabel
+   changed bytes. Donor .o files need their source as a prerequisite of the spliced object.
+
+**Verification (WAVs in /tmp/claude-1000/c829/).**
+
+| file | request | seq | sequence tempo | measured |
+|---|---|---:|---|---|
+| title_seq02.wav (60 s) | `--event 1` (n64proc's snd_playSeq mode 1; the title runs on) | 2 | 176 bpm | 141.2 tatums/s = 176.5 bpm; onset AC at the beat 0.042, at the bug's rate -0.016 |
+| seq06.wav (60 s) | `--seq 6` | 6 | 130 bpm | 104.2 tatums/s = 130.3 bpm; onset AC beat 0.050, bug rate -0.013 |
+| race_start_seq14.wav (40 s) | `--event 4:2 --event 5:0@1` (course 2, then mode 5) | 14 | 160 bpm | 128.3 tatums/s = 160.3 bpm; **onset-AC peak exactly at 0.375 s = the beat** |
+| seq05.wav (60 s) | `--seq 5` | 5 | 160 bpm | 2 clipped samples in 60 s |
+| seq04.wav | `--seq 4` | 4 | 176 bpm | silent: player enabled (muteBehavior 0xA0), no notes; not investigated |
+| seq2_tatums1400_bug.wav (10 s) | `--seq 2 --tatums 0x1400` | 2 | (clamped to 100) | 180 tatums/s = 225 bpm; onset AC peaks at the bug rate (0.064), beat -0.010 |
+
+All renders: no NaN path (s16 output), clipping 0 except seq 5 (2 samples), badAddr 0,
+unknownOps 0, unk19 0 (op 25 never emitted: 15.5 question 4 answered for these sequences), AI
+underruns 0, DC under 35, L / R correlation 0.16..0.70 (real stereo). 0.3 % fast against the
+nominal bpm is the driver's own rounding (tempoInternalToExternal 10770, not 10800).
+**Tempo verdict:** with tatumsPerBeat fixed the tempo is the sequence's; the old 0x1400 made it
+too FAST (18.13 corrected).
+
+**Game music state machine (snd_HandleSeqEvent modes), as far as seen.** Mode 1 (n64proc) ->
+spec 0 + seq 2. Mode 0 (titproc) and mode 4 (timproc, sub = course) change the spec
+(snd_StopAudioCmds(1 / 3 / 4 / 6) -> 0xF9) and start nothing by themselves; 4 stores
+gl_cmd = course + 4. After mode 4: mode 2 -> seq 16, 3 -> 3, 5 -> 14, 8 -> 16, 9 -> 17, 11 -> 19;
+mode 10 -> 18. Which event starts a course's own music (seq course + 4?) was not found: the
+timer path (snd_ScheduleSeqDefault, 210 steps) is reached from snd_dispatchEvent; seq 4 was silent.
+
+**Next.** Listen to the WAVs. Find the race-music trigger (snd_dispatchEvent / timproc); seq 4's
+silence (channel mask / IO?). Run seqrender over all 24 music sequences (non-silent, no clip
+storm, badAddr 0) as an M4 regression test. agent-g: Node_doCommand's labels change under PORT.
+
 ## 16. M1: link plumbing
 
 Run 612 (agent-a), on main e58ff9d67, commits f46b22b3d and cc6a576df on agent-a. The goal is a
@@ -3649,8 +3728,11 @@ narrower filter):
   only word accesses on the word ranges.
 
 **Open.**
-- Commit adf111315's message says "about 107x too slow"; the factor is 0x1400 / 48 = 107 in the
-  tempo-scale divisor, but the sign of the effect (slow or fast) was not checked.
+- ~~Commit adf111315's message says "about 107x too slow"~~ **Wrong direction (measured in run 829,
+  15.7):** tatumsPerBeat 0x1400 makes tempoInternalToExternal 107x smaller (10770 -> 100), and
+  ProcessSequence clamps every tempo to it (`tempo = bpm * 48`, clamped), so the player advanced one
+  tatum per update: 180 tatums/s for every sequence = 225 bpm. That is too FAST for every sequence
+  under 225 bpm (seq 2, 176 bpm: 1.28x), and all music ran at one tempo.
 - The mask scan is C-level and covers only the audio driver, because no other file has bitfields. If a new
   bitfield view is added, re-run the scan.
 
