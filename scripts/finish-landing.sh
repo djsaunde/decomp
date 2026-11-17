@@ -21,6 +21,8 @@ MISSING="$(git -C "$D" cherry HEAD "$AH" | grep '^+' || true)"
 if [ -n "$MISSING" ] && [ "${LANDED_BY_HAND:-0}" != 1 ]; then   # LANDED_BY_HAND=1: coordinator resolved a conflicted pick (patch-ids differ)
   echo "!! agent-$L commits not on agent-d HEAD (landing incomplete?); not resetting:"; echo "$MISSING"; exit 1
 fi
+G=/tmp/claude-1000/coord/gate.out
+if [ -f "$G" ] && grep -qE '!!|LOST' "$G"; then echo "!! last gate output ($G) has !!/LOST; refusing to push"; exit 1; fi
 git -C "$D" add report.json
 if git -C "$D" diff --cached --quiet; then
   echo "report.json unchanged: pushing the landed commits without a report commit"
