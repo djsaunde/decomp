@@ -3439,7 +3439,55 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   of the key LR colours / priorities, plus MOV when `mov.s f2,f16` is present), `pk3.py NAME LO HI` (FP picks with
   true register names; lre.py's names are shifted by one FP register). Sweeps: s4..s16.
 
-## heli.uso (agent-g run 770)
+## heli.uso 0xB08 ring map + set3 words (agent-e run 771, research only, no commits)
+
+- **Result: 99.019 % (raw 31 rows, reg-masked 15, 943 words + pad, frame exact).** That beats the landed 98.72 %.
+  Source: /tmp/claude-1000/agent-e/w771/b08_e771.cpp (= `w/H2.cpp`). It is built on agent-g's r770 `m3c0.cpp`
+  (98.52), not on the landed main form. The same four edits on main's form score 98.3, because the word placement
+  differs there.
+- **Ring-offset map (per-row t / FP ring index of ours minus the target's, with registers masked out of the
+  alignment).** Tools: `rot.py` / `runs.py` / `ex.py` (score plus run map per variant).
+  - g4: the int ring is +1 on every int temp (rows 7-654). The FP ring is +1 on rows 12-515, 0 on 524-528 and -1
+    from 540 to the end.
+  - The int +1 is the single hidden t-ring temp of `zf1(HF(0x148))`: removing only that fold gives 0 everywhere.
+    zf2 / zfa / (double) forms of the same fold do the same. zf4(pf) has no effect at all (b2 is byte-identical
+    to g4).
+  - The FP steps at 519 / 535 / 558 are the three uncoloured-M-220 reloads (ring temps instead of the coloured
+    f16).
+  - **Ring law, refined from probes** (a `zf1(HF(x))` int probe at the start, the middle and the end):
+    - a hidden temp at row p shifts every row after p by one;
+    - it also shifts the WHOLE function by one, as if ugen's ring start depends on the total temp count.
+    So the offset at row r = (total temps) + (temps before r). A run that is offset everywhere means the total
+    count is off. A step marks where the extra temp is. agent-h's "backward" reading is the global term.
+- **What took m3c0 98.52 -> 99.02:**
+  1. **vel's set3 words.** The target's vel products are M-164 / M-168 / M-220 (f12 / f14 / f16): the vel
+     statement has -160 locked. The fix is `Vec3 vel = (dumf(HF(0x164)), *FWD * HF(0x154));`.
+     - The dumf argument matters: HF(0x164) and HF(0x158) are clean. `0.0f`, `dist`, `dir.x` and `(float)0` lose
+       two words. Plain HF(0x154) adds a second `lwc1 f0,340(s0)`.
+     - A by-value `operator*(float s)` also shifts the words, but costs a mov.
+  2. **The trailing cut on toTgt's subc: `set3(..); if (1) {} return ..`** (the leading cut stays). M-168
+     (toTgt.z) and HF(0xF8)'s LR (e1358 #433) then no longer share block 70, so HF(0xF8) can take f14
+     (98.83 at this step).
+  3. **M-168 above M-220.** vel goes through `mq()`, a copy of operator* that calls
+     `set3q(r, a, b, c) { r.x = a; r.y = b; r.z = c; if (0 * (unsigned)b) r.y = b; }`. M-168 goes 3.0 -> 3.33
+     and M-220 stays at 3.25, so M-168 = f14, M-220 = f16 (slerp reloads, lerp, vel.z) and HF(0xF8) = f14, as
+     in the target (98.96).
+     - An address-fold form (`*(float *)((char *)&r + 4 + 0 * (unsigned)b)`, `(&r.y)[0 * ..]`) makes r a
+       computed pointer and costs 1.7 %.
+  4. **yaw (M-248) above e1358 #524.** Put `+ 0 * (unsigned)(yaw + yaw)` in the HF(0x144) store address
+     (2.5 -> 3.0, which wins the tie on LR id). yaw then takes f12 at rows 728-796 (99.02). A single
+     `(unsigned)yaw` does nothing.
+- **Left (raw 31):**
+  - the add.s order at 95-98;
+  - v0 / v1 at 312-322 and t4 / v1 at 53;
+  - the jal / lwc1 f12,44(sp) swaps at 531 and 547;
+  - the 585 vel load shape (`lwc1 f4,0(v0)`: ours re-reads 340(s0)), plus its 584 branch offset;
+  - rows 769-784: e1358 #524 is f2 where the target has f14, and old-h is f14 where the target has f2;
+  - the 907 swc1 order;
+  - the tail 925-933 (f8 / f6 swapped).
+- Also measured:
+  - stc(&addr-ref, v) with an `if (1) {}` (W7) gives FP offset 0 everywhere. It puts clampP's return in M-220.
+  - lerpR2(ref, ..) gives 98.54 but loses the copy mov.
 
 - **0xB08 NM 97.84 -> 98.72 % (agent-g 79d9395c2; gate PASS, 3576 / 3579, exact set identical, no renames, 943 words,
   frame 368).** Raw rows 110 -> 84, register-masked rows 53 -> 15. Scratch: /tmp/claude-1000/agent-g/r770/
