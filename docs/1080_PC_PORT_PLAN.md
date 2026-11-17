@@ -5929,3 +5929,50 @@ samples it (the N64's one-frame lag). test_inproc `-s` renders dumps as one step
    with G_LIGHTING cleared (geometry 0x2204), so run 851's light-record fix cannot change it; its vertices have
    colour d3dee7 and alpha 0..0x0d, so it is probably not the GO! draw. The GO! draw was not isolated.
 4. FB_WRITE (debug paths) is still not composited in the presenter.
+
+### 20.5 Run 857: checkpoints, the Match Race win, options persistence, the modes gate step (agent-c)
+
+Branch agent-c on origin/main 384c40ad6: 2f9a83eed (trace cd= / trn=), 878be00f3 (steer-search,
+scripts), 1e1a5d213 (modes-check, port-gate `modes` step). Gate (matching + port): PASS, 3579/3579,
+ROM byte-identical; modes 2 s.
+
+**Trick Attack countdown: not a port bug.** In a fresh dir the "chk" items load (ItemMgr class mask
+0x13E: item_registerTemplates sets bit 2 when nextFlowMode == 6) and RaceTracker_findGates links 5
+checkpoints. RaceTracker_passCheckpoints extends the countdown (RaceTracker_onCheckpoint: gate +0x88
+seconds, 10 here) only when CheckpointCyl_isBetweenPosts says the rider crossed the gate's z between
+its posts (XZ dot product); run 853's script crossed the first one at x -4518, posts at -2203 / -426.
+The "empty chk list" of run 853 came from a run in a directory that held an earlier run's 1080.sram:
+the saved language pick skips the language menu, so every scripted press lands one menu off and the
+script rode Match Race (flow 3, mask 0x134). **Always run scripts from a fresh dir / --sram.**
+Contest has no chk items (bit 2 is Trick Attack only, as in the ROM); its countdown grows by 2 s per
+cleared slalom gate (gtl / gtr, bit 0: RaceTracker_passGates, flags & 1 = pass on the left).
+
+**Trace (PORT only):** `cd=<DataManager.score (countdown ms)>,<chk gates left>,<chk x>,<chk z>,<slalom
+x>,<slalom z>,<slalom flags>` and `trn=<TrnDataManager.lesson>` (flow mode 7).
+
+**steer-search:** trick / contest score the countdown (2 per second) and the next gate's line;
+Trick Attack backs out a window that crosses a chk line outside the posts and records `# CHECKPOINTS n`.
+Match: 30-step windows, stick y centred, x in 0, +-17, +-24, +-32, +-48, +-80 (the CPU rider's own
+stickX is mostly within +-0.15 and stickY 0, logged from SnowBoarder.input; full lean / crouch windows
+lost by ~550 steps whatever the score terms: speed, crash penalty, the CPU's line).
+
+| mode | before (853) | now |
+|---|---|---|
+| Trick Attack | Time Up 2367, 0 extensions, 25 % | 3 extensions, 62 %, Time Up 3730, 1575 pts (2 chk left: the greedy line is too slow for the 4th) |
+| Contest | 45 %, Time Up 3311 | 53 %, Time Up 3432, 5340 pts |
+| Match Race | You Lose (goal 4525, CPU ~3906) | **You Win** (3899 vs CPU 3959), "Advance to next round", "New Record 1'19"16", Round 2 Crystal Peak at 4401 |
+| Options | not checked | Sound: BGM 9 / SE 7 / Mono saved (SRAM 0x1F8 + mirror 0x7FC8); a new process shows them and saves BGM 10 |
+
+**Match Race progression / SRAM:** no SRAM write after the win or in Round 2: Match Race records are
+written by Backup_closeSession(session, 3) from mgr_closeSession_000009A8 when the mode exits, which
+the script does not reach. Round 2 ridden with a centred stick crashes out (damage) and retries Round 2.
+Not checked: unlocks after a whole level. Open: the in-race pause (START) freezes the clock (el), but
+the first D-pad down / stick down closes the menu (Continue) instead of moving the cursor, so Quit
+was not reachable by script (Time Attack's pause also freezes; its menu not tried). The result
+screen shows a green box with a circle in the middle of the "Advance to next round" text (frames:
+/tmp/claude-1000/agent-c/r857/cap_win1/png).
+
+**Gate step `modes`** (port/tools/modes-check.py, ~2 s in the gate, all six in parallel): trick (points,
+>= `# CHECKPOINTS`), contest (points, an extension), training (lesson 0 -> 2), vs2p (race end 3679, next
+round 4238), match (goal; `# WIN` -> before the CPU), options (save, reload in a new process). Each
+failure prints the steer-search command or the script to edit.
