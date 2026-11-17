@@ -3267,3 +3267,52 @@ port/gen/binds-left.tsv --write` names them.
 agent-c's area): `D_b3_23E4_d1` 5, `D_b1_21D4_d1` 5, `D_76F0_fadeB/C` 4+4, `D_349E0_b` 3,
 `D_2DA4_obj` 3, `D_00000000_j` 3, `gl_26214_aspMainTextStart` 2, `D_445AC_ga/gb` 2+2,
 `D_00000000_i/_a` 2+2, `game_uso_D_807FF458` 1.
+
+### 18.10 Run 818: the 13 data aliases, port_bootup_text for the RSP ucode (agent-c)
+
+agent-c run 818, branch agent-c on main f208db9c0 (agent-g's run 814 as landed; NOT on top of
+agent-a's run 817). Gate PASS (ROM byte-identical, verify-blocks 6/6, 3579/3579, clean build OK);
+XDATA check 435 sites 0 mismatches (was 387), CALL check 8225 0 mismatches.
+
+| commit | what |
+|---|---|
+| 77d95c9c1 | tools + port: `port_bootup_text` (port/uso/uso.c, bootup Text as an address space); port-gen-binds `text_data()` and name-data-sites `site_targets` resolve a data address in bootup Text outside every function to `port_bootup_text+0xK` (was "unnamed"); name-data-sites `check` maps a token through the object's Makefile `objcopy --redefine-sym` |
+| f6c89a2b0 | src: hand XDATA at every site of the 13 aliases (each function's sites from the ROM relocs, below) |
+| 8034fbf16 | port/gen + undefined.txt regenerated (blob_types.tsv unchanged) |
+
+**Per-site targets (ROM TextRelocs, function order).**
+- `D_b1_21D4_d1` / `D_b3_23E4_d1` (TimMenu_ctor / TrkMenu_ctor) are not data: the 4th argument of
+  the seven `gui_addRowSub` calls is each row's callback (rowRetry, rowGhost, rowToggle,
+  rowChangeCourse, rowChangeBoard, rowChangeCharacter, rowQuit), `XDATA(tok, f, 0x0)`. The plan's
+  verify compile fails on these ("Non-function name referenced in function call"); hand XDATA does
+  not need it.
+- `D_76F0_fadeB/C` (RaceProcess_handleInput): the two names swap objects between the two halves
+  (fadeB = Data +0xC75C then +0xC760, fadeC the reverse). Per-site XDATA objects on the same bytes
+  are an alias hazard (two `__port_xdata_N` decls never alias); the function gets the
+  `port-alias-audit.py --emit` redefinition of XDATA onto the one `port_bootup_data` decl. **Rule:
+  after hand XDATA that writes, rerun the alias audit** (only the existing 412E8 static-init hazard
+  remains).
+- `D_349E0_b` (hostio_start): Bss +0x3C768, +0x3C79C (the sendNodeTree value), +0x3C768.
+- `D_2DA4_obj` (game_setupMode): the store is game.uso Bss +0x8, the releaseFrames argument bootup
+  Bss +0xD8, the case-1 read bootup Data +0x7768 (three objects under one name).
+- `D_00000000_i/_j` (PolyShape_display donor, objcopy-renamed `D_48AEC_mt` / `gGfxLib_48AEC_src`):
+  Bss +0 (+0x3C8A0 in the source) and Bss +0x3C168 (+0xA0). gcc folded the source addend into the
+  token, so the per-addend binds missed. The `_i` site is inside `#define mt`, which `check`
+  does not see (preprocessor lines are masked); verified by hand (LO16 at +0x190, lui 4 / addiu
+  0xC8A0 on Bss +0).
+- `D_445AC_ga/gb` (GfxLib_init): Data +0x1F974 / +0x1F978, then +0x1FC8C / +0x1FC90.
+- `game_uso_D_807FF458` is **module-relative, not a KSEG0 address**: RiderAnim_checkRow reads
+  game.uso RoData +0 (+0x208, the f64 0.1) and Data +0 (+0xE68, the PMF) through it.
+- `D_00000000_a` (RcpTask_setUcode*, 5 functions), `D_4D16C_a` / `D_4D188_a` / `D_4D1F4_a` and
+  `gl_26214_aspMainTextStart`: RSP ucode text in bootup Text (+0x23300, +0x26700, +0x27B00,
+  +0x28F10 F3DEX_NoN, +0x2AE00 F3DEX, +0x2D4A0 F3DLP_Rej, +0x2E870 F3DLX_Rej, +0x2FC40 Sgi20HFifo,
+  +0x46470 aspMain = ROM 0xE16EDC, 15.2). Only `OSTask_t.ucode / ucode_boot` hold them; Fast3D and
+  port/audio never read the bytes, so `port_bootup_text` is a zero image of the section (0x89910
+  bytes, bss) that gives each its ROM offset. The bind tool now also binds these globally
+  (aliases.ld) where every site agrees.
+
+**Measured.** tenshoe link 19 -> 6 on this branch (left = exactly agent-a run 817's six:
+`gl_func_emit` / `gl_func_emit_30AF4v` / `gl_state_30AF4`, `glv_2a44`, `gl_32e18_blank`,
+`gl_25504_AllocSampleCache`), so after both land the link should be at 0 (regen to confirm:
+both runs edit timproc_uso_b3.c, different functions, and both regenerate port/gen).
+binds-left 72 -> 55 (unnamed 16 -> 7, the Text+0 sentinel calls). undefined.txt 184 -> 170.
