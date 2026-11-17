@@ -1970,6 +1970,45 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     | inline `snowWrap(cx, cy, cz, &wx, ...)` with by-value coordinates (c goes back to s2, but +9 words) | 78.7 |
 - **0xC90: not reached.**
 
+### snoweffects.uso 0x28E0 NM 90.25 -> 92.56 (agent-c run 729)
+
+- **Commits on agent-c** (gate PASS both times, 3571 / 3579, exact set identical, no renames):
+  - 5b321b51b: 92.13 % (report), 793 words;
+  - 35b67636e: 92.56 % (report), 792 words, frame 520.
+- **The ilod blocker that does not split x is a volatile read of halfH**, e.g. `cy < *(volatile float *)&halfH`
+  in the last y compare. halfH's address is taken, so it gets a memory home. That matches the target, which
+  spills halfH and reloads it from 332(sp) in the draw block. The ilod also stops copypropagate rewriting the
+  sx / sy branch uses. With the run-726 double sw / sz def this gives 791 words, 90.69-90.81.
+  - The `cy` def site and the first compare score about the same.
+  - Writing halfW the same way is worse (86.4).
+- **The 1.0f partition lever:** `(float)snowOne()` with `inline int snowOne() { return 1; }` folds late, so its
+  sites form a constant LR separate from the literal 1.0f sites.
+  - Every assignment of the five 1.0f sites (1 / w, sw + 1, sz + 1, fadeIn alpha, depth + 1) to the two
+    groups scores like a two-way partition.
+  - A second inline (`snowOneP`) merges with snowOne, and an inline returning a float merges with the literal.
+    So only two groups are possible, and the target's three (1 / w with the sizes in f26, alpha and depth
+    rematerialised) have not been reached.
+  - Best: 1 / w alone in the snowOne group, which gives 793 words and 92.09.
+- **Random climb** (c729/rc.py; knobs: per-site x / y / z variable or `p->pos` read, cx / cy order, the halfH
+  volatile site, the 1.0f partition, per-packet next kind, the empty-if forms). It moved the volatile read to
+  `cy < halfH` and replaced z with `p->pos.z` in every draw-block term (no z variable there): 92.52 (fz).
+  About 800 more neighbours: flat.
+- **Left:**
+  - The literal 1.0f group is hoisted to f30 for the whole function (`lui / mtc1 $f30` at the loop entry), so
+    halfW drops to f28. The target has halfW in f30 and 1.0 in f26 in the draw block only.
+  - a z reload for the depth;
+  - the FA `or`, and the op* copy-chain slots.
+- Flat or worse:
+  - grid1: 8192 operand-site variants (x / y / z variable or `p->pos` in w / cx / cy / depth, both orders).
+    The best at 793 words or under was 87.76: dropping a variable changes the head colouring.
+  - Two volatile m reads.
+  - `snowOne` on the sw site alone (799 words).
+- Tools in /tmp/claude-1000/c729/:
+  - gd.py / gd2.py: the draw-block generator plus string replacements;
+  - grid1-3.py, p3.py: partition grids;
+  - rc.py: the climb;
+  - ud.py: a mnemonic-alignment diff against the target.
+
 ### snoweffects.uso 0x28E0 (agent-c run 726, no commit: best drafts are over the 793-word cap)
 
 - **What blocks global copypropagate of a branch use: an indirect load (ilod) in the copy's expression.**
@@ -2307,6 +2346,53 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     f20) is a separate constant web: `(float)0` int-cast literal.
 - NM wraps spell the raw placeholder tokens: the named-call check cannot prove CALL() sites
   whose build path is INCLUDE_ASM.
+
+## heli.uso (agent-g run 730)
+
+- **0xB08 NM 94.39 -> 94.91 % (agent-g 126df1c68 94.44, f80667918 94.91; gate PASS each, no renames, 3571 / 3579,
+  lost: none).** sp-offset rows (reg-masked) 113 -> 82, structural rows 87 -> 79. The frame map (`r719/om.py`) now
+  equals the target's everywhere except -84 / -88 (one row each) and one -244 row. Harness
+  `/tmp/claude-1000/agent-g/r730/`:
+  - `pv.py spec.py [pattern..]`: variants of a base file, scored (`sc.sh`), plus each matching source line's EDG
+    words from `fl.py` (agent-e's `ud.sh` dump; `R` float, `A` pointer, `l` lda of a struct word);
+  - `tw.py uoptlist`: simulates `spilltemps` (kit CCXCIII) from a `-zdbug:4` dump and prints each coloured item's
+    temp; make the dump with `ZDBUG=-zdbug:4 /tmp/claude-1000/h414/t/dbg.sh x.cpp x.o` (run in an empty dir);
+  - `sd2.py`: structural diff vs the target with the running instruction-count delta.
+- **The slerp temps (t -160, X -188, two words, ang -200, sa -220) come from the EDG word rules:**
+  - Ours had t one word low because the dir op-'s ctor `this` took a fresh A word at -160. With two old free A
+    words, op-'s `v` and the ctor `this` reuse them and the three ctor floats start at -160. A code-free
+    `dum4A(q, q, q, q)` (bodies `a0 = a0;`) in case 2's inner block takes -80 / -104 (old, locked) and makes
+    -140 / -144 fresh A words. Case 2's `float k` goes (`mpos.y += 3000.0f`), so -140 / -144 are these.
+  - The ref-returning op= then puts X right under -176 (-188), as in the target.
+  - `float q0 = 0; float q1 = 0;` at the top of slerp (named inline locals are fresh) are the two words between X
+    and ang.
+  - `dumf(t)` after `Vec3 old = *h` locks the third ctor float word, so the first component's sin term takes a
+    fresh word (-220) like the other two. Without it the first takes -168.
+  - Placement of the dummies inside case 2, `dum4A(p..)` vs `(q..)`, or q0 / q1 written `= t` is all flat.
+  - Rewriting op- without the ctor (V3b + set3 with the floats first) gives the same words but costs 4 %.
+- **The 48 / 56 spill slots are spilltemps order, fixed by unfolding the vel loads.** `tw.py` showed the heading
+  item (self+0x138, bit 262) and t * ang (bit 297) overlap only each other and ps, so bit order gave the heading
+  T0 (56). The target's heading item is also used by vel (`lw v0,48(sp)` after the slerp, `lwc1 f4,0(v0)`), so its
+  range overlaps a T0 holder and it lands in T2 (48). Our vel loads were folded into 312(s0) because op*'s `this`
+  store and the loads were in one BB. **`operator*(const float &s) { if (1) {} ...}`** puts the cut between them.
+  The loads then go through the item and the slots match. A by-value `float s` with the same cut gives
+  `mov.s f2,f0` (93.97). `if (s) {}` / `if (this) {}` / the cut after `V3b r` are also worse.
+  A `speedf(self, dist)` inline as op*'s argument (94.56) does not unfold the loads and costs a word.
+- **Tried, not taken:**
+  - toTgt's tg loads, target `addiu v0,s0,300` then `0(v0)`. The same cut in op- or in a toTgt-only `sub()` gives
+    exactly that and structural rows 79 -> 73, but scores 94.52. The cut also moves the toTgt temp address
+    (target `addiu t3,sp,124` in the vel block) below it, adding an instruction. `cut()` / comma `cut0()` inside the
+    ctor arguments are the same (the lda goes where its copy is, not where `this` is stored).
+  - Case 4's sp+252: `if (1) {}` before the second op= (or after any `+=`) changes nothing; right after the first
+    op= it is worse (93.62).
+  - A separate `char *q` for the marker advance (target `lw a0,44(v0)` then `or v1,a0,zero`) costs +8 frame and
+    does not change the registers.
+- **Next:**
+  - toTgt: find a form whose tg `this` is stored in an earlier BB (as vel's is), with no cut between vel and the
+    toTgt copies. One option is a pointer word assigned before the speed if / else.
+  - Case 4 / X / case-6 default rematerialisations: the target recomputes sp+252, sp+180 and s0+276 for a second
+    use, so its K-116 / K-188 ranges split where ours keep one register. Each missing `addiu` shifts every later
+    branch offset in objdiff.
 
 ## heli.uso (agent-g run 724)
 
@@ -2809,6 +2895,42 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   Bss+0x50 pointer goes in s4 before the vertex-count test. There is also a v0/v1 pair in the ambient
   compare and the second walk's mask constants (-2 / -3 / -5 hoisted into s2..s4). Scratch:
   /tmp/claude-1000/agent-a/w654/a/best_A10C.cpp. 0x7FE0 is not started.
+
+## snoweffects.uso 0x7FE0 (agent-a run 728)
+
+- **No commits, no renames. 0x7FE0 is still NM 99.97 % (5 words, the d ctor's |s| f0 vs f12).** Scratch
+  /tmp/claude-1000/agent-a/w728/ (`pv.py` = run 725's runner with the d line printed in full, `live.py <x.lr> 91,92,93 [all]`
+  lists the LRs live in the given blocks, `v1..v7.txt` are the variant sets run against w720/b725.cpp).
+- **Correction to run 725's rule: a ctor with a BODY always materialises its parameters.** `a` keeps R-288 even when
+  the body never assigns it (`float b = fabs_(a); ..`, `mulin(v, fabs_(a))`). Only a **mem-initialiser-only ctor**
+  (`TV(TV v, float a) : x(v.x * a), .. {}`) substitutes a plain `a`. But then |a| has to be computed per member, or
+  passed in as `fabs_(s)`, which evaluates the `?:` before the v copy (801 words). A base-class ctor
+  (`struct TVS : TV { TVS(TV v, float a) : TV(v, fabs_(a), 0) {} }`) or a member subobject (`TVD { TV v; .. }`)
+  would put the `?:` after the copy, but edg then emits a `this == 0` check that calls `__nw__FUi` (824 words).
+  So angle 1 has no plain-C++ spelling.
+- **Why the `?:` cannot reach an f12 word in the d statement:** edg pool words have a class. A/J (int and
+  pointer) and R (float) never share a word: the d statement's op*2 ctor `this` goes fresh while three old R words
+  are still free. Within a class, words are handed out first-fit in creation order (-20, -148, -172, -176, -220,
+  -236, -240, -244), and an old word stays locked once used. The d statement makes 10 R requests: op*1 s / x / y / z,
+  op*2 s / x / y / z, a, `?:`. So the `?:` is always the 10th, a fresh word. Both f12 words (-20 = M-20, -240 = op*2 y)
+  are taken earlier in the same statement. A fresh op*2 word costs one 4-byte word ahead of v per word, and the
+  target allows only one there (-272). A const-ref v (`TV(const TV &w, ..)`, with or without `TV v = w;`) binds a
+  block-top temp, which shifts every named local (frame 392-400, 806 words with the copy).
+- **What the target needs (from `live.py`):** nothing FP is live through blocks 91-93 except s (f16) and the
+  constants (f18-f24). M-292 is coloured 40th (pri 25) with no forbidden registers, so it takes f0. For f12 its LR
+  must also reach a block holding f0 / f2 LRs and no f12 LR, or it must merge with an f12 LR.
+- **Angle 2 tested (`?:` word = e's x):** `t->vFC.mulE(-1.0f)` with k kept dummies (`dumk(x, ..)`).
+  - k = 9 puts e.x on the `?:` word (R-292). That LR still takes f0, because e.y / e.z go to fresh words that are
+    coloured after it.
+  - Costs: the frame is 392, and 22 pre-loop words move (any extra `if (1) {}` op* copy does that).
+  - k = 2-7 keeps frame 384 at 46-57 words.
+  - Two declarators (`TV d(..), e = ..;`) are separate full expressions, byte-identical to the base.
+- **Left:** the merge has to come from the colour order. Two routes:
+  - colour e.y / e.z (M-148 f0 / M-172 f2) before the `?:`+e.x LR, which needs e.x on the `?:` word while e.y /
+    e.z stay on old words (first-fit forbids it within one statement);
+  - or find a target layout where -200 / -204 (now idw2's dead `int g, h`) are R pool words that the d statement
+    reuses for a / `?:`. That needs 2 fresh R words at the a statement's start, which first-fit also forbids
+    unless every old R word is locked there.
 
 ## snoweffects.uso 0x7FE0 (agent-a run 725)
 
