@@ -237,6 +237,39 @@ No renames.
   course*3*16 spellings, and the 0x3364 levers (do-while, `show = 1` after the call).
 - **Not started:** 0x3878 (records draw, 431 lines) and 0x3F24 (erase-select pad handling, 272 lines).
 
+### agent-b run 679: snoweffects 0x559C NM 97.3 % (3559 / 3579, +0 exact, +1 NM)
+
+Commits on agent-b: d61cce602 (559C NM 93.0 %), 95dd87a77 (97.3 %). No renames. Gate PASS before each.
+
+- **0x559C decoded whole**, in the NM section of `snoweffects_uso_ncc_b.cpp` (`SNOW_NM_B_FUNCS`); 654 words and frame 480,
+  both equal to the target. It is the trail-ring draw:
+  - a stack `Mat` (BaseMat ctor protocol, then the Mat vptr) with colour 1,1,1,1, passed to gfx_emitLights after a
+    gSPDisplayList of +0xB0->+0x60;
+  - per live slot: the stride points * gGfxLib world scale into s16 Vtx (+0.5f) plus alpha (clamped, `dead` count),
+    then gSPVertex at ring index i0;
+  - an RGBA32 32 x 32 texture load from the Data+0x588 table when the slot's texture changes;
+  - from the third slot on, stride - 1 quads of two F3DEX gSP1Triangle, with indices masked by 2 * stride - 1.
+  New 0-pinned aliases are in undefined_syms_auto.txt (`snowb_*_559C`, `snowb_texTbl_588`, typed `gl_func_00000000_snowb_lights`).
+- **Levers that mattered** (scratch `.../scratchpad/agentb/s5/`; `cf.sh` compiles and diffs, `nd.sh` diffs with registers masked,
+  `md.sh` dumps the -g3 slots):
+  - `next()` as `&dl->buf[dl->count++]`. The named-local form costs 3 pool words per packet: frame 616 instead of 456.
+  - The vertex scale comes from `scaled(const V &, float, float, float)` returning `V(x * sx, ..)`, which gives the
+    target's f0 / f2 / f12 products. Pass the three scale words through three gGfxLib aliases: with one base (struct
+    ref or the same symbol) uopt hoists `&gGfxLib` into a register for the whole slot loop (+4 words). This is
+    agent-c's 0xC90 trick.
+  - The texture test reads `t->slots[si].tex` directly (no `tex` local), so prevTex lives in t5 like the target.
+  - **Edg slot order = a block's own declarations first (in order), then nested blocks.** The target has p, any, dead
+    and j declared in the slot-loop body ahead of `mask` (k -236 / mask -256 / v -268 / scaled temp -296). A dead
+    `{ int sc0[4]; sc0[0] = 0; }` before the loop fills the rest above k.
+  - **Pool-word register sharing:** read the list address through an inline member `holder->phys()`. Its `this`
+    reuses the BaseMat ctor `this` pool word, so uopt gives both one callee-saved register, as the target does
+    (93.0 -> 97.3 %).
+- **Left:** s0 / s1 and s2 / s3 / s4 are permuted against the target. In the target, s0 is the ctor this and the packet
+  head; s1 is the member this, the gfx base and the packet count; s2 is &m and the packet; s3 is j; s4 is ctx. These
+  did not move it: ctx through an inline accessor, a gfx `lights()` wrapper, or declaring ctx before m. Also left: the
+  ugen t-register ring offset, and two uopt spill slots (ours 84 / 88, target 92 / 84).
+- viewrec 0x3878 was not reached.
+
 ### agent-b run 675: viewrec 0x3878 NM, snoweffects 0x1E60 NM (3557 / 3579, +0 exact, +2 NM)
 
 Commits on agent-b: be9d82da4 (3878 NM), 88889d286 (1E60 NM). No renames. Gate PASS before each.
@@ -687,6 +720,40 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     Next: something that makes ugen emit the reload lazily (after the 1.0f constant).
   - **0x4188**: run 671's `* 1` hook does nothing here (all 256 hook subsets x 4 `if (1)` positions x 2 pad positions;
     2187 random hook / phantom / `if (1)` mixes): still 3 words (packet 4's FC pointer v0 vs a3).
+
+- Run 684 (agent-h, commit 5d93b128c on agent-h, no renames): +1 EXACT (0x97C), 3561 / 3579 (gate PASS).
+  - **0x97C SnowPool_spawnRandom EXACT (cfe C, promoted from NM).** The 2-word swap (the p reload vs the `r * 2` mul.s)
+    was the known as1 same-line tie-break (IDO_CODEGEN "as1 scheduler tie-break ... SINGLE source line"): ugen always
+    emits the reload right after the jal (`cc -S`), and only as1 moves it. Putting `r = sys_randf(); p->unk38 =
+    (0, 10.0f) + r * 2; p->unk3C = 1.0f;` on ONE line gives the target order; a line-join search over every 2-6 line
+    window found that this 3-statement join is the smallest one that works. The `(0, 10.0f)` comma lever is still
+    needed (plain `10.0f + r * 2` on the joined line: 16 diffs). Run 676's "120 orders x 8 spellings, all flat" never
+    varied lines.
+  - **0x4188 (still 3 words, packet 3's pointer v0 vs a3).** Per-site next / nextN / nextR / nextI (agent-c's
+    named-result family) at all 4 front packets x 7 `if (1)` sets x pad: best 3, every named form is 6+ (r684/g41.py).
+    The same with nextR / nextI on packets 3-4 x every 1-2 `if (1)` positions at statement granularity (3776 compiles):
+    best 3 (g41b.py). Line layout does not move uopt's unit cut here (only the as1 schedule: 3 -> 5 / 7); a hill climb
+    over joins x `if (1)` x kinds plateaus at 3 (h41.py). New confirmation of the run-644 diagnosis: storing packets 1-2
+    as one 64-bit word each (`*(unsigned long long *)_g = 0xE700000000000000ULL`) removes one counted ucode store per
+    packet, and packet 3 then takes **a3** exactly as in the target, but ugen materializes the zero low word
+    (`addiu t1,zero,0`), so the code is wrong. The original had one fewer counted op before packet 3's
+    `_g = next()`. uopt's unit limit is the global at 0x1001c43c (default 0x14 = 20, set in f_getop from an option);
+    the counter 0x1001c430 is bumped in readnxtinst (h414/u/uopt_i.c around lines 81620 / 81795). Next: read which
+    opcodes reach those two increments, to know which of packet 1-2's ops count (the str of the edg dl / count temps?).
+    Flat: the `t` parameter unnamed / int / used (the a0 home store is ugen's, not counted); comma-joined packet 2 / 3
+    statements; pre-increment, `+= 1`, and split-store next() bodies (n1-n7: code changes, 100-217).
+  - **0xC90** (agent-c's NM donor, objdiff 82.85; cq9 frame-400 draft: 237 differing words after register
+    normalisation, vs 328 for the donor). Line joins in the body have no effect (colouring / frame residual, not as1).
+    The target reaches the world scale as `lwc1 296(at) / 300(at) / 304(at)` (immediates kept, one lui shared by the
+    first two loads), so the scale is addressed as gGfxLib + 0x128.. in the target.
+  - **0x47D4** (r671/t47.cpp, 354 raw / 196 normalised differing words). Trace (iu/tr.sh): alpha is M-24, caller cost
+    2.0 at f18 against 12.25 for every callee-saved FP register, so it is not a cost tie: callee-saved can only win
+    when all six caller-saved FP registers (f2 f12 f14 f16 f18 f20) are forbidden at alpha's pick, as in the target's
+    loop. Pointer / reference / temp / P-read / one-line spellings of the w lerp compile to identical code (edg
+    normalises them).
+  - Tools: /tmp/claude-1000/agent-h/r684/ (sc.py parallel-safe NCC / cfe scorer, one.py positional diff, dd.py
+    difflib diff with register normalisation, ss.sh ugen `cc -S` dump, lj.py greedy line-join search, g41*.py / h41.py
+    4188 searches, t64.py the 64-bit store probe).
 
 ### snoweffects.uso 0x6000+ (agent-e run 639)
 
@@ -1278,6 +1345,38 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
 - NM wraps spell the raw placeholder tokens: the named-call check cannot prove CALL() sites
   whose build path is INCLUDE_ASM.
 
+## heli.uso (agent-g run 682)
+
+- **0xB08 NM 85.7 -> 88.9 % (agent-g commits f16209f66, 5ebf3ca4c, d7e81cf74; gate PASS each, no renames).**
+  The exact count is unchanged (3560 / 3579). Diff rows vs the target (`/tmp/claude-1000/agent-g/r682/m.sh`):
+  raw 829 -> 729, both masked 180 -> 139.
+- **Axis-angle tail (85.7 -> 88.2).** The target loads each quatRotateAxisAngle angle with `lwc1 f2` +
+  `mfc1 a2`, ahead of the axis stores. A direct `HF(0x144)` argument gives `lw a2`. A block-scope `float r`
+  gets the lwc1 / mfc1 shape but costs frame slots (84.6). Reusing the outer float `f`, assigned BEFORE each
+  axis (`f = HF(0x144); axZ.y = ...; call(q, &axZ, f);`), gives the target's order. Assigning it after the axis
+  scores 85.8.
+- Smaller gains: the pitch clamp as an inline `clampf(f, lo, hi)` with `f = HF(0x148)` re-read after the
+  smoothing store; the toTgt length summed y, x, z (only rotates the FP ring, the target multiplies x first);
+  an `if (1) {}` after the clamp (88.7 -> 88.9; a sweep over the 34 tail statement boundaries, a second one
+  adds at most +0.03).
+- **The FP constant colouring is the main tail residual.** uopt dump (`r682/ncc721d.sh`, -zdbug:5, uoptlist
+  "global coloring"): ours colours the fwdAx 2.0f LR (adjsave 5), the 1.0f, and the toTgt.y zero (adjsave 2).
+  The target colours only the side block's 2.0f (f2) and -pi/8 (f18, loaded at the block head), and
+  rematerialises 2.0 / 1.0 / 0.0 at every use in the fwdAx and sqrt blocks, spilling fwdAx.x to 32(sp). Not
+  levers: a `Vec3 fwdAx(x, y, z)` ctor (per-use 2.0 remat comes back, but the loads are CSE'd across the args,
+  86.4); float temps (86.0, 87.9 interleaved); `(a + b) * 2.0f`; reordered / parenthesised / line-split
+  slerp terms (identical bytes: commutative canonicalisation); pitch through `HF() = f = ...` (88.4).
+- **Head t-ring:** still t1 vs t7. Truncation (`r682/ring.sh`, `rv.py`) shows the start follows the toTgt.z
+  use in the sqrt: dropping the z term gives t6, and one extra int statement at the function end gives +1. Read
+  the last t-only mismatch per kit CCCXXV. The target holds several address temps in t-regs that ours colours
+  v0 / v1: `addiu t8,sp,252`, `addiu t3,sp,124` and `addiu v0,s0,300` (tg kept as a pointer for the toTgt op-).
+- Heading pointer `Vec3 *h` on the 88.7 base: 88.26 (88.33 with `vel = *h * ...`). Not taken.
+- Frame: not restructured this run (objdiff ignores sp offsets). The run 678 map still applies; `smap.py`
+  counts 51 mismatched slots.
+- Draft: `/tmp/claude-1000/agent-g/b08_keep/mp72_r682_889.cpp` (= the donor). Harness `/tmp/claude-1000/agent-g/r682/`:
+  greedy.py (statement-edit hill climb on the objdiff %), rv.py (variant + score + first t-regs), m.sh,
+  sd.py, smap.py, dz/uoptlist.
+
 ## heli.uso (agent-g run 678)
 
 - **0xB08 NM 84.2 -> 85.7 % (commit 8a0941bc0 on agent-g, gate PASS, no renames).** Exact count unchanged
@@ -1487,6 +1586,30 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   Bss+0x50 pointer goes in s4 before the vertex-count test. There is also a v0/v1 pair in the ambient
   compare and the second walk's mask constants (-2 / -3 / -5 hoisted into s2..s4). Scratch:
   /tmp/claude-1000/agent-a/w654/a/best_A10C.cpp. 0x7FE0 is not started.
+
+## snoweffects.uso 0x7FE0 (agent-a run 681)
+
+- **0x7FE0 NM spliced, 93.1 -> 97.8 %, 800 / 800 words** (agent-a 9fd85a406 splice, c233ca62c 97.8; gate PASS
+  both, no renames). `SNOW_NM_A_FUNCS = snoweffects_uso_func_00007FE0`, NON_MATCHING placeholder in
+  snoweffects_uso.c. Scratch /tmp/claude-1000/agent-a/w681/ (var.py / var2.py variant runners, tr.sh colouring
+  trace, ft.sh forcing uopt, trip.sh FP-register families of the op* expansions, fr.sh vfp-relative frame map).
+  - **The lerp mov.s is a pool word that is only partly copy-propagated.** Nested inline:
+    `lerp3(TV &p, const TV &b, float f)` calls `lerpf(float a, float b, float t) { return (b - a) * t + a; }`
+    per component. `a` (p.x read through the reference) becomes an edg pool word coloured f0: x reads it twice
+    (the sp+48 reload into f0), y copies p.y into it (`mov.s f0,f10`) and the subtraction reads p.y in place,
+    z is fully propagated. Flat statements, a `float c` reused per component, a scalar inline lerp with plain
+    `p.x` arguments and a one-level `lerp3` all leave `a` substituted or fully propagated (799 words).
+    The fraction passed as an expression is pool word 1 (with fabs_'s and op*'s scalar).
+  - **Read pool-word membership off the register families.** With the -O0 slot oracle (pool words in f20..f28)
+    and the target's FP colours per op* expansion (s / ctor a / b / c), the target's `up * f180 * |s|` and
+    `v114 * k * f184` statements use s = word 2, ctor params = words 3 / 1 / 4, which only happens when they
+    are op* chains. Named intermediates (`TV up`, `TV b`, `TV c`) gave s = word 1. Chains: 93.5 -> 97.6 %.
+  - Frame: i / s / v / w declared in that order put the s / w spill homes at vfp-8 / vfp-16 (target pattern),
+    and a named `float k` between a and d is the target's one-word gap there (97.75 %).
+  - Left: pool word 1 colours f2 (target f12). It wins the f2 race against the ctor's second parameter word
+    (pri 32 vs 26.7); forcing it to f12 gives 97.9 %. Frame 368 vs 384: the loop body has three TV pool
+    words at its top where the target has two, and the function-level block has one word more above it.
+    Mnemonics differ by one swapped addiu / or pair (the hoisted sp addresses).
 
 ## snoweffects.uso 0xA10C / 0x7FE0 (agent-a run 677)
 
