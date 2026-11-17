@@ -237,6 +237,41 @@ No renames.
   course*3*16 spellings, and the 0x3364 levers (do-while, `show = 1` after the call).
 - **Not started:** 0x3878 (records draw, 431 lines) and 0x3F24 (erase-select pad handling, 272 lines).
 
+### agent-a run 733: viewrec 0x3878, the as1 liveness route narrowed (no commits)
+
+No commits, no renames (nothing to gate). 3878 is still NM 98.7 % (ndiff 11, 426 vs 427 words). Scratch
+/tmp/claude-1000/agent-a/w733/v/ (`c.sh X.cpp` = ncc721 keeping intermediates + ugen listing + ndiff + setColor mask,
+`mk.py name ANCHOR REPL ...` variant maker, `dump.sh X [B]` ugen `-d` tree of the .O (or the edg .B at -O0),
+`win.sh X` = register strs in the setColor `mst..cup` window, `asm.sh` = as0 + instrumented as1 oracle).
+- **Reads AFTER setColor also block the pull (`.s` oracle `o2.s`).** Dead `move $8,$21 / $9,$22 / $10,$23` placed
+  before the LAST call of the `selFade < 1` block (after the switch, many jals past `$45`) give ndiff 5 (= the reloc
+  false diffs, i.e. the target). So as1's liveness carries s5..s7 through every jal to the epilogue restores; the
+  setColor mask is only one of many places. Removing setColor's `.livereg` entirely changes nothing (ndiff 11): as1
+  does not treat a missing mask as "all live".
+- **The as1 trace (`as1i`, bi.tr):** B = bb33 (w1, stalls 6), C = bb34 (the grid preheader, **w4**), tried at count 2
+  after bb48 ($45, w1) and bb73 (epilogue, w1). Accepted insts 1 / 3 / 4 / 7 / 8 (move s5, la, li s7, li s6). The
+  cap is 100 (several loops), so no C4 route.
+- **What the window can and cannot hold (dumps):** after uopt every call argument is `str R(a-reg)` + `rpar`; stack
+  arguments are `str mtype=P`. No `par` nodes survive -O2, so the walk's `par offset2 / 4` branch (which in the -O0
+  `.B` maps `lda M-16` to `$gp`) is unreachable at -O2. edg 2.29 emits every inline parameter and local store
+  (`cvi(f)` with a local, `cvi(f, r)` writing the parameter, a `SC(0, 1, 2)` ctor temp in the argument) BEFORE the
+  `mst` (`p1..p3`, ndiff 28 / 42 / 51), so pool-word sharing cannot place a store in the window.
+- **Code-free self-assignments in the argument (`(r = (int)(unsigned)r, ...)`, `r << 0`, `~~r`, `-(-r)`):** all folded
+  by uopt, window unchanged (`s1..s4`, ndiff 11).
+- **Early-return forms of the `selFade < 1` test** (`if (!(..)) return;`, `>= 1.0f` return, `goto out`): no `.livereg`
+  is emitted at the branch; ndiff 11 / 13 / 11 / 11.
+- **Rechecked run 651's `&sVrLabels[21 + r * 2 + j]`:** on today's base it does not reproduce the target hoist
+  (427 words, ndiff 13, the three defs are still pulled).
+- **The 7.2.1 back end could not be rerun** here: `/tmp/claude-1000/r1/root72` uopt exits 1 under both qemu-irix
+  builds (no message). Run 356 found it byte-identical to 7.1 on all donors anyway.
+- **Where that leaves it:** the target's as1 saw a READ of $21 / $22 / $23 somewhere between `$45` and the epilogue
+  (or the mask bits), and none of it survives as code. uopt-visible reads force a def at `$45` (run 670), and every
+  ugen register read comes from uopt's R-mtype nodes. So the target's uopt output had an R84 / R88 / R92 reference that
+  ugen or as1 erased: a self-copy (`str R84 <- lod R84`, which ugen / as1 erase, oracle mm5) or a dead move as1
+  deletes after liveness. Next: build a uopt toy where two webs of one variable (or a variable and a copy) get the
+  same colour across a copy (`x = r; ... x++` with r dead after the copy), and check if uopt keeps
+  `str R <- lod R` there. If it does, the 3878 shape is a copy into r / the constant LRs on the `$45` path.
+
 ### agent-b run 705: snoweffects 0x9328 NM 99.63 -> 99.73 %; viewrec 0x3878 ugen 0x100 lead closed
 
 Commit on agent-b: 96dbb1ef3 (0x9328 NM gain; gate PASS, no renames). 3878 unchanged (NM 98.7 %).
@@ -1123,6 +1158,43 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
       v to __V is 32 bytes in ours and 16 in the target.
   - Tools: /tmp/claude-1000/agent-h/r722/ (g.py, hc.py with MODE=loop, v*.py batches, tr.sh colour order,
     dump.py; final.cpp = the committed body with an absolute include).
+
+- Run 731 (agent-h, commit 01675c0ce on agent-h, NM only, no renames; 3571 / 3579, gate PASS, exact set unchanged).
+  - **0xC90 NM 94.04 -> 94.08 %**, 592 words, frame 400. The prologue's 0x06 packet now goes through a
+    function-scope `Gfx *g` declared after c (`g = c->next(); g->words.w0 = ..; g->words.w1 = d;`). That is the
+    target's 10th word above m: m, halfW / halfH, i, p and scratch now sit at the target's offsets. sp-offset
+    mismatches 32 -> 10, positional diffs 243 -> 221. The declaration's position above m makes no difference.
+  - **The clamp words (EDG word dump, `fl.py`).** With imax0, the imax0 return value reuses J-128, which is next()'s
+    old-count word. The w1 MAX `?:` temp reuses it too. That is why count is one 7-8 block LR (pri ~25). It loses
+    v0 to the pri-30 one-block packet `_g` LRs and lands in a2. The target's prologue count is v1 and its loop /
+    tail count is v0, so the prologue is a separate LR in the target.
+  - **The w1 order is set by the front end's lowering order, not the OR order.** A MAX `?:` is lowered in place, left to
+    right. imax0 calls are lowered in reverse written order, and after any `?:` in the same expression. So iM always
+    puts yl first, ii1 (yl | xl written) and MM0 (xl | yl) put xl first. Every xl-first variant breaks other things:
+    - ii1: 590 words, homes move;
+    - MM0 / standard all-MAX (S00): 590 words; the yl / xl s16 CSEs are computed early.
+  - **One-statement texrect** (`_g = pkt, w0 = .., w1 = ..;`, all-MAX): all four clamp temps take fresh words
+    (J-212..224). w1 is then xl-first with full arms like the target, and the w0 xh preset is hoisted, at 592 words.
+    But count is still a2, and objdiff is 92.86.
+  - **The best loop-layout climb score (148 -> 129) is at 93.11**: w0 + w1 in one statement, MAX(0, x) on w1. Its
+    w1 branch sense is inverted (bgez vs the target's blez), so it was not committed.
+  - An exhaustive grid found nothing above 94.04: 7500 builds over per-clamp forms
+    {MAX(x,0), imax0, if-imax0, named-r imax0, `<= 0 ?`} x term order x 3 statement forms. Neither did objdiff climbs over
+    next / nextN / nextB / nextI / nextP per packet.
+  - **Frame, v / __V / r still 8-9 words high.** An `int pad[8]` before v (loop scope) plus the function-scope g on
+    the tail and EE / FB packets (-8 words at the bottom) puts r and __V exactly on the target, with v 1 word high,
+    at frame 400. But the register picture changes (loop diffs 148 -> 176), and the pad is not real. The target has
+    8 real words in the loop scope before v, and fewer `_g` words at the bottom.
+  - Next: find those 8 loop-scope words (candidates: the target's y0 / z / per-packet pointers declared at the top of the
+    loop body), then the count LR (prologue separate; loop count above the packet `_g` priority).
+  - Tools: /tmp/claude-1000/agent-h/r731/:
+    - g2.py / g3.py: knob builders (clamp letters, sites, next spellings, statement form `mf`);
+    - hc2.py / hc3.py: climbs;
+    - en.py: the grid;
+    - fl.py / ud.sh: agent-a's EDG word dump, ported;
+    - spd.py: sp-offset mismatch census;
+    - al.py: opcode alignment;
+    - show.py: side by side.
 
 ### snoweffects.uso 0x6000+ (agent-e run 639)
 
@@ -2397,6 +2469,38 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
 - NM wraps spell the raw placeholder tokens: the named-call check cannot prove CALL() sites
   whose build path is INCLUDE_ASM.
 
+## heli.uso (agent-g run 735)
+
+- **0xB08 NM 94.91 -> 95.39 % (agent-g 13b848f03; gate PASS, no renames, 3571 / 3579, exact set identical).**
+  Structural rows (sp + reg masked, `r730/sd2.py`) 79 -> 65, frame-map bad rows 3 -> 2. The vel / toTgt / side
+  region now matches the target structurally. Harness `/tmp/claude-1000/agent-g/r735/` (`s*.py` specs for
+  `r730/pv.py`; `ud2.sh` = front end + uopt + `ugen -d`, which dumps the **post-uopt** tree: `mtype=R offset=4n` is
+  the register uopt put a value in, e.g. offset 8 = v0, 12 = v1).
+- **toTgt target point:** `player = self + 0x12C;` after the speed clamp (player is dead by then), and
+  `toTgt = (*(Vec3 *)player).sub(*ps);`. The pointer assigned in an earlier block stays a register
+  (`addiu v0,s0,300`, loads 0 / 4 / 8(v0)), where `(char *)ps + 0x50` folds into 80(a2). Placement before / after
+  the clamp, before or after `Vec3 vel`, `ps + 0x50` vs `self + 0x12C`: all the same.
+- **sub() must be ctor-less and end in a cut:** `V3b r; set3(r, x - v.x, ...); if (1) {} return *(Vec3 *)&r;`.
+  - With the Vec3 ctor (op- or a sub() returning `Vec3(...)`), EDG's ctor emits `this ? this : new` and the
+    temp's address (sp+124) reaches the copy as a join value; uopt colours it (v0), where the target recomputes
+    it in t3.
+  - Without the cut (92.79), or with the cut at the start of sub() (94.96), or after the toTgt statement (92.40):
+    the cut at the end ends the uopt block before the side vector, so the 2.0f / HF(0xF8) live ranges no
+    longer cover the subtraction; they take f2 / f14 as in the target (f18 / f0 otherwise).
+- **Case 4's sp+252 (still open).** The post-uopt tree shows the cause: in cases 4 and 5 uopt hoists
+  `lda -116` into v1 at the case entry (a local constant LR with num 1, units 1, coloured), in cases 1 and 7 it
+  leaves the lda inline in each mov. The target colours it only in case 5. No source change inside case 4 moved
+  it: `= HF + 5000` form, `*tg = ...` (worse), `V3(0x12C) = V3(0x114)` / `*(Vec3 *)(self + 0x114)`, a block
+  around the case or the second copy, code-free dummies between the copies, `Vec3(*tg)` (+16 frame). The
+  decision is in uopt's constant-LR setup (`SAVE ... bp>=679` lines from the instrumented uopt). Next: find
+  which bp is case 4's lda and why case 1's has no LR at all.
+- **Case 6 / default `addiu v0,s0,276` (still open):** this one is as1, not uopt. The post-uopt tree has both
+  `v0` and `a2` in the default block (label 33). Ours: as1 moves `addiu v0` into the range check's delay slot
+  (the default block has one predecessor), where the target fills that slot with the fallthrough `sll`.
+  Letting case 6 fall into the default stops the move but drops case 6's own v0 / a2 / branch (95.28). Default
+  first: 94.96. A `case 9:` label, `if (1) {}` in the default, or `default: ;` changes nothing. The target's as1
+  sees either a second predecessor or v0 live on the jump-table path; neither is found yet.
+
 ## heli.uso (agent-g run 730)
 
 - **0xB08 NM 94.39 -> 94.91 % (agent-g 126df1c68 94.44, f80667918 94.91; gate PASS each, no renames, 3571 / 3579,
@@ -2945,6 +3049,25 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   Bss+0x50 pointer goes in s4 before the vertex-count test. There is also a v0/v1 pair in the ambient
   compare and the second walk's mask constants (-2 / -3 / -5 hoisted into s2..s4). Scratch:
   /tmp/claude-1000/agent-a/w654/a/best_A10C.cpp. 0x7FE0 is not started.
+
+## snoweffects.uso 0x7FE0 (agent-a run 733)
+
+- **No commits, no renames. Run 728's last hypothesis is refuted: 0x7FE0 is still NM 99.97 % (5 words).** Scratch
+  /tmp/claude-1000/agent-a/w733/ (`v1..v4.txt` variant sets for w728/pv.py on w720/b725.cpp, `sh.sh <variants>` = the R / J
+  words of lines 284-287).
+  - **Named float locals at the a statement's start** (`idw2` with `float q0..qk` instead of `int g, h`): k = 2 makes
+    -200 / -204 fresh R words with frame 384 (`fa2`), but **named locals stay locked for the whole function**. The d
+    statement does not reuse them; a / `?:` stay fresh at -288 / -292 (5 diffs, objdiff 99.95).
+  - **Freeable fresh R words (dummy parameters `p0..p5 = p0;` on `idw2`, `pa1..pa7`):** params take the old words first
+    (-148 / -172 / -176), then fresh -200..-212. Then the d statement reuses them, but in first-fit order: op*2 gets
+    -200..-212 and a / `?:` land on the a statement's -228 / -232. pa6 is frame 384 with 17 diffs: the a statement's
+    product colours break, and d's |s| is still f0.
+  - The same dummies on a second inline around the a statement's `?:` (`q{k}{m}`, k params on idw2 and m on `idq`):
+    the best frame-384 cases are 18-24 diffs.
+  - **Why it cannot work:** words are handed out first-fit in creation order, which is offset order. -200 / -204 are
+    created before -220..-244, so the d statement's first eight R requests (op*1 / op*2) always take them before a and
+    the `?:` (requests 9 and 10). For a / `?:` to land on -200 / -204, op*2 would need four R words older than -200,
+    and only -20 / -148 / -172 / -176 exist (op*1 already takes those).
 
 ## snoweffects.uso 0x7FE0 (agent-a run 728)
 
