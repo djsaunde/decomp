@@ -1041,6 +1041,39 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
 - Not reached: 0x9328 (the run 659 draft in `ncc_drafts/snoweffects_nm_e.cpp` is a real C++ ctor; it needs an
   extern "C" splice shape before it can be measured for length), 0x9E10.
 
+### snoweffects.uso 0x6000+ (agent-e run 680)
+
+- No new exacts (3559 / 3579). Commits on agent-e: 830af46a4 (0x64B8 / 0x6B28 NM gains, gate PASS), 1fb3e3617
+  (restores report.json, which the gate rewrote), 494026148 (0x9328 draft). Gate PASS before each. No renames.
+- **0x64B8 97.0 -> 97.8 %, 0x6B28 93.8 -> 95.2 %: both now have the target frame (344 / 232).** The frame excess was
+  the spawn-block lerp, not a shared temp pair:
+  - the lerp `float x, y, z` are declared in the loop body before `SPart *p` (0x64B8), or at the top of the `p != 0`
+    block (0x6B28). That puts their 12 bytes above p, where the target has them;
+  - the randf result goes into a float that is dead by then (`k` in 0x64B8, `s` in 0x6B28), not a new `float r`.
+    The named r was the extra word between u and the operator* result;
+  - `p->setLife(256.0f, t->f18C)` / `p->setAlpha(256.0f, t->f188)` are inline two-parameter setters on SPart
+    (life / decay at +0x30, alpha / alphaVel at +0x50). They give the target's early `lwc1 $f0` loads of the
+    velocity fields, because inline parameters are uopt-coloured. The plain field stores load them late into the
+    ugen ring.
+  - Left (both): the lerp loads u.x / u.y / u.z up front into f2 / f12 / f14 (uopt colours). Ours copy-propagates
+    `x = u.x` into the uses and loads lazily into the ugen ring. An inline member `u.lerp(a, r)` with its own
+    `float x = this->x ..` locals does give the up-front loads, because reads through `this` are not propagated.
+    But its locals land at the bottom of the frame (+8) and its colours take f16 from ugen, so the xform spills.
+    No effect: set() form, getters, chained `u.x = x = ..`, `+=` form, a reference-parameter lerp. 0x64B8 also
+    keeps the `n += v318 * k * (f184 + spd)` operand temps swapped (target +300 / +312).
+- **0x718C**: the same lerp shape (u.x into f2, reloaded per component). Neither `lerpf(u.x, ..)` nor a reused
+  `sp` changed it (both copy-propagated). The f12 / f16 ring offset was not reached.
+- **0x9328 measured in splice form** (`objcopy --redefine-sym __ct__11SnowTarget9Fv=snoweffects_uso_func_00009328`
+  on the draft): **246 / 247 words** (a shorter splice fits), normalised 226 / 247, frame 192 vs 224. The levers
+  are in the draft comment in `ncc_drafts/snoweffects_nm_e.cpp`:
+  - the per-Parm name words come from rvalue names: `PName(char *)` and `NM9() = PName(*(char **)..)`;
+  - ParmC's Colour member is a POD base (a user ctor adds a `this + 16 == 0 -> new(16)` check);
+  - `col[3] .. col[0]` are stored in reverse.
+
+  To splice it, add a donor rule with `--redefine-sym` for the ctor, the GdlParmBase / SNode ctors and the four
+  vtables (the Makefile line 180 pattern).
+- **0x9E10**: not reached.
+
 ### nameent.uso 9BC + snoweffects below 0x6000 (agent-c run 655)
 
 - **nameent 21 / 21 EXACT** (agent-c f56621038; 3539 / 3579). 9BC's two scale spill slots were one edg
