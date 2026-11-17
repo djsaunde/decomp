@@ -5989,6 +5989,61 @@ the largest centred 4:3 rectangle (mGameWindowViewport + mCurDimensions; patch 0
 offset). F11 toggles EWMH fullscreen. Verified: `--inject 900:F11:d` -> 2560x1440 letterboxed frames, depth
 replies still served (F/small.png).
 
+### 19.14 Run 865: LUS patch 0010, scripted live play, presenter lifetime (agent-a)
+
+agent-a run 865, branch agent-a on c1fce01a9: **944fb5092** (LUS patch 0010), **f8d87a3f9** (presenter --input in
+lockstep, lifetime robustness, frame-time summary). Gate: ROM byte-identical, 3579/3579, clean build OK, port gate
+PASS (golden 19 scenes), `make -C port/gfx/fast3d presenter` OK. Logs / frames: /tmp/claude-1000/agent-a/r865.
+
+**Patch 0010 (19.13 item 6's open part).** A G_SETTIMG rejected by patch 0005's check now clears Fast3D's
+texture_to_load; LoadBlock / LoadTile / LoadTlut skip while no valid image is set (TMEM keeps its contents),
+each case logged once. G_SETCIMG / G_SETZIMG are never dereferenced by Fast3D (only compared; the port reads them
+back as identifiers), so they are unchanged. Goldens byte-identical. Run 861's crash dump with the f3dreplay page
+mapping disabled: "rejected address 0x8ADD1C8" + a skipped LoadTile, no stale read. It fires live too: title step
+280 emits `fd18001f 00000000` (a 32-wide RGBA32 G_SETTIMG of NULL, list 0x08818998) then a LoadTile; the frame
+is identical to the 9-patch render. **Shared tools/lus re-fetched 2026-11-17 15:53:46 EST** (10 patches, stamp
+f3db85554656, from local mirrors of the pinned commits). agent-g's f3dreplay build in
+/tmp/claude-1000/agent-g/r863/pg was mid-compile at that second (note in /tmp/claude-1000/coord/lus_refetch.txt).
+
+**Scripted input through the presenter (`presenter --input SCRIPT`).** The presenter reads a port/host/*.input
+script and answers each game pad read in lockstep (live_shm.h padScripted / padWant / padStep, from the reserved
+words; the game waits only when the presenter sets padScripted). Keyboard --inject cannot reproduce the scripts'
+analogue sticks and step timing; lockstep can. Results (scale 3, WSLg D3D12 on an AMD Radeon, load ~15 / 32 from
+other agents):
+
+| run | steps | state trace vs headless --input | rendered / skipped / dropped | render ms mean / p50 / p95 / p99 / max | > 33 ms |
+|---|---|---|---|---|---|
+| Crystal Lake race script (goal 4708, name entry, replay, ghost save) | 9842 | identical (all fields but vi) | 9840 / 2 / 0 | 8.77 / 8.67 / 13.23 / 16.51 / 94.3 | 22 |
+| Trick Attack (goal 4524, after-goal overlay) | 4824 | identical | 4823 / 1 / 0 | 7.50 / 7.59 / 11.25 / 14.38 / 73.4 | 3 |
+
+- Frames vs `f3dreplay --then` (headless dumps of the same steps, same scale): race steps 3000, 4700 (goal),
+  7000, 9000 (replay) byte-identical; 1500, 2250, 4000 differ only by the sun glow (the depth replies): with
+  `--no-fb-reply` all three are byte-identical; 5540 (name entry) differs by the board's replay image (the
+  colour replies, run 859). Trick Attack 4540 / 4560 / 4600 / 4650 / 4700 / 4800 (GOAL! overlay): identical
+  (4540: 61 px, all within 8 levels). No presenter crash in either run.
+- fb replies: race 9833 taken, 0 torn, 1144227 depth pixels and 884 colour images stored; trick 4821 / 0 /
+  774534 / 208.
+- **Audio does not keep up (open, not a run-865 regression).** Race: 320.8 s received (hashes equal), only
+  15.4 s played, 39.0 MB (305 s) trimmed, 3 underruns, 427 game overruns; trick: 3.95 s played of 73.5 s
+  received. origin/main's presenter shows the same (title, 20 s: 1.50 s played of 5.52 s, 867 overruns), with
+  llvmpipe too. A standalone pa_simple client with the presenter's spec and name plays 10 s in 9.94 s, also
+  while a presenter runs, and also after a dry start. strace: the presenter's libpulse thread gets a server
+  request only every ~0.6 s (poll timeouts 80 / 160 / 320 / 640 ms). Run 858 had 0 underruns, so something in
+  the presenter process (or WSLg's server state for that stream) changed since; next: log pa_simple_get_latency
+  per write, and try a dedicated pa_threaded_mainloop stream.
+- One presenter death in 6 short runs: "D3D12: Removing Device." then exit at title step 18 (au1, not reproduced);
+  the game ended itself (below).
+
+**Lifetime (tested, /tmp/claude-1000/agent-a/r865/robust.sh).** Esc (--inject) -> game quits in 6.8 s, rc 0,
+files removed. kill -9 of the presenter -> "the presenter (pid N) is gone: ending the game" (port_live.c checks
+the pid about every 0.2 s, also inside the lockstep wait), rc 0, the game removes the shm files. kill -9 of the
+game -> "the game (pid N) is gone", presenter exits 0. `--stay`: game 1 ends -> "waiting for a new game", game 2
+attaches ("game pid N attached (game 2)") and renders, SIGTERM exits cleanly (the game clears gameExited on
+attach). xkill of the window -> "lost the X display ...: telling the game to quit" (XIO handler), the game quits,
+files removed. No display: the window now opens before the shm file exists; DISPLAY unset / :9 print what is
+missing (the X socket, WSLg hints); EGL failures suggest software GL; play.sh stops with "the presenter could
+not start" instead of starting a game that waits 10 s.
+
 ### 20.5 Run 857: checkpoints, the Match Race win, options persistence, the modes gate step (agent-c)
 
 Branch agent-c on origin/main 384c40ad6: 2f9a83eed (trace cd= / trn=), 878be00f3 (steer-search,
@@ -6095,6 +6150,86 @@ correct.
 Repro: `f3dreplay /tmp/claude-1000/agent-c/r860/f3dcrash/gfx_008838.dlmp out.png` (step 4530;
 gfx_008978 = step 4600 also crashes; gfx_008837 is the 3D task, which is fine). Capture:
 `capture.sh -i port/host/trick_attack.input -n 4800 -F 4530 -M`.
+
+### 20.7 Run 864: the soak / fuzz harness, one crash class, the gate's soak step (agent-c)
+
+**The harness: `port/tools/soak.py`.** Each seed produces a reproducible input script (`--script SEED`
+prints it). The script covers:
+- the title, plus the language A on a blank save;
+- sessions that pick the main menu and selections at random (mostly A, some D-pad / B / START);
+- for 40 % of the sessions, a directed walk instead: a mode, then D-pad steps on the rider, board and
+  course screens;
+- rides: stick segments, hop + grab / spin tricks, hands-off stretches, and pauses resolved with resume /
+  retire / restart / quit and a confirm box;
+- result presses and idle stretches.
+
+Of the seeds, 15 % mash every button instead, 22 % plug in 2 pads and 5 % plug in 4. The seed also picks
+the SRAM, which is one of:
+- blank;
+- match_race.input's save;
+- race_crystal_lake.input's save (record + ghost), resealed with options unlocks 0x00FF and seqStep 5
+  ("unlocked": every course).
+
+Runs go in parallel (`-j`), each from a fresh directory, with `--audio-out /dev/null` so the mixer
+counters are printed. The failure classes are:
+- signal (class key = the top two game frames, from addr2line);
+- sys_fatal / PORT TRAP / DEADLOCK;
+- hang;
+- short run;
+- NaN / Inf in rider / e0 fields (camera NaN is soft unless `--strict-camera`);
+- stuck retrace;
+- audio badAddr / unknownOps;
+- frozen rider (soft).
+
+`--minimise` ddmin-shrinks the first run of each class: it cuts the run at the failing step, then removes
+F lines with parallel complement tests. `--save-repro` writes the result to `port/host/repro/<class>.input`
+(headers `# SOAK seed= steps= sram=` and `# END`). The coverage lines report:
+- the racing share;
+- runs per flow mode;
+- distinct (mode, race start position) pairs, a proxy for courses (14 – 17 per batch);
+- the music command words heard.
+
+Usage: `soak.py -b <port build> -o <new dir> --seeds 0-499 --steps 6000 -j 14 [--saved-frac 0.4]
+[--minimise --save-repro] [--keep]`. 150 runs × 6000 steps take ~100 s at -j 14 (about 5000 steps/s
+per core with audio).
+
+**Runs:** about 2070 in all. 304 were on the first build (2 crashes, below); the other ~1770 were on fixed
+builds:
+- ~1380 × 6000 – 15000 steps;
+- 28 × 40000 steps (heap / leak check over many race loads);
+- 60 × 8000 steps, with the traces kept for a dwell analysis;
+- 300 runs on the final harness (seeds 20000-20299, 0 failures, one batch with `--strict-camera`).
+
+**One crash class found and fixed: `signal:11:snd_SoundObjUpdate>snd_updatePlayer`.** Seeds 183 and 257
+crashed in Trick Attack at the first grab (later also seeds 20 and 36 under the final generator, with the
+pre-fix binary).
+- **Root cause:** the trick gain-wobble read `*(f32 *)((char *)(i * 4) + kD_sndGainWobble_1C430)`. In the
+  ROM, the lui / addiu pair is relocated against bootup Data. On the host it is the bare constant 0x1C430,
+  so the read is a wild address. It is the one Data-offset constant site in src/ with no zero-symbol token
+  (grep `+ kD_` / `kRoF_`).
+- **Fix:** `#ifdef PORT` based at `port_bootup_data`. The table is f32-swapped in blob_types, and the
+  matching build is unchanged.
+- **Regression:** the minimised repro (13 F lines, 1830 steps) is
+  `port/host/repro/signal_11_snd_SoundObjUpdate_snd_updatePlayer.input`.
+
+Nothing else was found:
+- no sys_fatal, trap, deadlock, hang, NaN or audio fault, across every mode, the unlocked courses, 2 / 4
+  pads, button mashing, Options (Records / Erase Saved Data reachable) and 40000-step sessions;
+- nothing for agent-a (the renderer is not exercised headless).
+
+The long flow dwells the dwell analysis flagged are not stuck states:
+- `flow=1,1,1` for 7000 steps is the Options / Records screens, waiting for B (capture.sh sheet, run 864);
+- `flow=2,7,7 race=0` is Training.
+
+**Gate:** `scripts/port-gate.sh` has a new `soak` step (~10 s). `soak.py --gate` runs 12 fixed seeds ×
+5000 steps (blank / unlocked / saved, in rotation) plus every `port/host/repro/*.input`. Each run must be
+free of hard classes. The pre-fix binary fails it on the repro.
+
+**Next / ideas:**
+- A screen-level stuck detector. The flow tuple does not change inside menus, so it needs an RCP / DL
+  signature per step.
+- A Match Race win path in the generator, to unlock rounds 2+ from a blank save.
+- Run the soak on the 64-bit build once agent-g's boot runs past the title.
 
 ## 21. M6: 64-bit (agent-g, run 862)
 
@@ -6334,3 +6469,73 @@ the indirect calls (vtable slots with float parameters: the cfront `CF_V*` slot 
 `VT_SLOT(...).fn` casts whose prototype says `int` where the method takes a float). A per-function trace
 diff (state.log fields at a finer grain) would localise it faster than reading. Then the race / modes
 scripts, then the in-process Fast3D path (21.6; not tried in run 863).
+
+### 21.8 Run 866: the M6 exit check holds; build64 is a pass / fail gate step (agent-g)
+
+The x86-64 tenshoe's state.log equals the i386 one line for line (the RiderAnim state method's `/N` host
+address dropped) for the smoke (2000 frames), `race_crystal_lake.input` (race, View Replay, ghost reload)
+and every modes script (trick, contest, training, vs2p, match + reload, options + reload): 11/11 logs.
+Commits e31aa1899 (the tool), 6d7bba1ee (the fixes, the gate step).
+
+**Float mode: no change needed.** The i386 build was already `-msse2 -mfpmath=sse -ffp-contract=off`
+(PORT_ARCH_FLAGS), and x32 is SSE scalar too, so both builds do the N64's float32 IEEE arithmetic. The only
+libm call left in either executable is `sqrtf` (correctly rounded). An i386 float return travels in x87
+st(0) but a float load / store through it is exact. So the race / modes scripts did not need regenerating.
+Every divergence was an ABI bug, never precision.
+
+**The tool: PORT_TRACE_FN** (`cmake -DPORT_TRACE_FN=ON`, diagnostic only, off by default):
+- The game library is built `-pg -mfentry`. `__fentry__` in port/trace.c is asm that saves every
+  caller-saved register. For one frame (`PORT_TRACE_FN=<frame>`, file `PORT_TRACE_FN_OUT`, default fn.log)
+  it logs each function entry with:
+  - the stack depth;
+  - an FNV hash of rider 0's SnowBoarder, with pointer-looking words (0x100000..0x10000000) skipped, or of
+    the first argument of a chosen function (`PORT_TRACE_FN_OBJ=<addr>:<size>`);
+  - the raw arguments: on i386 the first 6 stack words, on x86-64 rdi..r9 and xmm0-3.
+- `port/tools/fn-trace-diff.py binA logA binB logB [--args]` names the addresses (nm) and prints the first
+  entry where the call sequence or the hash differs, with its context.
+- Why not `-finstrument-functions`, which was tried first:
+  - Its exit hook's argument pops clobber eax. Matched `void` wrappers whose callers read the result their
+    last call left in eax/v0 (item_createHel and family) then crash.
+  - In C++, the instrumented inline members take their own address. g++ then emits or calls out-of-line
+    copies whose placeholder tokens no port-bind covers, because binds are per function label.
+- cc-select.py now treats a numeric local label (`1:\tcall __fentry__`) as part of the body.
+- The workflow:
+  1. Rebuild both builds incrementally.
+  2. `PORT_TRACE_FN=<first divergent frame>`.
+  3. Read the first differing entry.
+  4. If the hash already differs at event 0, move the object (`PORT_TRACE_FN_OBJ`) or bisect the frame.
+  Each step takes about 30 s.
+
+**The divergences, in order found** (all `#ifdef PORT64`; ROM and i386 unchanged; matching gate 3579/3579):
+1. **Frame 223, rider quaternion.** DNode_applyAccums_00065448 called DNodeAccum_apply_00064388 (an NCC
+   donor taking `float`) through K&R `CALL` with `*(int *)&tsc.value`. The bits went in rcx, and the callee
+   read xmm0. abi-scan's X64REG could not see it: DWARF `call_site_parameter` omits a register loaded from
+   memory. The new **X64KR** class (a K&R call to a definition with a float parameter) lists 10 more.
+   The fix uses the new `PORT64_CALLP(T, f)` in include/uso_call.h, which calls f through a prototyped
+   asm-name alias.
+2. **Frame 471, rand state.** Run 863 made AnimPlayer_setBlend take the weight's int bits under PORT64,
+   but three C++ callers (RiderAnim_stateRide / stateRideDeep / statePreJumpHold, through
+   `import_0010DB78`) pass a float. Under PORT64 they now pass the bits (`SETBLEND_ARG`). Also fixed:
+   SNode_handleMsg's three absrot_matrix4 angles (bits to float).
+3. **trick / contest crashed at step 1503.** PointsGadget_display passed gui_drawStringScaled's scaleX as
+   bits: str_len got a garbage pointer.
+
+**Gate:** `scripts/port-gate.sh` build64 now runs after modes. It covers the build, test_*, the 64-bit
+smoke, and race-check / modes-check run 64-bit (`RUN32=env`; race-check now honours RUN32 like
+modes-check). Every state.log must equal the i386 run's. It reports **PASS / FAIL**. The abi-scan --x64
+count stays INFO: at the end of run 866 it is VRET 2, X64KR 10, X64P 33, X64REG 9. Landing gate: PASS
+(3579/3579, port gate PASS including build64 PASS, 19 s).
+
+**Left (no effect on any trace; render / audio / debug paths):** the rest of the abi-scan --x64 list:
+- AudioThread_QueueCmdF32: the float-typed `_f` callers, while the definition takes the bits;
+- the CourseGadget_setFloat2 / setVec3 / setVec4 HUD setters: callers pass the bits, some mixed with
+  floats in one call;
+- math_perspectiveF (Window_setupView), Obj::setLights (Mat_draw), gfx_selectLights, light_setF124 (x2);
+- hostio_addFloat, math_arcballPoint;
+- snd_ScheduleSeq / snd_UpdateChannel10Emitter / snd_SetPlayer0ChannelParams;
+- the 2 VRETs.
+
+These need per-site `PORT64_CALLP` edits (or `PORT64_I` for an int-bits definition). Wrong render floats
+show in the gfx dump, not in state.log: a 64-bit `PORT_GFX_DUMP` against the i386 one would gate them.
+Indirect calls (vtable slots with float parameters) are still invisible to the scan. PORT_TRACE_FN's
+`--args` view shows them when a trace diverges.
