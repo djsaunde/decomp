@@ -56,6 +56,19 @@
   verified at -O2 and stayed unnamed; fixed (c788fa119), 31 calls named. Placeholder calls in C++ inline members
   that are never instantiated (48AEC Ctx, 4BAF4 Ctx4B, 41820 Self::link) emit no jal: tag them
   `UNNAMED: no-reloc`, naming the instantiated twin's callee in the reason.
+- **Run 802 (agent-g).** The same $(VAR)-target fix also unlocked the bootup -O0 NCC donors: ncc_FC28 (16),
+  ncc_F81C (2), ncc_11B5C (2) are now fully named (donor .text byte-identical). The verify compare is now
+  `same_code`: a word with an R_MIPS_26 reloc in both objects compares only its opcode. A smaller
+  REPLACE_FUNC_BODY stand-in at the head of a unit (game_uso_func_00000000) shifts every later function,
+  so in-file jals bake different targets. This fixed the selftest and took `check --strict` from 171 to 141.
+  port_trace_collect (PORT only) reads `WORLDREG(game)->windows[0]` rather than `game + 0x108`.
+- **Callers of static helpers (run 804).** The verify copy drops `static`, so a jal to a static callee is a
+  symbol reloc with a zero field there but a `.text` reloc carrying the callee's offset in the real object. plan used
+  to compare raw bytes and rejected every such caller as "verify bytes differ (donor splice)". Example: game_uso.c
+  camPath_read_00000724 and TrickTable_load_0000C3F8, which call the static stream readers. `same_code()` now
+  compares with the reloc fields masked (1ac43f0b8), and selftest passes again. Plan over all src still finds
+  29 provable unnamed sites: arcproc ncc_o0_12C/B4 (2); bootup_uso.c, _90CC, _o2_6808 (2 each); bootup ncc_11B5C,
+  F81C, FC28 (20); mgrproc_uso.c (1).
 
 ## 2. Map
 
