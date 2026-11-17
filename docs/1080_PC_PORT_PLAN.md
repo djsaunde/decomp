@@ -6330,6 +6330,58 @@ after every round, and on a budget cut, so a later call with `--from <out>` resu
 - Ideas: weight the lead over the CPU (pct − cpu pct) in the score; or longer lookahead windows on the
   CPU's line; or a deeper beam than greedy + 1-window backtracking.
 
+### 20.9 Run 871: the fork-server beam search; Match Race Normal cleared, Hard 4 of 5; the progress gate step (agent-c)
+
+**Fork server (port/main.c `--fork-at STEP --fork-dir DIR`, client port/tools/forksrv.py).** tenshoe runs to STEP and
+parks; over two client-made FIFOs (cmd / ack) it forks children: `run SCRIPT UNTIL OUTDIR` (chdir OUTDIR, swap in
+SCRIPT at the same step: host_input_script_reload, state trace from the fork step: port_trace_reopen_state, exit at
+UNTIL), `spawn SCRIPT UNTIL NEWDIR` (the child parks again at UNTIL as a new server), `wait`, `quit`. The port is
+deterministic, so a child equals a from-boot run with the same script (checked: identical state.log lines; and
+steer-search replays every round's goal from boot before accepting it). A candidate now costs only its own steps.
+
+**steer-search --mode rounds is a beam search** (beam_round): STEER_BEAM (12) lines, each a parked server; every
+line forks one child per MATCH_ACTS stick, held STEER_LOOK (2) windows, scored as --mode match plus
+STEER_LEAD_W (1) x (pct - the CPU's pct) and minus STEER_STALL_W (5) under 15 km/h; the best distinct
+(STEER_DEDUP 300 units) children are spawned on as the next beam. A LOSE retries with a wider / longer beam and a
+heavier lead weight; STEER_ACCEPT_LOSE=1 keeps a loss (the game offers the round again: MgrCourseList.retries 3).
+`--levels N`: when a level ends it presses A through the result / ending / name entry / Best Times screens and the
+main menu until Select Level (flow 0,3,3), then DR x level and A into the next level (`# LEVEL n START s`).
+The run-869 CPU-line weight x10 made things worse (cpu_path keeps only z-increasing points: round 4 turns).
+Round 2, which the greedy search lost by 1-4 % in 1200 s, is won in 56 s.
+
+**Results (port/host/match_race_full.input, one script from a blank save, -w 20 STEER_LEAD_W=2 from round 8):**
+| level | course | round | goal / CPU | |
+|---|---|---|---|---|
+| Normal | Crystal Lake, Crystal Peak, Golden Forest, Mountain Village | 1-4 | 3899/3959, 7554/7641, 11044/11161, 15049/15115 | all WIN |
+| Hard | Crystal Lake, Crystal Peak | 5-6 | 20473/20598, 24126/24194 | WIN |
+| Hard | Golden Forest | 7 | 27642/27588 | LOSE (kept; retries 3 -> 2) |
+| Hard | Golden Forest (retry), Mountain Village | 8-9 | 31095/31159, 35023/35079 | WIN |
+Still to ride: Hard course 5, then Expert (6 courses; riders[5] = the boss by seqStep). Resume:
+`STEER_LEAD_W=2 steer-search.py -b <build> --mode rounds -w 20 --levels 3 --rounds 30 --from <copy of
+match_race_full.input> -o <same>`, ~100 s calls (each round 2-4 calls). Normal's 4th course: this cart's
+boot word gives count 4 (mgr_initMatchRace).
+
+**Unlocks seen.** Normal cleared: options seqStep 1 -> 2 (settings_stepSequence), unlocks 0x1F -> 0x3F (bit 5,
+already after Normal round 3; Time Attack's course list), newMark set. The Select Level screen then shows Hard's
+"Blue Square PASS" card (Expert still a black card); capture frames /tmp/claude-1000/agent-c/r871/cap1 and
+cap2 (DR -> the blue card, "Round 1 Crystal Lake" with the blue sign). Not yet seen: Expert open (seqStep 3),
+seqStep 4 / 5 (Expert with the boss riders: step 4 -> 5 needs Expert again with options score + 1 ==
+gSettingsStepTbl_C69C[0]), rider / board unlocks; Trick Attack / Contest score unlocks not looked at (no writer
+of unlocks other than settings_setBit found by grep: its callers go through the bootup export table).
+
+**Trace:** `ml=<retries>,<idx>,<count>,<course>,<rider>` in Match Race (MgrCourseList through GameFlow.flowProc
++8); `PORT_TRACE_RIDERX=1` adds `i<n>=flags,maxSpeed,stickX,stickY,held` per rider (RiderInput: the pad or the
+SnowAI). Every rider seen so far has maxSpeed 228-230 and no SNOWB_FLAG_CATCHUP (player 0x55803, CPU
+0x9806 / 0xD806): no rubber band in Normal / Hard.
+
+**port/tools/progress-check.py.** Full mode runs the progression script to each level's end in fresh dirs and
+checks the save (options primary == mirror, sums, header hash, seqStep = levels + 1) and its reload: a new
+process presses Match Race, DR x the open levels, A ...; the trace's ml= count must be that level's (4 / 5 / 6),
+one DR more must stay on it (locked card), and the save file must not change. `--sram SAVE --expect-levels N`
+does the reload part only. **Gate step `progress`** (port-gate.sh, ~3 s): port/host/progress_level1.sram
+(Normal cleared, from the script) -> PASS: unlocks 0x003F seqStep 2, DR x1 -> count 5 (Hard), DR x2 -> 5.
+Add progress_level2.sram once Hard is cleared (the gate loop already looks for it).
+
 ## 21. M6: 64-bit (agent-g, run 862)
 
 ### 21.1 The gap, measured
