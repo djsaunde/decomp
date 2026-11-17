@@ -4462,6 +4462,54 @@ dbg_printStarLine, math_acosf's sys_fatal arm). These pass on the same leftover 
 they are VOIDLEFT by construction. Also not covered: an indirect caller (vtable / proc entry) that
 reads a value; the verdicts above checked the dispatch type by hand.
 
+### 18.20 Run 841: Parms tags, the course camera's NaN, the 3D demo renders (agent-g)
+
+(Asked for as 18.18; 18.18 / 18.19 were taken by agent-e.) agent-g run 841, branch agent-g on main
+cd860366b: **a0bac7a1d** (game_libs, PORT only). Gate PASS (ROM byte-identical, 3579/3579, verify-blocks
+6/6, check --order 0 wrong, jumptable-audit 0 WRONG, clean build OK, port gate PASS: smoke 2000 frames, ABI 0 new).
+
+**Frames.** `tenshoe --frames 10000` from a clean dir: rc 0 (about 5 s), 22061 RCP tasks, no NaN / Inf
+in any rider or camera trace field (before: camTarget NaN in frames 1619-1982, 3757-4590, 6243-6604,
+7026-9313). Flow (procState, nextFlowMode, flowMode): 0..197 0,0,0 (N64 logo); 198 1,0,0 (fade);
+221 0,1,0; 222 0,1,1 (title + attract demo 1); 2533 4,1,1 (demo end); 2546 0,1,1 (next demo);
+6994 4,1,1; 7006 0,1,1. Name entry (nameent.uso) is never loaded in 10000 frames, so its cfront
+conversion is still not on the path.
+
+**What the frame-2565 crash and the frame-231 stop were** (both fixed on main by others while this run
+was on them): AnimData_readFrames returned garbage instead of its DMA slot (43694bcff, agent-e), and the
+audio channel commands 0xB2 / 0xB5 read big-endian sequence halfwords natively (755392718): seq 26
+(started at the demo's end) ran a swapped offset (pc 0x9E09) as a channel script.
+
+**The camera NaN (a0bac7a1d).** `fs_gdlReadInt_00035AA4` (Parms_load / Parms_skipRecords: the record
+TAG) read the tag word unswapped, but each parm registers its tag as a host-order word taken from the
+blob (Parms_addParm; "fin\0" = 0x66696E00 on the host, 0x006E6966 from the file). No tag ever matched,
+so **every Parms object in the game kept its ctor defaults** (this affects every parms file, not only the
+camera). The course camera's chase parms (cam_ca.bin: mxz, txz, cxz, miy, toy, ty2, chy) stayed 0, and
+SnowChaseActorCam_applyMode (game_uso_ncc_24BC.cpp) computes `vel / cxz`: the eye went -inf on the
+CourseCam's first update, and NaN spread to the look-at body through SnowChaseActorLook_update. The
+title demo shows that camera (view 19, path 10) from frame 1619. The fix swaps the tag under PORT; the
+-1 end sentinel is order-free. Found with stderr prints in cam_updateView / the chase updates (gdb under
+run32 loses the symbol file once the program starts; addr2line on the trap backtrace still works).
+
+**Projection.** In a demo 3D task now (dump gfx_001031) the G_MTX 0x01030040 matrix (gfx_emitProjection,
+guMtxF2L of the float matrix at gfx D+0x60) is a proper view x perspective: x scale 1.809, y scale
+2.414 (ratio 0.75 = 4:3, cot(fov / 2) = 2.414, fov 45), the w column the unit view forward
+(-0.037, 0.549, -0.835), translation (-155, -12179, -9262, -9228), in range. The -32768 / -12.8 / 1.7
+matrix agent-a saw was built from the NaN / inf camera.
+
+**Renders.** The 3D view is the ODD gfx task of each frame (the even one is the title overlay: logo,
+"Press START"), so capture with an odd `-f` and an even `-e` (or `-e 1`). With
+`port/tools/capture.sh -b <build> -n 5000 -f 601 -e 400`: /tmp/claude-1000/agent-g/cap841c/sheet.png;
+the course (snow, trees, the lake, mountains, sky) and the red rider with its snow spray render, e.g.
+png/t004201.png, t003001.png, t005801.png, t000601.png. Per-task run: /tmp/claude-1000/agent-g/cap841b/sheet.png.
+
+**Next lead: spike polygons.** Large dark / red triangles cross most views. In gfx_004201 every course
+G_VTX chunk (140 of them, contiguous at 0x0888CC70..) has vertices 1 and 2 replaced by the same 32 bytes
+(`00000000 6e720e08 5055a708 ffffff00 / 07000800 5055a708 00000000 ffffff00`: v1 = (0, 0, 29294), alpha
+0), and the first TRI1 of each chunk uses them. The vertex data is not a plain ROM copy (the v0 bytes are
+not in the ROM aligned), so it is built at load / run time: find the writer of chunk+0x10..0x2F (a
+watchpoint on 0x0888CC80, or a print in the course mesh builder).
+
 ## 19. M2: graphics transport (agent-a, run 820)
 
 > agent-a run 820, 2026-11-17, on branch agent-a: 7c91a2e27 (dumper, hook, tests, reader), e6bda5949
