@@ -2653,6 +2653,59 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   - var*.py: the toy matrices;
   - ev.sh, fz.sh, vn.sh.
 
+### snoweffects.uso 0x28E0: loop-top colours and the m offset (agent-e run 767, research only, no commits)
+
+- **Draft (793 words, frame 520, objdiff 96.110 -> 96.198 against main's 8f75b8d5d donor):**
+  /tmp/claude-1000/agent-e/w767/keep/28E0_e767_b3_793w_96.198.cpp (diff: `28E0_e767_b3.diff`). The code up to the
+  draw block (rows 90-483) is now the target's except for sp offsets in the temp area. Three changes, none of them
+  code:
+  ```cpp
+  static inline int zf1(float v, int z) { return z * (int)(v); }
+  static inline int zf3(float v, int z) { return z * (int)(v + v + v); }
+  ...
+      if ((cy != 0.0f) + zf1(cx, 0)) if (cz) {}        /* was: if (cy) if (cz) {} */
+      if ((cz < -100.0f) + zf3(cz, 0)) {                 /* was: if (cz < -100.0f) */
+  ...
+      SnowDLHolder2 *tex;                                /* declared last (after wx), not after d */
+  ```
+  - **Loop-top cx / cy / cz (issue 2) fixed: f0 / f12 / f2, computed in the cx, cy, cz order.** The loop-top values
+    are copy-propagated expression temps (uopt LRs e7 = cx, e62 = cy, e1307 = cz), not the variables. `zf3(cz)`
+    lifts cz from 7.5 to 15.0, which ties cx (15.0; cx wins on order), so cx takes f0, cz f2 and cy (13.3) f12.
+    zf4 (17.5) gives cz f0 instead; zf1 / zf2 change nothing. The `zf1(cx)` in the first empty-if condition puts a
+    cx use in the first test block, so cx is computed before cy, as in the target (before this, the sums came out
+    cy, cx, cz). The fold has to be the whole if condition. `(a) + zf(..)` as the first operand of an `&&` changes the
+    code (+4 words).
+  - **m / rot offsets (part of issue 1) fixed.** The extra M word above m was `tex`, which run 759 added. Declared
+    last, tex keeps its v0 code and m / rot land on the target's sp+404 / 340. Inner-block scope does not help: the
+    word is still allocated.
+  - **Still left in the frame:** the op- / op* temps (sp 164-256) and the t4 spill (108, target 116). Spill offset =
+    frame - M - 4. Removing the tex word entirely (`lp = (SnowV3d *)self->tex; d = gl_func(((SnowDLHolder2 *)lp)->dl);`)
+    gives M = 400 as in the target, but then the frame is 512, not 520. The target has 8 more bytes **under** the
+    spill (sp 88-115, against our 88-107). So it needs M = 400 plus two more low temp words (uopt spilltemps), not a
+    different M.
+- **1/w f14 (issue 3): not solved.** Target draw colours are cx f0, depth-w f2, cy f12, 1/w f14. uopt interference
+  is per block, and cy (blocks 45-49) does not overlap depth-w (blocks 42-44). So cy takes f2 whenever it is
+  coloured before 1/w, and 1/w then gets f12. Sweeping the zf weights on the nearZ test, the sw / sz index, the
+  offX / offY index (about 250 compiles, all 793 words) only permutes {f0, f2, f12}. cy needs an f2 neighbour, which
+  means a cy reference in block 44 (with depth-w) that costs no code. A cy fold in the sz index adds about 19 words
+  (812). Next: find a block-44 cy reference that costs no code.
+- **Side findings:**
+  - Moving the two row sums before sw / sz (`w = 1/w; cx = row0; cy = row1; sw; sz; ...`) is **791 words** (-2),
+    but the schedule changes (93.1 %). It is a word budget, if one is needed later.
+  - EE through gDPWord on the b3 draft: 793 words, mnemonic diffs 21 -> 18, but frame 528. It is frame 520 with
+    the lp-for-tex trick (95.91 %). The w0 store is still early (the target stores w0 after the depth).
+- **Draw-z note (before agent-c's run 763 fix):** in the all-z form, the draw cx / cy definitions are
+  copy-propagated: `cx = E`, and E is all variables, so the compare uses become an expression temp, and the
+  variable keeps only a dead `mov.s`. A dead second definition stops this. agent-c's two-step `cx = row; cx = cx *
+  ..` is that second definition with no code. `if (zf1(w, 0)) w = 0.0f;` also works, but its block costs c's s2
+  (+3 words).
+- Tools in /tmp/claude-1000/agent-e/w767/:
+  - ev.sh: compile + score;
+  - mk2.py: builder with zg0..12;
+  - col.py: draw-block div / cx / cy registers;
+  - nr.py: positional diffs, ignoring sp offsets and branch targets;
+  - t4-t14.py: sweeps.
+
 ### snoweffects.uso 0x28E0 NM 95.44 -> 96.15, frame 520 (agent-c run 763)
 
 - **Commit a395bfa05 on agent-c** (gate PASS, 3576 / 3579, exact set identical, no renames; 793 words, frame 520).
