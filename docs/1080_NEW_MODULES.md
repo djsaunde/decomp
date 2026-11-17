@@ -1396,6 +1396,9 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
       prologue's next() uses word -132 for `this`, which pulls the prologue's call block into the LR. Next step: a
       prologue form that keeps -132 out of the prologue. Then the shared count can take v0 (the target's loop / tail
       count) and dl v1.
+    - Prologue written directly, with no inline (`g = &c->dl->buf[c->dl->count++];`, a `{ int n = ..; }` block, or
+      `buf + count++`): the bytes are identical to next(). With depth-2 tail hops, these give 590 words again. In the
+      96.93 state, the prologue's me() hop is what keeps the texrect's M-128 LR alive.
   - Tools: /tmp/claude-1000/agent-h/r750/:
     - cr.py: colour / pri / den of the key LRs;
     - sw.py, pr.py, rs.py, bm.py: site / pair / random / beam scans of `if (v) {}`;
@@ -2370,6 +2373,63 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     | inline `snowWrap(cx, cy, cz, &wx, ...)` with by-value coordinates (c goes back to s2, but +9 words) | 78.7 |
 - **0xC90: not reached.**
 
+### snoweffects.uso 0x28E0: the `+=` temp order (agent-e run 753, research only, no commits)
+
+- **Recipe (C* above C-, as the target).** Make the op* result a named `SnowV3d t` declared in a new block that
+  wraps the loop, and assign it inside the `+=` full-expression with the implicit (trivial) copy assignment:
+
+  ```cpp
+  struct SnowV3d { ... SnowV3d &assign(SnowV3d o) { x = o.x; y = o.y; z = o.z; return *this; } };  /* was operator= */
+  ...
+      {
+      SnowV3d t;
+      for (i = 0, p = self->items; i < self->count; i++, p++) {
+          p->pos += (t = (cam - last) * self->follow);
+          ...
+      }
+      }
+      self->lastCam.assign(cam);   /* byte-identical to the by-value operator= (checked) */
+  ```
+  - On the d17635bb7 donor: 793 words, frame 520. All six temp slots match the target: C* -268, C- -280, op- copy -292,
+    op- ctor -304, op* copy -332; r stays at -348, which is the separate pooled-word issue. objdiff 94.997 -> 95.008.
+    Draft: /tmp/claude-1000/agent-e/w753/keep/28E0_e10_tassign_793w_95.008.cpp.
+  - On agent-c's c749/v/r1_2.cpp lead: 794 words, frame 520, M 400 (the t4 spill at 116 as the target), and all six
+    slots match the target **including r -344**. Positional diffs 451 -> 443.
+    Draft: /tmp/claude-1000/agent-e/w753/keep/28E0_r12u_tassign_on_r1_2_794w.cpp.
+  - Still left in this area: the two hoisted copy addresses take swapped registers. Ours: ra = sp+228 (op- copy),
+    t5 = sp+188. Target: t5 = 228, ra = 188.
+- **Why no operator signature / body works (toy compiles + the ugen Build-tree dump):**
+  - Within one full-expression, edg 2.19 allocates the reference-binding temps in post-order: an inner call's temp
+    gets the higher address. A call's own arguments bind right to left: `g3(a, b, c)` puts c on top, then b, then a.
+    So the nested `+=(op*(op-))` chain always puts C- above C*.
+  - About 30 forms tried, all C- first:
+    - member / friend / free operators;
+    - const-ref / by-value / non-const-ref parameters;
+    - a template op*, an op- returning a derived type, `const V` returns;
+    - inlines defined after the function;
+    - an empty dtor or a user copy ctor;
+    - `(V)` / `(V &)` casts, `operator*(...)` call syntax, `-(last - cam)`, a `?:` operand.
+  - Helpers such as `sc(cam, last, k)` do put C* first, but they add a return-copy chain.
+  - Temps of later statements in a block get higher addresses than earlier ones (3-statement toy). A block's named
+    variables come after its temps.
+  - Inline return copies are pooled per type and reused across full-expressions. A two-statement form
+    (`V d = cam - last; p->pos += d * k;`) therefore shares one copy slot between op- and op*.
+- **Why each part of the recipe is needed:**
+  - **Implicit assignment into a named object** copies op*'s return copy straight into t: two moves, the same as the
+    caller-temp chain. The user `operator=(SnowV3d o)` hijacks `t = ...` and adds a copy chain (798 words, frame
+    528), which is why it is renamed to `assign`.
+  - **The wrapping block** places t after the pre-loop snowW / gDPWord inline blocks, at -268. A t declared in
+    function scope, even just before the `for`, lands at -236 (the code is otherwise identical, but t reads at -236).
+  - **One full-expression.** `t = ...; p->pos += t;` gives the right slots but loses 3 nested-inline pool words
+    (M 396, frame 512). `p->pos += (t = ...)` keeps the target's pool depth (frame 520).
+- Tools in /tmp/claude-1000/agent-e/w753/:
+  - ud.sh: compile any .cpp and run the ugen tree dump;
+  - sig.py: temp copy-chain signature;
+  - slots.py: M-slot map;
+  - roles.py: frame-relative op- / op* chain slots from the disassembly;
+  - var*.py: the toy matrices;
+  - ev.sh, fz.sh, vn.sh.
+
 ### snoweffects.uso 0x28E0 NM 94.88 -> 95.04, frame 520 (agent-c run 749)
 
 - **Commit d17635bb7 on agent-c** (gate PASS, 3574 / 3579, exact set identical, no renames; 793 words, frame 520).
@@ -2835,6 +2895,51 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     f20) is a separate constant web: `(float)0` int-cast literal.
 - NM wraps spell the raw placeholder tokens: the named-call check cannot prove CALL() sites
   whose build path is INCLUDE_ASM.
+
+## heli.uso (agent-g run 751)
+
+- **0xB08: no commit (97.71 % stands; 3574 / 3579).** The best variant, 97.84 %, cannot land yet. Its source is
+  /tmp/claude-1000/agent-g/r751/e6_head_fix.cpp.
+- **Head `or v1,a0` + `lw a0,44(v0)` fixed (97.71 -> 97.84, both-masked rows 53 -> 31).** The fix reads the
+  next-marker load as an expression, twice:
+  `if (*(char **)(p + 0x2C) != 0) { p = *(char **)(p + 0x2C); if (*(float *)(p + 0x38) < z) store p; }`.
+  The load becomes its own LR (a0) for the test and the z compare, and the variable p takes the copy for the store.
+  - A new `char *n` local gives the same registers but costs a frame word (376). Reusing `mode` / `key` is worse.
+- **Why it can't land: function length.** The target is 943 words. Base is also 943 words, but only because it is
+  missing the `or` and has one extra word in the pitch block. With the `or`, the donor is 944 words: 0x1ACC moves
+  to 0x1AD0 in the non_matching object, and the gate loses it (3573). The extra word comes from the pitch block:
+  - Ours: lerpTo stores, then clampTo reloads `lwc1 f2,328(s0)` and needs a `c.lt.s` / `nop`.
+  - The target keeps the lerp value as a register LR (f16): `c.lt.s f16,f18; swc1 f16; mov.s f2,f16`.
+  - Fixing the head needs this pitch fix in the same commit.
+- **Pitch variants** (all 944 words or a different frame, and the ugen FP temp ring shifts):
+  - a named value through f / pf / g, or a block float, gives the target's no-reload shape (q1f: masked both 28,
+    but raw 94.1 because the f4 / f8 / f10 ring moves everywhere);
+  - a shared `float &h`, a `float *h`, a local inside clampTo, and a lerpTo with a local result all still reload.
+  - Next: find the no-reload form that leaves the ring alone (possibly a pool-word or `me()` lever on the lerp
+    inline).
+- **g / HF144 / -0.3f colour (instrumented trace, `r751/pk.sh`).** Picks go by priority:
+  - HF144 (e1358, num 3 / den 1 = 3.0) takes f0;
+  - yaw (2.5) takes f12;
+  - g (2.0) takes f2;
+  - -0.3f (K, num 1 = 2 uses - 1 load, den 2 = 0.5) takes f14.
+  - Every LR is caller-range, cost 0, so the lowest free register wins.
+  - The target needs an f0 holder in HF144's block, picked before HF144. Only -0.3f qualifies, so it needs
+    pri > 3. g then follows (f0 HF154, f2 HF144, f12 yaw, so f14).
+  - An `if (1) {}` between the HF144 store and the clamp separates them (-0.3f then gets f0), but it also splits
+    the as1 block (+2 words, 96.78).
+  - Flat or worse:
+    - `float lo = -0.3f` anywhere;
+    - a separate clamp result;
+    - ternary or if-form clamps;
+    - an h local with a cut;
+    - moving g's declaration (only frame words move);
+    - void return types for 0x980 / QNode_update and a pointer return for queryType (flat; coordinator's
+      return-type lever).
+  - Untried: folded counted uses of the -0.3f constant in its block (MATCHING_SUMMARY §4).
+- The same constant-before-memory-LR pattern shows at the axZ block: target zero f0, f var f2; ours the reverse.
+  The zero piece splits late from the 16-unit 0.0f LR.
+- Case 2's `lw v0,44(v0)`: q stays v1 under every q / p form tried (q = p, p = next, declaration order,
+  `((char **)p)[11]`). Without a q variable it becomes a ugen temp (t4).
 
 ## heli.uso (agent-g run 747)
 
