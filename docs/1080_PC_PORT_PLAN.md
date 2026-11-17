@@ -2749,3 +2749,125 @@ ctors / methods, 4 audio hooks (`port_audio_*` x3, `glv_2a44`).
 
 **Not done:** applying `name-data-sites.py plan --write` to the source (the XDATA naming of the 129
 ambiguous pairs); the new modules' binds-left entries.
+
+### 18.6 Run 810: the C++ cross-donor ctors / methods (agent-a)
+
+agent-a run 810, commit 28523ebaa on main af4cb2eee. Gate PASS (ROM byte-identical, 3579/3579,
+check 7940 named calls 0 mismatches). **tenshoe link: 53 -> 37 undefined, 0 of them C++**;
+libgame.a has no undefined `_Z*` symbol left (no `_ZTV*` was ever referenced: the cfront vtables
+are explicit stores since run 623).
+
+**Mechanism** (`port/include/port_cfront.h`, `CF_EXT`). A donor calling another class's
+out-of-line ctor / method references the g++ mangled name; the matching build renames the cfront
+reference to a token (`--redefine-sym __ct__1BFPc=func_00000000_ca0_base`) that the ROM relocation
+binds. g++ ignores asm labels on constructors, so under PORT the member gets an always-inline
+(`CF_INL`) body that calls the real body:
+
+    CF_EXT(void *, ca0_Node_ctor, Node_ctor, (void *, char *));   /* local name + asm label */
+    struct B { ...; char *vptr; CF_INL B(char *name) { ca0_Node_ctor(this, name); } };
+
+The local name keeps the donor's parameter types without clashing with port/gen/decls_cpp.h.
+CF_INL matters: donors reuse class names (`B`, `M`, `BB`, `Base`) with different bodies, and an
+out-of-line COMDAT copy would merge across units. The inline bodies always pass a live `this`:
+for `new T(..)` of an out-of-line-ctor class (cfront: `ctor(0, ..)`, the ctor allocates), T is
+given the C ctor's own allocation size under PORT so the donor's operator new (mem_new) allocates
+the same block.
+
+| donor | member | real body (ROM reloc) |
+|---|---|---|
+| bootup 31C0 | MNode / MCamera | Node_ctor / MCamera_ctor |
+| bootup 31C0 | `new` CourseCam / SnowChaseActorCam / SnowChaseActorLook / SnowChaseActor | cam_ctor_00000858 / SnowChaseActorCam_ctor / SnowChaseActorLook_ctor / SnowChaseActor_ctor (sizes 0x27C / 0x124 / 0x64 / 0x138) |
+| bootup CA0, gl 15FC, 40070, 41820 | B / B / BB / B44 | Node_ctor |
+| gl 15FC | M | CoolGadgetParms_ctor |
+| gl 4B620 | BB(char *, void *, int) | BasePolyShape_ctor (the 526D0 donor) |
+| gl 526D0, 4B0A8 | Base(void *) / Base(char *) | ShapeNode_ctor_000521F8 |
+| gl 412E8 | El (the `__vec_new` ctor argument) | GfxDdm_ctor |
+| bootup 6204 / E9FC (`__sti__`) | Bu6204Ob / BuE9FCBas | FogParms_setDefault_00043EAC / App_ctor |
+| gl 500EC | Mesh::adj | Mesh_facesConcave (the 4FD00 donor) |
+| gl 54E78 | M4::ident | math_mtx4Identity |
+| gl 525F0 | `new` Foo / Sub::add | Node_ctor (Foo sized 0x2C, class operator new = mem_new) / list_append |
+| gl 41820; bootup B1B4, game 3AC0 | operator new[]; global operator new | mem_new (were libstdc++ `_Znaj` / `_Znwj`) |
+
+The last five rows were not link errors yet (`--gc-sections` dropped their callers, or libstdc++
+supplied `_Znwj` with malloc) but would have been once reachable. A future donor with a
+cross-donor member: find the Makefile rename of the reference, the ROM target (port/gen/aliases.ld,
+binds.tsv, or the TextReloc at the jal), and add one CF_EXT line plus the inline body.
+
+### 18.6 Run 811: the audio hooks linked, the 8 new modules typed
+
+agent-c run 811, branch agent-c on main af4cb2eee. Gate PASS before each commit (ROM
+byte-identical, 3579/3579). This section is uncommitted.
+
+| commit | what |
+|---|---|
+| 98ecac319 | port/CMakeLists.txt: `audio` static library (port/audio mixer, abi_decode, audio_swap, port_audio), linked whole-archive into tenshoe and passed to the `undefined` target |
+| 83f9891cd | port-gen-blob-types.py: shape uv fix, material-only streams, image headers, cfront vtable slots, short strings, 2 KNOWN layouts; blob_types.tsv regenerated |
+
+**Audio hooks.** The three `port_audio_*` symbols were already written (run 616). They were
+undefined only because no CMake target built port/audio. Their behaviour is unchanged (15.6):
+- `port_audio_swap_static`: the bootup Data audio tables to host order, once;
+- `port_audio_swap_font`: each font to host order at AudioLoad_RelocateFont;
+- `port_audio_noise_base`: gWaveSamples[8], the ROM bytes at 0xE0B2CC as host s16 (an LCG fill
+  without a ROM).
+
+The real `port_audio_frame` now replaces main.c's weak stub. tenshoe: **53 -> 50 undefined**. The
+mixer / swap tests pass at -m32 through run32: 147 and 263 checks, 0 failures.
+
+**`glv_2a44` is not an audio hook.** It is the placeholder callee token of `TrkMenu_draw_00002A44`
+(timproc_uso_b3), the byte-twin of `glv_2838` in `TimMenu_draw_00002838`. Both are in
+binds-left.tsv as "ambiguous" (7 distinct gui / TrkMenu callees across 28 calls). port-undefined.py's
+classifier puts glv_2838 under plumbing only because it is listed in undefined_syms_auto.txt; glv_2a44
+is not listed there, so it landed under "other". It belongs with the plumbing (agent-g):
+it needs per-call names (`CALL(...)` / XDATA), the same fix as glv_2838. No symbol is defined for it.
+
+**Typing (port-gen-blob-types.py):**
+- **Shape op 4 is the uv array** (+0x64, s16 (s, t) per vertex; `BasePolyShape_addPoints` names it).
+  18.1 / 18.4 had it as "s8 x 3 normals", typed u8, so every shape's UVs were left big-endian. It is
+  now u16 x 2 * nv: 5,236 bytes in balloon, boarder1-5, bootup, charfir, charsel, charsps, checkpoint
+  and heli. **Op 25** (palette +0x5C, 3 bytes per vertex: RGB888 or s8 normals) is typed bytes.
+- Shape streams that are only a material list (op 29 + op 2, e.g. fire 0x227C) are walked. The
+  addresses Text takes with `addiu` are now stream starts too (heli 0xCA10, game Data). Their GDL_MC
+  words are u32.
+- **tex:hdr:** every image symbol is preceded by a symbol holding `{0, 1}` (166 of them, in every
+  module that has textures). It is typed u32 x 2, and the texels after it are typed bytes up to the
+  next symbol or pointer target (a zero tail of 16+ bytes is dropped). This covers the textures that
+  only code reaches, such as snoweffects `*_buildTexDL`'s built G_SETTIMG. The header's reader is
+  still unknown.
+- **vtbl:** in cfront vtables (`{s16 delta, s16 index, fn}`, read as s16 by VT_SLOT / CF_Vk), the
+  slot's head word is typed u16 x 2. The rule: the head of a relocated Text pointer, index 0, a small
+  delta, and part of an 8-byte table (not a jump table). 3055 slots. All of them are 0 on this ROM,
+  so the swap changes no bytes; the typing keeps any nonzero delta correct.
+- **Strings:** 1-3 chars at a referenced start are now typed (parm tags "he1" / "d00" / "Env",
+  "%s", viewrec "fff").
+- **KNOWN:** snoweffects `SnowFlicker` sequences (u8 at 0x910 / 0x938 / 0x944; s32 counts at
+  0x930 / 0x93C / 0x950) and viewrec `vr_sndTbl_4990` (s32 x 4 at Data 0x318).
+
+**Unknown bytes, before and after**, for the 8 new modules. The "non-zero" columns count the unknown
+runs that contain a non-zero byte, which are the only ones a missing swap can break.
+
+| module / section | size | unknown before | after | non-zero unknown before | after |
+|---|---:|---:|---:|---:|---:|
+| balloon Data | 16816 | 1275 (7.6%) | 15 (0.1%) | 1168 | 0 |
+| balloon RoData | 32 | 28 (87.5%) | 0 | 28 | 0 |
+| checkpoint Data | 16128 | 416 (2.6%) | 26 (0.2%) | 158 | 0 |
+| checkpoint RoData | 16 | 16 (100%) | 0 | 16 | 0 |
+| fire Data | 9120 | 8778 (96.2%) | 6 (0.1%) | 8676 | 0 |
+| heli Data | 52160 | 1683 (3.2%) | 18 (0.0%) | 1386 | 0 |
+| heli RoData | 256 | 88 (34.4%) | 8 (3.1%) | 80 | 0 |
+| nameent Data | 400 | 135 (33.8%) | 11 (2.8%) | 0 | 0 |
+| snoweffects Data | 29728 | 23892 (80.4%) | 20 (0.1%) | 23144 | 0 |
+| trnproc Data | 848 | 277 (32.7%) | 10 (1.2%) | 10 | 0 |
+| viewrec Data | 1200 | 409 (34.1%) | 29 (2.4%) | 19 | 0 |
+
+The RoData of nameent, snoweffects, trnproc and viewrec was already at 0%. Across all blobs, unknown
+went from 11.5% to **6.0%** (68,960 bytes), with 0 conflicts. The largest remaining are bootup Data
+(about 55 K) and n64proc / titproc.
+
+Ownership: the generator is agent-c's. `port/gen/blob_types.tsv` is its output: rerun
+`scripts/port-gen-blob-types.py` after a port/gen regeneration, and do not hand-merge the tsv.
+
+**Next:**
+1. Name the `glv_2838` / `glv_2a44` call sites (agent-g, binds).
+2. The image-header reader.
+3. bootup Data's remaining 55 K.
+4. Run a sequence headlessly once tenshoe links (15.6, "Not done").
