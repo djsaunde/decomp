@@ -3463,6 +3463,127 @@ already swapped. **The 18.2 to-do list is closed.**
 - 0x1F984's reader.
 - Sub-word reads of int fields in code (run 819's bug class 4): an audit, not blob typing.
 
+### 18.11 Run 823: the K&R and evaluation-order sweeps (agent-e)
+
+agent-e run 823, branch agent-e on main 2f16f6e23: 32bf2f384 (evaluation order) and 1f9805c30
+(K&R). Gate PASS before the commits (ROM byte-identical, 3579/3579, verify-blocks 6/6, clean build
+OK; `check` 8314 named calls, 0 mismatches). tenshoe links.
+
+**Class 2, callee vs argument order.** `scripts/port-evalorder-audit.py` scans the PORT-active text
+of every unit the port compiles (C and C++) for a call whose callee expression reads a variable that
+its own argument list assigns (FWD), or the reverse (REV). A gcc -E pass over all 480 units found
+the same set, so no macro spelling hides one. 11 sites: agent-g's 8 plus Process_pause_0000F9E8
+(`vt[0x5C / 4]`), settings_setFlag4_000126EC and the C++ donor copy of QuitProcess_onQuit. No
+function-pointer, PMF or REV site exists. 0 left.
+
+**Class 1, K&R pass-throughs.** `scripts/port-kr-passthrough-audit.py` now:
+- reads the SHIPPED body (sourcemap `source`: donors, imports, C++), not the host placeholder, and K&R
+  definitions (Node_handleMsg, the OoT audio code);
+- scans direct calls (declarations, #define bodies and strings skipped);
+- scans this-only virtual calls (`VT_SLOT(p, N).fn(this)`, CF_Vk). The slot's arity comes from the ROM
+  cfront vtables (DataRelocs typed `vtbl`): the max over the tables holding a `<CallerClass>_`
+  function, else the arity most tables agree on (a plain max over all tables is noise);
+- with `--rom`, prints the caller's register at the jal (`in:aN`, including the
+  `lw aN, frame+4N(sp)` home reload; `call:<f>` = garbage left by an earlier call; or the instruction
+  that set it) and whether the callee names the parameter. The walk is linear, so a jal reached by a
+  branch has to be checked by hand (MCamera_doCommand, fs_gdlSeekFile, Friction_handleMsg,
+  BasePolyShape_handleMsg, QNode_handleMsg).
+
+Counts: 98 before (CALL sites only, host files). The extended scan gives 115 (call 98, direct 8,
+vt 9), and the K&R definitions add more (Node_handleMsg ...). About 85 were fixed (KR_ARG / KR_ARG0;
+26 callers got KR_PARAM / KR_PARAM0, or an `#ifdef PORT` header for a `()` definition). 24 are left
+and assessed:
+- harmless (the callee overwrites or ignores the parameter): 9 Node_handleMsg (tag), 6
+  gui_fontAdjustAdvance (a2), gl___osSpSetPc (flag), AnimGroup_load (a1 only reaches
+  fs_gdlReadInt), Node_Load slot 8 (BinFileMgr_loadData's a1 goes to fs_getHandle, which ignores it)
+  and Window_setDefaults slot 10;
+- **for agent-g (gfx_* / RcpMgr_*, not touched):** gfx_thunk_00046B44 -> gfx_vcall_0004E150 (a0 =
+  its own a0), gfx_listAppend_0004E214 -> list_append (a1 = its own a1), and the this-only slot-0
+  calls in gfx_end (x2) and gfx_vcall_0004E150. Their tables were not resolved (slot 0 of the material
+  tables is BaseMat_onFrameStart(this, a1)).
+
+**A new bug class found on the way: swapped call names.** NameEntry_updateEntry called
+`CALL(Backup_writeCourseArcadeOptions_0000B3DC)(session, name, rider, board)` and then
+`CALL(Backup_sessionSetNewNames)(session)`, but the ROM relocs are the other way round. The ROM build
+cannot see the CALL names, and `check` did not flag it, so the order is not checked within a
+function. On the port each call went to the wrong function. A per-function comparison of the ordered
+jal targets against the ordered CALL names would find the rest.
+
+**Boot.** Under run32 in a fresh directory, both this build and a build of 2f16f6e23's sources fault
+the same way: a jump to 0x40012 during SnowBoard_InitInstance / GameFlow_create (once
+`sys_fatal: BinFile Group out of range`). So that fault is not from these commits. agent-g's frame-1
+runs used `/tmp/claude-1000/agent-g/run`, with its 1080.sram present.
+
+### 18.12 Run 825: partial reads of wider fields (agent-c)
+
+agent-c run 825, branch agent-c on main aa4397bb6. Gate PASS (ROM byte-identical, 3579/3579,
+verify-blocks 6/6, clean build OK). The changed units compile under the port flags.
+
+| commit | what |
+|---|---|
+| b39cfbeef | `scripts/port-partial-read-audit.py` (below) |
+| b84d7948b | AudioCmd queue packing (QueueCmd op word, QueueCmdS8 / U16 value position); SnowBCollider_ctor contactFlags; `PORT_BE_BYTES32` / `PORT_BE_HI16` / `PORT_BE_LO16` in port.h |
+
+**The tool.** It works from the ROM-exact objects (build/src/**/*.o). For each function, a forward dataflow over basic blocks gives every base register a symbolic root:
+- the incoming a0..a3 / s*;
+- a %hi/%lo symbol, or a KSEG constant;
+- a call result;
+- a loaded pointer chain (`[[&gGfx]+0x10]`, up to 4 deep);
+- a tracked frame slot.
+
+Roots are compared at three levels:
+- within one function;
+- across the segment, for roots built on a global symbol;
+- across functions that declare a parameter of the same named struct type, or share a `Class_` prefix for a0.
+
+Not compared: excluded functions (port/gen/excluded.tsv), the second copy of a donor, and the IDO argument home slots.
+
+Classes:
+- narrow-in-word: a lh / lb inside a word that is also accessed as a word;
+- word-over-narrow: a lw spanning two or more narrow sub-fields;
+- byte-in-half;
+- harmless: lw→sw copies, lwl / lwr memcpy, stores of byte-symmetric constants.
+
+`--csrc` lists the C re-views (`*(s16 *)&x`, `((u8 *)&x)[n]`, `union`), `--boot` keeps the boot / title closure, and `--all` adds the harmless windows.
+
+**Counts (all modules, port-compiled functions only):**
+
+| class | windows | functions |
+|---|---|---|
+| narrow-in-word | 9 | 11 |
+| word-over-narrow | 5 | 5 |
+| byte-in-half | 0 | 0 |
+| harmless | 4 | 7 |
+
+The C scan found 119 lines.
+
+**Triage of the object hits:**
+- FogParms_emit +0x12 / +0x16: already fixed (run 819). It is the tool's positive control.
+- 12 hits are audio-driver bitfield containers:
+  - SequenceChannel / SeqPlayer / Note / NoteSubEu / Sample: a `u32 x:1` run next to u8 fields;
+  - AdsrUpdate / SeqLayerProcessScript / InitSampleState sp+0x2c.
+
+  They are consistent C (members on both sides) on runtime-built state, so harmless here. Their mask / shift sites belong to plan 18.3 (AUDIO_FLAGBIT).
+- The harmless windows:
+  - BoardTrail [this+0x2c]+0xA30: an lwl copy of RGB bytes;
+  - RecordOptions_drawCourseTimes sp+0x74: a string initialiser;
+  - Audio_NotePortamentoInit: a copy;
+  - AudioLoad_FinishSlowLoad.
+
+**Triage of the C scan:**
+- Fixed (b84d7948b):
+  - **AudioCmd queue.** `AudioThread_QueueCmd` stores the op word 0xOOAABBCC, and ProcessCmds / ProcessGlobalCmd / ProcessChannelCmd read it back as u8 op / arg0 / arg1 / arg2. On x86 every queued command decoded with op = arg2. QueueCmdS8 / U16 put the value in the top byte / half, read back as the arg union's asSbyte / asUShort (0 on x86). Every snd_* / title-music command passes through these three functions (67 S8, 35 S32, 25 F32, 5 U16 call sites).
+  - **SnowBCollider_ctor** `((u16 *)&a2)[1]`: the race path. The object audit cannot see it, because it is an argument home slot.
+- Harmless (same width as the declared field: regalloc-lever lvalue casts): AnimData_load numNodes (s16), AudioSynth reverb resampleFlags / unk_0E / volume, AudioHeap_Init tatumsPerBeat, numSequences (s16), snd_SoundObjUpdate pan[3] / unk1A / kind. The two dead `while (0)` Node handle reads are harmless too.
+- Same-width unions (float / int, pointer / s32, Vec3 / f32[3], Gfx / long long): harmless on i386.
+- Excluded by the port: kernel uso_allocSlot / kdebugserver, and the libultra unions.
+- Already handled: CMD_B3 (run 624).
+- **Open:** Node_handleMsg FIND_SERIAL reads `v.serial` as an s16 at payload +4, but the union also has an `s32 on` there. Check the sender: if it stores an int, the receiver reads the high half on BE and the low half on x86. Also open: the audio-driver bitfield-union `asByte` mask sites (plan 18.3).
+
+**RcpMgr / gfx (for agent-g):** no hits. An early run aggregated `.bss` section symbols across objects and showed a false RcpMgr_ctor `sw 0x12345678` vs guPositionF window. Section symbols are now per object.
+
+**Coverage limits:** see the tool's docstring. A narrow access whose wide twin is in an unrelated function (calls go through placeholder relocs, so there is no interprocedural link) is not seen, and neither are `D_00000000`+0 data references (one root per site). The 56 "lone sub-offset" narrow fields (no access at +0 of their word) are a review list: a sample was checked (MorphPolyShade s16[3], PolyShape / Sprite +0x1E s16, GameFlow settings bytes, SnowBoarder +0x9A2 lh in 4 functions), and all were declared narrow; the rest are unchecked.
+
 ## 19. M2: graphics transport (agent-a, run 820)
 
 > agent-a run 820, 2026-11-17, on branch agent-a: 7c91a2e27 (dumper, hook, tests, reader), e6bda5949
