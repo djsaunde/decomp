@@ -6044,6 +6044,53 @@ files removed. No display: the window now opens before the shm file exists; DISP
 missing (the X socket, WSLg hints); EGL failures suggest software GL; play.sh stops with "the presenter could
 not start" instead of starting a game that waits 10 s.
 
+### 19.15 Run 867: the live-audio stall is WSLg, not the presenter (agent-a)
+
+**Root cause.** Not a presenter commit. Any X window **mapped while a PulseAudio stream is playing**
+stalls WSLg's whole PulseAudio server (its RDP sink -> weston -> msrdc path): `pactl info` itself takes
+~12 s, and every client's `pa_simple_write` blocks, for as long as that window lives. Reproduced without
+any presenter code: a 70-line libpulse + live_audio.cpp harness plays 8.04 s in 8 s; the same harness with
+a 10-line `xmap` (XCreateSimpleWindow + XMapRaised, from the same or another process, drawing or not)
+mapped at t = 3 s plays 4.6 s, then nothing for ~8 s until the window exits. An unmapped window is
+harmless; a window mapped **before** the stream is harmless if the stream opens >= 2 s later (1 s: stalls).
+The presenter maps its window and opened PulseAudio milliseconds later, so it stalled from boot. Bisect:
+every buildable presenter since run 858 (fbda0cb2e, 9bc2d9fdc, c9250d020, c1fce01a9, HEAD) fails the same
+way (the run-858 commit b6b9ddbc6 itself does not compile: mid-merge live_shm.h); run 858's 0 underruns was
+a different WSLg / msrdc state. During one test weston itself aborted (window-manager.c:1387
+`!window->shsurf`) and WSLg restarted it; the stall persisted after the restart. Recovery after a stall:
+a new stream plays again once the server answers. Test hygiene: wait for `pactl info` < 0.3 s between runs
+(a stall lingers after its window exits), and other agents' windows stall it too.
+
+**Fix (live_audio.cpp / presenter.cpp).** PulseAudio opens `--audio-open-delay MS` (default 2500) after the
+window is mapped; the ring is drained meanwhile (counted "before open"; the game's first 6 s are digital
+silence, RMS 0, so nothing audible is lost). F11 (fullscreen, a remap in WSLg) first calls
+`live_audio_suspend()`: the stream is closed (no drain), the ring drained, and the stream reopened 2.5 s
+later. `--audio-stats` prints `presenter: audio-stats: output pulse, received R s, before open B s, played
+P s, trimmed T s, ..., played/received-while-open X%`; the per-second status now shows played too.
+
+**Check (needs a window, so not in the port gate):** `make -C port/gfx/fast3d audio-check` =
+`port/tools/audio-check.sh [-f STEPS] [-m MIN] [-o DIR]`: play.sh with the Match Race script in lockstep,
+3300 steps (menus + ~60 s of racing, fresh SRAM), pass if played >= 95 % of received-while-open (and >= 30 s
+received). `AUDIO_CHECK_PRESENTER="--audio-open-delay 0"` reproduces the stall.
+
+| run | received | played | trimmed | game overruns | played / received-while-open |
+|---|---|---|---|---|---|
+| title 600 steps, before | 4.47 s | 1.45 s | 2.0 s | 930 | 32 % |
+| title 600 steps, after | 19.90 s (2.40 before open) | 17.49 s | 0 | 0 | 100.0 % |
+| audio-check race 3300 steps, `--audio-open-delay 0` | 21.18 s | 2.24 s | 17.92 s | 5336 | 10.6 % (FAIL) |
+| audio-check race 3300 steps, after | 109.75 s (2.37 before open) | 107.19 s | 0.19 s | 0 | 99.8 % (PASS) |
+| title 900 steps, F11 x2 (4 key events), no suspend | 29.92 s | 14.07 s | 13.25 s | 0 | 51.1 % |
+| title 900 steps, F11 x2, with suspend | 29.93 s (7.33 suspended / before open) | 22.60 s | 0 | 0 | 100.0 % |
+
+- Not agent-c's `[heap]` / ASLR audio bug (run 869, abea07e2e): these runs had no `setarch -R`, the game's
+  audio was non-silent after the boot, game and presenter FNV hashes agreed, and the harness reproduces the
+  stall with no game at all.
+- "D3D12: Removing Device" did not recur (0 in 8 windowed runs, incl. the 3300-step race); play.sh's help now
+  names `-S` (software GL) as the fallback for it.
+- Open: other apps' windows mapped during play still stall WSLg audio (outside our control); a window
+  resize by drag was not tested; for the native single-process game (21.9), open its PulseAudio the same way
+  (after the window, and suspend around fullscreen).
+
 ### 20.5 Run 857: checkpoints, the Match Race win, options persistence, the modes gate step (agent-c)
 
 Branch agent-c on origin/main 384c40ad6: 2f9a83eed (trace cd= / trn=), 878be00f3 (steer-search,
@@ -6230,6 +6277,58 @@ free of hard classes. The pre-fix binary fails it on the repro.
   signature per step.
 - A Match Race win path in the generator, to unlock rounds 2+ from a blank save.
 - Run the soak on the 64-bit build once agent-g's boot runs past the title.
+
+### 20.8 Run 869: the 64-bit soak, one 64-bit crash + a no-ASLR audio bug, the screen hash, Match Race rounds (agent-c)
+
+**64-bit soak: `soak.py --build64 <PORT_64 build>`.** Every job also runs on the x86-64 build (plain exec,
+no i386 loader). Its failures are tagged `x64:<class>`. When both runs are clean, the two state.logs (with
+the `/N` host address dropped) and the final SRAMs must be equal: `diverge64:<first differing fields>`,
+`:sram`, `:length`. Two more comparisons are soft for now: the screen hash (`x64-screen`) and, with
+`--audio64`, the WAVs (`x64-audio`).
+
+**Result: 400 seeds × 8000 steps on both builds.**
+- **One 64-bit crash class: `x64:signal:11` at step 0, in port_main reading the ROM buffer (7/400).**
+  - Root cause (strace): with ASLR, the non-PIE brk heap starts anywhere in the 1 GB after .bss, so it
+    can start just below 0x40000000, which is where the MAP_32BIT game stack lands. brk cannot grow, so
+    glibc falls back to an mmap above 4 GB, and the x32 code truncates the pointer.
+  - Fix (host/main64.c): one re-exec with `ADDR_NO_RANDOMIZE` (`PORT64_ASLR=1` opts out), and a refusal
+    to start with less than 256 MB of brk room. 0/400 startup crashes after it.
+- **The re-exec exposed an audio bug in both builds (no ASLR: setarch -R, gdb).** The kernel labels the
+  .bss mapping `[heap]` too. port_audio.c's read_maps kept the last `[heap]` line, so .bss fell outside
+  host_mapped(), every AUDIO_IS_RELOCATED_PTR test failed and no samples loaded. It now keeps the lowest
+  `[heap]` start.
+- **After both fixes (400 more seeds × 8000 steps, both builds):** no x64 crash, no state.log or SRAM
+  divergence in any run. The screen hash and audio do NOT agree yet (`x64-screen` in 398/400 runs):
+  - Screen hash, title demo step 223: the projection G_MTX differs. This is Window_setupView ->
+    math_perspectiveF (abi-scan --x64 X64P1-3: decl int, def float).
+  - time_attack.input, from about step 710 (retrace 1420): the 64-bit driver DMAs other samples. This
+    lines up with the snd_* / AudioThread_QueueCmdF32 X64KR / X64P findings.
+  - Both are on agent-g's list. Once they are fixed, `x64-screen` / `x64-audio` can go hard: drop them
+    from SOFT in soak.py.
+
+**The screen hash: `PORT_TRACE_SCREEN=1` writes `scr=<hash>` to state.log** (port/trace.c). The hash is
+dlump_screen_hash (port/gfx/dlump.c): the step's gfx tasks' command words without host addresses, plus the
+G_VTX / G_MTX / G_MOVEMEM bytes. It is pointer-free, so it is comparable across builds, and a page cache
+sits in front of mincore (the soak gate step costs +1.5 s). soak.py sets it and flags `stuck-screen`
+(hard): 900 steps of an identical display list through 8+ presses, with B and at least 3 distinct
+buttons among them.
+- The first version (8 presses of any kind) hit seeds 111 and 268 on both builds. These were false
+  positives: Options > Records (flow 1,1,1) ignores A / D-left / D-right, and a later D-down scrolled it.
+- With the B requirement, both seeds are clean. No real stuck screen has been found so far.
+
+**Gate:** port-gate.sh's build64 step runs `soak.py --gate64` (gate seeds 2 and 3 on both builds,
++~10 s). It needs no hard class and prints `soak64 N runs: H hard, S soft`.
+
+**Match Race rounds: `steer-search.py --mode rounds [--from match_race.input] [--rounds 6]`.** It keeps
+the won rounds of `--from`, presses A A into the next round, finds its race start, and searches the round
+the way `--mode match` does. Each round is written as `# ROUND k GOAL g WIN|LOSE`. The script is saved
+after every round, and on a budget cut, so a later call with `--from <out>` resumes.
+- Round 2 (Crystal Peak) starts at step 4401. The greedy search trails the CPU rider by 1 – 4 % pct all
+  the way (round 1's fine y-centred acts and `STEER_MATCH_ACTS=wide` alike); details below.
+- Rounds 3 – 6 and the unlock checks (courses / boards / riders in SRAM and in the selects) need a round 2
+  win first.
+- Ideas: weight the lead over the CPU (pct − cpu pct) in the score; or longer lookahead windows on the
+  CPU's line; or a deeper beam than greedy + 1-window backtracking.
 
 ## 21. M6: 64-bit (agent-g, run 862)
 
@@ -6539,3 +6638,121 @@ These need per-site `PORT64_CALLP` edits (or `PORT64_I` for an int-bits definiti
 show in the gfx dump, not in state.log: a 64-bit `PORT_GFX_DUMP` against the i386 one would gate them.
 Indirect calls (vtable slots with float parameters) are still invisible to the scan. PORT_TRACE_FN's
 `--args` view shows them when a trace diverges.
+
+### 21.9 Run 868: the native single-process 64-bit game (agent-g)
+
+Commits on agent-g: 4d4860454 (render ABI fixes, dlump-cmp, the build64 gfx check), 2749af51d (the native
+game). Landing gate: 3579/3579, clean build OK; port gate PASS (build64 PASS: 11/11 state.logs, gfx 8/8).
+
+The `-DPORT_64=ON -DPORT_NATIVE=ON` tenshoe, run with `PORT_NATIVE=1`, is the whole game in one process.
+It renders with Fast3D in process, opens its own X11 + EGL window, plays its own audio and reads the
+keyboard / gamepad itself. There is no presenter, no shared memory and no i386 sysroot.
+
+    port/tools/play.sh --native [-s SCALE] [-m] [-l MS] [-V] [-S] [-b BUILD] [-- tenshoe args]
+
+play.sh configures and builds `tools/play/<worktree>/build-native` on first use. The presenter path is
+still the default and the fallback. `-V` turns vsync on.
+
+**Architecture.**
+```
+ x32 game (port_gfx.c, port_live.c)            | LP64 host (libport_native.a), u32-only calls (gfx/port_native.h)
+   port_gfx_task -> native_task ---------------+-> port_native_task: the step's request snapshot; port_fast3d_queue
+                                               |     (lists widened now, offscreen test, G_SETTIMG list, images)
+   step end -> port_live_frame_end ------------+-> port_native_frame: port_fast3d_step = presenter Renderer::frame
+                                               |     on game memory (offscreen pass + RTT store, one chained Run,
+                                               |     depth / colour answers into a LiveFbReply), EndFrame = swap
+   host_poll_events -> port_live_quit ---------+-> port_native_poll: live_pump (X events), pads -> header
+   host_read_pads <- LiveShmHeader.pads   <----+   (the block: header + LiveAudio ring + LiveFbReply, MAP_32BIT)
+   audio sink -> port_live_audio_write -> ring +-> live_audio.cpp thread (unchanged) -> PulseAudio
+   port_live_fb_apply <- LiveFbReply      <----+
+```
+- **Shared, not duplicated.**
+  - The presenter's window, Fast3D backend and input code moved into `gfx/fast3d/live_window.{h,cpp}`
+    (LiveX11, LiveInput, live_pump) and `live_backend.h` (LiveWindow). presenter.cpp uses them
+    (`using Win = LiveX11`).
+  - live_audio.cpp and live_shm.h are untouched. The native host lays out a LiveAudio ring and calls
+    `live_audio_start` as the presenter does, so agent-a's audio work applies to both.
+  - port_live.c reads the native block with the same code that reads the presenter's files: pads, quit,
+    the audio ring and `port_live_fb_apply`.
+- **The boundary.** The game side is x32 and the host is LP64. The calls take only u32 values (a game
+  address is below 2 GB). The request struct is read in its ILP32 layout, which port_gfx.c checks with a
+  size assert. The shared memory is live_shm.h, whose fields are all 4 bytes.
+  - The link's `--wrap` list (21.4) would send the host's own libc calls (strtol, mmap, __errno_location,
+    ...) through the x32 converters. CMake therefore runs `objcopy --redefine-syms` on libport_native.a so
+    that those references go to `__real_<f>`.
+- **Frame model (port_fb.h).** The framebuffer model now runs in process. Each step's tasks are composited
+  into one frame, because every Run clears the window, so one Run per task would show only the last
+  task. The game's depth / colour read requests ride on that Run. Patch 0003 answers them:
+  - each depth pixel together with its ±6 window;
+  - the colour images the frame drew into.
+
+  The answers land in the LiveFbReply, which the game takes at its next task, one step later (the N64's
+  latency). Render-to-texture tasks are drawn first, read back, and stored at the full address that the
+  onscreen tasks' G_SETTIMG gives (the presenter's rule). If no task gives one, the address is the single
+  registered mapping that holds the image.
+- **Pacing.** main.c's `--realtime` loop is unchanged: a fixed 30 Hz step, real time, catch-up cap 4.
+  Every step that has tasks renders and presents. The swap interval is 0 by default (frames are shown as
+  the step makes them); `PORT_NATIVE_VSYNC=1` / `play.sh -V` sets it to 1. Without `--realtime` the steps
+  run back to back and each one still renders (verification runs).
+- **Two process fixes (host/main64.c, PORT_NATIVE builds only).** The process re-executes itself once with
+  `personality(ADDR_NO_RANDOMIZE)` and `GLIBC_TUNABLES=glibc.malloc.arena_max=1:glibc.malloc.mmap_max=0`.
+  - Opening the window mallocs about 280 MB from the brk heap. With the 64-bit kernel's 1 GB brk
+    randomisation, the heap could reach the MAP_32BIT region at 0x40000000. brk then failed and glibc fell
+    back to mmap, which returns high memory. x32 code truncated that pointer and crashed in fgets on
+    `fopen`'s FILE in port_audio.c read_maps: 1 run in 3 crashed, 0 in 12 after the fix.
+  - The arena limit has to apply before the first malloc, so it is set as a tunable as well.
+- **Exit.** If the audio thread is blocked in PulseAudio (19.14's open stall), `live_audio_stop` would hang
+  in its join. The native close therefore stops the thread from a helper and waits at most 2 s; if the
+  thread is still blocked, the process `_exit(0)`s at exit after the game's own teardown.
+
+**Verified (WSLg, D3D12 on the AMD GPU).**
+- **Frames.** The native window PNGs (`PORT_NATIVE_PNG`) are byte-identical to f3dreplay `--then` of the
+  same run's PORT_GFX_DUMP for 11 steps:
+  - attract demo: 300, 580, 1000, 1500, 1900;
+  - Crystal Lake race script: 1500, 2250 (sun), 3000, 4700 (goal), 7000, 9000 (replay).
+
+  The name-entry board shows the replay (render to texture in process: 489 RTT passes, 885 colour images
+  served).
+- **Scripted input.** `--input race_crystal_lake.input`:
+  - native, 9800 frames: state.log identical to headless;
+  - native `--realtime`, muted, 700 frames: identical except vi;
+  - realtime with audio, 900 frames, `PORT_AUDIO_DAC=0` and default: identical.
+
+  One unmuted realtime run diverged at frame 561 (flow 0,3,1 against 0,1,1). With the presenter's
+  wall-clock DAC model (19.12) and PulseAudio stalling, the audio driver's buffer sizes follow real time,
+  and the title flow waits on audio. This is not native-specific. Determinism checks use
+  `PORT_AUDIO_DAC=0` or no `--realtime`.
+- **Smoke state.log.** Native, 2000 frames: identical to the headless 64-bit run, which equals the i386
+  run (build64).
+- **Audio.** The audio reaches PulseAudio: the game-side and host-side FNV hashes are equal. Only
+  1.45 s of 4.39 s played, though, because of the open PulseAudio stall that agent-a is working on (run
+  867); the presenter has it too.
+- **Frame times.**
+
+  | run | render ms (mean / p50 / p95 / p99 / max) | frame interval ms (mean / p50 / p95 / p99) |
+  |---|---|---|
+  | 640x480, realtime race script, 1800 steps | 5.68 / 4.97 / 9.50 / 13.94 / 99.6; 8 over 33 ms | 33.26 / 33.30 / 36.02 / 40.22; 7 over 50 ms |
+  | full race, 9800 frames as fast as possible | 5.67 / 4.73 / 14.28 / 20.01 / 86.7 | not paced |
+
+**ABI fixes (render), all `#ifdef PORT64`, ROM / i386 unchanged.** The 64-bit attract demo drew upside down
+(f3dreplay of the 64-bit dump against the i386 one). Fixed:
+- `math_perspectiveF` from Window_setupView: fovy / aspect / near went as int words (X64P1-3), now
+  `PORT64_CALLP` with floats;
+- Obj::setLights from Mat_draw (`gfx_emitLights_000454C4`, k): an asm-name alias;
+- gfx_selectLights_000478FC from LightTarget_display (scale);
+- light_setF124 from SelCharacter_display (B624) and SelCourseMap_display (B368).
+
+After these, the smoke's gfx at steps 300 / 1000 / 1500 / 1900 equals the i386 dump (8/8 tasks).
+
+**Gate.** `port/tools/dlump-cmp.py A B` compares two PORT_GFX_DUMP dirs per task with the address operands
+masked. The smoke (i386) and smoke64 runs now dump `PORT_GATE_GFX_STEPS` (default 300,1000,1500,1900), and
+build64 fails if they differ. The native build itself is not gated (it needs tools/lus + x11-dev).
+
+**Left.**
+1. abi-scan --x64, not yet done: the CourseGadget_setFloat2 / setVec3 / setVec4 HUD setters (h2h / mgr /
+   tim / arc / trk DataManagers, hud_addCourseGadget); AudioThread_QueueCmdF32 (the XCALL float callers:
+   8 sites; the K&R CALL callers pass the bits correctly); snd_ScheduleSeq / snd_UpdateChannel10Emitter /
+   snd_SetPlayer0ChannelParams; math_arcballPoint; hostio_addFloat. The HUD ones need a race / mode gfx
+   step in the dlump comparison (the smoke has no HUD gadgets).
+2. Make native the play.sh default once the audio stall is fixed.
+3. FB_WRITE (CPU rectangles, debug only) is still not composited in process.
