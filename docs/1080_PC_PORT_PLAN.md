@@ -3208,15 +3208,16 @@ bootup Data non-zero unknown bytes: **984 -> 478**. All blobs: 7,127 -> 6,005 un
 
 ### 18.8 Run 814: the last D_00000000 sites, sentinel calls, absolute boot globals (agent-g)
 
-agent-g run 814, branch agent-g on main 08c6c16a2 (not rebased). Gate PASS before the commits
+agent-g run 814, branch agent-g rebuilt on main 52fd5f980 (after agent-a 816 / agent-c 815; the commits cherry-picked, port/gen and blob_types regenerated). Gate PASS before the commits
 (ROM byte-identical, 3579/3579, verify-blocks 6/6, clean build OK; XDATA check 387 sites 0
 mismatches, CALL check 8225 0 mismatches).
 
 | commit | what |
 |---|---|
-| 659a49536 | tools: `RomTargets.absolute()` (a USO import of bootup's ABSOLUTE Sym, kind 3, value 0x8000030x, is the libultra boot global: osCicId / osTvType / osResetType ...; name-data-sites checks `XDATA(tok, osCicId, 0)`); `check` finds a C++ member (`Mgr::run`) under its shipped name via the tu `port-alias`; cc-select binds inside the `.set` target of a bound label (a ctor's C1 is `.set` to C2, so Shadow_ctor / Sprite_ctor's binds were silently dropped) and points a dropped object's DWARF location at the dead copy; port-gen-decls treats `#ifdef PORT /* .. */` as a PORT branch (a regen made B1B4's `CF_EXT(.., mem_new, ..)` a "declaration" and broke the build) |
-| 874b051b6 | src: `GL_DATA/GL_RODATA/GL_BSS` and `gDmaSlots` PORT spellings (the section / the Bss+0x3A240 table: the per-addend folding is fixed at the source, `gDmaSlots + 1` no longer becomes `D+0x44`); hand XDATA (comments cite the reloc offsets) in GameFlow_restart, SnowBoarder_ctor / createBoardShape, settings_setFlag4, item_registerTemplates, RiderAnim_stateFinish, heap_new, app_run, Mgr::run (PolyShape_init), mgr_openSession (osCicId); two-object sites split under PORT (RaceProcess_drawGui new_var; h2h_createPauseMenu `base` = ten objects, `H2H_AT(XDATA(..))`); CollShape_height K() = gGfxLib fields; new `SCALL(tok, f)` for calls to a module's Text+0 sentinel (edd / boarder5 / gui readers), the three Text+0 int readers call fs_gdlReadFile(gSysLib) under PORT |
-| 17a814947 | port/gen, blob_types.tsv, undefined.txt regenerated |
+| c58901fb7 | tools: `RomTargets.absolute()` (a USO import of bootup's ABSOLUTE Sym, kind 3, value 0x8000030x, is the libultra boot global: osCicId / osTvType / osResetType ...; name-data-sites checks `XDATA(tok, osCicId, 0)`); `check` finds a C++ member (`Mgr::run`) under its shipped name via the tu `port-alias`; cc-select binds inside the `.set` target of a bound label (a ctor's C1 is `.set` to C2, so Shadow_ctor / Sprite_ctor's binds were silently dropped) and points a dropped object's DWARF location at the dead copy; port-gen-decls treats `#ifdef PORT /* .. */` as a PORT branch (a regen made B1B4's `CF_EXT(.., mem_new, ..)` a "declaration" and broke the build) |
+| a87daaa81 | src: `GL_DATA/GL_RODATA/GL_BSS` and `gDmaSlots` PORT spellings (the section / the Bss+0x3A240 table: the per-addend folding is fixed at the source, `gDmaSlots + 1` no longer becomes `D+0x44`); hand XDATA (comments cite the reloc offsets) in GameFlow_restart, SnowBoarder_ctor / createBoardShape, settings_setFlag4, item_registerTemplates, RiderAnim_stateFinish, heap_new, app_run, Mgr::run (PolyShape_init), mgr_openSession (osCicId); two-object sites split under PORT (RaceProcess_drawGui new_var; h2h_createPauseMenu `base` = ten objects, `H2H_AT(XDATA(..))`); CollShape_height K() = gGfxLib fields; new `SCALL(tok, f)` for calls to a module's Text+0 sentinel (edd / boarder5 / gui readers), the three Text+0 int readers call fs_gdlReadFile(gSysLib) under PORT |
+| 21ff3221a | src: SnowBoarder_ctor one-object PORT spellings (`port-alias-audit.py --emit`, 12 hazard pairs); audit rerun: SnowBoarder_ctor clean, 1 hazard left ROM-wide (`_GLOBAL__sub_I_gGfxLib_412E8_a`, not touched) |
+| 0e4502707 | port/gen, blob_types.tsv (generator rerun, unchanged from main), undefined.txt regenerated |
 
 **Rule learned:** when a function's XDATA names a target, port-gen-binds removes that target from
 the function's bind set (`xdata_named`), so **every** site of that target in the function must be
@@ -3226,7 +3227,7 @@ the *other* target (Data+0). Check the regenerated tu header after a partial XDA
 **Measured.** tenshoe link 22 -> 19 undefined (D_00000000 38 refs -> 0, gl_func_00000000 10 -> 0,
 D_b3_23E4_17D7 -> osCicId by the regular binds). binds-left 80 -> 72.
 
-**Left (19):** snd_HandleSeqEvent_30AF4 donor (`gl_func_emit` 23 / `_30AF4v` 8 / `gl_state_30AF4`
+**Left (19), handed off by the coordinator (agent-a: the snd donor tokens, gl_32e18_blank, gl_25504, glv_2a44 / --tok; agent-c: the 12 data aliases):** snd_HandleSeqEvent_30AF4 donor (`gl_func_emit` 23 / `_30AF4v` 8 / `gl_state_30AF4`
 12: hand XCALL / XDATA in ROM order); `glv_2a44` (`--tok` on merely-undefined tokens);
 `gl_32e18_blank` (MCamera_ctor), `gl_25504_AllocSampleCache`; data aliases `D_b1_21D4_d1`,
 `D_b3_23E4_d1`, `D_76F0_fadeB/C`, `D_349E0_b`, `D_2DA4_obj`, `D_00000000_i/_j/_a`,
