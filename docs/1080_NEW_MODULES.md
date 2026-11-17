@@ -3935,6 +3935,58 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
 - **Next:** in m3c0, lower M-220 below 3.0 (num <= 8 at den 3; the pitch side has 5 uses) or move set3's pooled
   words so that M-168 leaves block 70; then fix the 531 swap.
 
+## snoweffects.uso 0xC90 EXACT recipe (agent-g run 785, research only, no commits)
+
+- **0xC90 NM 99.18 -> 100.0 (0 positional diffs, 592 words, frame 400, sp offsets exact).** The source is in agent-h's
+  run-779 file (main 58affb666) plus the five edits below. To verify, I copied it into
+  src/snoweffects_uso/snoweffects_uso_ncc_nm_h.cpp and ran
+  `make build/non_matching/src/snoweffects_uso/snoweffects_uso.c.o`. The spliced function's 592 words are identical
+  to expected/ (objdump word compare), and objdiff gives 100.0. The worktree file was then restored
+  (`git checkout`). Files: /tmp/claude-1000/agent-g/r785/C90_exact_repo.cpp (repo includes) and
+  C90_exact.diff (its diff against main).
+  To land it, the donor also needs to go on the matching build (as for 47D4). The gTR macro now reads the loop-local
+  `ge` by name, so a tidy version should pass ge as a macro parameter (code-free).
+- **Edits (all code-free):**
+  1. agent-h's run-783 C5 base: the y1 `z0(0) * ((int)p + (int)p + y0)` fold moves onto the `if (y0 ..) {}` line.
+     That frees block-21 IR, so the E4 pooled-count form adds no uopt size-split block.
+  2. The E4 count goes in as a pooled inline parameter: `c->atE1(0, c->dl->count)` with
+     `Gfx *atE1(int d0, int n) { d0 = d0; dl->count = n + 1; return &dl->buf[n]; }`. The FB and E4 counts become
+     one LR on M-132 (v0).
+  3. The yh clamp has no dummy (`dm1` dropped). It lands on M-128 (tex / s-middle, a1), and the yh temp e233 takes v0.
+  4. **The EE pointer is kept live into the texrect block as a phantom LR.** primDepth returns its `g`:
+     `inline Gfx *primDepth(int z, GCtx *c) { ...; return g; }`. Write `ge = primDepth(..)` with `Gfx *ge;` declared
+     **at the top of the inner `if`** (a loop-top declaration gives v / __V / r at 196 / 184 / 216). Then add five
+     `(int)ge` terms to the existing xh-arm fold:
+     `(s16)(xh) + z0(0) * ((int)(s16)(xh) + (int)(s16)(xh) + (int)ge x5)`.
+     - The EE pointer's LR (M-232) now runs from block 14 to the xh arm (block 22). It interferes with the FB
+       pointer, the dl temp and the counts, so it takes a1.
+     - It is also live across e762's blocks (the xh CSE, 21-22), so e762 can't take a1 and takes a2.
+     - With a1 used last at the EE w1 store, the yh preset `or a1,zero,zero` is scheduled right after it, as in the
+       target. as1 then stops hoisting xl / yl, which restores the 592nd word.
+  5. The term count sets the priority. M-232's num is 30 + 10 per term, at den 3 (blocks 15-21 are default-live):
+     - 4 terms: 23.3, below e762's 25 (98.36).
+     - **5 terms: 26.7.** M-232 is coloured after the FB pointer M-148 (30, a0) and before e762 (25), giving a1, as
+        in the target.
+     - 6-8 terms: 30 or more, and it is coloured before M-148: EE a0 / FB a1 (99.59).
+     - 16 or more terms: block-size split, 593 words.
+- **Why it works (target structure):** the a1 holder through the FB / E4 block in the target is the EE pointer, not
+  the yh word. That is why the yh preset sits right after the EE w1 store. Our split blocks (`if (c) {}` lines,
+  FB's `if (1)`) cut the EE pointer's LR at block 14, and the zero-code `(int)ge` uses rebuild it.
+  Lever (general): **to make a value hold its register through later blocks with no code, return it from its inline
+  to a block-scoped named pointer and add zero-code fold uses where it must stay live. The fold term count sets its
+  colouring slot between the neighbouring priorities.**
+- **Also measured (dead ends):**
+  - Dead-def copy-keep (`if (zp(g, 0)) g = 0;`) on the FB pointer adds uopt blocks here (591 words).
+  - The 13/14 split is a uopt block-size split. Adding IR to block 13 (`x0 = x0 + z0(0) * x0`) moves it earlier,
+    and `&c->dl->buf[c->dl->count++]` in primDepth does not move it.
+  - A named `yr = 0` preset for yh is constant-propagated away (same bytes as no preset).
+- Tools, in /tmp/claude-1000/agent-g/r785/ (agent-h's sc / od / r / vr / lm / keep, re-pointed at agent-g):
+  - pv2.py BASE JSON: variant runner;
+  - al.py SRC: aligned diff against the target;
+  - pre.py: where the clamp presets go;
+  - lrq.sh: the 13/14 block split plus the LRs there;
+  - v1-v17.json: the batches.
+
 ## heli.uso (agent-g run 781)
 
 - **0xB08 EXACT (agent-g 0d3ec4e89 NM 99.15, a0ccd8bd1 NM 100.0, 619872257 matching build; gate PASS each, report
