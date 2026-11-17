@@ -1629,6 +1629,129 @@ timer path (snd_ScheduleSeqDefault, 210 steps) is reached from snd_dispatchEvent
 silence (channel mask / IO?). Run seqrender over all 24 music sequences (non-silent, no clip
 storm, badAddr 0) as an M4 regression test. agent-g: Node_doCommand's labels change under PORT.
 
+### 15.8 Run 833: course music, seq 4, the K0-pointer tests, the regression sweep (agent-c)
+
+agent-c run 833, branch agent-c on main 3d569b3. Commits: 74fc4f792 (snd_dispatchEvent byte order), 541243c38
+(K0-pointer tests, port_audio_is_ptr / premix hook), f228570c4 (seqrender, regress), 7b775daeb
+(--spec, seqs 7 / 9 / 19 in spec 3, write watch). Gate PASS on the
+tree (ROM byte-identical, verify-blocks 6/6, 3579/3579, lost none, check --order 0 wrong, clean build OK;
+build/src + build/non_matching/src removed first). This section is uncommitted.
+
+**1. Course music: what starts it.** Not an snd_HandleSeqEvent mode. The chain, all in the race code:
+1. title menu (`tit_menuMultiRace` .. `tit_menuTraining`): `snd_sendEvent(12, G)` ->
+   snd_dispatchEvent case 12 stores the game type G in bootup Data 0x1C0B4 (0 match race,
+   1 time attack, 2 trick, 3 arcade, 4 head-to-head, 5 training; boot value -1).
+2. race load (timproc_uso_b1 / b3, titproc ghost runs): `snd_playSeq(d, 4, course, x)` ->
+   snd_HandleSeqEvent mode 4: spec change (`snd_StopAudioCmds` 3; 6 for course 0; 4 for game type 4)
+   and the music command word (Data 0x1C0AC, gl_cmd_30AF4 = D_2FB74_chan) = **course + 4**; game
+   type != 0 and course 6 -> 7; game type 4 (2P) -> course + 18. Mode 4 right after mode 0 only
+   sets the mode word to 12. (snd_playSeq's 4th argument is dropped: it calls snd_seqEventDbg(seq, arg, 0).)
+3. `RaceProcess_handleInput` countdown (20 frames per count after 120): posts 0x12 + 0x10 ("3"),
+   0x12, 0x12, then **0x11 ("GO")**: snd_dispatchEvent case 17, with mode word == 4 and Bss 0x314 == 0,
+   calls `snd_ScheduleSeqAfter(cmd & 0xFF, 22)`: snd_UpdateTimers starts it on player 1 22 frames later.
+
+**Bug (fixed, donor game_libs_o2_2FB74.c, `#ifdef PORT`):** cases 17 and 512 read the command word's
+low byte as `p->b[3]` through a union; the word is a native u32 under PORT, so b[3] was its high
+byte: GO scheduled **sequence 0** (silence on player 1) for every course. `CHAN_B3(p)` = `(u8)p->w`.
+
+seqrender `--course N [--gametype G]` replays 1..3 (event 4:N, the countdown posts, GO at 6.03 s,
+music at 6.77 s). Mapping (game type 0; the sequence table aliases 11 -> 8, 24 -> 21, 25 -> 22):
+
+| course | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
+|---|---|---|---|---|---|---|---|---|
+| sequence (game type 0) | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 (= 8) |
+| bpm (header) | 176 | 160 | 130 | 145 | 177 | 176 | 167 | 177 |
+
+Course 6 plays seq 7 for any game type but 0; 2P (type 4) plays course + 18 (seqs 18..25).
+Which course number is which slope is not traced here.
+
+**2. Silent `--seq 4`: a port bug, not a placeholder.** Seq 4 is course 0's music: 8 channels of
+long legato notes (short-note mode, 2-bit "small" ADPCM samples, codec 3). Its notes were allocated
+with valid samples, but never synthesised (no ADPCM command at all). Cause: OoT's
+`AUDIO_RELOCATED_ADDRESS_START` tests, which tell a relocated K0 pointer from an offset by value:
+- `Audio_ProcessNotes`: `if ((u32)parentLayer < 0x7FFFFFFF) continue;` -- every port pointer is below
+  that, so **every note that still had its layer was skipped**: only release tails were ever heard
+  (a note sounded only after its layer let it go). Held / legato notes (all of seq 4) never sounded.
+  The 15.7 renders were made with this bug: their tempo results stand (onsets), their sound did not.
+- `Audio_GetDrum` / `Audio_GetSoundEffect`: `tbl < 0x80000000U -> return 0`: **no drum and no sound
+  effect** could be found.
+- `AudioLoad_RelocateSample`: `sample <= 0x80000000` = "not relocated yet": a second relocation of
+  the same TunedSample would have added the font base again.
+Fixed in game_libs_post.c (`#ifdef PORT`, `AUDIO_IS_RELOCATED_PTR` -> `port_audio_is_ptr`, the
+port image range port_audio's translate already uses). Seq 4 now renders (RMS ~6000, 176.5 bpm).
+After the fix the mix is much denser and louder: 13 of 24 sequences clip (seq 13: 0.42 % of samples,
+seq 5 0.09 %). Whether the N64 clips the same way needs the emulator capture (15.5); the race path
+(`--course 1`) clips less than `--seq 5` (the volume-level calls after mode 4 are not in --seq).
+
+**3. Regression sweep (`make -C port/audio regress SEQRENDER=<build>/seqrender`;
+`port/audio/tools/regress.py`, golden hashes `port/audio/tools/regress-golden.tsv`).** 53 cases, each
+rendered twice (~18 s in all): seq 0..25 (40 s), course 0..7 (game type 0, 30 s), 19 sound events (4 s).
+Checks: non-silent (unless golden marks it silent), badAddr / unknownOps / unk19 / AI underruns 0,
+tempo = header tempo command x 48 (clamped to tempoInternalToExternal) and the tatums the player
+advanced (per tick tempoAcc += tempo, a tatum per 10770) within 1 % of it, the two runs' PCM hashes
+equal, the hash equal to the golden one. Result: **all 53 pass**; deterministic everywhere.
+
+| case | seq | bpm hdr / measured | peak / RMS | clipped samples | note |
+|---|---|---|---|---|---|
+| seq00, seq01 | 0, 1 | 225 / 225.0 | silent | 0 | sound-effect sequences: wait for player IO |
+| seq02 | 2 | 176 / 176.49 | 32768 / 8969 | 2673 | title |
+| seq03 | 3 | 105 / 105.31 | 32768 / 7334 | 286 | |
+| seq04 | 4 | 176 / 176.49 | 23354 / 5965 | 0 | course 0 (was silent) |
+| seq05 | 5 | 160 / 160.45 | 32768 / 12190 | 7191 | course 1 |
+| seq06 | 6 | 130 / 130.36 | 32768 / 6333 | 40 | course 2 |
+| seq07 | 7 | 145 / 145.40 | 32768 / 5832 | 19 | course 3 (`--spec 3`) |
+| seq08 = seq11 | 8 | 177 / 177.49 | 32768 / 6473 | 2 | course 4 / 7 (11 is a table alias) |
+| seq09 | 9 | 176 / 176.49 | 32768 / 9562 | 3565 | course 5 (`--spec 3`) |
+| seq10 | 10 | 167 / 167.45 | 32768 / 8270 | 766 | course 6 |
+| seq12 | 12 | 132 / 132.36 | 32767 / 4839 | 3 | |
+| seq13 | 13 | 166 / 166.45 | 32768 / 13999 | 33971 | loudest |
+| seq14 | 14 | 160 / 160.45 | 32768 / 7888 | 188 | mode 5 |
+| seq15 | 15 | 160 / 160.45 | 32768 / 9139 | 9069 | |
+| seq16 | 16 | 105 / 105.31 | 32767 / 7603 | 198 | modes 2 / 8 |
+| seq17 | 17 | 163 / 163.48 | 32768 / 8772 | 9988 | mode 9 |
+| seq18 | 18 | 133 / 130.95 (changes its tempo) | 32768 / 7111 | 118 | mode 10 / 2P |
+| seq19 | 19 | 176 / 176.49 | 32768 / 14906 | 109395 | mode 11 (`--spec 3`) |
+| seq20 | 20 | 130 / 130.36 | 32768 / 9028 | 9342 | |
+| seq21 = 24 | 21 | 145 / 145.40 | 32768 / 6740 | 501 | |
+| seq22 = 25 | 22 | 177 / 177.49 | 32768 / 7827 | 436 | |
+| seq23 | 23 | 176 / 176.49 | 32768 / 9541 | 3849 | |
+| course0..7 | 4,5,6,7,8,9,10,11 | as above | | | music at 6.77 s every time |
+| sfx 12, 19, 1A, 1B, 1D, 1E, 1F, 33, A3, BC | | | | | sound |
+| sfx 0E, 0F, 10, 11, 14, 15, 16, 18, 1C | | | silent | | controls (player-2 IO cues, race state); 18 / 1C untraced |
+
+The measured bpm is the header's x 10800 / 10770 (+0.28 %, the driver's own rounding) everywhere.
+
+**4. Seq 9 crash = the boot spec's sequence cache, not a port bug.** `--seq 9` straight after boot
+crashed in the mixer (`dmem_copy_in` from a LOADBUFF with 0x990C4FCA): the first frame's reverb
+LOADBUFFs / FILTER words were garbage. A write watch on gAudioCtx's head page (SEQRENDER_WATCH:
+read-only page, single-step re-arm) caught `AudioLoad_SyncLoad` -> SyncDma -> the PI copy writing the
+sequence over gAudioCtx: the boot spec's temporary sequence cache is **0x2E00** bytes
+(seq.temp pool 0x08AF07A0 .. 0x08AF35A0, then the session pool's end, then gAudioCtx at +0x110), and
+`AudioHeap_AllocCached(temporary)` does not check the size. Seqs **7 (0x3440), 9 (0x3350) and
+19 (0x32B0)** are bigger, so their loads run 0x300..0x440 bytes into gAudioCtx (the synthesis-reverb
+structs, numSynthesisReverbs). The layout is the N64's (bootup Bss, asserted struct sizes), so the
+N64 would corrupt the same bytes; the game only plays these in race spec 3 (timproc's mode 4).
+seq 7 / 19 "worked" in the boot spec with a corrupted reverb (different hash). seqrender `--spec N`
+(snd_StopAudioCmds(N), 30 steps) renders them in spec 3, and warns when a --seq load would overrun.
+The regression renders 7 / 9 / 19 with `--spec 3`. Clipping: the `--seq` renders do not get the game's
+volume-level calls (snd_ApplyPlayer*VolumeLevel after a mode change); `--course 5` (seq 9, RMS 5421,
+33 clipped) against `--spec 3 --seq 9` (RMS 9562, 3565 clipped) shows how much they lower the mix.
+
+**seqrender additions.** `--post K[:V][@SEC]` (snd_dispatchEvent), `--course N [--gametype G]`, `--spec N`,
+`--list` (the sequence table: ROM, size, cache policy, header bytes and tempo, aliases),
+`--summary` (one RESULT line), `--out -` (no WAV), a log of the music state after every request
+(mode / course / command word / game type / timer) and of player 1's starts and stops, the PCM hash,
+a SIGSEGV report (step + eip), SEQRENDER_WATCH (logs writers of gAudioCtx's head), and the debug envs SEQRENDER_TRACE (per-step player 1 + channels /
+layers / notes), SEQRENDER_NOTES (enabled notes + the whole command list before each mix,
+through the new `port_audio_premix_hook`), SEQRENDER_DUMP (seq bytes). The tempo figure now comes
+from scriptCounter / tempoAcc (the old delay-counter estimate over-counted on legato sequences).
+
+**Open.**
+- port_audio's host_mapped (__executable_start .. sbrk(0)) includes the gap between the image's end
+  and the heap start: a garbage address there faults instead of counting as badAddr.
+- Clipping level (above, with the volume-level calls) wants the emulator capture.
+- Which slope each course number is, and whether game type -1 (boot, no menu) can reach a race.
+
 ## 16. M1: link plumbing
 
 Run 612 (agent-a), on main e58ff9d67, commits f46b22b3d and cc6a576df on agent-a. The goal is a
@@ -4371,3 +4494,119 @@ fragment shows near the logo in tasks 0-1 only because of bug 1.
 1. Re-capture past task 221 once agent-g's title-demo fix lands: `capture.sh -n 900 -e 5`. That is the first
    3D (G_VTX / G_TRI1, lights, texgen) and the first CI textures.
 2. Route bug 1 (bootup_uso_tail4.c is game code, outside agent-a's area).
+
+### 19.9 Run 834: the byte order of RDP-visible memory (agent-a)
+
+> agent-a run 834, 2026-11-17, branch agent-a on b23d0f38c: ef141b7a5 (PORT_RDP16 and the game sites),
+> 14bf2b3c6 (splash blob typed as bytes), 04cf6f970 (golden scene `fader_cpu`), e7ce05725 (drops the RiderAnim
+> duplicate of main's fix) and 60cd93a81 (f3dreplay seeds the Z address). The gate passed before the
+> commits (ROM byte-identical, exact set unchanged, clean build OK).
+
+**The convention (it was already in place; this writes it down).** Neither "(a) everything big-endian" nor
+"(b) everything host order". The rule follows what libultraship's Fast3D reads, and the dumper (19.2), the blob
+typing (18.1) and the golden scenes already follow it:
+
+| memory | order | who reads it, and how | static copies (USO blobs) | CPU writers |
+|---|---|---|---|---|
+| display-list words | **host** | Fast3D: `w0` / `w1` as host u32 | typed u32 (`gfx`, `gfx:static`) | u32 stores (native) |
+| Vtx | **host** | Fast3D: `Vtx_t` fields (s16 ob / flag / tc, u8 cn) | s16 x 6 + bytes (`gfx` G_VTX targets) | stores of each field's own width |
+| Mtx (fixed point) | **host** | Fast3D `GfxSpMatrix`: 16 host s32 words, element j in the high half | u32 x 16 | guMtxF2L: whole words |
+| Vp | **host** | Fast3D: `vscale` / `vtrans` s16 | (none static) | s16 stores |
+| Lights / LookAt | bytes | Fast3D: u8 col / s8 dir | bytes | byte stores |
+| texels, TLUTs | **N64 big-endian image** | Fast3D importers, byte by byte | bytes (`tex:*`, `mats`) | see below |
+| colour / depth images | **N64 big-endian image** | the CPU readers (11.2); read-backs store big-endian (`bswap`) | bytes | see below |
+
+So **RSP data is host order; RDP pixels are the N64 byte image.** For pixels:
+- a copy u16 for u16 (or byte for byte) keeps the order and needs nothing (ScreenThumbMat_grab, Tv1Tmpl_blitFrame,
+  the Fader's mode-1 remap, Mat_clone);
+- a 16-bit pixel **value** that the CPU stores or compares goes through `PORT_RDP16(v)` (port/include/port.h:
+  `bswap16`, the host u16 whose bytes are v's big-endian bytes);
+- pixel data in a blob must stay typed bytes. A reader that loads it with `lhu` makes the access typing say u16,
+  so such a blob needs a `known:` u8 entry.
+
+**Sites fixed (all `#ifdef PORT`, ef141b7a5 / 14bf2b3c6):**
+- **Fader_buildTexture** (bootup_uso_tail4.c): the mode-0 fill stores `PORT_RDP16(1)`. In the re-capture, tasks
+  0-1 and 198-221 dissolve to black; frame 205 is the trademark half gone, 212 is black, and no frame is green.
+- **gfx_drawFbChar_00046790** (game_libs_ncc_46790.cpp): glyph pixel `PORT_RDP16(0xFFFE)` (debug overlay).
+- **Sun_measureVisibility** (match_imports): the depth test compares with `PORT_RDP16(0xFFFC)`, which is right once the
+  depth read-back (11.2) stores big-endian. Today nothing writes the port's Z image, so the sun reads as hidden.
+- **gfx_drawFbSplash_00048184**: its 128x128 image (bootup Data 0x22A30) was typed u16, `known:splash`, so it was
+  swapped to host order. It is now u8; the copy is u16 for u16.
+- **RiderAnim_init_0000D458**: this run found the same 0xF10 ROM-word check bug that agent-g fixed on main in
+  3998bae47. e7ce05725 drops this branch's copy so the branch lands without a conflict.
+
+**Audited and safe:**
+- **Vtx:** gfx_makeVtx_00048104 (the only PolyShape / MorphPoly builder: s16 at 0-0xA, bytes at 0xC-0xF) and its
+  colour feeders (PolyShape_shade, makeEdgeVtxs, gfx_copyBytes3 / floatToS8x3). Also Strip::add /
+  PolyShape_addFace (whole 16-byte copies), MorphPoly_update / updateColours / applyUpdateList, U64BGWall_ctor and
+  its static quad (bootup Data 0x65A8, typed u16), SnowRing_emit, BoardSpray_emit and LocalLight_buildLitVerts.
+  No title, menu, font or HUD code builds Vtx: sprites and text are TEXRECTs.
+- **Mtx:** every fixed-point Mtx comes from guMtxF2L (whole words): guMtxIdent, guOrtho, guPosition,
+  gfx_emitProjection, PolyShape_display, Shadow_display and U64BGWall_display. MNode_doCommand copies whole words.
+  No s16 store into an Mtx exists.
+- **Vp:** dbg_screenOverlay and ScreenWindow_display (s16). **Lights:** gfx_emitLights / emitOneLight /
+  setLightDirs / makeLookAt (bytes). gfx_calcHilite writes whole words.
+- **Pixels:** the I8 Fader mask and the gui font scan are bytes; WhiteFader, NameEntry_clearScreen and
+  gfx_clearScreen use FILL rects (DL words); dbg_fillFbRect stores 0xFFFF, which is the same in either order;
+  gfx_clearFbRect stores 0. Tv1's state-1 noise reads u16 from bootup Data 0x0-0xFE, a shape blob typed u16, so the
+  noise has different values but is still noise.
+- Texel typing over every blob: all `tex:*` and `mats` texels are u8; no texel range is typed u16 / u32.
+
+**Found, not fixed (routing): 40 donor functions are empty on the port.** `scripts/port-sourcemap.py`'s `expand()`
+does not expand Makefile `$(foreach f,$(X_FUNCS),$(f)=$(X_DONOR))`. That is how 13 REPLACE_FUNC_BODY lines splice
+the heli (2), nameent (4), trnproc (5) and snoweffects (29) donors. Those functions map to their empty host
+placeholders, and the donors are never compiled. Among them are SnowRing_draw / setupDL / display, the
+*_buildTexDL family, SnowFall_display / fill, SnowPool_display / update, BoardSpray_draw, the BoardTrail spawners
+and Heli_update. **Snow, trails and the heli draw nothing on the port.**
+- I tried a `foreach` expansion; a copy is at /tmp/claude-1000/a834/port-sourcemap.foreach.py. After
+  `port-sourcemap.py && port-gen-decls.py <libgame.a> && port-gen-build.py`, three compile errors fall out (diff in
+  /tmp/claude-1000/a834/donor-port-prep.diff):
+  - the 4-byte tag structs `SKey` / `HeliTypeTag` passed where decls_cpp.h says int need an `operator int` under
+    PORT;
+  - SnowRing_setupDL needs a forward declaration.
+- Then the link fails, because these donors have not had the port treatment: `D_00000000 + K` data sites (17.8
+  uso-data-sites), cfront vtables (SnowMatB, SnowChild0/A/B, SnowBaseMatB) and `Node::Node(char *)`.
+- That is a donor-porting task of its own (17.8 recipe), so I reverted it.
+
+**Leads:** game_libs_ncc_4D468 / 4D688 `dma_read` 0x100 ROM bytes from 0xB70 into bootup Bss 0x3EB00. If a reader
+compares words from that buffer, it has the RiderAnim bug.
+
+**Race / title-demo frames (agent-g's lead), on main 3998bae47 plus this branch, captured with
+`capture.sh -n 900 -e 1 -f 590`:**
+- **Sampling.** `-e 50` sees only the 2D task: the gfx task count runs about 1.75 per step, so the race frames' 3D
+  tasks fall between the samples. In `-e 1` from 590 there are about 490 3D tasks (1.32-1.37 MB, G_TRI1, G_CULLDL,
+  lights, LOADTLUT) next to the 2D ones (180 KB, and 8.9 MB).
+- **The 8.9 MB dumps are correct.** They hold 63 LOADTILE strips (4 texels x 155 rows) of a 240-wide RGBA32 image,
+  and each strip's TEXTURE chunk covers its whole row span (147,856 bytes).
+- **"5 lists widened" is not an error:** f3dreplay converts each DL chunk into F3DGfx (frame 0 has 5 too).
+- **880-byte dumps:** only the colour image, scissor and empty lists; nothing is drawn.
+- **White 3D frames: a replay artifact, fixed in f3dreplay (60cd93a81).**
+  - 1080 clears Z with a FILLRECT (fill 0xFFFC) into a colour image set to the Z address 0x7BC140. It sends its
+    G_SETZIMG later in the frame, so it relies on the Z address from the previous frame.
+  - Fast3D treats a fill as a depth clear only when the colour image equals its Z address (interpreter.cpp 3174). A
+    single-dump replay starts with that address unset, so the fill painted 0xFFFC as colour, RGBA5551 (255, 255, 248):
+    the white screen. Cutting the list before any 3D still gave white.
+  - f3dreplay now runs a prologue: the dump's first G_SETZIMG, then G_DL to the root.
+  - The in-game interpreter keeps the Z address across frames, so only its first 3D frame would show this.
+- **The 3D frames are now black (task 617)**, and the data looks byte-order-correct:
+  - Vp is (640, 480, 511) x 2 in host s16;
+  - lights are bytes (ambient 0x66, directional white along +z);
+  - the modelview Mtx are clean rotations plus the camera translation (0, 10638.7, -6701.6);
+  - texels are plausible big-endian RGBA16 / CI.
+- **Suspect: the G_MTX projection (0x087E9140, PROJECTION | LOAD).** It decodes to
+  `[[-12.83, 0, 0.153, 0.153], [0, 1.711, 0, 0], [0.196, 0, 10.03, 9.999], [1315, -18206, 32700, -32768]]`.
+  - The -32768 is exactly the s15.16 minimum. On x86, guMtxF2L's float -> int conversion of an out-of-range value
+    gives INT_MIN. MIPS gives 0x7FFFFFFF instead.
+  - The x / y scales (-12.8 vs 1.7) and the sign of x look wrong for a 4:3 perspective.
+  - So the float projection x view product is probably already wrong on the CPU side (camera / aspect /
+    projection inputs: a game-side byte-order or float bug). **Route to agent-g** with gfx_emitProjection
+    (game_libs_ncc_45178.cpp) as the place to dump the float matrix.
+- **2D race frames (550-900, 1000+):** the white panels are RGBA32 images whose memory is 0xFF in every byte
+  (0x089A5350 240x155 and 0x089A1E00 144-wide). This is not a renderer problem: the image's producer wrote 0xFF or
+  nothing. The next step is to find who fills 0x089A5350 (probably a TexImage from gfx_loadTexture / ImageFile).
+
+**Next.**
+1. Port the 40 foreach donors (above); snow and trails are on the attract path.
+2. Wire the 11.2 read-backs with `bswap` (big-endian), so the Fader mode-1 path, ScreenThumbMat, Tv1 and Sun see
+   real pixels.
+3. Re-capture past task 221 once agent-g's fix lands.
