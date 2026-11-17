@@ -3572,6 +3572,58 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
 - NM wraps spell the raw placeholder tokens: the named-call check cannot prove CALL() sites
   whose build path is INCLUDE_ASM.
 
+## heli.uso 0xB08 slerp delay slots: M-220 cost split (agent-e run 780, research only, no commits)
+
+- **Rows 531 / 547 fixed, code-free, 943 words, frame 368: objdiff 99.130 -> 99.979 on main's f9b3b17cd source
+  (agent-g run 777, `c25.cpp`).** Raw rows 13 -> 5: only the v0 / v1 rows 312..322 (q) are left, plus the pad
+  nop. Verified in-tree (`make build/src/heli_uso/heli_uso_mp72_nm.cpp.o`, then objdiff against
+  expected/: 99.97879); the worktree was restored afterwards. Source: /tmp/claude-1000/agent-e/w780/b08_e780.cpp;
+  diff: `b08_e780.diff` (3 hunks). Tools: `v.py` (score), `rd.py`, `chk.sh` (slot rows), `lr.sh` + `col.py`
+  (M-220's SAVE / PICK / COL lines).
+- **The mechanism (uopt cost split, IDO_CODEGEN "split trigger").** uopt ends a block at every call, so the
+  slerp's sin-term word M-220 has def-only units 56 / 58 / 60. Each of them crosses that component's cos `jal`,
+  and use-only units 57 / 59 / 61 follow.
+  - Coloured whole (main: num 13 over units 56..61, vel.z 68 and the pitch lerp 94 / 95 / 97), M-220 is f16
+    everywhere. ugen then emits `mov.s f16,f0; l.s f12,44; s.s f16,148; jal`: the caller-save store comes after
+    the argument reload, so as1 puts the store in the delay slot.
+  - The target splits M-220 instead. The split happens when `save (= pri x cnt) <= best`, and best is f16's
+    caller-range cost, which is 10. The def units then go uncoloured: uopt stores `s.s f0,148` at the def, and
+    the use piece reloads f16. as1 then puts `lwc1 f12,44(sp)` in the slot, as the target does.
+  - Without the pitch lerp, M-220 has 8 appearances (6 slerp, 2 vel.z): save 8 <= 10, so it splits
+    (pieces 56 / 58 / 60 = -1, {57, 59, 61, 68} = f16). So **the target's lerp is not in M-220.**
+- **The lerp needs its own LR at pri 2.5 that takes f16 before -pi/8 (pri 2.0) and adds no frame word.**
+  - A fresh pooled word works (4 x `dumf` + `idm`, or `idm(float x) { return (float &)x; }`; 99.957, register-exact).
+    But it creates M-312 at 56(sp), and every ugen temp below it moves down 4 (sp rows only).
+  - `dist` on its own: dist's whole LR (pri 1.0, blocks 47..97) is split late, so -pi/8 takes f16 first and the
+    lerp gets f18 (99.94).
+  - `g` on its own: the LR joins the yaw-region g, so the roll is f16 where the target has f14 (99.958).
+  - **Answer: the lerp goes in `g` and the roll goes in `dist`.** g is then {94, 95, 97} only (2.5, f16). dist's
+    pieces are 47 / 48 uncoloured, 62 / 63 f14, and the roll piece 85 / 86 / 88 f14 (the target's colour).
+  - The three `dumf(pf)` pads and `idm()` are no longer needed: plain `g = (pf - HF(0x148)) * 0.2f + HF(0x148);`.
+  ```
+  dist = -(side.x * dir.x + side.y * dir.y + side.z * dir.z) * 1.5;
+  if (HF(0x154) < 100.0f) { hh = 100; dist *= HF(0x154) / hh; }
+  if (1) {}
+  *(float *)(self + 0x144 + zf6(-0.3f, 0) + 0 * (unsigned)(yaw + yaw)) = (dist - HF(0x144)) * (0.07f) + HF(0x144);
+  ...
+  g = (((pf - HF(0x148)) * 0.2f + HF(0x148)));
+  *(float *)(self + 0x148 + 0 * (unsigned)(HF(0x148))) = g;
+  if (1) {}
+  *(float *)(self + 0x148) = clampP(g, -0.3926991f, 0.3926991f, 0);
+  ```
+- **Measured on the way:**
+  - Cuts in slc() (`if (1) {}`) add ugen a2 save / restores (+4 words).
+  - Every clampP dead-read variant except `zf1(v, ..)` / `(int)v` forms drops 2 words (942).
+  - Moving the lerp into struct members (toTgt / side / dir / fwdAx / vel fields) costs +2 words.
+  - Splitting vel.z out of set3q (two-param set3q, `const float &c`) shifts the frame.
+  - The lerp in M-164 (1 x dumf + idm) gives 99.94: M-164 joins at 3.75, picks before the HF(0xF4) LR (#448,
+    3.0) and swaps f12 / f16 at rows 839..883.
+- **Left: rows 312..322 (q in v1, target v0).** Inert on the new form: q = p reused (the frame shifts, still v1),
+  `q = p; q = *(q + 0x2C)`, dum4A argument mixes (p / q), `((char **)p)[11]`, a re-read of `*(p + 0x2C)` for
+  mpos, and `p = q` after the load. R2 (the call's v0) has a use in q's only block (37: the q load base), so v0 is
+  forbidden for M-124. That is consistent with block-granular interference. The target therefore either has the
+  q def in a block without an R2 appearance, or uses a different interference rule for precoloured R2.
+
 ## heli.uso 0xB08 g / HF144 / -0.3f colour order (agent-e run 756, research only, no commits)
 
 - **Fixed, code-free, 943 words: objdiff 97.789 -> 97.842 on agent-g's run-755 source (0af401b6e).** Raw rows go
