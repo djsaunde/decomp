@@ -25,7 +25,7 @@ first; this plan does not repeat them.
 16. M1: link plumbing (CALL names, bound placeholder calls, data blobs / aliases, port/uso)
 17. M1: libultra shim and main loop (17.8: SysApi, port/fs, boot-path trace)
 18. M1/M2: byte order (USO blob type map + swap, rom/*.bin readers, bitfield audit)
-19. M2: graphics transport (feasibility on WSL2, PORT_GFX_DUMP / DLMP, dlreplay; 19.6: Fast3D in f3dreplay, golden tests)
+19. M2: graphics transport (feasibility on WSL2, PORT_GFX_DUMP / DLMP, dlreplay; 19.6: Fast3D in f3dreplay, golden tests; 19.7: 7 more scenes, patches 0006-0008, in-process Fast3D)
 
 ---
 
@@ -3654,6 +3654,39 @@ narrower filter):
 - The mask scan is C-level and covers only the audio driver, because no other file has bitfields. If a new
   bitfield view is added, re-run the scan.
 
+### 18.14 Run 826: every CALL name proven per site (agent-e)
+
+agent-e run 826, branch agent-e on main 65e5004b6: 14265fde4 (tool + readability gate); monorepo
+8aa37aa (gate-landing-tree.sh). Gate PASS (ROM byte-identical, 3579/3579).
+
+**How the old `check` matched.** As a multiset per (function, placeholder token): a function's
+CALL / XCALL names had to be contained in the ROM jal targets of its relocs against that token. That
+proves each name is *a* callee of the function, not the callee of *its* jal, so 18.11's
+NameEntry_updateEntry swap passed. (`--strict` re-derived each site, but was not in the gate, left
+175 sites unprovable, and did not see names inside `#define` bodies.)
+
+**`check --order` (the gate mode now; ~60 s).** Per (function, token) group:
+- every ROM jal goes to one callee: the containment check proves each site (2177 names);
+- 2+ callees: each site is placed on its own jal(s) by the verify compile (site N spelled `npc_uc_N`,
+  so branches, loop tests, nested calls are in the compiler's emitted order), the donor-flag compile
+  or the donor-source mirror for REPLACE_FUNC_BODY hosts; the derived callee must be the written name
+  (6137 names);
+- a CALL inside a `#define` body is a site of its own (`npc_ucm_K`): every jal of every expansion
+  must call that name (SnowAI_ctor's INIT_ITER, post0b's DET3, the audio cache macros);
+- an inlined site (C++ `inline operator new`) is proven in each function it lands in and must
+  resolve to one callee;
+- an unprovable site fails like a wrong name.
+
+**Result.** 8314 named calls, 0 wrong, 0 unproven. No new swaps: run 823's NameEntry fix was the only
+one in the tree. Getting to 0 unproven took tool fixes, not source edits (mirror skipped already-named
+host sites; a thread race in asm_pad; zero-pad tails; header float decls in the C++ verify copy;
+target-specific NCC_CFLAGS; collapsed call-free statements in the donor skeleton). The selftest now
+re-creates both the cam_reset swap and the NameEntry swap and requires `--order` to fail them.
+
+**Not covered.** Two port-only CALLs (in `#ifdef PORT` branches) have no ROM jal: FogParms_emit's
+gfx_emitFog (same name as its #else) and game_libs_ncc_41820.cpp's `operator new[]` -> mem_new.
+Both were checked by hand.
+
 ### 18.11 Run 822: frame 1 to the title demo's game_init (agent-g)
 
 agent-g run 822, branch agent-g on main 2f16f6e23 (run 819 as landed). Gate PASS on the
@@ -3665,6 +3698,7 @@ committed tree (ROM byte-identical, 3579/3579, verify-blocks 6/6, clean build OK
 | 59c1e27e2 | tools: port-gen-binds donor pins; port-gen-uso data-only USO closure; port_cfront.h `CF_CTOR_NEW` + port-gen-build / cc-select ctor entries |
 | 07d30c55a | src (PORT only): K&R pass-throughs, Process_exit XDATA, 6 `port_ctor_*` entries, Node_doCommand ROM table, ItemMgr_Load tag swap |
 | e65085da2 | port/gen regenerated |
+| ca1b9c0ef | src (PORT only): fresh-SRAM path, full-size Backup reset buffers (class 8 below) |
 
 **How far.** `tenshoe --frames 3000 --trace state.log`: the frame-1 RcpMgr fault is gone; the
 N64 logo (n64proc) runs, fades and quits; GameFlow_restart starts the title mode (titproc):
@@ -3722,6 +3756,26 @@ The trace is written every frame now (the F line is after the step; nothing to f
    now swapped under PORT (18.2's "ItemMgr_Load's tag read must stay unswapped" predates the
    u32 typing of 0x7E50..). Any other tag compare between a file and a blob word needs the
    same care.
+
+8. **Frame-layout overflow** (deterministic boot): Backup_resetOptions / Course / Arcade / Ghost
+   build the whole record at `&scratch` and let it run into `int pad_arr[N]` above it in the IDO
+   frame; gcc orders locals its own way, so with no 1080.sram (the game's fresh-save path, as on
+   new hardware) the reset smashed the return address (the jumps to 0x8080000 / 0x40012 /
+   0x3a98 seen from clean directories; the earlier runs had a 1080.sram). Under PORT each uses
+   one buffer of the record type. Any `pad_arr` + `&scratch` pair written past its size is
+   the same bug (`grep -n "int pad_arr\["`: these 4 were all in src/).
+
+**Run command (reproducible).** From an empty directory (the first run writes 1080.sram
+through the fresh-save path; a second run reads it back and reaches the same point):
+```
+mkdir run && cd run
+tools/i386-sysroot/run32 <pbuild>/tenshoe --rom <1080-decomp>/baserom.z64 --frames 3000 --trace state.log
+```
+Both runs: SIGSEGV 0xa6635 in MNode_updateChildren at frame 221, state.log as above.
+
+**Not done (agent-e's handoff):** the `this`-only slot-0 vcalls in gfx_end (x2) and
+gfx_vcall_0004E150 (the GfxLib +0x134 object, vtable unknown); not on the faulting path yet.
+gfx_thunk_00046B44 / gfx_listAppend_0004E214 are fixed (07d30c55a).
 
 **Next:** the MNode_updateChildren fault under skin_cmdSkinShape (board model node stream,
 boarder1.uso data now loaded: check the blob typing of the stream and the skin shape's child
@@ -3958,4 +4012,93 @@ run 822 crash in RcpMgr_queueTask on frame 1. Once the boot gets past it, the ca
 3. The first real capture as soon as the boot reaches a gfx task.
 4. In process: the same f3dreplay core (arena registration, the widened lists, the viewport) behind
    `port_gfx_task` once the port links LUS (a). For M6 the widening goes away.
+
+### 19.7 Run 828: more golden scenes, patches 0006-0008, in-process Fast3D (agent-a)
+
+> agent-a run 828, 2026-11-17, branch agent-a: b73edb472 (scenes, read-back, patches 0006-0008) and 4754c3e68
+> (in-process Fast3D). The gate passed before each commit (ROM byte-identical, 3579/3579 exact).
+
+**Seven new scenes** (`port/gfx/gold.c`, 18 in all; the 11 run-824 hashes are unchanged), each copied from a named
+emitter's command forms:
+
+| scene | emitter | what it covers |
+|---|---|---|
+| `light` | gfx_emitLights_000454C4, gfx_emitOneLight_00045CB0 (as Mat_draw calls it) | G_LIGHTING; gSPLight per lit element (index 0x86 + 2i), then the ambient at 0x86 + 2n and the F3D NUMLIGHT word `(n + 1) * 32 + 0x80000000`; the one-light form (NUMLIGHT first, then L1 = record + 8, L0 = record, so light 0's direction bytes are the colour) |
+| `texgen` | Mat_draw (LOOKATX = the LookAt, LOOKATY = + 0x10), gfx_setupMatTextures_00045E20 | B7 TEXTURE_GEN (0x40000) and + LINEAR (0xC0000), G_TEXTURE `BB040801` with scale 1984 / 1984 and 3968 / 1984 (64-wide); a second LookAt with no NUMLIGHT after it |
+| `loadtile` | gfx_loadTexture_000578B4 (TexImage arms s1_110 / s1_304, plain arms s2_120 / s2_110) | LoadTile of a sub-rectangle at uls / ult != 0 (RGBA16; I4 loaded as I8 at half width), LoadBlock with dxt = (words + 0x7FF) / words (RGBA32, a 24-wide RGBA16 whose dxt is inexact) |
+| `sprite` | Sprite_ctor's StartDL / EndDL, Sprite_display | 1-cycle, G_ZS_PRIM (`B9000201 4`), bilerp, persp off; per billboard G_SETPRIMDEPTH + a 1-cycle TEXRECT; AA_ZB_TEX_EDGE 0x443078 against a Z quad |
+| `cull` | the mirror pass; U64BGWall_ctor | CULL_FRONT; G_CULLDL(0, 3) (`BE000000 6`) in G_DL sub-lists, one on screen, one off |
+| `splitz` | gfx_clearScreen per window, ScreenWindow_display's Vp | two windows: scissor, partial Z clear + colour clear, per-window viewport; then a full-screen quad behind both |
+| `fader` | Fader_display (bootup_uso_ncc_1304C.cpp), verbatim | 2-cycle, T0 colour / T1 (I8 mask at TMEM 0x100) alpha, XLU both cycles, bilerp, RGB dither off (`BA000602 0xC0`), TEXTLOD tile, full-screen TEXRECT |
+
+Not covered because 1080 never emits them (11.1): G_BRANCH_Z, TT_IA16, mip-mapping. FILL / COPY / 1- / 2-cycle,
+TT_RGBA16 and both filters were already in the 19.6 set.
+
+**Read-back (patch 3) in every scene.** `f3dreplay --readback out.rb` requests the whole 320x240 frame as
+big-endian RGBA5551 and the depth at a 16 x 12 grid before `Run()`. The pixels must equal the frame, each channel
+being the 8-bit value >> 3, with row 0 at the top: they do, in all 18 scenes. The `.rb` files are hashed with the
+PNGs in `golden.sha1`. In `splitz` the near quads read 0x4084, the mid quad 0x8000 and cleared pixels 0xFFFC.
+
+**Fast3D gaps found and fixed (patch series now 8; README rows 6-8):**
+- **0006, texgen LookAt (real game impact: every reflection material).** The F3D `G_MOVEMEM` handler stored
+  LOOKATY (0x82) in `lookat[0]`, which drives S, and LOOKATX in `lookat[1]`. The env maps came out transposed:
+  measured on `texgen`, red (S) followed the normal's y. Also, a new LookAt only reached the coefficients at the
+  next `G_MW_NUMLIGHT`. Mat_draw re-emits the LookAt every frame without one, so the maps would have frozen on the
+  previous LookAt. The patch maps X to `lookat[0]` and sets `lights_changed`.
+- **0007, G_SETPRIMDEPTH flush (every billboard sprite).** The prim depth is a per-draw uniform set in `Flush()`.
+  Consecutive prim-depth TEXRECTs batched into one draw at the last depth, so a far sprite followed by a near
+  one was drawn over the geometry in front of it. The patch flushes on a depth change.
+- **0008, depth read-back orientation (Sun_measureVisibility).** With no game framebuffer (no LUS GUI: f3dreplay
+  and the in-process port) the window's rows run bottom-up, and `GetPixelDepth` read the mirrored row. The patch
+  flips y when `!mRendersToFb`. Colour read-back was already right.
+- Checked with no gap: both light paths, CULL_FRONT, G_CULLDL (an LUS stub that draws everything, which is
+  correct), LoadTile sub-rectangles including I4-as-I8, LoadBlock dxt, the per-window Z clears, the Fader list
+  and the 0x443078 texture-edge cut-out.
+
+**In process, option (a)** (`port/gfx/fast3d/port_fast3d.{h,cpp}`, CMake `-DPORT_GFX_FAST3D=ON`, default OFF):
+`port_gfx_task` calls `port_fast3d_task(data_ptr)` after the optional dump. The three 19.6 embedding gaps are
+handled there:
+1. Before each task, every writable mapping below 0x10000000 in `/proc/self/maps` that is not registered yet is
+   registered with patch 0005. That covers the brk heap, USO images and anonymous mmaps. sysapi.c's arena is in
+   `.bss`, which a module owns anyway. 1080 uses no segments, so no segmented address can pass.
+2. The ucode is set after Init.
+3. `mGameWindowViewport` is the whole window every frame.
+
+Lists:
+- **32-bit game:** the root goes over in place.
+- **64-bit:** every reachable list is widened per task. They are re-widened each frame because PolyShape_clipRows
+  edits lists in place.
+
+Other pieces:
+- `port_fast3d_invalidate` wraps patch 0004 for the CPU texture writers (11.2).
+- The window is the EGL pbuffer. A desktop build swaps in LUS's SDL window.
+- `PORT_GFX_PNG=<dir>` writes one PNG per task.
+
+**Test:**
+- `fast3d/test_inproc` rebuilds each DLMP at its own addresses and calls `port_fast3d_task`.
+- `golden.sh` runs all 18 scenes in one process through one interpreter, invalidating the texture cache
+  between dumps because the scenes reuse arena addresses. It requires f3dreplay's PNG byte for byte: **all 18
+  identical**.
+- Without the invalidation, `sprite` came out wrong (stale texels). This is the 11.2 texture-cache case, and it
+  shows that patch 0004 works.
+
+**Build status:**
+- **64-bit:** `cmake -S port -DPORT_GFX_FAST3D=ON -DPORT_FAST3D_FLAGS=""` builds `libport_fast3d.a` and the hooked
+  `porthost` (port_gfx.o references `port_fast3d_task`). The Makefile path (`make -C port/gfx test`) also links
+  and runs it.
+- **32-bit (-m32, the real game): not possible on this machine.** The library stops at the first libstdc++
+  header (`bits/c++config.h`; there is no i386 libstdc++ or libc dev), and 19.1 found no i386 EGL / GL to link.
+  On a machine with multilib g++ and i386 GL, configure with `-DPORT_GFX_FAST3D=ON -DPORT_LINK=ON`.
+- Option (b) stays the default here.
+
+**Real frames: still none.** origin/main has nothing past agent-g's run-822 frame-1 RcpMgr_queueTask crash. When
+the boot reaches a gfx task, the capture recipe is in 19.6. On a multilib machine,
+`PORT_GFX_FAST3D=ON PORT_GFX_PNG=<dir>` gives the frames directly.
+
+**Next.**
+1. Real captures, through both paths (needs agent-g's boot).
+2. An SDL window backend behind the same `port_fast3d` API for a desktop multilib build.
+3. Port the patch-3 / 4 callers (ScreenThumbMat_grab, Fader_buildTexture, Tv1Tmpl, Sun_measureVisibility,
+   gfx_flushTexture) to `port_fast3d_invalidate` and the read-back. These are game-side PORT edits, outside
+   agent-a's area.
 
