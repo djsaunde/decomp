@@ -25,6 +25,7 @@ first; this plan does not repeat them.
 16. M1: link plumbing (CALL names, bound placeholder calls, data blobs / aliases, port/uso)
 17. M1: libultra shim and main loop (17.8: SysApi, port/fs, boot-path trace)
 18. M1/M2: byte order (USO blob type map + swap, rom/*.bin readers, bitfield audit)
+19. M2: graphics transport (feasibility on WSL2, PORT_GFX_DUMP / DLMP, dlreplay)
 
 ---
 
@@ -3316,3 +3317,202 @@ XDATA check 435 sites 0 mismatches (was 387), CALL check 8225 0 mismatches.
 `gl_25504_AllocSampleCache`), so after both land the link should be at 0 (regen to confirm:
 both runs edit timproc_uso_b3.c, different functions, and both regenerate port/gen).
 binds-left 72 -> 55 (unnamed 16 -> 7, the Text+0 sentinel calls). undefined.txt 184 -> 170.
+
+### 18.9 Run 819: the first headless boot (agent-g)
+
+agent-g run 819, branch agent-g on main bde103ad0 (tenshoe links, 0 undefined). Gate PASS before
+each commit (ROM byte-identical, 3579/3579, verify-blocks 6/6, clean build OK; check 8314 named
+calls / XDATA 446 sites, 0 mismatches). test_fs 24 / 0.
+
+| commit | what |
+|---|---|
+| 9069673c5 | `PORT_TRAP_UNDEFINED` (CMake option, **debug only, default OFF**, needs `PORT_LINK`): a probe link with `--warn-unresolved-symbols`; `port/tools/gen-port-traps.py` reads its unversioned `nm -u` and writes one trap per symbol; `port/trap/trap.c`: a code symbol (R_386_PC32 from .text) prints `PORT TRAP: <sym>` + backtrace and aborts; a data symbol sits in a PROT_NONE region (2 pages each), the SIGSEGV handler names it (`PORT TRAP: <sym> (data, +off)`). Nothing is stubbed. The probe and tenshoe both use `--export-dynamic` (same gc roots, symbolised backtraces). Any other SIGSEGV is reported with a backtrace too. |
+| bec9275e3 | `KR_ARG / KR_ARG0 / KR_PARAM / KR_PARAM0` (uso_call.h, empty in the ROM build); AudioHeap allocator wrappers, AudioSeq_ResetSequencePlayer, the 9 bootup snd_* wrappers; `scripts/port-kr-passthrough-audit.py`; port/fs drops the kernel's 8-alignment check; SRAM path `SRAM_DMA_MISALIGNED` = 0 under PORT; `sys_fatal` -> `port_sys_fatal` (message, backtrace, exit) |
+| bdfa6a9b0 | vtable-call evaluation order (8 bootup sites), BinFileMgr_getAcquire / getRelease / checkVoid and Node_Load pass-throughs, FogParms_emit byte order |
+
+**How far.** `run32 tenshoe --rom baserom.z64 --frames 120 --trace t.log`:
+port_game_boot -> boot_main -> SnowBoard_ctor (snd_Init / AudioHeap_Init OK) -> App_main (Mem, console,
+pads, GfxLib_init, RcpMgr) -> SnowBoard_InitInstance (rom/version.bin, anims.bin, Node_ctor) ->
+GameFlow_create (gui.uso, pads, Backup / SRAM options, flowimgs.bin) -> **GameFlow_startMode(0)**
+(N64DEMO, n64proc.uso) -> n64_procMain -> N64DemoProcess_ctor (sprites from flowimgs.bin) -> back in
+App_main -> main loop -> **app_runOneFrame frame 1**: App_Display (FogParms OK) -> gfx_end ->
+gfx_submitFrame -> gfx_queueGfxTask -> RcpMgr_queueTask -> RcpMgr_removeTask: **SIGSEGV at 0x3f800054**
+(a task / list pointer is 1.0f: `gGfx->rcp` or the RcpMgr list head is wrong, layout or bind; not
+diagnosed). The trace is still empty (the F line is written after the first step).
+
+**Bug classes found (each will recur):**
+1. **K&R argument pass-through.** The matched C calls with fewer arguments than the callee reads;
+   on MIPS the rest ride in $a0..$a3. On i386 the callee reads stack garbage. Fix with `KR_ARG(x)`
+   / `KR_ARG0(x)`, and for a ROM `(void)` / `()` wrapper `KR_PARAM0(decl)` / `KR_PARAM(decl)` (or
+   `#ifdef PORT` for a K&R `()` definition, which `KR_PARAM0` would turn into `(void)`).
+   `scripts/port-kr-passthrough-audit.py` lists the CALL-family sites (98 left; some are
+   harmless, the callee ignoring the parameter). Direct calls (not CALL/XCALL) are not scanned, and
+   VT_SLOT calls passing only `this` (Node_Load's slot 8 loadData(this, path)) are not either.
+2. **Unsequenced callee vs argument.** `VT_SLOT(p, N).fn(.. VT_SLOT(p = o->vptr, N).delta ..)`:
+   IDO's argument-first order is not gcc's. Under PORT assign p first. The 8 sites found by a
+   regex are all in bootup; C++ donors use other spellings (not scanned).
+3. **Host alignment.** N64 frames / heaps 8-align buffers that the kernel's DMA checks require;
+   i386 does not: port/fs and the SRAM path no longer check.
+4. **Byte order of sub-word reads of int fields** (FogParms: shorts at +0x12 / +0x16 of int
+   words). The blob typing cannot fix these: they are in code.
+5. `sys_fatal` was a silent hang headless; it now reports and exits.
+
+**Tools.** No gdb on this machine: `apt-get download gdb` + 5 libs (libbabeltrace1, libipt2,
+libsource-highlight4v5, libdebuginfod1, libboost-regex1.74.0) extracted with `dpkg-deb -x`, run with
+`LD_LIBRARY_PATH` = the extracted lib dir; `gdb --args <run32 root>/usr/lib32/ld-linux.so.2
+--library-path <root>/usr/lib32 tenshoe ...` plus `add-symbol-file tenshoe` (non-PIE). Interrupt a
+hang with `kill -INT $(pgrep -x gdb)`.
+
+**Next:** the RcpMgr_queueTask fault (print `gGfxLib` + 0x218 and the RcpMgr list head at the first
+gfx_queueGfxTask); then title flow. Sweep the audit list on the title / race paths before they are
+hit.
+
+## 19. M2: graphics transport (agent-a, run 820)
+
+> agent-a run 820, 2026-11-17, on branch agent-a: 7c91a2e27 (dumper, hook, tests, reader), e6bda5949
+> (replayer) and 2b576cd84 (a comment fix). The gate passed before the commits. Code: `port/gfx/`.
+
+### 19.1 Feasibility on this machine (WSL2 Ubuntu 22.04, no sudo)
+
+What the machine has, measured:
+- **64-bit runtime:** libGL / libGLX / libEGL (glvnd) and Mesa 23.2.1 DRI, including `d3d12_dri.so` (the
+  GPU through WSLg, here an AMD Radeon) and llvmpipe. WSLg is up (`DISPLAY=:0`, `WAYLAND_DISPLAY`).
+- **64-bit dev:** no GL / EGL / SDL2 headers, no SDL2 at all, no OSMesa, no zlib or libpng headers.
+  `apt-get download` + `dpkg -x` works without root. `port/gfx/replay/setup-gl-dev.sh` fetches
+  `libegl-dev libgl-dev libglx-dev libopengl-dev` (137 kB) into `tools/gl-dev/`.
+- **A headless 64-bit GL context works:** EGL on `EGL_PLATFORM_SURFACELESS_MESA` with a pbuffer gives
+  "D3D12 (AMD Radeon) / GL 4.2 compat", and with `LIBGL_ALWAYS_SOFTWARE=1` it gives
+  "llvmpipe / GL 4.5 compat". No window or X is needed.
+- **32-bit:** nothing. The i386 sysroot (13.5) is built from Ubuntu's amd64 `lib32*` multilib packages, and
+  there are no `lib32` GL / SDL packages. True `:i386` packages need an i386 apt index, and that index
+  can be built without root: a private `sources.list` with `[arch=i386]` plus `-o Dir::State::Lists=`,
+  `Dir::Cache=`, `APT::Architectures::=i386` and `Dir::State::status=/dev/null`. `apt-get update`
+  into that scratch state worked here (20 MB of indexes).
+  - `libosmesa6` + `libsdl2-2.0-0` alone close over **66 i386 packages** (llvm15, X11 / wayland, pulse,
+    and so on).
+  - In 32-bit Mesa can only use llvmpipe. WSL ships `libd3d12.so` / `libdxcore.so` 64-bit only, so a
+    32-bit process gets no GPU.
+  - libultraship's C++20 dependency set (SDL2, spdlog, ImGui, nlohmann-json, tinyxml2, ...) would also
+    have to be built `-m32` against that tree. Section 14.2 found it is not even installed for 64-bit.
+
+**Verdict: (b) on this machine, and as the M2 test harness everywhere.** The game (32-bit) serialises each
+gfx task to a DLMP dump, and a separate 64-bit renderer replays it to PNG.
+- It needs no 32-bit GL and gets the real GPU through d3d12, or llvmpipe for deterministic screenshots.
+- It gives headless golden-image tests that need neither the game nor a ROM: a dump is the test input.
+- It decouples renderer work (Fast3D and the 14.1 patches) from the boot work: a renderer can be developed
+  on dumps while the game still traps.
+- It is proven end to end here (19.4).
+
+(a), the in-process 32-bit Fast3D, stays the **shipping** configuration on machines that have multilib GL
+(any normal distro or Windows), and M6 (64-bit) removes the problem for good. It is feasible here only
+as a software-rendered 66-plus-package i386 sysroot plus an i386 build of LUS's dependencies, which is a
+multi-session job for no capability that (b) lacks. The renderer is written once against the dump's
+memory image (19.3), so the same code later links in process.
+
+(c) Considered and parked: a live (b), meaning a shared-memory frame channel to a persistent 64-bit
+presenter. It would make the game interactive on this machine. Read-backs (14.1 patch 3) would come back
+over the same channel with one frame of latency, which is the semantics the game already has (11.2). Do
+this only if interactive play on WSL is wanted before M6.
+
+### 19.2 PORT_GFX_DUMP and the DLMP format (`port/gfx/dlump.h`)
+
+**Hook.** `port_gfx_task(OSTask_t *)` in `port/gfx/port_gfx.c` is the strong definition of main.c's weak
+hook. The call path is osSpTaskStartGo -> `PortUltraConfig.rcpTask` -> `rcp_task` -> `port_gfx_task`.
+**No port/ultra or src/ change.** CMake adds `gfx/port_gfx.c gfx/dlump.c` to the host sources. The link
+still fails only on the same 13 data symbols, with no new undefined or multiply defined symbols.
+
+Environment:
+- `PORT_GFX_DUMP=<dir>` writes `<dir>/gfx_NNNNNN.dlmp`, where NNNNNN is the gfx task number since boot.
+- `PORT_GFX_DUMP_FIRST=n`, `PORT_GFX_DUMP_EVERY=n` and `PORT_GFX_DUMP_COUNT=n` select which tasks are dumped.
+
+**File layout.** All integers are in the writer's host order; the header carries a byte-order mark.
+- A 64-byte header: magic `1080DLMP`, version 1, BOM `0x01020304`, ptrSize, seq, rootAddr (data_ptr),
+  rootSize, chunkCount, cmdCount, errorCount, flags (TRUNCATED, SEGMENTS) and dataBytes.
+- Then the chunks, each `{kind, addr, size, aux}` plus its data padded to 4, and finally an END chunk.
+
+| kind | data | aux |
+|---|---|---|
+| TASK | the 0x40-byte OSTask_t | task type |
+| DL | list words. Adjacent runs are coalesced; the walk stops at G_ENDDL / branch, so dead tails are not copied | depth at first visit |
+| VTX | F3DEX 1 G_VTX source, `(w0 & 0x3FF) + 1` bytes | vertex count |
+| MTX | G_MTX source (0x40) | params byte |
+| MOVEMEM | viewport / lookat / light block (`w0 & 0xFFFF`) | index byte |
+| TEXTURE | LOADBLOCK / LOADTILE source bytes (sub-rectangle rows for LOADTILE) | the G_SETTIMG w0 in force |
+| TLUT | LOADTLUT source | the G_SETTIMG w0 in force |
+| IMAGE | none: a G_SETCIMG / G_SETZIMG target address (the frame buffers are not copied) | the command's w0 |
+| ERROR | NUL-terminated text | (addr = the command's address) |
+
+Rules:
+- **Bytes are copied raw.** List words, Vtx, Mtx, Vp and lights are in host order as the port's game
+  code wrote them. Texels stay in the N64 big-endian image that Fast3D's importers read. Nothing is
+  rewritten, so a replayer interprets the original words at their original addresses.
+- **Walk.** The writer follows the RSP: G_DL push / branch, a 10-deep stack, G_ENDDL, and
+  G_MOVEWORD SEGMENT.
+  - Shared sub-lists are **re-walked** on every call, because what a load list fetches depends on the
+    caller's G_SETTIMG. The synthetic test covers this.
+  - Data ranges are deduplicated on (kind, addr, size).
+  - Limits: 4M commands, 8 MB per range.
+- **Segments.** A host pointer's top byte is not a segment number, and 1080 only ever sets segment 0 = 0
+  (11.1). So a segment is applied only when its base was set **nonzero** in the task; otherwise w1 is
+  the pointer. The replayer uses the same rule.
+- **Safety.** On Linux every range is checked with `mincore()` first. A bad pointer becomes an ERROR
+  chunk and a `port_ultra_log` line, not a crash. The tests cover this.
+- `DlumpOptions.arenaBase` (game address -> `arenaBase + addr`) lets the same writer run on a 64-bit
+  host. It is the 4 GB-arena idea of 11.5 item 7.
+
+**Reader.** `port/gfx/tools/dlump.py` has three modes:
+- `FILE...`: a summary plus a command histogram, with any opcode outside the 39-opcode census of 11.1
+  flagged.
+- `--check`: an independent Python re-walk from the dump's own memory image. It fails if any referenced
+  range is missing, unless the dump's own ERROR chunks explain the gap.
+- `--list`: the walked command stream, indented by call depth.
+- `--total DIR/*.dlmp` gives one histogram over a capture. This is the M2 confirmation of 11.4 once the
+  game reaches the title.
+
+### 19.3 Tests and the replayer
+
+- `make -C port/gfx test` (64-bit) and `make -C port/gfx test M32=1` (gcc32 / run32) both **pass**.
+  - `test_dlump` builds a synthetic 1080-style frame (`synth.c`): RSP init words, a colour clear and a
+    Z clear (CIMG pointed at the Z buffer), a viewport, two G_MTX, one shared texture list called with
+    two textures, a CI TLUT, G_VTX / G_TRI1, and a NOPUSH branch. It checks every chunk, the command
+    count (42, with the dead ENDDL after the branch not walked), a bad root and a self-calling G_DL
+    (stack overflow after 11 commands).
+  - On -m32, `test_port_gfx` sends the frame at its real addresses through `port_gfx_task` with the env
+    variables set. Tasks 1, 3 and 5 are dumped; task 5 has an unmapped root, which `mincore` refuses.
+  - `dlump.py --check` validates the outputs. A corrupted dump (a VTX chunk retagged) is caught.
+- **`port/gfx/replay/dlreplay`** (64-bit; `make -C port/gfx replay-test`):
+  - It maps the chunks into a sparse memory image and interprets a **bring-up subset**: G_MTX
+    load / mul / push, G_POPMTX, G_VTX, G_TRI1, the G_MOVEMEM viewport, ZBUFFER / cull geometry modes,
+    FILL-mode colour and Z clears, and Gouraud vertex colours.
+  - It renders through EGL surfaceless + a pbuffer and writes a PNG with a built-in stored-deflate
+    writer (no zlib).
+  - It is not the M2 renderer. Textures, the combiner, lighting, fog, blending and TEXRECT are Fast3D's
+    job.
+
+### 19.4 Render proof
+
+The synthetic frame renders correctly with both D3D12 and llvmpipe: two Gouraud triangles (RGB plus white)
+on the fill-cleared background, at the viewport-mapped screen positions (v0 (-120, -90) -> pixel (40, 210)).
+The dump written by the **-m32** test binary renders **byte-identical** (`cmp` on the PNGs, llvmpipe) to
+the 64-bit one. The 32-bit game -> DLMP -> 64-bit GL -> PNG path is closed.
+
+### 19.5 Next (M2)
+
+1. **Fast3D behind the dump.** Build libultraship's `src/fast/` (pinned, plus the 14.1 patches) as a
+   64-bit library in the replayer.
+   - Feed it a **converted** list: copy each DL chunk into a 16-byte `F3DGfx {uintptr_t w0, w1}` array,
+     and rewrite pointer operands (G_DL, G_VTX, G_MTX, G_MOVEMEM, G_SETTIMG; the dumper's rules say
+     which) to host pointers into the chunk copies.
+   - Patch 3's read-back needs a return path. In the dump world it is "write a .rb file next to the PNG".
+   - The dependencies still have to be fetched the 19.1 way (64-bit is enough): SDL2-dev, spdlog, ImGui
+     and tinyxml2, or Fast3D isolated from the Ship context as SoH's code-built lists do.
+2. **Golden tests.** Check in a few synthetic DLMPs, built from generator code (synth.c-style), not from
+   ROM data. Render them on llvmpipe and compare against stored PNG hashes.
+3. **The first real capture** as soon as agent-g's boot reaches the first gfx task:
+   - `PORT_GFX_DUMP=... PORT_GFX_DUMP_COUNT=300`, then `dlump.py --total` against the 11.1 census;
+   - answer the 11.4 questions statically: G_LINE3D users, U64BGWall's vertex count per G_VTX, and
+     whether Mat_fromFrameBuffer is ever reached.
+   - Note: per 11.2 item 4, G_SETCIMG / G_SETZIMG carry `addr & 0xFFFFFF` until the gfx_setColorImage
+     PORT edit lands. The dumper only records them as IMAGE references, so this does not affect a dump.
+4. **Dump cost.** The dumper is unmeasured on a real frame. Hash sets keep it linear. If whole-run
+   dumping is too slow, use `PORT_GFX_DUMP_EVERY`.
