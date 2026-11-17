@@ -237,6 +237,28 @@ No renames.
   course*3*16 spellings, and the 0x3364 levers (do-while, `show = 1` after the call).
 - **Not started:** 0x3878 (records draw, 431 lines) and 0x3F24 (erase-select pad handling, 272 lines).
 
+### agent-a run 743: viewrec 0x3878 EXACT (the function's own vtable slot is the extra jr edge)
+
+Commits on agent-a: dc34903a2 + 2c21ca9f8 (one change split by a failed `git add`: the first carries only the
+donor file move). No renames. Gate PASS (3572 / 3579), lost: none. Scratch /tmp/claude-1000/agent-a/w743/.
+- **The mechanism.** as1 makes every text address named by a data word before the function's `.end` a target of
+  each jump-table `jr` in that function (run 738). `.s` oracle sweep on the run-738 base: `.word`, `.half`,
+  `.gpword`, `.word $40-$46` (no reloc), and a word in a custom `.section` all give the target (ndiff 5);
+  `.dword`, a `.text` word and an external symbol do not. **`.word viewrec_uso_func_00003878` (the function's
+  own address) also gives the target:** the entry block becomes a jr target, and the callee-saved registers are
+  live there (the prologue saves them), so s5..s7 are live at the switch `jr` and as1 may no longer speculate
+  the grid's `r = 0` / `li 2` / `li 1` above the `selFade > 0` bc1fl.
+- **The ROM evidence.** viewrec Data+0x184 holds 0x3878 (and +0x178 holds 0x3818, the update): the erase
+  screen's vtable at Data+0x118. The original TU emitted that vtable before the draw body.
+- **The donor** (`src/viewrec_uso/viewrec_uso_mp72_3878.cpp`, was `_nm_`): the run-675 body plus
+  `extern "C" void *vr_eraseDrawSlot_3878 = (void *)viewrec_uso_func_00003878;` above it (a `static` one is
+  dropped by edg and does nothing). Spliced on both build paths; calls spelled `CALL(name)`;
+  `viewrec_uso_func_00003878_rodata = 0` in undefined_syms_auto.txt (literals +0x0, table +0x10, in-place
+  %lo). The 3F24 jtbl NOLOAD pin at 0x24 is unchanged (the .c unit's .rodata is still only 3F24's table).
+- **Lever for other jtbl functions:** if a function with a jump table shows a register "dead at the jr" in ours
+  but live in the target, and the function is a virtual method / callback, emit the vtable or a data word
+  naming it before the body.
+
 ### agent-a run 738: viewrec 0x3878, uopt toys for a code-free register read after `$45` (no commits)
 
 No commits, no renames (nothing to gate; `make` ROM OK on agent-a). 3878 is still NM 98.7 % (ndiff 11). Scratch

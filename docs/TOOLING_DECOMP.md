@@ -2380,6 +2380,11 @@ The original as1 binary with its .data is `tools/ido-static-recomp-dump/ido/7.1/
     after the last arm's `b`) work by inserting a block in front of the default.
   - `if (1) {}` makes no as1 block: 1 / 3 / 6 / 12 copies in default, in case 114 or ahead of the switch leave
     396FC byte-identical.
+- **as1 jump-table `jr` targets = every text label or symbol named by a data word before `.end`** (agent-a runs
+  738 / 743): `.word` / `.half` / `.gpword` / label differences / any section count, not only this table's
+  entries. The function's OWN address in data (a vtable / callback table emitted before the body) makes the
+  entry a target, so all saved callee-saved registers are live at the `jr`; this blocked as1 speculation in
+  viewrec 0x3878 (exact via a donor data word naming the function, see 1080_NEW_MODULES run 743).
 - ROM-wide census (all segments): 79 `sltiu at; beqz at` bound checks; **no target delay slot holds the default's
   first instruction** (6 nop / nop coincidences aside). This agrees with kit CXXXII's 82-table game_libs census.
 - C++ spellings under 7.2.1 edg (the TU evidence above leaves C++ possible) were tried on 396FC's case 114, the arm
