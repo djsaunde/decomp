@@ -1772,6 +1772,19 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     - C5.cpp: base with the y1 terms moved and the atE* / pad defs;
     - lm: use ../r776/lmall.py.
 
+- Run 788 (agent-h, commit aa6169972 on agent-h, no renames; gate PASS, ROM byte-identical, lost: none).
+  - **0xC90 EXACT** with agent-g's run-785 source (atE1, y1 counters in the `if (y0 ..)` before FB, no dm1 on yh,
+    `ge = primDepth(..)` with five `(int)ge` terms in the xh z0 fold; gTR now takes ge as a parameter, same bytes).
+  - Wired on the matching build: SNOW_NM_H_FUNCS splices in both trees, the INCLUDE_ASM / NON_MATCHING wrap is gone.
+  - **Gotcha:** the first matching build failed ROM verify (3 words). snow_gfx_scale_128 / 12C / 130 were pinned at
+    0x128 / 0x12C / 0x130, but the donor reads them through the 0-based SnowGfxLibS struct, so the field offset is
+    already in lo16 and the linker doubled it (0x250). They are now pinned at 0. Non_matching never ROM-verifies, so
+    pins on NM-only donors can be wrong without anyone noticing.
+  - Why it works (from the run-788 probes before the stop): the yh clamp's `or a1,zero,zero` sits at the top of FB
+    only because as1 hoists the else-arm constant across blocks while a1 is free. That needs the xh CSE (e762, pri 25)
+    off a1. The ge terms keep the EE pointer's LR live through the xh block with no code (pri 26.7), so it takes a1
+    first, and as1 sees a1 free there.
+
 ### snoweffects.uso 0xC90 y0 t3 / E4 pointer t4 (agent-e run 760, research only, no commits)
 
 - **Fixed, code-free: objdiff 98.598 -> 98.758 on agent-h's run-762 head (c57226a6e).** Positional diffs go from 73
