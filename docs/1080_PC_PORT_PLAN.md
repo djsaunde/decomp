@@ -27,6 +27,7 @@ first; this plan does not repeat them.
 18. M1/M2: byte order (USO blob type map + swap, rom/*.bin readers, bitfield audit)
 19. M2: graphics transport (feasibility on WSL2, PORT_GFX_DUMP / DLMP, dlreplay; 19.6: Fast3D in f3dreplay, golden tests; 19.7: 7 more scenes, patches 0006-0008, in-process Fast3D)
 20. M5 prep: saves (the SRAM file is the N64 image: format rule, port_backup, test_backup, the gate's saves step)
+21. M6: 64-bit (the gap census, the design: the low-address model with the game in the x32 data model, the libc boundary, varargs)
 
 ---
 
@@ -5976,3 +5977,157 @@ screen shows a green box with a circle in the middle of the "Advance to next rou
 >= `# CHECKPOINTS`), contest (points, an extension), training (lesson 0 -> 2), vs2p (race end 3679, next
 round 4238), match (goal; `# WIN` -> before the CPU), options (save, reload in a new process). Each
 failure prints the steer-search command or the script to edit.
+
+## 21. M6: 64-bit (agent-g, run 862)
+
+### 21.1 The gap, measured
+
+A plain LP64 build (`-DPORT_64=ON` with the game compiled as ordinary x86-64; host gcc 11, no sysroot;
+log kept from the first configure of run 862) gives:
+
+| class | count | what |
+|---|--:|---|
+| layout asserts that fail | 411 unique lines (13 396 errors over 216 of 986 units) | 56 headers: input.h 33, race.h 28, audio.h 27, gadget.h 26, modeproc.h 21, gfxlib.h 19, window.h 16, course_objects.h 16, dnode.h 15 ... plus os_thread / os_message / os_pi / os_vi / os_task. Every typed pointer member is 8 bytes and shifts what follows; of the ~698 assert lines in the tree, 411 fire |
+| `-Wint-to-pointer-cast` | 2 468 unique sites | int-held pointers read back: `(T *)CALL(mem_new)(n)`, `(T *)*(int *)(p + K)`, `(Vec3 *)(unsigned)&local` |
+| `-Wpointer-to-int-cast` | 866 unique sites (plus 304 inside the asserts) | pointers stored as ints: vptr / slot stores, `(s32)&X` arguments, `(int)packed` cursors |
+| `T **` casts in src | ~790 (108 files) | `*(char **)(p + K)`: an 8-byte read of a 4-byte slot |
+| typed pointer members | ~630 in include/, ~2 600 in src/ local structs (+ ~200 function-pointer members) | each is 8 bytes on LP64 |
+| hard-coded object sizes | every ctor | `mem_new(0x1CC)`, cfront `if (this == 0) this = new(0x58)` |
+| ROM data with 32-bit pointers | all blobs | USO Data / RoData relocated words (port/uso relocate() writes 4 bytes), cfront vtables {s16, s16, fn32} (PortCfVtEnt), PMFs {s16, s16, fn32} (PortCfPmf), shape arrays, node streams |
+| the display list | Gfx = 2 x u32 | `gsSPDisplayList(addr)`, segment bases, `G_SETTIMG` addresses: 32-bit words by definition |
+| host / port | ~30 sites | sysapi.c SLOT stores `(int)fn`, the fs handles, seqrender |
+
+So full pointer-width conversion (option (b)) means retyping every pointer-bearing struct, rewriting every
+raw offset and hard-coded size behind it (the asserts and the census raw-offset count say these are mixed
+in the same structs), deserialising every blob type and widening the display-list words: the whole source
+twice over, against a matching build that pins the 32-bit spellings. Rejected.
+
+### 21.2 The design: the low-address model, with the game in the x32 data model
+
+Two separate facts make (a) work without touching those sites:
+
+1. **Every address the game sees is below 2 GB.** The executable is non-PIE (text, data, bss and the
+   blobs at 0x400000+), the heap is glibc's brk heap (`mallopt(M_MMAP_MAX, 0)`, which starts after
+   .bss), the game's stack is mapped `MAP_32BIT`, and so are the shm / mmap regions it reads. The game's
+   own arena (sysapi.c sArena) is .bss. Below 2 GB rather than 4 GB because the int-held pointers are
+   signed (`(T *)(s32)x` sign-extends).
+2. **Every pointer the game stores stays 4 bytes:** the game and every port unit that shares its structs
+   are compiled with gcc's `-mx32`. x32 is x86-64 code (64-bit registers, SSE, the SysV register
+   convention) with the ILP32 data model: `sizeof(void *) == sizeof(long) == 4`. Struct layouts,
+   cfront vptrs, PMFs, the blob words and the Gfx words are the N64's, exactly as in the i386 build.
+
+What is NOT used is the x32 *runtime*: no x32 libc, no x32 kernel syscalls (most distribution kernels have
+them off). cc-select.py compiles each `-mx32` unit to assembly and assembles it as an ELF64 object
+(`-m64`; a 32-bit address register gets the 0x67 prefix, `.long sym` becomes R_X86_64_32), so the
+objects link into an ordinary x86-64 executable against the system's x86-64 glibc. The executable runs on
+any x86-64 Linux, no sysroot.
+
+Evidence (run 862):
+- The game library compiles with **0 errors** under `-mx32` (all 698 layout asserts hold; the LP64
+  build fails 411). One link error: `pi.c` let gcc fold `sSram - 0x8000000` into an immediate (a 32-bit
+  wrap that ELF64's R_X86_64_32 rejects); fixed in the shim. No game site has one.
+- `test_ultra`, `test_fs` (107 checks), `test_backup` (24) pass as 64-bit executables.
+- `tenshoe` (ELF 64-bit) boots: the boot path, port/uso relocation (4-byte host words), SysApi,
+  the kernel threads, the first GameFlow mode, until the varargs class of 21.5 (ScreenWindow_ctor).
+- Option (a) without x32 (LP64 code in a low arena) would make the 3 300 cast sites correct but leave
+  every typed member 8 bytes: the 411 asserts. clang / MSVC `__ptr32 __uptr` would narrow members per
+  declaration (tested with clang 14 on Linux: data pointers become 4 bytes with zero-extension at each use;
+  function-pointer members do NOT, they stay 8), at ~3 400 declarations plus every `T **`. x32 does all
+  of that by the data model, with no source annotation.
+
+Limits, for the platforms after Linux:
+- x32 is a gcc / clang ELF target. Windows (COFF, MS x64 convention) and macOS (Mach-O; arm64 has no
+  ILP32 mode and forbids mappings below 4 GB) need another mechanism: there `__ptr32` (clang / MSVC)
+  on x86-64, or base-relative 32-bit pointers, is the fallback, and it pays the annotation cost above.
+  The x32 build defines the work for that: the layout asserts are the checklist, and the libc boundary
+  (21.4) is the same list.
+- The 32-bit pointer values are host addresses, as on i386: the display list still holds host pointers
+  (port_gfx / Fast3D read them), so nothing in the renderer changes.
+
+### 21.3 The build (`-DPORT_64=ON`)
+
+    cmake -S port -B <b> -G Ninja -DPORT_64=ON -DPORT_LINK=ON -DPORT_ROM=<rom>     # no toolchain file
+    cmake --build <b>                                    # tenshoe, seqrender, test_* : ELF 64-bit
+
+- PORT_ARCH_FLAGS: `-mx32 -fcf-protection=none -fno-stack-protector` for C / C++ (no `-malign-double`:
+  x32 aligns u64 / f64 to 8 already); `-isystem port/include/x32` supplies an empty `gnu/stubs-x32.h` and
+  `-isystem /usr/include/x86_64-linux-gnu` (PORT_X32_SYSINC) the multiarch headers, so the units that
+  include libc headers parse them for x32. PORT_DEFS gains `PORT64`.
+- cc-select.py: an `-mx32` unit is always compiled via assembly and assembled `-m64`; `.init_array` /
+  `.fini_array` / `.ctors` / `.dtors` entries are widened from `.long` to `.quad`.
+- `-fcf-protection=none`: the x32 `.note.gnu.property` is 4-byte aligned, which ELF64 ld reports as
+  corrupt. `-fno-stack-protector`: the x32 canary is at `%fs:0x18`, glibc's x86-64 one at `%fs:0x28`.
+- `host/main64.c` + `host/x32_glue.c` (porthost64) are the only LP64 units. main.c / the test mains are
+  compiled `-Dmain=port_main`.
+- The default 32-bit build is unchanged (PORT_M32 = -m32; every PORT64 edit is `#ifdef PORT64`).
+
+### 21.4 The entry and the libc boundary
+
+`host/main64.c` (LP64): `mallopt(M_MMAP_MAX, 0)` and `M_ARENA_MAX 1` (every malloc from brk, below 2 GB);
+argv and environ copied into that heap (argv as an array of 4-byte pointers); stdout / stderr replaced by
+`fdopen` FILEs from that heap (x32 code reads the low half of the 8-byte variables); a 64 MB `MAP_32BIT`
+stack entered with `swapcontext` (x32 code computes `%esp` in 32 bits: on the kernel's stack at
+0x7ffc... the first `sub $n, %esp` would truncate rsp); a fault reporter (rip / rsp / backtrace; no
+gdb on this machine). Each step aborts with a message if an address is not low.
+
+x32 code calls the x86-64 glibc directly. That is safe for integer / pointer arguments (they arrive
+zero-extended), for returned pointers that are low (malloc / fopen / strdup from brk), and for the
+kernel-facing structs x32 laid out like LP64 (`struct timespec`, `off_t`). The calls whose memory
+layouts differ are wrapped at link time (`-Wl,--wrap=`, PORT64_WRAP; the list is the link's undefined
+libc symbols of run 862, audited one by one):
+
+| wrapped | why |
+|---|---|
+| `__vfprintf_chk`, `__vsnprintf_chk`, `__vsprintf_chk`, `vfprintf`, `vsnprintf`, `vsprintf` | va_list is {u32, u32, ptr, ptr}: 16 bytes on x32, 24 on LP64 (the register save area and the 8-byte overflow slots are the same psABI, so the conversion is exact) |
+| `strtol`, `strtoul`, `strtod` | `char **endptr` would get 8 bytes in a 4-byte slot; the long result is 32-bit |
+| `fseek`, `sbrk` | 32-bit long arguments (sign-extended) |
+| `__errno_location` | the TLS errno is above 4 GB: a low copy refreshed at each call |
+| `mmap` | an unhinted mapping (port_live's shm) lands high: `MAP_32BIT` |
+| `sigaction` | 4-byte handler / restorer |
+| `backtrace`, `backtrace_symbols_fd` | arrays of 4-byte pointers |
+
+Not wrapped, by audit: memcpy / str* / qsort (pointers in, low pointers out), fopen / fread / fwrite /
+fclose / fflush / fgets / fputc / setvbuf, printf / fprintf / snprintf / sprintf / sscanf (variadic:
+pointers arrive zero-extended; no `%ld` / `%zd` store sites in the port), clock_gettime / nanosleep,
+mkdir / open / close / write / getpid, mincore, exit / abort / _exit, sqrtf. A new libc call in an
+x32 unit needs the same check: does it take or return a pointer-to-pointer, a long by reference, a
+struct with pointers or longs, or a va_list?
+
+### 21.5 Varargs: the one ABI difference inside the game
+
+The game's varargs functions walk their arguments in memory, MIPS style: a cursor from the last named
+parameter's home (`(((int)((char *)&a0 + 4)) + 3) & ~3`), 4-byte slots, doubles 8-aligned. i386 cdecl
+puts every argument on the stack in order, so the walk works there by construction. On x86-64 the
+variadic arguments arrive in registers and `&a0` is a spill slot: the walk reads garbage. 13 variadic
+definitions are compiled (dbg_printf x2, gl_sprintf, gl_osSyncPrintf, gl_rmonPrintf, sys_fatal x2,
+sys_sprintf_00061B30, TextWin_printf, sys_printStub_00067AE8, uso_nullPrintf, ScreenWindow_ctor,
+snd_SetPlayer0ChannelParams_2F9D4), plus 4 `((int *)&aN)[-1]`-style neighbour reads.
+
+The convention under PORT64 (`port/ultra/va_pack.c`):
+- a printf-family function packs its arguments with the standard va_list into an IDO-layout buffer
+  (`port_va_pack_printf`: the types come from the format) and passes the buffer as the cursor, as the N64
+  did (dbg_printf, run 862);
+- the shim's `_Printf` turns an IDO-layout cursor back into an x86-64 va_list (`port_va_from_ido`:
+  each argument in an 8-byte overflow slot, gp / fp offsets exhausted) for vsnprintf;
+- sys_fatal already used `__builtin_va_list` under PORT.
+
+**Next (run 862 stops here):** ScreenWindow_ctor's command list (`Node_runCommandArgs_00038C70(a0, a1,
+cursor)`: tag / value pairs, 0-terminated) needs a packer driven by the Node command arities (the
+doCommand table: which tags take a float, which a pointer); then TextWin_printf, gl_sprintf (its
+`((int *)&a2)[-1]`), sys_sprintf_00061B30, the snd varargs. The boot reaches `sys_fatal("no
+ScreenWindow for zbuffer")` (the string also comes out word-swapped: the %s argument of the fatal path is a
+blob string, to check when that path is fixed).
+
+### 21.6 After the boot
+
+- The gate: a `build64` step (configure + build + test_ultra / test_fs / test_backup as 64-bit) once the
+  smoke run passes, then the M6 exit check: the race / modes / replay traces bit-identical to the i386
+  build (same float code: both are SSE scalar with `-ffp-contract=off`; the i386 build's
+  `-malign-double` is what x32 does natively).
+- In-process presenter: a 64-bit game can link Fast3D / SDL / X11 directly (`-DPORT_GFX_FAST3D=ON`
+  without `-m32`). Those libraries are LP64 and read game memory (display lists, textures, the framebuffer)
+  through host pointers that are low; the port_fast3d entry points are the boundary and get the same
+  audit as 21.4 (no structs with pointers passed by reference across it, or a converter).
+- abi-scan.py reads DWARF: the x32 units' DWARF has address size 4 inside an ELF64 file (ld warns
+  "mangled line number section" on a few units; addr2line still resolves functions). Check before
+  pointing the ABI step at the 64-bit binary.
