@@ -2871,3 +2871,55 @@ Ownership: the generator is agent-c's. `port/gen/blob_types.tsv` is its output: 
 2. The image-header reader.
 3. bootup Data's remaining 55 K.
 4. Run a sequence headlessly once tenshoe links (15.6, "Not done").
+### 18.7 Run 809: XDATA / XCALL naming of the ambiguous binds (agent-g)
+
+agent-g run 809, branch agent-g on main af4cb2eee (before agent-a 810 / agent-c 811 landed; not rebased).
+Gate PASS before each src commit (ROM byte-identical, 3579/3579, check 8225 named calls 0 mismatches,
+XDATA 328 sites 0 mismatches).
+
+| commit | what |
+|---|---|
+| 5c31a6160 | tools: `name-placeholder-calls.py plan --tok T` (another zero-pinned token: `bu4948_ff`, `glv_2838`, `timproc_uso_b5_alias` ...); cc-select applies a `port-bind` inside the `port-alias` target label (a C++ donor's bound function compiles as `_ZN3Obj3runEv`: every such bind was silently dropped, e.g. RcpMgr_service's 20 `D_00000000`); C units `-fno-inline` (a bound static function inlined into its caller kept the placeholder) |
+| 3937de051 | src (tool output): 328 XDATA sites (`name-data-sites.py plan --write`: D_00000000 298, D_arc251C_f / D_1E08_d / import_00000000 14, per-addend functions 16) and 267 XCALL sites |
+| 39b71d163 | port/gen + undefined.txt regenerated |
+| 2463f21d0 | tools: `Rom.jal_target` maps `sym+pad` (a jal past a libultra `.s` copy's leading nops) to `sym`, so plan / check handle `gl_osSetIntMask+0x8` |
+| 51d5966ca | src (tool output): 18 such sites (AudioHeap_Init, Audio_WritebackDCache, dma_writebackCache, sys_writebackDCacheAll, fs_piRead/WriteWord) |
+| d6de37406 | port/gen + undefined.txt regenerated |
+
+**Measured.** binds-left 146 -> 80 (ambiguous 129 -> 62, unnamed 16, unresolved 2). undefined.txt
+114 -> 104. tenshoe link 53 -> 42 undefined on this branch (C++ 16 and audio 3 are fixed on main
+by runs 810 / 811, so after a merge this branch should be at about 23, all plumbing / data).
+Gone: `timproc_uso_b5_alias`, `glv_2838`, `gl2FB74_snd`, `bu_cfa0_v`, `bu4948_ff`, `h2h_void_1204`,
+`gl_proto_1c68`, `gl_25C54_AllocSampleCache`, `gl_func_00000000_21498v`, `import_00000000`,
+`D_1E08_d`, `D_arc251C_f`. `D_00000000` refs 168 -> 41.
+
+**Per-addend data binds and gcc addends (found, not fixed).** A `port-bind: F TOK+N` matches only
+when gcc's symbol addend equals the ROM site's. gcc folds field / element offsets into the
+addend (`gDmaSlots + 1` .. `+10` gives `D_00000000+680`; a struct copy from `&D+0x4A0` reads
+`+0x4A4`..), while IDO keeps them in the instruction. Where the site is spelled in the `.c` the
+fix is XDATA (done for 16 sites). A "nearest ROM addend at or below" rule in cc-select was
+tried and **rejected**: it binds RaceProcess_drawGui's `new_var->nextFlowMode` (`D+52`, the
+GameFlow in Bss+0xF8) to the Data table at +0xCF64, and SnowBoarder_ctor's `+0x34/+0x4C/+0x58`
+fields of the ambiguous +0 object to the +4 object. Sites hidden in header macros
+(`gDmaSlots`, `GL_DATA`) need a PORT spelling of the macro or of the site.
+
+**Left (this branch):**
+- `D_00000000` (41 refs, ~14 live functions): verify bytes differ (o0 / donor splice:
+  SnowBoarder_ctor, SnowBoarder_createBoardShape, GameFlow_restart, settings_setFlag4, app_run,
+  heap_new, RiderAnim_stateFinish); header-macro sites (dma_allocSlot / startRead / startWrite,
+  Sprite_ctor, Shadow_ctor, PolyShape_init, item_registerTemplates, CollShape_height); one source
+  site reaching two objects (RaceProcess_drawGui `new_var`, h2h_createPauseMenu); mgr_openSession
+  (no ROM target found).
+- `snd_HandleSeqEvent_30AF4` (match_imports donor; verify differs): `gl_func_emit` 23,
+  `gl_func_emit_30AF4v` 8, `gl_state_30AF4` 12.
+- `glv_2a44` (TrkMenu_draw_00002A44, twin of `glv_2838`): not pinned in undefined_syms_auto.txt,
+  so `--tok` (which requires the 0 pin) skips it. Next: let `--tok` accept a token that is
+  merely undefined in the object.
+- `gl_32e18_blank` (MCamera_ctor), `gl_25504_AllocSampleCache`, `gl_func_00000000` 10
+  (PolyShape_display 48AEC: "no jal in the build", nameent / snoweffects / heli macro-hidden).
+- Data aliases (15): `D_b1_21D4_d1` / `D_b3_23E4_d1` (timproc b1 / b3: the verify compile
+  fails, "Non-function name referenced in function call"), `D_76F0_fade*` (mp72 donor),
+  `D_445AC_ga/gb` (GfxLib_init donor), `D_2DA4_obj` (game_setupMode), `D_349E0_b`,
+  `D_00000000_a/_i/_j`, `D_4D16C_a`-type unnamed ucode, `gl_26214_aspMainTextStart`,
+  `game_uso_D_807FF458`, `D_b3_23E4_17D7`.
+
