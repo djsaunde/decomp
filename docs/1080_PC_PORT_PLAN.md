@@ -3092,3 +3092,144 @@ sibling of its remap array) is the largest run left in any module.
 1. The remaining SnowBoarder / snd records, by their readers.
 2. Scan the other modules for node command streams (only the bootup rider list is wired).
 3. bootup RoData's 31 bytes, and game.uso Data / RoData.
+
+### 18.7 Run 816: XDATA-aware alias audit, the remaining hazards fixed (agent-a)
+
+agent-a run 816, branch agent-a on main 49db5f0c6: 2ebc64be6 (tool), 4315b0f99 (src). Gate PASS
+(ROM byte-identical, 3579/3579, check 8225 calls / 328 XDATA sites 0 mismatches). tenshoe link:
+22 undefined, all on run 809's "Left" list.
+
+**XDATA in the audit.** Under PORT an XDATA site is its own block-scope decl `__port_xdata_N`
+with the blob's asm label: it prints as `port_x+K`, so run 812's tool took it for the plain blob
+decl, but to gcc it is distinct from that decl and from every other XDATA site. The audit now
+compiles with `-fverbose-asm` and attributes a reference whose operand comment names
+`&__port_xdata_N` to the object `BLOB@xN`. (An address-only `$port_x+K` operand has no comment,
+so it stays the plain blob; that is only an escape, see below.) New hazards it found:
+GameFlow_startMode (boot: a read and a write of bootup Data +0xC478 through two sites),
+TitleDemoProcess_handleInput (boot: two writes of GameFlow +0x34), nodelist_dispatch (two RMWs
+each of bootup Bss +0x3EEC4 / +0x3EECC). `--emit` fixes such a function by redefining `XDATA`
+around it as `(*(__typeof__(tok) *)((char *)&sym + (off)))` (the plain blob decl, declared for
+every blob the function names) and restoring the uso_call.h form after it.
+
+**Fixed.** HAZARD rows 365 -> 13; functions 35 -> 1. All 33 `--emit` functions (run 812's 32
+less SnowBoarder_ctor, plus the 3 above) and, by hand:
+- gen_createScene_00008DB4: its block-scope `extern GfxLib import_...` decls move to file scope
+  under PORT (`#ifndef PORT` around the originals), so the #defines can respell them;
+- MGRRaceProcess_updateSub2: the block went in by hand (the definition follows a
+  backslash-continued macro);
+- `_GLOBAL__sub_I_gGfxLib_412E8_a`: gSysLib_412E8_i and _l are one object
+  (port_bootup_bss+0x3C740), but both definitions are port-dropdata and so cannot be respelled.
+  L's PORT ctor starts with `__asm__ __volatile__("" ::: "memory")`, so I's vptr store stays
+  first. The static audit cannot see the barrier and still lists the pair.
+
+**Deferred (agent-g run 814 owns it):** SnowBoarder_ctor, 12 HAZARD pairs (gPolyGeomMode +4 /
+gPolyFlags / gNodeGlobals / gGfxLib `_90cc_*` tokens). After agent-g lands,
+`port-alias-audit.py BUILD --emit SnowBoarder_ctor` gives the block. Rerun the audit after their
+XDATA spellings too: new XDATA sites can pair with each other.
+
+**Address-taken review (`--all`).** An address that is only pushed or stored to memory is now
+class `escape`: gcc reaches it again only through a loaded pointer, which it must assume may
+point anywhere. That leaves `addr` (taken into a register) for 6 functions. On the boot path
+there are 0 `addr` rows: all 5 boot functions (SnowBoard_ctor, app_initSystem, App_main,
+GfxLib_reset, TitleDemoProcess_handleInput) only pass the address to a call or store it. I
+checked the 6 non-boot functions by hand, and none is a hazard:
+- RiderCam_update_00004948, game_initDdm, item_registerTemplates: reads only through the pointer;
+- Shadow_display_0004B2F4: the matrix loop writes 0x3C208..0x3C248, and its reads are outside
+  that range;
+- the 412E8 static init: a vec_new loop end bound, never dereferenced;
+- SnowBoarder_ctor: deferred.
+
+**Applying blocks.** The insertion helper I used is not checked in. It puts the open block before
+the definition line and the close block after the matching brace. Watch out for block-scope
+extern decls of a respelled token, and for a definition that follows a `\` macro.
+
+### 18.7 Run 815: cfront PMF heads typed u16 x 2; bootup Data part 4 (agent-c)
+
+agent-c run 815, branch agent-c on main 49db5f0c6: d09254f33 (PMF heads), 3c09f4dec (bootup
+Data). Both are `scripts/port-gen-blob-types.py` + `port/gen/blob_types.tsv` only. Gate PASS
+before each commit (ROM byte-identical, 3579/3579, verify-blocks 6/6, clean build OK).
+
+**The PMF bug (from run 812).** Each cfront PMF head `{s16 delta, s16 vslot}` was typed as one
+u32, because the code copies the records with `lw` (the "field" source). On the host the
+swapped head read delta -1 / index 0: a virtual call through garbage in PortCfPmf and in the C
+`MemberCallback_invoke` (Sun, Tv1). Swapped game Data 0xDB0 was `ff ff 00 00`; it is now
+`00 00 ff ff`.
+
+The new `pmf` rule sits next to the vtable-slot rule:
+- A record is a `{small delta, -1}` head before a relocated pointer to Text, where the code
+  accesses the head (the copy). The decode readers themselves go through the heap copies, so the
+  copy is the static reader. The head is forced to u16 x 2 over the copy's u32. The fn word stays
+  `ptr`.
+- The null record `{0, 0, 0}` is a zero record the code takes the address of, next to a PMF head.
+  Vtable `{0, 0}` headers (followed by a `vtbl` slot) are excluded; four of them would match
+  otherwise: 0x848, bootup 0x7528 / 0x1EA48 / 0x20640.
+
+Result: **60 non-virtual records + 1 null**.
+- game Data: 0x840, 0xDB0..0xF58 (null at 0xDC8).
+- bootup Data: 0x7520, 0x1EA38 / 40, 0x1EEC0 / C8, 0x20638.
+
+The game list equals the 55 `kPmf*` constants in include/game/game_uso_data.h exactly. Run 812's
+"59" is one short: 0xF58 (`kPmf_RiderAnim_stateStand`) is a real record. Only PMF lines change
+in the tsv.
+
+**bootup Data.** A new array-argument rule handles a reader that takes `{array, count}` in
+argument registers: the caller's addiu and its `addiu reg, zero, n` type the array.
+`snd_FindNearestF32_2F1B8(f32 key, f32 *arr, s32 n)` gives snd_SoundObjUpdate's curves 0x1C250
+(16) and 0x1C290 (32), and snd_SoundObjSetAngle's 0x1C744 (8) and 0x1C76C (16), all f32. They
+were `unknown`, so they were not swapped.
+
+Known layouts, each cited to its reader in the script:
+- 0x7198: game_initDdm {id, packed};
+- 0x7280: item_createSnow f32 x 4;
+- 0x7290: the camera viewport records, 5 x 7 s32;
+- 0x7B4C: item_createFog f32 parms;
+- 0x7B6C: item_registerTemplates records;
+- 0x8170: the rumble bytes;
+- 0x8478: SnowBoarder_ctor's tint list {key, slot, f32 rgba[4]} x 22.
+
+bootup Data non-zero unknown bytes: **984 -> 478**. All blobs: 7,127 -> 6,005 unknown bytes.
+
+**Left** (non-zero unknown):
+- boarder3 993 (0x3B28, the unreferenced s16[3] run);
+- bootup Data 478, mostly 1-3 byte gaps. Runs of 8+ bytes: 0x1A2E0, 0x1BC5A (audio), 0x1C320
+  (u8 order table?), 0x1E9E0 (BallRotator parms), 0x1F984 (gfx screen), 0x203B0 / 0x203CA,
+  0x20598, 0x20D2C, 0x21AD0 (math), and the fault_printThread {mask, off} records from 0x211EC;
+- game Data 63 (0x106F..0x10E8, next to the rumble patterns);
+- game RoData 61;
+- genproc 33 + 20;
+- bootup RoData 23;
+- map5_data 22.
+
+**Next:**
+1. Node command streams in other modules. Not started this run: only the bootup rider list is
+   wired.
+2. fault_printThread's 8-byte records and the remaining bootup runs above.
+3. game Data / RoData.
+
+### 18.8 Run 814: the last D_00000000 sites, sentinel calls, absolute boot globals (agent-g)
+
+agent-g run 814, branch agent-g on main 08c6c16a2 (not rebased). Gate PASS before the commits
+(ROM byte-identical, 3579/3579, verify-blocks 6/6, clean build OK; XDATA check 387 sites 0
+mismatches, CALL check 8225 0 mismatches).
+
+| commit | what |
+|---|---|
+| 659a49536 | tools: `RomTargets.absolute()` (a USO import of bootup's ABSOLUTE Sym, kind 3, value 0x8000030x, is the libultra boot global: osCicId / osTvType / osResetType ...; name-data-sites checks `XDATA(tok, osCicId, 0)`); `check` finds a C++ member (`Mgr::run`) under its shipped name via the tu `port-alias`; cc-select binds inside the `.set` target of a bound label (a ctor's C1 is `.set` to C2, so Shadow_ctor / Sprite_ctor's binds were silently dropped) and points a dropped object's DWARF location at the dead copy; port-gen-decls treats `#ifdef PORT /* .. */` as a PORT branch (a regen made B1B4's `CF_EXT(.., mem_new, ..)` a "declaration" and broke the build) |
+| 874b051b6 | src: `GL_DATA/GL_RODATA/GL_BSS` and `gDmaSlots` PORT spellings (the section / the Bss+0x3A240 table: the per-addend folding is fixed at the source, `gDmaSlots + 1` no longer becomes `D+0x44`); hand XDATA (comments cite the reloc offsets) in GameFlow_restart, SnowBoarder_ctor / createBoardShape, settings_setFlag4, item_registerTemplates, RiderAnim_stateFinish, heap_new, app_run, Mgr::run (PolyShape_init), mgr_openSession (osCicId); two-object sites split under PORT (RaceProcess_drawGui new_var; h2h_createPauseMenu `base` = ten objects, `H2H_AT(XDATA(..))`); CollShape_height K() = gGfxLib fields; new `SCALL(tok, f)` for calls to a module's Text+0 sentinel (edd / boarder5 / gui readers), the three Text+0 int readers call fs_gdlReadFile(gSysLib) under PORT |
+| 17a814947 | port/gen, blob_types.tsv, undefined.txt regenerated |
+
+**Rule learned:** when a function's XDATA names a target, port-gen-binds removes that target from
+the function's bind set (`xdata_named`), so **every** site of that target in the function must be
+XDATA'd. Naming only the folded-addend site (`GFXLIB(DB)->rcp`) left `gfx_start(DB)` to be bound to
+the *other* target (Data+0). Check the regenerated tu header after a partial XDATA.
+
+**Measured.** tenshoe link 22 -> 19 undefined (D_00000000 38 refs -> 0, gl_func_00000000 10 -> 0,
+D_b3_23E4_17D7 -> osCicId by the regular binds). binds-left 80 -> 72.
+
+**Left (19):** snd_HandleSeqEvent_30AF4 donor (`gl_func_emit` 23 / `_30AF4v` 8 / `gl_state_30AF4`
+12: hand XCALL / XDATA in ROM order); `glv_2a44` (`--tok` on merely-undefined tokens);
+`gl_32e18_blank` (MCamera_ctor), `gl_25504_AllocSampleCache`; data aliases `D_b1_21D4_d1`,
+`D_b3_23E4_d1`, `D_76F0_fadeB/C`, `D_349E0_b`, `D_2DA4_obj`, `D_00000000_i/_j/_a`,
+`gl_26214_aspMainTextStart`, `D_445AC_ga/gb`, `game_uso_D_807FF458`. Most are per-site aliases in
+ambiguous functions: the same hand-XDATA recipe (relocs-per-site dump, then XDATA each site).
+Boot run not attempted (link not at 0).
