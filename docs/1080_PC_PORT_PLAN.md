@@ -1752,6 +1752,90 @@ from scriptCounter / tempoAcc (the old delay-counter estimate over-counted on le
 - Clipping level (above, with the volume-level calls) wants the emulator capture.
 - Which slope each course number is, and whether game type -1 (boot, no menu) can reach a race.
 
+### 15.9 Run 837: the volume path, the clipping verdict, --title, the address gap, tenshoe --audio-out (agent-c)
+
+agent-c run 837, branch agent-c on main 853081eb5. One commit, 4978044e3 (port/audio + port/main.c hook; gate PASS on the agent-c
+tree, `make -C port/audio regress` 54/54, unit tests 147 + 264). This section is uncommitted.
+
+**1. The game's volume calls.** Every music start in the game goes through the option levels:
+- GameFlow_create (bootup_uso_tail3a_10C8C) reads the options (Backup_readOptions; defaults from
+  Backup_resetOptionsData: levels 8 / 8 / 8, flags 8) and calls snd_SetPlayer1VolumeLevel(levels[0]),
+  snd_SetPlayer0VolumeLevel(levels[1]), snd_SetPlayer2VolumeLevel(levels[2]) and
+  snd_SetSoundOutputMode(flags & 3 = 0, stereo). The setters store the level (bootup Data 0x1C0D4 / D8 / DC) and
+  queue AUDIOCMD 0x41 (fadeVolumeScale) for player 1 / 0 / 2 with the float table at Data 0x1C128
+  (0.0, 0.1 .. 1.0): **level 8 = 0.8**. The options menu (settings_vol*Up/Down, 0x123F0..) moves them 0..10.
+- snd_HandleSeqEvent's flag == 1 tail (modes 0, 1, 2, 3-after-race, 4, 10, 11) and snd_UpdateTimers' scheduled
+  start (snd_PlayPlayer1Seq, then gl_ref_00041ED4) re-apply them (snd_ApplyPlayer1 / 0 / 2VolumeLevel): a spec
+  change re-initialises the players (fadeVolumeScale 1.0), so the game always applies the level after one.
+- snd_PlayPlayer1SeqDefault / snd_PlayPlayer1Seq set the channels' volumeScale (0x0101FF00) to 1.0, and
+  seqPlayer->fadeVolume starts at 1.0. Channel volume = volume * volumeScale * appliedFadeVolume, **squared**
+  (OoT's appliedVolume = SQ(...)), so level 8 plays the music at 0.64 of a bare `--seq`.
+- **Title music trigger:** since 07a21b011 (another agent's snd_HandleSeqEvent case relabel from the ROM tables)
+  mode 1 is n64proc's (spec 1, F8, PostEvent 0xA3 = the logo sound) and **mode 0 is titproc's: spec 0 +
+  snd_PlayPlayer1SeqDefault(2)**. `--event 1` alone starts no music, correctly. tenshoe's boot posts mode 1 at
+  retrace 1 and mode 0 at retrace 445 (7.42 s). The same relabel changed the course 0 / 1 race path (the second
+  switch's mode-4 arm calls snd_SetChannel8Mode(2 / 1)), which is why course0 / course1 no longer matched their
+  run 833 goldens on main.
+
+seqrender now does GameFlow_create's step after the boot (`--levels M,S,V`, default 8,8,8; `--raw` = the old bare
+driver), applies the levels after `--spec` (as the flag == 1 tail does), and has `--title [--title-at SEC]`
+(mode 1 at 0, mode 0 at 7.4 s). It logs the three players' fadeVolumeScale and the synthesis reverbs.
+Goldens updated (stated reason: the levels, and 07a21b011 for course 0 / 1); new case `title`.
+
+**2. Clipping verdict: inherent, no mixer gain bug.** With the game's levels:
+
+| render | peak | RMS | clipped |
+|---|---:|---:|---:|
+| `--title` (30 s) | 31276 | 4958 | 0 |
+| tenshoe boot + title demo, 60 s of game (`--audio-out`) | 32768 | 5537 | 9 samples (0.0002 %) |
+| `--seq 2` (was 8637 RMS, 1522 clipped) | 31147 | 5532 | 0 |
+| `--course 0 / 2 / 3 / 4` | 19793..26875 | 3305..4088 | 0 |
+| `--course 1` (seq 5, race spec 3) | 32768 | 9626 | 2157 (0.11 %) |
+| `--spec 3 --seq 19` (credits, mode 13) | 32768 | 10005 | 7888 (0.31 %) |
+
+Race spec 3 is louder than the boot spec for the same sequence (seq 5: RMS ~11000 in spec 3 against 7809 in
+spec 0: more notes, so fewer voices stolen). The checks against the ucode: ENVMIXER is VMUDM (s16 x u16 >> 16:
+the note's 0xFFF0 envelope = unity, so no hidden x2), the dry / wet sums and MIXER are saturating per voice as
+on the RSP (there is no separate final clamp: every voice add saturates), the reverb parameters are the ROM's
+(spec 3's reverb 1: window 0x1800, volume 0x77FF, decay 0x5800, leak 0x3000 / 0xD000, read at run time and
+found byte for byte at ROM 0xDBEF50; leakLtr 0xD000 is a negative MIXER gain, from the ROM). The residual
+clipping is in the two loudest sequences, at the game's own levels: the N64 saturates the same sums.
+
+**3. Bad addresses.** port_audio's valid-address test is now the mapped ranges: every /proc/self/maps
+mapping inside [__executable_start, _end) plus [heap start, sbrk(0)) (fallback without /proc: the old span).
+The gap between _end and the randomised brk start no longer passes. `SEQRENDER_GAPTEST=1`: a LOADBUFF from the
+page after _end (K0 and raw spellings) counts badAddr +2 and does not fault.
+
+**4. Events 0x18 / 0x1C: silent in the ROM's data, not a port bug.** Both are mode 4's per-course cues
+(game types 1 / 3: course 7 -> 0x18, course 5 -> 0x1C). snd_dispatchEvent's default arm writes the event to
+player 0 channel 0's IO; seq 0's channel 0 dyncalls table 0xAC, whose entries 0x18..0x1F start channel 14 at
+0xAFC..0xB1E: `ldi note; rjump` to a common tail (0xB40 `vol 100`, 0xB42 `stseq` the note into layer 0's script
+at 0xB69 and layer 1's at 0xB74), layers play font 2 instrument 0x7F (drums).
+- 0x1C: note 0x2C. **Font 2's drum 0x2C is an empty entry** (offset 0 in the ROM table, audio_bank +0x1540 +
+  0x20F0 + 4 x 0x2C), so Audio_GetDrum returns NULL and the layer mutes. Its siblings 0x2B / 0x2D / 0x2E / 0x30
+  / 0x29 exist and sound.
+- 0x18: `cc 3c f4 44` jumps to 0xB44, two bytes past the stseq at 0xB42 (its siblings land on 0xB40 / 0xB42),
+  so it runs `0B` (delay 11) and `69` (ldio 9, past seqScriptIO[8]: channel byte 0xDD, a byte of the filter
+  pointer, NULL here on both machines) and never stores 0x3C: layer 0 plays the script's default note 0x2A,
+  and **drum 0x2A is empty too**. Channel 14 does start (SEQRENDER_TRACE0 shows it with both layers).
+Debug aids: `SEQRENDER_TRACE0=1` (player 0's channels per step), `SEQRENDER_SFXTAB=font` (that font's drums).
+
+**5. tenshoe `--audio-out FILE.wav`.** port/main.c: one option, a weak call to `port_audio_capture_open` before
+port_game_boot and `port_audio_capture_close` after the run (agent-g's file; the hook is 12 lines). port_audio.c
+appends every AI buffer to the WAV, logs the music mode / command word when they change, and prints peak / RMS
+/ clipping and the mixer counters at close. Title demo, 1800 steps (60 s):
+`run32 <build>/tenshoe --rom baserom.z64 --frames 1800 --audio-out title.wav` ->
+/tmp/claude-1000/c837/tenshoe_title.wav (63 s: 2014752 frames, badAddr 0, unknownOps 0).
+Open:
+- **The DAC model faults in tenshoe.** With `PORT_AUDIO_DAC=1` (osAiGetLength = frames queued - 32006 / 60
+  per retrace, seqrender's model) tenshoe dies in AudioSeq_SequenceChannelProcessScript (address 0x1, via
+  AudioSynth_DoOneAudioUpdate -> AudioSeq_ProcessSequences) a moment after mode 0 starts seq 2; seqrender with the
+  same model and the same events does not. Default is off, so the WAV runs 5 % long (560-frame buffers).
+  Next: a write watch / trace on player 1's channels at that update.
+- **The N64 logo sound is missing in tenshoe** (the WAV is silent until the title music at 7.8 s), while
+  seqrender's `--title` plays 0xA3 at 0.44 s. In the boot, mode 1 runs at retrace 1, possibly before
+  app_runInit's snd_PlayPlayer0Seq0 or while spec 1 is still loading; trace the order.
+
 ## 16. M1: link plumbing
 
 Run 612 (agent-a), on main e58ff9d67, commits f46b22b3d and cc6a576df on agent-a. The goal is a
