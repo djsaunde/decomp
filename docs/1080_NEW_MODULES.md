@@ -1481,6 +1481,97 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     - v*.py: the batches (v12-v15, v22 callee types; v16-v19 zi levers; v20 / v21 prologue forms;
       v6 w1 dummies).
 
+- Run 762 (agent-h, commits c57226a6e, 76af8a2e5 and 7cb0f02e1 on agent-h, NM only, no renames; 3576 / 3579, gate PASS
+  each, exact set identical (lost: none), 592 words, frame 400, offsets unchanged).
+  - **0xC90 NM 98.05 -> 98.60** (127 -> 73 positional diffs). There are two edits, and the long long callee type is
+    gone (int again, d in v0 as in the target):
+    - **The EE w1 is the stock gDPSetPrimDepth body**, `_SHIFTL(z & 0x7FFF, 16, 16) | _SHIFTL(0, 0, 16)`. ugen gives
+      the redundant `& 0xFFFF` a t-register ring temp, and as1 deletes it, so it is a hidden pop.
+    - **The texture's dl call passes self->tex as a second argument.** The target loads tex into a1 before the jal
+      (`lw a1,44(a0)`), so tex takes no ring temp.
+  - **Key finding: the ugen t-ring is decided backward.** A block's t6..t9 choices depend on the ring temps that come
+    **after** it in the function, not before. Evidence:
+    - The long long move in the prologue shifted the cam load before it, but not the post-call block after it.
+    - Adding one tail packet shifted the prologue, both post-call blocks and the loop head.
+    - The hidden pop at the EE packet shifted every block before it (prologue to EE) by one, and nothing after.
+    - Code before the first jal never moved the ring after it (run 757). That is consistent with this.
+    - So for a ring offset over a prefix of the function, look for a hidden pop right where the offset ends.
+      Here the offset ran from the prologue to the EE packet. Run 757's long long only "fixed" the prologue
+      because its move sits after the cam load.
+    - The ring is t6..t9 only (t0..t5 are all uopt-coloured somewhere). A double shift (`<< 8 << 8`, `<< 15 << 1`)
+      or a redundant mask gives the same bytes as the stock macro. 3-4 extra shifts rotate the ring further.
+  - **98.60 -> 98.62:** the E7 / BB tail packets go through gDPWord's `_g` (a0 / a1 as in the target) and the other
+    four reuse g. The two `_g` words fill the two free words below r. A third `_g` makes the frame 408+. In the 64-way
+    g / gDPWord grid, frame-400 states peak at 70 diffs.
+  - **98.62 -> 98.78:** agent-e's run 760 z0 recipe (below; agent-e found it, agent-h applied it), with the c term
+    in the BB tail packet's w1. On this tail form the c term scores 98.78 on any packet from BB on, and 98.76 on
+    E7. With the c term in, tail packets 3 / 5 / 6 are back on a3, and no g / gDPWord form gets below 62 diffs.
+  - **Prologue count (plan item 1), not reached.** Pre-dummies (dumK before next()) and dum1 / dum2 after it do
+    not change the word map, and dum3 after next() stays needed. Neither do next_1 / nextN / nextI / nextN_1 /
+    me() forms or named-variable counts (`i = c->dl->count++`, etc.). Words: each dumK statement reuses the same
+    pooled words, and only the third word matters. Named `x = count; count = x + 1` forms give 590 words.
+  - Left (62 diffs):
+    - the prologue count (t3; the target has v1);
+    - the xh CSE (a3; the target has a2);
+    - the f10 load offset at 270;
+    - z (a2; the target has a3);
+    - the FB clamp presets come after the count;
+    - the E4 count (a1; the target has v0) and the texrect clamp registers that follow;
+    - tail packets 3 / 5 / 6 (the target has a2 / a1 / a3; ours are a3).
+  - Tools: /tmp/claude-1000/agent-h/r762/:
+    - g7.py, r.py, rc.py and trp.py are copies of the r757 tools, retargeted to r762;
+    - v1-v3 and v7 are second-call ring probes;
+    - v8 / v9 show the backward ring: `tail2` is the probe that revealed it;
+    - v11 / v12 are the EE hidden-pop variants;
+    - v4 / v5 / v13 are the prologue-form grids;
+    - v14 / v17 are the tail g / gDPWord grids;
+    - v15 / v16 apply agent-e's levers.
+
+### snoweffects.uso 0xC90 y0 t3 / E4 pointer t4 (agent-e run 760, research only, no commits)
+
+- **Fixed, code-free: objdiff 98.598 -> 98.758 on agent-h's run-762 head (c57226a6e).** Positional diffs go from 73
+  to 65, at 592 words, frame 400, sp offsets unchanged (0 mismatches). On the origin/main body (98.01) the same three
+  edits give 98.007 -> 98.167. The proposed file is /tmp/claude-1000/agent-e/w760/snoweffects_uso_ncc_nm_h_e760.cpp,
+  and e760.diff is its diff against c57226a6e.
+- **Colours after the change:** yl (s16)(y0 << 2) t0, p t1, c t2, y0 t3, gt t4, the same as the target's
+  `mfc1 t3` / `sll t5,t3,2` / `addu t4,..` / `sw ..,0(t4)` / `sw ..,4(t4)`.
+- **Why `if (v) {}` could not do it:** y0 is 40 / 6 = 6.67, and the target order needs p > c > y0 >= gt (gt 7.5;
+  y0 wins ties because its LR index is lower). Every in-loop use weighs 10, so den 6 only gives 6.67 or 8.33. At 8.33,
+  y0 ties yl (e1096, 50 / 6) and wins it, so it takes t0. Duplicate `if (y0) {}` lines add neither uses nor blocks.
+- **The recipe:** all three edits are needed; dropping any one of them scores lower than the base.
+  1. **yl +1 use, so it stays first:** E4 w1 written as `((s16)(yl) > 0 ? (s16)(yl) + z0(0) * (int)(s16)(yl) : 0)`,
+     giving 60 / 6 = 10.
+     - The `> 0` sense is the target's (`blez t0`; ours was `bgez` from `MAX(0, yl)`).
+     - The sense flip on its own (stock `MAX((s16)(yl), 0)`) is also a gain: 98.598 -> 98.716.
+  2. **y0 and p, +1 use and +2 uses in the loop:** `y1 = y0 + hgt + z0(0) * ((int)p + (int)p + y0);`, giving y0 8.33
+     and p 141 / 16 = 8.81.
+  3. **c +16 uses outside the loop, where each use weighs 1:** E7 tail `gW(g, 0xE7000000, z0(0) * ((int)c + .. 16 terms));`,
+     giving c 151 / 18 = 8.39 (above y0 8.33, below p). Anything from 16 to 20 terms gives the same bytes.
+     - In the prologue (`g->words.w1 = d + ..`) the same terms change the code (591).
+- **What adds code (avoid):**
+  - Pointer terms alone or with a loop-invariant carrier, e.g. `z0(0) * (int)c`. The 0 product is hoisted out of the
+    loop as `or t5,zero,zero`. Include a loop-variant term (y0 / p), or put the terms outside the loop.
+  - Raising both c and p with in-loop terms (any carrier or split, and also ^ / | / * mixes) gives 591. An xl
+    (s16)(x0 << 2) CSE then appears early, and p gets den 17.
+  - Any extra term inside the RDPHALF_1 / _2 ternaries gives 594 words / frame 408 (s4 is saved). The same happens to
+    a gt use there.
+  - Terms on xh / xl inside the E4 w0 / w1 MAX arms keep 592 but change the layout (97.1).
+- **Still open:**
+  - B4 pointer: ours t4, target t3. M-124 (the prologue count plus the s-outer word) takes t3 in ours; it is a3 in
+    the target (agent-h run 757).
+  - The a-register swaps: xh a3 / a2, MAX temp M-128 a2 / a3, E4 count a1 / v0, y1 sum v1 / v0, z a2 / a3. The
+    E4-count one is an order problem. Our y1 = y0 + hgt (IR before the E4 count) is live across the count, while the
+    target computes it after `sll t7,v0,3`. Computing y1 inside the gTR argument instead gives 97.65.
+  - A 200 s random climb of z0 terms at the x0 / y0 / z / x1 / y1 / drawn++ sites found nothing above this state.
+- Tools, in /tmp/claude-1000/agent-e/w760/:
+  - v.py: variant runner (base from the VB env) printing score plus the colours of yl / p / c / y0 / gt / M-124 / x0;
+  - v2.py: the V5 recipe;
+  - s1-s17.py: the batches;
+  - trp.py / tr.py: uopt pick order with num / den;
+  - keep.sh: keeps the uoptlist / x.lr / x.ord;
+  - hc.py / hc2.py: z0-term climbs;
+  - mkv.py: writes one variant.
+
 ### snoweffects.uso 0x6000+ (agent-e run 639)
 
 - +2 EXACT (commit feb67fb6a on agent-e): 0x8C60 and 0x9FE8, both IDO 7.1 NCC. Own donor
@@ -2504,6 +2595,40 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   - var*.py: the toy matrices;
   - ev.sh, fz.sh, vn.sh.
 
+### snoweffects.uso 0x28E0 NM 95.39 -> 95.44, frame 520 (agent-c run 759)
+
+- **Commit 2a486602e on agent-c** (gate PASS, 3576 / 3579, exact set identical, no renames; 793 words, frame 520).
+  `last` is now a pointer local `lp` set in the for-init (`for (i = 0, p = self->items, lp = &self->lastCam; ...)`)
+  instead of a reference initialised at the top. The hoisted &lastCam LR is created after i's, so it loses the
+  2.38 priority tie: i / lp take t3 / t4 as in the target (store order `sw t4,lp-spill` / `sw t3,312`). reg-diffs
+  247 -> 239.
+- **Why agent-e's `+=` recipe costs 4 words here:** not the block or `assign()`, it is `t = ...` itself. It adds one
+  block to c's (M-16) LR (bv 46 -> 47), which raises the s-register cost from 14.75 to 15.0. That ties the t cost (15,
+  c crosses randf), and the tie goes to t3: c spills to its home 504 (+3 words) and K-332 takes s2. Removing a loop
+  block to compensate (`if (1) {}` after drawn++, one of the cy / cz ifs) breaks other things (794 / 528, or the cy / cz
+  sinking). Joint climbs (c759/sp7.py) top out at 95.03.
+- **Spill offset = frame - M - 4 * spills.** Ours: M 408, one spill -> 108. The target's 116 means M 400 (the
+  gDPWord macro's named `_g` costs one fresh M word per site; snowW sites are pooled).
+- **The 794-word lead (95.79 % objdiff, positional diffs 426 vs 592):**
+  /tmp/claude-1000/c759/keep/28E0_n1b_794w_95.79.cpp. On top of the commit it has:
+  - a `SnowDLHolder2 *tex` local (`tex = self->tex; d = gl_func(tex->dl);`): self->tex becomes an LR in v0 (the
+    target's `lw v0,44(s1)` twice) and the t6..t9 rotation lines up through the 0x06 packet;
+  - FA: `(((unsigned int)(self->r * 255.0f) & 0xFF) << 24)`: the `& 0xFF` folds away but leaves the target's
+    `or t8,t7,zero` (+1 word; the t-rotation then matches through the FA packet);
+  - EE back through gDPWord (w0 stored before the depth), B4 and BA through snowW (M back to 404 with tex).
+  The only extra word left is the draw-block `mov.s $f22,$f2` (z var vs the p->pos.z CSE).
+- **The z mov.s is the blocker.** Using z in all four draw terms removes it, but then the draw-block cx / cy pieces
+  drop to priority 6.7 and take f26 / f28 (two more mov.s), K0 takes f30 and halfW spills (798 words, frame 528); the
+  same with any other variable for the screen x / y. In that form wx / wy also come out swapped (wx f16, wy f24; the
+  target wy f16, wx f24; wx 70/6 beats wy 70/7 in every init order).
+  A draft that drops the draw-block `z = p->pos.z` is 793 words / 95.79, but its depth uses the stale loop-top z (the
+  wrong semantics, kept only as a reference: keep/28E0_STALEZ_793w_95.79_semantics_wrong.cpp).
+- **Next:** remove the mov.s in the n1b lead; or find another word in n1b, which is 1 over. A semantics-preserving
+  draw-z spelling whose LR is the loop z's f22 is needed.
+- Tools in /tmp/claude-1000/c759/: hc2.py (hill-climb with a soft word / frame penalty, so it can climb from 794+),
+  one.py (evaluate listed knob vectors), od.py (aligned operand diffs), slots2.py, tr.sh (uopt colouring trace; its
+  fN names are one slot off: trace f2 = f0, f12 = f2, ..., 35 = f30), sp7-sp13.py knob specs.
+
 ### snoweffects.uso 0x28E0 NM 95.04 -> 95.39, frame 520 (agent-c run 752)
 
 - **Commit 6ff863693 on agent-c** (gate PASS, 3576 / 3579, exact set identical, no renames; 793 words, frame 520).
@@ -3029,6 +3154,48 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   - Extra folds on pf (`zp(pf, 0)`) move pf / old-h but did not produce the split. Old-h folds (`zh(HF(0x148), 0)`)
     are worse (raw rows about 960).
   - Variants: /tmp/claude-1000/agent-e/w756/s11.py and s12.py.
+
+## heli.uso (agent-g run 761)
+
+- **0xB08 NM 97.79 -> 97.84 % (agent-g f74783a86; gate PASS, 3576 / 3579, exact set identical, no renames, 943 words).**
+  This banks agent-e's run 756 lever: `zf(-0.3f, 0)` in the HF(0x144) store address.
+- **The pitch "split" is not a uopt LR split. It is an un-propagated clampf parameter copy.** The target's
+  `mov.s f2,f16` is `v = f` (the inline's param copy). The first test reads f (f16), and the second test and the
+  `return v` arm read v (f2). The result goes to M-164 (f12) through three `mov.s f12, X` arms. uopt keeps the copy
+  only when v is multi-def at copy-propagation time and the extra def is folded away later.
+  - The kept form: `clampz7(v, lo, hi, z) { if (v < lo) return lo; if (hi < v) return hi; if (zf1(v, z)) v = lo;
+    return v; }`, called with z = 0. zf1 = `z * (int)v`; uopt folds it only after copy propagation.
+  - The copy appears with the dead def before the tests (z4), after them (z7 / z12) and in the arms (z5). A plain
+    `if (z)`, an `if (0)` or a second named copy (g / pf / yaw / a local w) is propagated, so no mov appears.
+    Explicit `v = lo / v = hi` arms (K1 / K2) keep a copy but give the wrong arm shape.
+  - The copy is the shared EDG temp M-160 (or M-312 for a local `w`), not a new frame word. The angle blocks no
+    longer need f, so f's role in the target is the lerp block only.
+- **The pf statement is two statements in the target:** `pf = dot(fwdAx, vel) / 200.0f; pf = pf + fwdAx.y * (0.1);`
+  (P1). This gives the target's `cvt.d.s f4,f8; div.s f0; ..; cvt.d.s f8,f0; add.d; cvt.s.d f0` exactly.
+  - On the copy body it is worth +0.9 (94.08 -> 95.01). On the committed body it is worse (93.97), because there
+    the ring shifts.
+- **Where it stands:** `r761/w/R4_0_4_q5.cpp` (fwdOf, no `if (1) {}` before fwdOf, P1, clampq5, zf4 pf, zf4(-pi/8)
+  in the HF(0x148) store address, not in the clamp store). The 28 rows above the pitch store are byte-identical to
+  the target. -pi/8 is f18 and the result is f12 (both target). Three colours are still wrong:
+  - old-h is f16 (target f2);
+  - f is f2 (target f16);
+  - the copy is spilled to 56(sp) (target f2).
+  The length is 944 or 945 words (target 943), so it can't land yet.
+  - zf on -pi/8 in the clamp store address extends -pi/8's LR across the arms to block 98. Put it in the block-91
+    store address instead.
+  - Extra zf uses of the local copy (`zfK(w, z)`) don't raise its priority. The copy LR (pri 1.5) is picked last,
+    with all six colours forbidden.
+- **Next:** the copy needs f2 before f is coloured, and f needs f0 / f2 / f12 / f14 forbidden.
+  - f's only neighbours are the copy, -pi/8, M-164 and +pi/8, so f0 / f14 need a codeless holder over f's block-91
+    tail and arms. That is agent-e's zf-constant holder, now aimed at the copy's colouring order rather than a
+    split.
+  - Also: raise the copy above f (its uses are in the arms; try a zf on v in the clamp store address with the copy
+    live there).
+  - Scratch: /tmp/claude-1000/agent-g/r761/
+    - `v.py` = score;
+    - `pm.py` / `cmpw.py` = pitch-window diff against the target;
+    - `lr.sh` + `pk2.sh` = LR picks;
+    - sweeps s13..s23.
 
 ## heli.uso (agent-g run 758)
 
