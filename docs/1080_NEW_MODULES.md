@@ -1642,6 +1642,37 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     - a1-a8.py: the batches;
     - S1.cpp: the separate-statement base.
 
+- Run 772 (agent-h, commit 5e09a40ce on agent-h, NM only, no renames; 3576 / 3579, gate PASS, exact set identical
+  (lost: none), 592 words, frame 400, sp offsets exact).
+  - **0xC90 NM 98.90 -> 98.99** (53 -> 44 positional diffs), built on run 768's S1 (separate-statement texrect,
+    `primDepth(z, c)`). Two levers:
+    - **Folds in the buf index, not in an `if`.** `&dl->buf[n + zc(0) * n + zc(0) * (n + n)]` in the B4 / B3 appends
+      (nextBIc_1 / nextNc_1; zc is z0 declared before GCtx) adds counted uses of the count with no code and no block.
+      Each *distinct* fold is +1 use (`n + n` inside one fold still counts once). Two folds on each of B4 / B3 take
+      M-132 (counts) 37.5 -> 52.5, above M-228 (dl temps, 50): counts v0 / dl temps v1 as in the target. A third
+      distinct fold (`(n + 1)`, `(n - n)`, `(n * n)`, ...) emits code. Any fold on FB (nextBI_1) splits a block (bad).
+    - **Comma dummies move one clamp temp to another pool word.** `(dmK(0, ..), _SHIFTL(MAX(yh), ..))` in the w0
+      statement: the dummies take the next pool words (the xh temp keeps -124), so the yh temp lands K words deeper.
+      dm1 on yh puts it on -132 (the count word, v0). dm3 on yl puts it on a loop-only pool word (M-240, with
+      t-outer), which takes a1 as in the target. M-128 is then just {prologue dl, s-middle}.
+  - Not reached (each tried on the committed body):
+    - **yh to a1.** dm3 on yh too joins M-240 (30.0, picked before M-160 and given a0). A `z0(0) * (int)(g2)` fold in
+      the B3 w1 raises M-160 to 40, and then yh / yl take a1. But the E4 count is then a1, so as1 hoists the xh
+      `addu v0,t3,s1` into the FB block and fills a delay slot (591 words, 98.32). The E4 count needs v0, which means
+      M-132 must not be live in block 21. No E4 form (22 tried), no FB form (18) and no `if (..) {}` between FB
+      and E4 (24) keeps 592.
+    - Dummies in the RDPHALF_1 s-middle (for its a1) need new pool words: frame 408+.
+    - Prologue forms: named locals (`DList *l`, `int n`), `me_K` / `next_K` hops, and pad / dum3 trades. None keeps
+      frame 400 with exact offsets and moves the count off M-124.
+    - Tail packets 3-6 (target a2 / a0 / a1 / a3; ours t0): `putK(dummies.., g, w0, w1)` inlines need new pool
+      words (frame 408+); put0 loses.
+    - EE pointer (v1; the target has a1): `if (..) {}` inside primDepth costs 43 diffs; g folds do nothing.
+  - Left (44): prologue count / g (a3 / t0; the target has v1 / a3), the EE pointer, the yh clamp and its preset
+    (v0; the target has a1), s-middle (a2; the target has a1), tail packets 3-6.
+  - Tools: /tmp/claude-1000/agent-h/r772/: vr.py (runner with the dummy defs and the prologue diff count),
+    fo.py (forced-colour compile; forcing cascades here, so it is not useful), p1-p14.py (batches), C1.cpp (the
+    committed body, absolute include).
+
 ### snoweffects.uso 0xC90 y0 t3 / E4 pointer t4 (agent-e run 760, research only, no commits)
 
 - **Fixed, code-free: objdiff 98.598 -> 98.758 on agent-h's run-762 head (c57226a6e).** Positional diffs go from 73
