@@ -1043,6 +1043,52 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     positional diff count; dd.py = branch-normalised opcode diff vs expected, `dd.py file.cpp [fn]`; fc.py = the
     C90 runner; md.py = -g3 local map for 47D4; b3-b7.cpp the 47D4 steps).
 
+- Run 717 (agent-h, commits a422ef1ae + 773098895 on agent-h, NM only, no renames; 3570 / 3579, gate PASS each).
+  - **0xC90 NM 85.23 -> 89.59 -> 90.99 %** (objdiff, snoweffects_uso_ncc_nm_h.cpp). All five callee-saved homes
+    now match the target: self s0, hgt s1, i s2, the scaled() return-temp address s3, wid ra. Also x0 t0.
+    - **Named depth int:** `int z = (int)(..* snow_ro_4); gDPWord(.., 0xEE000000, (z & 0x7FFF) << 16)`. The
+      target keeps the truncated depth in a uopt register (a3); inline it is a ugen temp. Effect: 85.23 -> 89.57.
+      Reusing `d` for it is worse (88.9).
+    - **Constructed return in scaled():** `return SnowV3c(a.x * sx, a.y * sy, a.z * sz)` through a
+      3-float constructor (no default ctor; `SnowV3c v = scaled(p->pos);`). The ctor parameters take
+      f0 / f2 / f12 as in the target, with no frame words. Named x / y / z locals cost 3 words between __V and r.
+      Effect: 89.59. With this, v / __V / r sit exactly 4 words above the target's offsets (236 / 220 / 208 vs
+      220 / 204 / 192).
+    - **The pooled edg temps decide the GPR picture.** next()'s dl / old-count temps (M-152 / M-148 in the trace)
+      are function-wide edg temps. The prologue packet, every loop / tail packet and the texrect's MAX / MIN
+      ternary results all reuse them. That makes count one 10-block LR (pri 26 < the pri-30 packet pointers),
+      so it lands in a2 instead of the target's v0.
+      - A different inline name with the same body changes nothing; neither does the count type
+        (unsigned / long).
+      - What works:
+        - `nextN()` (`int n = dl->count++; return &dl->buf[n];`) on the first packet only. The prologue then gets
+          its own count LR (a2 / v1 as in the target) and s2 appears.
+        - An `inline int imax0(int a) { return a > 0 ? a : 0; }` for the w0 clamps (xh / yh only). The clamps
+          get their own temps. Result: wid ra, hgt s0, self s1.
+        - Dropping `if (hgt) {} if (wid) {}` then swaps self / hgt to the target's s0 / s1 (90.99).
+    - **Flat or worse on top:**
+      - imax0 on xl / yl as well (90.0 / 90.9);
+      - imax0 taking `s16`, or an if / return body;
+      - named xh / yl / (s16) ints, or `d` reused for them (bytes identical: uopt forwards them);
+      - scratch[] > 1 (frame 408);
+      - re-adding `if (wid / hgt / self / c) {}`.
+    - **nextN() on the EE packet** gives the target's y0 t3 and z a3 and the exact length (592 words;
+      positional diffs 476 -> 403), but objdiff drops to 89.4. Its EE count / dl are then a2 / v1 (target v0 / v1).
+      This is probably the right direction if the loop's count can be made to take v0.
+    - Left:
+      - The loop count / dl / packet colours. The target has count v0, dl v1, EE packet a1, FB a0, E4 t4, B4 t3.
+      - c in t4 (target t2).
+      - self->tex is a uopt LR (a1) at entry in the target.
+      - The FP side after the projection: the target keeps sy in f30 and spills 3 FP values to sp+88..96; ours
+        spills sy to its home.
+      - The frame: v / __V / r are 4 words high. scratch[] is down to 1 word, so the 4 missing words above v are
+        real locals, not padding.
+  - Tools: /tmp/claude-1000/agent-h/r717/:
+    - fc.py: the runner; prints (normalised diff, positional diff, length, frame, objdiff);
+    - md.sh: the -g3 local map for C90;
+    - hc.py / hc2.py: the per-site next-form climb;
+    - v*.py: the batches.
+
 ### snoweffects.uso 0x6000+ (agent-e run 639)
 
 - +2 EXACT (commit feb67fb6a on agent-e): 0x8C60 and 0x9FE8, both IDO 7.1 NCC. Own donor
@@ -1761,6 +1807,47 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     | ternary fadeIn | 88.16 |
     | inline `snowWrap(cx, cy, cz, &wx, ...)` with by-value coordinates (c goes back to s2, but +9 words) | 78.7 |
 - **0xC90: not reached.**
+
+### snoweffects.uso 0x28E0 NM 90.15 -> 90.19, frame 528 (agent-c run 716)
+
+- **Commit 8e0e53df3 on agent-c** (gate PASS, 3569 / 3579, no renames; objdiff report 90.24, fz.sh 90.19,
+  positional diffs 574 -> 518, 793 words, frame 536 -> 528). The change: inv / sx / sy declared in the draw
+  block (`float inv, sx, sy;` after the near / far test) and sy computed before sx.
+- **Compiler: stays on 7.1.** Under `tools/ncc721.sh` the in-tree donor scores 83.97 (808 words). The POD
+  SnowV3d (no ctors, field-by-field op-) gets frame 520 but scores 82.5 (805 words). Its draw block colours as on
+  7.1: inv f24, halfW spilled. The ct3 / ct0 forms do worse (73-72). Mnemonic-only diffs: 7.1 49, 7.2.1 85-88.
+  The extra ones are in the op- / op* copy chain (target lines 250-300). That chain is the 2.19 shape, so
+  nothing here points to 7.2.1.
+- **Why inv / sx / sy lose the caller-saved registers** (`-Wo,-zdbug:5`, c716/tr.sh + iu/x.lr). In lre.py's
+  float columns, col 24 = f0, 25 = f2, 26 = f12, 27 = f14, 28 = f16, 29.. = f18.. and 35 = f30.
+  - uopt splits each of inv / sx / sy into a variable LR and an expression LR.
+    - The variable LR runs from the def in bb45 to the x0 / y0 / EE use in bb49 (2 refs, 5 blocks, pri 10).
+    - The expression LRs are the in-block uses and the compares in bb45..48: udiv e854 pri 50, the products
+      pri 20, -halfH pri 15.
+  - The expression LRs colour first and take all five caller-saved registers (f0 / f2 / f12 / f14 / f16 = the
+    target's sx / w / sy / inv / -halfH). The variables then get f24..f28, joined by `mov.s` copies (ours has
+    5 mov.s, the target 3).
+  - In the target each value has a single register (no copies), so the variable and expression LRs must
+    either be one LR or share a colour. Through bb45 they interfere, so sharing a colour is impossible.
+  - K0.0 then takes f30 (pri 9.17) and halfW splits.
+- **Flat or worse, all on the draw block:**
+  - 1080-point grid (c716/gen2.py, grid2.py), 640-point grid with `if (1) {}` / `if (inv) {}` / `if (halfW) {}` /
+    `if (halfH) {}` cuts (gen3.py), then a 5.8k-compile perturbation climb with per-site packets and the cy / cz
+    ifs (gen4.py, rp4.py; 90.217 is reachable, but only at frame 536).
+  - The grids covered: inv / sx / sy scope (loop / block / function), sz before / after, sx / sy order, a
+    `-halfW` local before / after inv, compare forms, `halfW + sx`. None gives inv f14 or halfW f30 with
+    sx / sy in registers.
+  - Two-statement spellings (`sx = A * inv; sx *= halfW;` and others) give identical bytes.
+  - `snowIn(const float &v, ...)` helper: sx goes to memory (84-86). With `float h` by value, halfW gets f30,
+    but sx is stored at sp+276.
+  - No sx variable (the expression written at all three uses): halfW f30, inv f0, 89.36.
+  - An `if (1) {}` cut after sx: halfW f30, inv f0, 89.4.
+  - `if (halfW) {}` at any loop or draw position emits `c.eq.s` (float empty ifs are not code-free): 88-89.
+- Next: get one LR per value. The target's sx is defined in bb45 and used up to x0 with no copy, so look
+  for a source form where uopt does not substitute the expression into the compares. Candidates: a store
+  between def and compare, sx assigned in both arms, or inv / sx / sy as inline-function parameters.
+  Frame: halfW's spill slot and the copy-temp layout (target triples at 176 and 216..260, ours 180 / 196 /
+  240 / 252 / 300).
 
 ### snoweffects.uso 0x28E0 NM 88.9 -> 90.15 (agent-c run 712)
 
