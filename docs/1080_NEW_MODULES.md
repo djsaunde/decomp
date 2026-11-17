@@ -3687,6 +3687,36 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
 - **Next:** in m3c0, lower M-220 below 3.0 (num <= 8 at den 3; the pitch side has 5 uses) or move set3's pooled
   words so that M-168 leaves block 70; then fix the 531 swap.
 
+## heli.uso (agent-g run 777)
+
+- **0xB08 NM 99.08 -> 99.13 % (agent-g a9b42d1a8 99.10, f64b6905a 99.11, 12f9f5cba 99.13; gate PASS each, 3576 / 3579,
+  exact set identical, no renames, 943 words, frame 368).** Raw rows 20 -> 13; register-masked 15 -> 9. Scratch:
+  /tmp/claude-1000/agent-g/r777/ (`v.py`, `rd.py`, `ncs.sh` = ncc.sh plus the ugen `-l` listing, with `.loc` lines).
+  Committed source = `c25.cpp`.
+- **a9b42d1a8, row 585 (the clamp-arm reload):** `mq(float s)` by value, and the vel statement drops the
+  `dumf(HF(0x164))` pad (the by-value parameter takes that pooled word, so the set3 words do not move). HF(0x154) is
+  now loaded before mq()'s `if (1) {}` cut, at the clamp join, so uopt PRE puts the reload in the clamp arm and the
+  fall-through keeps the compare's f0. The bc1fl delay slot is then the join's `lwc1 f4,0(v0)`, as in the target.
+  - With `const float &s` the load sits after the cut and is not PRE'd. `float t = s;` before the cut also fixes 585,
+    but t is a fresh inline named word (frame map -4).
+- **f64b6905a, row 53:** `(char *)(delta + (int)p)`. The int sum keeps the source order (`addu a0,t4,v1`); every
+  pointer-sum spelling (`delta + p`, `p + delta`, `&p[delta]`) puts p first.
+- **12f9f5cba, rows 95..98:** case 3's test, its `HI(0x16C) = 1;` arm and the `if (1) {}` cut on ONE line. as1 then
+  issues the tg addiu, the add.s and the `li 1` in the target's order. (Moving the arm to its own later line, or
+  only the cut onto the arm's line, does nothing.)
+- **Rows 531 / 547 (the jal / lwc1 f12,44(sp) slot):** the ugen listing shows every inlined slerp instruction carries the
+  slerp call's line (`.loc 293`), so line joins inside slerp / slc are inert (13 spellings, incl. slc defined after
+  the function). ugen emits `mov.s f16,f0; l.s f12,44; s.s f16,148; jal`: the sa store is the colouring's save of
+  f16 at the call, after the argument reload. **Lead:** `slc(const float &sa, ..)` stores the sin result to its
+  temp word at the def, and both slots then match the target. But it adds two frame words and loses f16 for M-220
+  (96.07 with q0 / q1 dropped to keep frame 368). A word-neutral form of that is the next step.
+- **Rows 312..322 (q in v1, target v0):** the LR dump shows p is never a variable: uopt propagates the call's
+  return register (`R2`, LR in blocks 34 / 35 / 37), so R2 is live in q's block, and v0 is forbidden for q
+  (M-124, fb [1 14]). Inert: reusing p (`p = *(p + 0x2C)`; the new def is then its own LR, still v1); `if (1) {}`
+  at four points; `&&` split into nested ifs / goto; the comma-assign in the test; a pointer-returning call cast;
+  `setp(p, ..)` / `setp(q, ..)` stores through a reference (ring temp t4, -1.2 %); an expression in place of q
+  (ring temp t4). The target needs R2's LR to end before q's block, or q to join it.
+
 ## heli.uso (agent-g run 774)
 
 - **0xB08 NM 98.72 -> 99.08 % (agent-g 9312742a5 99.02, ae89b7023 99.06, 95c0f004e 99.08; gate PASS each, 3576 / 3579,
