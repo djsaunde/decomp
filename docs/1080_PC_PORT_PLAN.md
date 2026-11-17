@@ -5678,3 +5678,36 @@ resets when the ride resumes. The parms read sane: st 5,4,3, stm 40, sl 5,5, slm
 
 **Pending:** agent-a run 849 (the parm-tag byte-order reconcile) may change rider parms and physics
 again. If it does, re-run steer-search after rebasing.
+
+### 20.4 Run 853: every game mode headless (agent-c)
+
+Branch agent-c rebased onto fadd3a4b7 (agent-a run 852: cartridge tag order, SnowAI sret pops).
+
+**Fixes.**
+- **Tricks never registered:** TrickTable_readEntry_0000C12C copied the 0x40-byte rom/tricks.bin
+  records raw, so the 8 words from +0x20 (anims, inputMask, points, riderMask, flags, mirrorIndex)
+  stayed big-endian (inputMask 0x2 read 0x2000000). Swapped under PORT. Now hop + B + stick gives
+  NOSE GRAB / METHOD / INDY / MELANCHOLY, scored on landing. This also changes the title demo (the
+  AI's tricks) and so the rand state at the menu: race_crystal_lake.input regenerated (goal 4708).
+- **Trace:** e0 gains score and pendingPoints; e1.. (pct, finished, health, score) for the other
+  entries; tk= (trickButtons, trickInputFrames, queued / cur trick index); race= now also for Match
+  Race / Contest (owner at DataManager +0xBC) and 2P VS (+0xB8): it was always 0 there.
+- **steer-search.py:** --mode trick / contest (windows with a jump + grab variant; score = pct +
+  points / 20; the countdown ends the run) and --mode match; RUN32 env for scratch checkouts.
+
+**Per mode** (scripts in port/host/, all from a fresh dir):
+| mode | script | how far |
+|---|---|---|
+| Trick Attack | trick_attack.input | flow mode 6; tricks score (~1000 points); the 30 s countdown is never extended (Time Up at ~25 %, step 2367), then TrkMenu. Open: RaceTracker_passCheckpoints sees an empty "chk" list in Trick Attack (entries->gate NULL), checked before 852; recheck on main |
+| Match Race | match_race.input | level Normal, Crystal Lake; player goal 4525, the CPU (SnowAI) finishes 620 steps first -> "You Lose" -> retry -> Round 1 again. Winning needs a faster line than the greedy search finds |
+| Contest | contest.input | flow mode 5; gates + tricks ~5000 points, countdown ends the run at ~45 % (step 3311) |
+| Training | training.input | flow mode 7; lesson 1 MELANCHOLY done (100 PTS), TrnDataManager advances to 3 METHOD |
+| 2P VS | vs2p.input | both pads ride; P2 retires (health -2) at 3679, result, next round at 4238 |
+| Options | options_tour.input | opens / closes; no setting changed yet, SRAM persistence NOT checked |
+
+**Name entry for agent-a:** no crafted save needed: race_crystal_lake.input's time is 3rd place.
+Frames: /tmp/claude-1000/agent-c/r853/cap_name/png (5440 board, 5480 / 5540 / 5650 name entry,
+5760 Best Times): the right-half panel is a plain grey box.
+
+**Gate:** no new step (the race step covers the physics; the mode scripts are ~2-4 s each and could
+become a "modes" step that checks: trick points > 0, training lesson advances, 2P VS result).
