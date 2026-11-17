@@ -1089,6 +1089,41 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     - hc.py / hc2.py: the per-site next-form climb;
     - v*.py: the batches.
 
+- Run 722 (agent-h, commits a6f101e79 + e8012b4fc on agent-h, NM only, no renames; 3570 / 3579, gate PASS each).
+  - **Length rule:** the run-717 90.99 body was 593 words. That pushed 0xA8D0 past the non_matching
+    TRUNCATE_TEXT (0xA900), and the coordinator reverted it. **C90's NM body must stay at 592 words (0x940).**
+    Check `objdump -t build/non_matching/.../snoweffects_uso.c.o` for A8D0 at 0xA8D0 before committing.
+  - **0xC90 NM 89.59 -> 92.58 -> 94.04 %** (objdiff), 592 words, frame 400.
+    - **No h2 variable.** Write `halfH * 2.0f` inside both size expressions. The h2 variable was split into an
+      expression LR (f2) plus a copy to f28, and that one extra caller-saved LR pushed k to f20 and sy to a spill.
+      Without it, the CSE'd product takes f20 directly, k takes f18, and sx / sy get f28 / f30 through
+      the target's `mov.s` in the branch delay slots. Effect: 89.98 -> 91.6. The whole float block 120..240 now
+      matches apart from sp offsets.
+    - The w0 clamp terms are written yh-first, so the target's xh-first evaluation comes out. imax0 is used on
+      xh / yh / xl. **The OR order in w1 makes no difference** (uopt reassociates it); which clamps use imax0
+      is what decides it.
+    - **FB word alpha-first:** `((int)p->alpha & 0xFF) | (col[2] << 8) | (col[1] << 16) | (col[0] << 24)`
+      gives the target's col[0]-first loads. Positional diffs 314 -> 243, objdiff 93.61 -> 94.04.
+    - `if (y0) {}` before the FB packet and before drawn++ place the (s16)((x0 + wid) << 2) CSE right after x0,
+      as in the target at word 243.
+  - **Method:** a knob generator (g.py: per-packet next / nextN, a clamp form per term, term order, `if` sites,
+    scratch size) and a climb (hc.py). Two objectives:
+    - objdiff, under the 592-word and frame-400 constraints;
+    - MODE=loop: positional mismatches in words 200..470, with branch targets and sp offsets normalised.
+
+    Climbing on the loop-layout objective broke the objdiff plateau at 92.58, reaching 93.61.
+  - Left:
+    - w1 evaluates yl first. The target does xl first: x0 << 2 is computed late, y0 << 2 early and unsigned in
+      t5, with its s16 conversion late.
+    - Only one clamp-result preset (`or a1,zero,zero`) before FB; the target has two (a1 / a3).
+    - Loop count in a2 (target v0); EE packet v0 (target a1).
+    - GPR names x0 t4 / y0 a3 (target t0 / t3).
+    - self->tex in t9 at entry (target a1); the prologue's count / dl in a2 / v1 are swapped.
+    - Frame: m sits 1 word high (target has 10 words above m, ours 9). v / __V / r sit 9 / 8 / 8 words high:
+      v to __V is 32 bytes in ours and 16 in the target.
+  - Tools: /tmp/claude-1000/agent-h/r722/ (g.py, hc.py with MODE=loop, v*.py batches, tr.sh colour order,
+    dump.py; final.cpp = the committed body with an absolute include).
+
 ### snoweffects.uso 0x6000+ (agent-e run 639)
 
 - +2 EXACT (commit feb67fb6a on agent-e): 0x8C60 and 0x9FE8, both IDO 7.1 NCC. Own donor
@@ -1733,6 +1768,52 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
 - Next for 64B8: look for a front-end construct that gives a float a fresh, non-pooled word while it stays a
   register value (for example a parameter-free inline that reads k from an enclosing inline's named local), or
   accept the memory scalar.
+
+### snoweffects.uso 0x718C / 0x64B8 under MIPSpro 7.2.1 (agent-e run 727)
+
+- **0x718C NM 97.28 -> 98.14 %** (agent-e 63d6a7ed4 + 7239f185a; gate PASS both times, 3571 / 3579, lost: none, no
+  renames). 471 words, and the frame is 368 = target. Scratch `/tmp/claude-1000/agent-e/w727/`:
+  - `pv.py`: probe batches with every `addiu x,sp,N` offset plus the |a| colours;
+  - `od.py`: standalone objdiff %, which is what the report tracks. A positional diff count does NOT predict it:
+    the run's first frame-exact draft had fewer positional diffs and a lower %;
+  - `sd2.py`: diff that ignores sp offsets;
+  - `p*.py`: the probe batches.
+- **The target has the same uopt LR structure as ours. Only the colour order differs.** Every target colour fits
+  our word LRs when the y-product word M-156 is coloured after the |a| word M-204:
+  - M-152 f2, M-156 f12, M-160 f14 (the x / y / z products);
+  - M-204 f0 (|a|, plus a2's first set() c);
+  - M-220 f2, M-224 f12, M-228 f14, M-256 f0 (a1's second product and a2's second product);
+  - M-28 f16 (|speed| and the scalars).
+
+  Ours had M-156 at priority 50 (100 / 2) against M-204 at 35. The extra M-156 refs came from the pos / vel
+  `set()` near the end, whose pooled c reused that word. Two changes fix it:
+  - `set5(a, b, d1, d2, c)`: the two unused middle parameters take the next two pooled float words, so c lands in
+    the |a| word (M-204 +2 refs, M-156 -2). A named `float cc = c` gives the same colours but costs two frame words.
+  - `mulS()`: operator* with `if (1) {}` after set(), used only for a2's first product. The f210 load then starts a
+    new block, so M-220 no longer shares a block with M-152 and can take f2. Putting `if (1) {}` in every
+    operator* costs the 1.0f constant's callee-saved register (ops +16).
+  - lerpF with a named difference `d`, and run 698's `{ int sc[2]; }` pad removed.
+- **Frame-offset lever (not kept):**
+  - `lerpF(const float &p, ..)` plus a dead `if (0) zero7(&t->cam->v318 x7)` puts every operator* temporary at
+    the target's sp offset. A pointer parameter whose argument is a load takes a pooled A word; the four old ones are
+    reused, the rest are new. The a1 statement then reuses a new one instead of allocating its own.
+  - Arguments like `&w` / `&t->vF0` are substituted and take no word, and a single-expression body takes none either.
+  - It lowered the objdiff % (97.21 vs 97.22 standalone), so it is not committed. With set5 the remaining offsets
+    are w's temporary / copy (target sp+224 / 236, ours 216 / 228) and a1's (168 / 152 vs 172 / 156). zero6 on top
+    of set5 fixes a1's pair only (+0.02 %).
+- **Left in 718C:** the w / a1 temporary offsets above, the ramp's lo / r colours (target lo f12, r f2; ours f14 / f12),
+  the lerp FP ring, the block-61 u.y / u.z colours, and the colour section (target f = f220 in f2 and the three c's in
+  f14 / f16 / f18, so the target has three c LRs; ours has one c in f2).
+- **0x64B8 (not beaten, NCC donor 13 diffs = 99.91 %; mp72 s1 99.75 % standalone):**
+  - Lever 1 (block-scoped named locals) does not help. z, r, or all of x / y / z / r inside `if (p != 0)`: 17 -> 23
+    adiff. A nested block around v's setup: no change. `SV n; n = v - t->pos;`: +9 ops. spd / k declaration order:
+    no change.
+  - The 718C dummy-parameter trick cannot help here. op*1's s is allocated before ct3's a / b / c, so any pooled
+    s takes -20 before them. Locking -20 / -120 / -124 earlier in the statement also locks them for a / b / c. s has
+    to be a non-pooled word: a named local whose parameter is substituted, which edg does only for scalar
+    single-return inlines.
+- Next for 718C: the colour section's three c LRs; the w / a1 offsets (a pointer-word lever that keeps the %);
+  the ramp's lo / r colours.
 
 ### snoweffects.uso 0x6000+ under MIPSpro 7.2.1 (agent-e run 723)
 
