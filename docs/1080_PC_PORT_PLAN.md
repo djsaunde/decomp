@@ -6249,3 +6249,85 @@ blob string, to check when that path is fixed).
 - abi-scan.py reads DWARF: the x32 units' DWARF has address size 4 inside an ELF64 file (ld warns
   "mangled line number section" on a few units; addr2line still resolves functions). Check before
   pointing the ABI step at the 64-bit binary.
+
+### 21.7 Run 863: the 64-bit tenshoe runs the title demo (2000 frames); the trace diverges at frame 223
+
+State at the end of run 863 (agent-g): the `-DPORT_64=ON` tenshoe boots to the title, starts the attract
+demo and runs the smoke's 2000 frames (rc 0, every frame in state.log). Its state.log equals the i386 one
+through frame 222 (the boot, the title, the demo's setup); at frame 223, the first physics step, the rider's
+quaternion differs (position equal), and the CPU rider then drifts (32 % of the course at 2000 instead of
+~75 %). The M6 exit check does not hold yet.
+
+The fixes, by class (all `#ifdef PORT64`, the ROM and the i386 build unchanged):
+
+1. **The rest of the varargs (21.5).** `port/ultra/va_pack.c`:
+   - `port_va_pack_cmds`: ScreenWindow_ctor's Node command list, driven by a small table of word counts
+     per tag, taken from the handlers: Node_doCommand (the ROM's jump table: 0x64 / 0x65 / 0x67 / 0x6C,
+     1 word each) and Window_doCommand (the ScreenWindow / Window vtable slot 6: 0x6D / 0x70 / 0x71 /
+     0x73 / 0x74 / 0x75 one word, 0x6E origin and 0x6F size two). Every argument is int-class: the
+     int-to-float arms read an int and convert it, and the three callers pass ints. A tag outside the
+     table is reported and packed as one word. MNode_doCommand / QNode_doCommand are not on this path
+     (Window_doCommand's default goes straight to Node_doCommand), and no other variadic takes a
+     command list.
+   - `port_va_pack_printf_after`: the printf packer with leading named int words, for
+     `gl_sprintf(buf, fmt, a2, ...)` (its `((int *)&a2)[-1]` neighbour read is the format). TextWin_printf
+     and sys_sprintf_00061B30 pack like dbg_printf.
+   - The other variadics are empty stubs (gl_osSyncPrintf, gl_rmonPrintf, sys_printStub_00067AE8,
+     uso_nullPrintf, dbg_printfNop), sys_fatal already used `__builtin_va_list`, and
+     snd_SetPlayer0ChannelParams_2F9D4 is compiled from its non-variadic import.
+   - The neighbour reads: ProcNodeList's `((NodeListState **)&a0)[3]` (it is `a3`).
+   - **The word-swapped fatal ("no SeercWnnidow for zbuffer")** was not byte order: the bytes in the
+     extracted Data are right; the garbage command list (a set-global / name tag with a stack word as the
+     argument) had overwritten words of the string blob. Gone with the packer.
+2. **By-value structs that the two sides size differently.** nodelist_dispatchList_000558A0 /
+   nodelist_walk_0005534C declare a 16-byte `{pp, w, x, y}` and read the rest of the caller's 0x4C-byte
+   NodeListState through `&s`. MIPS and i386 put the whole struct in memory either way; x86-64 passes a
+   16-byte struct in two registers and a 0x4C-byte one in memory, so the callees declare the full size
+   under PORT64.
+3. **O32 float bits in integer registers.** On MIPS a float argument after an int one rides in an
+   integer register, so the matched C declares it `int` and passes the bits; i386 cdecl puts both in the
+   same stack slot. x86-64 passes a float in a vector register whatever its position. `include/uso_call.h`
+   gains `PORT64_FT` (the parameter type, `float` under PORT64, `int` otherwise), `PORT64_F(x)` (int
+   bits passed to it) and `PORT64_I(x)`. Fixed: math_det3x3 (all floats under PORT64: the
+   "Non-singular matrix" fatal), cam_ctor_00000858 + its MCamera_ctor alias, cam_isSphereInView's three
+   int-declared callers, SnowBCollider_ctor + Friction_ctor, CollObj_initCylinder, the QNode_ctor
+   `0.0` double (x and y in a2 / a3 on MIPS, three floats on x86-64), AnimPlayer_setBlend (every caller
+   passes bits: the definition takes the int under PORT64), anim_blendPose, SnowBoarder_yawPiOver,
+   CamFollow_update's absrot_matrix4 / math_mtxRotateAxis. A K&R `CALL(f)` cannot pass a float (it
+   would be promoted to double): those sites call a prototyped asm-name alias
+   (`extern void port64_absrot(void *, int, float, int) __asm__("absrot_matrix4")`), with the ROM's
+   `CALL` kept in the `#else`, so the gate's named-call check still sees one call per site.
+4. **Small struct returns.** x86-64 returns a struct of up to 16 bytes in registers (xmm0:xmm1 for
+   three floats); i386 and MIPS use the hidden pointer. The C++ callers of cam_toTargetLocal_000023D4
+   (whose C definition takes the explicit out-pointer) call it through an inline wrapper, and
+   SnowAI_steer calls SnowAI_aimWeave (C++, returns XZ by value) by value, as it already did for
+   SnowAI_aimAlongSegment. Structs over 16 bytes are the hidden pointer in rdi, which is the C side's
+   explicit out-pointer: no change.
+
+**`port/tools/abi-scan.py --x64`** (new): the x86-64 version of the ABI check. It drops the i386-only
+classes and adds X64Pn (a prototyped declaration's parameter class differs: int / pointer against float,
+float against double, structs) and X64REG (the caller loads an argument register, from DWARF
+`DW_TAG_call_site_parameter`, that the definition does not read; extra integer registers alone are
+trailing K&R arguments and pass). SRET is kept only for structs of 16 bytes or less. At the end of run
+863: 37 X64P + 19 X64REG + 2 VRET, listed by the gate step. Left: AudioThread_QueueCmdF32 (6 callers
+pass a float, the definition takes the int bits), snd_SetPlayer0ChannelParams_2F9D4 / snd_ScheduleSeq /
+snd_UpdateChannel10Emitter, the CourseGadget_setVec4 / setFloat2 DataManager family (5 USOs),
+math_perspectiveF from Window_setupView, gui_drawStringScaled, hostio_addFloat, light_setF124,
+Obj::setLights, math_arcballPoint (struct12 against floats), and a few false positives (a caller that
+passes an extra pointer: math_quatRotateAxisAngle). The scan does not see indirect calls (vtable slots,
+function pointers): a float passed through a slot typed `int` is invisible to it.
+
+**The gate step** (`scripts/port-gate.sh`, `build64`): configure + build 64-bit from a fresh dir, run
+test_ultra / test_fs / test_backup as 64-bit, the same smoke, compare its state.log with the i386
+smoke's (the `/N` host address after r0's fields dropped), and run abi-scan --x64. It is **report-only**:
+the line is INFO and never counts as a failure, until the traces match; then it becomes PASS / FAIL on
+divergence (and on the race / modes scripts). `PORT_GATE_BUILD64=0` skips it (it adds a full build,
+~3 minutes at -j8).
+
+**Next:** the frame-223 divergence. The rider's quaternion differs on the first physics step with the
+position equal, so the orientation path (SnowBoarder_updateOrient, the QNode / DNode quaternion code,
+the collider normals) receives a wrong float somewhere: finish the abi-scan --x64 list first, then hunt
+the indirect calls (vtable slots with float parameters: the cfront `CF_V*` slot types and the
+`VT_SLOT(...).fn` casts whose prototype says `int` where the method takes a float). A per-function trace
+diff (state.log fields at a finer grain) would localise it faster than reading. Then the race / modes
+scripts, then the in-process Fast3D path (21.6; not tried in run 863).
