@@ -1889,6 +1889,42 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     | inline `snowWrap(cx, cy, cz, &wx, ...)` with by-value coordinates (c goes back to s2, but +9 words) | 78.7 |
 - **0xC90: not reached.**
 
+### snoweffects.uso 0x28E0 (agent-c run 726, no commit: best drafts are over the 793-word cap)
+
+- **What blocks global copypropagate of a branch use: an indirect load (ilod) in the copy's expression.**
+  Found by probing; the uopt_x.c body was not decoded. Each of these removes the sx / sy `mov.s` copies, and the
+  compares then read the single variable register:
+  - a non-volatile `p->pos.x` in place of `x` in the cx expression (and `p->pos.y` in cy). The load CSEs with the
+    draw-block `x = p->pos.x` load, so it adds no load. The cost is a new split: x var vs the ilod expression
+    (+1 `mov.s`).
+  - `*(volatile float *)&m[k][0]`. The volatile ilod keeps `lda m` as an expression. With one such site, the
+    lda is computed in the block (+1 addiu). With two sites, the lda is hoisted into an s register (s3 / s4
+    shift, 86-87 %).
+  - No effect (bytes identical to base): a `volatile float m[4][4]` declaration (direct lods lose the qualifier),
+    `volatile float (*mp)[4]`, self-assignments (`x = x;`, `cx = cx;`, ...), and an identity inline
+    `snowF(v)` on the def.
+  - mp alone does not block the global rewrite (mp is forwarded to `lda m` first), so "mp + blocker" is not
+    needed. mp on the new bases scores lower (87-90).
+- **The target has TWO sprite-size variables.** sw (t1) feeds x0, x0 + sw and texW / sw; sz (t2) feeds y0,
+  y0 + sz and texH / sz. The two are joined by `or t1,t2,zero` and need two separate sz / 2 sequences. The base
+  CSE'd sz / 2, and that saved the words which paid for its extra copies.
+  - `sw = sz` copy: 91.56 % (799 words). It coalesces, so there is no `or`.
+  - The same expression assigned twice (`sw = (int)(E); sz = (int)(E);`, sw first): 92.07 %, and it emits the
+    target's `or`.
+- **Best: 92.30 % at 797 words** (/tmp/claude-1000/c726/keep/q_g_xy_v0_px.cpp). It is the double sw / sz def,
+  plus cx computed before cy, plus one volatile m read in cx and `p->pos.x` in cy (frame 528).
+  - Also /tmp/claude-1000/c726/keep/s_g_h__px_px.cpp: 92.17 % at 796 words.
+  - The 793-word cap (TRUNCATE_TEXT) blocks both. Nothing at or under 793 words beat 90.25 in about
+    5k compiles (/tmp/claude-1000/c726/g*.py and g*.txt).
+- **What is left over 793 (s_g_h__px_px):**
+  - the K1.0 constant materialised twice (lui + mtc1 + a nop). The target keeps it in f26 for both `1.0f / w`
+    and `+ 1.0f`. A `one` local is propagated as a constant, so that has no effect.
+  - the x split `mov.s` from the ilod blocker;
+  - the earlier pre-existing diffs (lines 130-360).
+
+  Fix K1.0 and the extra words drop to 793 or under. Next: a code-free ilod blocker that does not split x, and
+  the K1.0 colour.
+
 ### snoweffects.uso 0x28E0 NM 90.19 -> 90.25, frame 520 (agent-c run 721)
 
 - **Commit dae85e8dc on agent-c** (gate PASS, 3570 / 3579, no renames; objdiff report 90.30, fz 90.25, 793 words,
@@ -2190,6 +2226,40 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     f20) is a separate constant web: `(float)0` int-cast literal.
 - NM wraps spell the raw placeholder tokens: the named-call check cannot prove CALL() sites
   whose build path is INCLUDE_ASM.
+
+## heli.uso (agent-g run 724)
+
+- **0xB08 NM 94.44 -> 94.39 %, committed for structure (agent-g 46da6df4d; gate PASS, no renames, 3570 / 3579).**
+  sp-offset rows (reg-masked) 279 -> 113, raw 455 -> 356, both 82 -> 87. Harness `/tmp/claude-1000/agent-g/r724/`:
+  - mk.sh: builds hdr.cpp + b_name.cpp;
+  - om2.py: frame-top-relative map, with a bad-row count. Use `r719/om.py` (absolute sp) for the final check,
+    because the frame size differs until the bottom is right.
+- **The layout now matches the run 719 frame map** from ppr down to the axes (absolute sp 60 / 72 / 84 / 100 match):
+  - function scope: `ppr, player, ps, toTgt, dir, dist`, then `Vec3 vel = ...` direct-init, `side`, `f`;
+  - `{ int mode; head; { key2, tg; switch ... speed } }`;
+  - else-block `{ key, p }`: p is the item and also the old q;
+  - case 2 `{ p }`, its inner if `{ q, mpos, k }` (`k = 3000; mpos.y += k`);
+  - if-block `{ yaw, hh, g, fwdAx, pf, axZ, axX, axY }`. The int 100 is hh, g is the roll value, pf the pitch
+    value. **An unused scalar takes no slot under -O2**, though the -g3 build (vn.sh) still lists it.
+- **EDG facts, from probes:**
+  - Function scope takes one hidden word after its last variable, before the first block (the target's -84).
+  - A ref-returning `operator=` costs one hidden word after the switch block's variables. `void operator=` does
+    not, so key2 / tg / ps would also fit -96..-104.
+  - Declaring axes / mpos mid-block moves code: the hoisted `addiu a1,sp,84` is lost (both +7). Declare them at
+    the top of their block.
+  - mpos direct-init costs 1 %.
+  - `vel = ...` as an assignment (op=, `.set(const &)`, placement new, or a V3b op=) breaks registers
+    (sp rows ~1100). vel must stay a direct-init.
+  - toTgt from fresh `self + 0xDC` expressions costs 2 %. ps must be one LR from the switch to toTgt (target spill
+    at 52(sp)), so it is the function-scope scalar.
+  - tg / ps as expressions cost 2-6 %.
+  - The named h costs a slot, and the target has none. As an expression it costs 0.17 (i_h).
+- **Left in the frame:**
+  - the slerp temps: target t at -160 directly under the dir op- temp, X at -188, two words between X and ang.
+    Ours has t one word lower and X directly above ang. Param order makes no difference.
+    `slerp(Vec3 *, const Vec3 *dp, float)` drops a word (sl2).
+  - spill slots 48 / 56 swapped;
+  - case 4's sp+252 (not reworked this run).
 
 ## heli.uso (agent-g run 719)
 
@@ -2658,6 +2728,61 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   Bss+0x50 pointer goes in s4 before the vertex-count test. There is also a v0/v1 pair in the ambient
   compare and the second walk's mask constants (-2 / -3 / -5 hoisted into s2..s4). Scratch:
   /tmp/claude-1000/agent-a/w654/a/best_A10C.cpp. 0x7FE0 is not started.
+
+## snoweffects.uso 0x7FE0 (agent-a run 725)
+
+- **No commits, no renames. 0x7FE0 is still NM 99.97 % (5 words: the d ctor's |s|, f0 vs the target's f12);
+  exact count unchanged 3570 / 3579.** Scratch /tmp/claude-1000/agent-a/w725/:
+  - `ud.sh` / `fl.py <x.cpp> [from line]` are the **IDO 7.1 (EDG 2.19)** port of agent-e's run 718 word tools. They
+    run `NCC -keep`, then the dump ugen `-d` on the kept `.B`, and print each source line's pool words (`R` float,
+    `A` pointer, `J` int, `l` = lda of a memory word, `r` prefix = a read).
+  - `pv.py` is the run 720 variant runner plus the d line's words. The variants are in `w720/` (q*, w*, x*, y*, z*,
+    g*, m*, c*, d*, e*, p*).
+- **EDG 2.19 allocates exactly like agent-e's 2.29 rules** (checked on 7FE0):
+  - Float params and `?:` result temps take the oldest free word of their dtype. The pre-loop `fabs_(v)` temps are
+    -20.
+  - Words reused from an earlier statement stay locked for the whole statement.
+  - Fresh words are freed at the end of their inline, so the same statement can reuse them.
+  - A plain-variable argument is substituted only when the inline does not assign the parameter. `a` in
+    `a = fabs_(a)` keeps its word.
+  - A `float &` param is an A word, so its target is address-taken.
+  - Empty-bodied `void dum(float..) {}` allocates nothing. `{ a0 = a0; }` allocates and costs no code.
+- **What M-292 is:** the `?:` temp of `fabs_` (`x` is substituted). The ctor's `a` (-288) is copy-propagated away.
+  The d statement holds exactly the 8 old R words, in this order:
+  - op*1: s -20, then x / y / z -148 / -172 / -176;
+  - op*2: s -220, then x / y / z -236 / -240 / -244.
+
+  So `a` and the `?:` are always fresh. Base word to colour: -20 f12, -148 f0, -172 f2, -176 f14, -220 f0, -236 f2,
+  -240 f12, -244 f14.
+- **A new lever moves the `?:` onto an op* product word:** a dedicated
+  `TV mul2(float s) const { if (1) {} dum3(s, s, s); TV r(..); return r; }` for op*2, with
+  `inline void dum3(float a0, float a1, float a2) { a0 = a0; a1 = a1; a2 = a2; }`. Op*2's s stays on -220. The dummies
+  take -236 / -240 / -244, op*2's ctor x / y / z go fresh, `a` reuses x's word and the `?:` reuses y's word (the
+  target's f12 product).
+  - With one `if (1) {}` between `x = v.x * a;` and `y = ..` in the d ctor (`w720/c1.cpp`), every colour except
+    op*2 x / y matches: 9 words, x f12 / y+|s| f2 (target f2 / f12).
+  - **But the frame is 392 and every sp offset is +8.** The by-value `v` param moves from -284 to -296, because op*2's
+    three fresh ctor words come before it.
+  - Since `v` must stay at -284 (sp+100), op*2's ctor words must be old words. That leaves the `?:` only fresh words
+    allocated after `v`, which are private to blocks 91-93 (so it takes f0).
+- Flat or worse:
+  - `fabs_(s)` / `?:` as the ctor argument: the `?:` lands before the `v` copy (801 words, 332 diffs).
+  - `TV(float a, TV v)` arg order (frame 392).
+  - if / else forms writing `a` (806 words).
+  - `float &` param writing k (k goes to memory).
+  - `set(v, fabs_(a))` (frame 392).
+  - `mulr(const float &)` on op*1 or op*2 (461-638 diffs).
+  - Dummies before op*1, after op*2, or at 1-4 counts in other places (5-61 words; every 5-word one has frame
+    392 / 400).
+  - Two or more `if (1) {}` in the d ctor, or any in mul2 besides the leading one: 798 words.
+- **Next:**
+  - In the base, the only fresh word between op*2's `r` (l-268, sp+116) and `v` (-284, sp+100) is A-272. So at most
+    ONE op*2 ctor word can go fresh without moving `v`, and only if A-272 becomes an old A word. The c1 shape needs
+    two fresh words (x for `a`, y for the `?:`), so with this ctor it cannot keep the frame.
+  - Remaining angles:
+    - a d ctor whose `a` takes no word (a body that never assigns `a`, with |a| computed in a nested statement
+      inline), so the `?:` takes the single freed word;
+    - or a sharer for the `?:` that is allocated after `v` but is not private to blocks 91-93.
 
 ## snoweffects.uso 0x7FE0 (agent-a run 720)
 
