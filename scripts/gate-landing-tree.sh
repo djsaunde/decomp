@@ -66,6 +66,17 @@ if grep -q "'--order'" scripts/name-placeholder-calls.py 2>/dev/null; then
   tail -1 "$LOG-calls.log" | sed 's/^/   /'
   if [ $crc -ne 0 ]; then echo "   !! named-call check failed; see $LOG-calls.log"; grep -E 'WRONG|UNPROVEN|not among' "$LOG-calls.log" | head -10; exit 9; fi
 fi
+# every switch's C case labels against the ROM's own jump table: the matching build checks .text only
+# (pinned / discarded tables), the PC port's gcc builds its table from the labels (runs 822 / 829 / 831).
+# Reads the build/src objects: make does not rebuild a donor .o when only its source changed, so
+# rm -rf build/src build/non_matching/src before gating a label change. ~10 s; skipped when the tree
+# predates the tree-wide audit
+if grep -q "PORT_ONLY" port/tools/jumptable-audit.py 2>/dev/null; then
+  echo "== gate: switch case labels vs ROM jump tables"
+  python3 port/tools/jumptable-audit.py >"$LOG-jumptables.log" 2>&1; jrc=$?
+  tail -1 "$LOG-jumptables.log" | sed 's/^/   /'
+  if [ $jrc -ne 0 ]; then echo "   !! jump-table audit failed; see $LOG-jumptables.log"; grep -vE '^jumptable-audit:' "$LOG-jumptables.log" | head -20; exit 10; fi
+fi
 # CI builds a fresh checkout of tracked files only; incremental builds above can hide
 # clean-build-only breaks (untracked donors, target-specific vars inherited by prerequisites)
 if [ "${SKIP_CLEAN_BUILD:-0}" != 1 ]; then
