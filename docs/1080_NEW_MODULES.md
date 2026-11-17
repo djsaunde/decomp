@@ -1445,6 +1445,42 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     - rt.sh: scores the tree file;
     - fw.sh: edg word map of the append lines.
 
+- Run 757 (agent-h, commit 1ebfaafcb on agent-h, NM only, no renames; 3576 / 3579, gate PASS, exact set identical,
+  592 words, frame 400, offsets unchanged).
+  - **0xC90 NM 98.01 -> 98.05 %** (127 positional diffs): `extern "C" long long gl_func_00000000(...)`.
+    - **The t-ring is set after each call, not at function entry.** No change before the first jal moves the
+      ring after it. Tried: tex as the second argument (gives the target's `lw a1,44(a0)`, but cam's lui goes to
+      t6), tex / c declaration order, a dummy function earlier in the TU, and `if (..) {}` lines.
+    - Return-type probes on the first call: int / unsigned / short / char / enum / pointer / reference are all
+      identical. long long (any cast) moves the ring by +1 onto the target's (count+1 t6, dl t9, sll t7). Side
+      effect: d becomes the low word (v1; the target has v0). A `(long long)` cast of an int return moves it +3.
+      float / double add cvt code. A struct return or `>> 32` (a libcall) adds code.
+    - The ring after the **second** (view) call is still one register off (from word 41 on). Typing or using
+      that call's result changes nothing.
+  - **Why y0 / E4 do not move: the s-outer ternary word is the problem.** The RDPHALF_1 `s` outer ternary result
+    reuses word -124. The prologue count uses the same word, so they form one LR (M-124, den 5: block 1 plus
+    blocks 44..58). That LR is forbidden v0..t2 and takes t3, and gt shares t3 with it. In the target, the s-outer
+    result is a3 and the prologue count is v1, so they are separate words there.
+    - Prologue `c->me()->next()` (words: me this -124, next this -132, count -128) splits them: M-124 takes a3 as
+      in the target. But -132 is then live in the prologue, so the loop count / dl swap to v1 / v0 (97.83).
+      Shifting every loop / tail append by one dummy to compensate gives 588-590 words.
+    - Free-function appends (`nxt(c)`, `nxtd(0, c)`): x is not substituted, and the prologue takes 4 words (590).
+    - A dummy in the RDPHALF_1 w1 full-expression (`(dmK(0..), w1)`, K = 1..7) moves s-outer off -124, and
+      M-124 then takes v1 (K = 3 / 4). But the inner ternary temps shift as well: 588-591 words, and s0 is lost.
+      A comma-form gImmpV on B4 is 590 words or frame 416.
+  - **agent-e's zero-code priority lever** (`zi(y0, 0)`, `z * (lo + .. + lo)`): each `lo` adds 10 / 6 to y0's
+    priority, so 1 lo gives 8.33. y0 then takes t0, because it is coloured before p / c and the s-outer LR. Adding
+    `if (c) {}` / `if (p) {}` lines (up to 3 each) gives t3 / t4 orders, but no state beats the base. Pointer
+    versions (`(int)c`) add code. A gt lever across the ternaries extends gt to 11 blocks (594 words).
+  - Next: a prologue form whose count avoids -124 **without** putting a real LR on -132 (the s-outer word must
+    hold no prologue value), plus the second call's ring.
+  - Tools: /tmp/claude-1000/agent-h/r757/:
+    - rc.py: score plus colours (M-124 / 128 / 132 / 224 / y0 / gt / c);
+    - pd.py: prologue diff count;
+    - g7.py / hc.py: knob builder and climb (G7B env picks the base);
+    - v*.py: the batches (v12-v15, v22 callee types; v16-v19 zi levers; v20 / v21 prologue forms;
+      v6 w1 dummies).
+
 ### snoweffects.uso 0x6000+ (agent-e run 639)
 
 - +2 EXACT (commit feb67fb6a on agent-e): 0x8C60 and 0x9FE8, both IDO 7.1 NCC. Own donor
@@ -2951,6 +2987,80 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     f20) is a separate constant web: `(float)0` int-cast literal.
 - NM wraps spell the raw placeholder tokens: the named-call check cannot prove CALL() sites
   whose build path is INCLUDE_ASM.
+
+## heli.uso 0xB08 g / HF144 / -0.3f colour order (agent-e run 756, research only, no commits)
+
+- **Fixed, code-free, 943 words: objdiff 97.789 -> 97.842 on agent-g's run-755 source (0af401b6e).** Raw rows go
+  from 118 to 110. Both-masked rows stay at 53, because the change is colours only. On the head-fix source
+  (`r751/e6_head_fix.cpp`, 944 words) the score goes from 97.837 to 97.890. Scratch: /tmp/claude-1000/agent-e/w756/.
+  - `t.py SPEC` scores each variant and prints the K-0.3 constant's SAVE line (num / den / pri), taken from the
+    instrumented uopt.
+  - `pk2.py NAME lo hi` lists the FP LRs and their picks for a unit range.
+  - `b08_e756.cpp` is the proposed source, and `b08_e756.diff` is its diff against agent-g's run-755 donor.
+- **The lever:** raise the -0.3f constant LR from pri 0.5 to 3.5 with folded uses in HF144's block, so it is picked
+  before HF(0x144) (pri 3.0):
+  ```
+  static inline int zf(float lo, int z) { return z * (int)(lo + lo + lo + lo + lo + lo); }
+  ...
+  *(float *)(self + 0x144 + zf(-0.3f, 0)) = (g - HF(0x144)) * (0.07f) + HF(0x144);
+  ```
+  - With this, -0.3f takes f0, HF144 f2 and g f14, and the unit is byte-identical to the target.
+  - The constant needs 6 extra counted uses: num 7 / den 2 = 3.5, which has to be strictly above 3.0 (HF144 has the
+    lower LR index, so it wins a tie). 5 uses (3.0) loses the tie. 7 to 9 uses give the same bytes as 6.
+- **What counts as a use, and what doesn't:**
+  - **Counted:** z is a constant parameter (substituted, so edg cannot see `z * x` = 0); uopt folds the product to 0
+    after it has counted the uses.
+  - **Each `lo` term counts.** `z * (int)(lo + lo)` = 2 uses; distinct conversions like `(int)lo` and `(unsigned)lo`
+    count once each.
+  - **No count:** `(int)lo - (int)lo`, a literal `(int)(-0.3f)` (both folded by edg), and `z & (int)lo`.
+  - **Code changes:** `(int)-lo` (a `neg.s` survives) and `yaw + 0 * (int)lo` (float context).
+- **Empty `if (yaw < -0.3f) {}` / `if (lo != K) {}` tests are byte-identical but don't help.** Each test is its own
+  uopt unit, so num and den grow together: 8 tests give 9 / 6 = 1.5.
+- **axZ zero / angle:** agent-g's `dumf(f)` (run 755) already fixes it. Another fix that gives the same bytes: reuse
+  the int local `hh = 0;` and store `hh` in all five 0.0f slots (HF(0xF4 / 0xF8 / 0xFC), axZ.y, axZ.x).
+  - The int-to-float conversion folds only in uopt, so the five zeros form their own one-unit web (num 4 / den 1),
+    which is picked before f (3.0) and takes f0.
+  - A new `int zi` local changes registers elsewhere (reg rows 55 -> 77).
+  - Combined with zf, this matches dumf + zf byte for byte (97.842).
+- **Pitch pointer (agent-g's fwdOf + q1f base, `r755/bA.cpp`):** the same zf fold works there.
+  - With 4 or more `lo` terms (`zk(-0.3926991f, 0)` in the HF(0x148) store address), -pi/8 is hoisted into block 91
+    and takes f18, as in the target: `add.s f0; c.lt.s f0,f18; swc1 f0` (both-masked rows 39 -> 25).
+  - The value is still one LR: there is no `mov.s f2,f16` split yet.
+  - Extra folds on pf (`zp(pf, 0)`) move pf / old-h but did not produce the split. Old-h folds (`zh(HF(0x148), 0)`)
+    are worse (raw rows about 960).
+  - Variants: /tmp/claude-1000/agent-e/w756/s11.py and s12.py.
+
+## heli.uso (agent-g run 758)
+
+- **0xB08: no commit (97.79 % stands; 3576 / 3579).** No variant produced the target's `mov.s f2,f16` pitch split, so
+  the head fix still cannot land at 943 words. About 450 compiles. Scratch: /tmp/claude-1000/agent-g/r755/ (`bZ.cpp` =
+  fwdOf + q1f + head fix + agent-e's zf6 on -0.3f + zf4 on -pi/8; `g1..g6.py` sweeps; `pit.py` prints the pitch-store
+  shape) and r751/ (`fc.sh NAME` = f's LR and pick costs, `pk2.sh NAME LO HI` = FP LRs with pick order).
+- **Which split the target uses (IDO_CODEGEN kit CCXCIII item 4).** f's pieces are {lerp block} = f16 and {clamp
+  arms, three angle blocks} = f2. A cost split (b) cannot cause it: f's value is num 11 (7 uses + 4 defs) and every
+  caller register costs 4. So it must be an eager neighbour split (a). The register taken last is the one the carved
+  piece gets, and the piece is seeded where that register is still free. So **old HF(0x148) (lerp block only) must
+  take f2 as f's LAST free colour**, after pf f0, HF(0xF4) f12, HF(0xF8) f14 and -pi/8 f18 are coloured in the lerp
+  block, and after some f16 LR in f's other blocks (clamp arms / angle blocks). f must still be uncoloured at that
+  point.
+  - The f16 holder is the open question. No f16 appears in the target's code from the clamp to the end. The
+    return-value temp M-160 (EDG's shared inline-return variable: slerp abs, yaw clamp, pitch clamp) is f's only
+    neighbour there. In the target it is f12 (the clamp result `swc1 f12,328(s0)`), so it is either split itself or
+    the f16 holder is a codeless LR.
+- **Priority levers measured (agent-e's zf fold, `z * (int)(x + x ..)` in a store address):**
+  - `zfK(pf, 0)` in the `HF(0x148) = f` store address gives pf pri 2 + K (k = 6: pf 8.0 = f0, first).
+  - `zfK(HF(0x148), 0)` lifts old-h the same way (k = 2: 5.0, f2).
+  - With a `if (1) {}` before fwdOf (no reload, -pi/8 hoisted to f18, 942 words), pf f0 / old-h f2 now match the
+    target, but f (3.67) is still picked before HF(0xF4) / HF(0xF8) (3.0) and M-160 (2.83), so it takes f12 whole.
+  - Too many zf terms in the lerp block pass uopt's 20-load block limit (kit XXXV) and split it: K >= 12 for one
+    term, or pf 8 + F4 / F8 6 each.
+  - `dumf(f)` right before `f = (pf - ..)` joins f's LR to the sqrt block 72 (pri 4.0, forbids f0). An eager split
+    would then seed at 72, so leave it out.
+  - `if (1) {}` after the angle assignments adds no units to f (flat).
+- **Next:** the order needs old-h's priority below M-160 (2.83) and F4 / F8, and f's below old-h. The two ways in
+  are lowering old-h (a cut between its two lerp uses: `f = pf - HF(0x148); if (1) {} f = f * 0.2f + HF(0x148)`
+  gives 2 units, pri 1.5) together with lowering f (more live units), or raising M-160 / F4 / F8 with zf terms while
+  keeping the block under 20 loads. Then find the f16 holder.
 
 ## heli.uso (agent-g run 755)
 
