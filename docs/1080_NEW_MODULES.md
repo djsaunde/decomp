@@ -1673,6 +1673,33 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     fo.py (forced-colour compile; forcing cascades here, so it is not useful), p1-p14.py (batches), C1.cpp (the
     committed body, absolute include).
 
+- Run 776 (agent-h, commit c45391bdb on agent-h, NM only, no renames; 3576 / 3579, gate PASS, exact set identical,
+  592 words, frame 400, sp offsets exact).
+  - **0xC90 NM 98.99 -> 99.10** (44 -> 32 positional diffs). Tail packets 3-6 are fixed (12 diffs).
+    - **The target's tail pointers (a0 a1 a2 a0 a1 a3) are six separate block words**, one gDPWord `_g` per packet.
+      uopt splits the straight-line tail into blocks 64 / 65 / 66 by size. In the target, pkt3 spans 64-65 (so a0 /
+      a1 are taken: a2) and pkt6 spans 65-66 (a3). With six `_g` and the 16-term `z0(0) * (c + ..)` counter on
+      the BB packet, the split is one packet early (a0 a1 a0 a1 a2 a0). The same counter on the **last** packet
+      moves the split to where the target has it. Uopt's block-size split is a lever: code-free fold terms move it.
+    - **Frame budget (named-word rule):** frame = deepest allocated word + 132, rounded up to 8. Named block locals
+      (inline locals too, e.g. `int n`) never share words; pooled edg temps (inline parameters, dummies) do. So the
+      four new `_g` words were paid for with:
+      - FB / B4 / B3 counts passed as inline parameters (`atBr(dl, dl->count++)`, member `atBcm(dl->count++)` /
+        `atNcm(..)`). The code is byte-identical, and two named `n` words are gone (they were dead copies with no LR).
+      - Loop pads removed, `int y0; dm3(0, 0, 0);`. Prologue `dum3` became `dum5`. Its five pooled words sit between
+        p and y0, which is exactly where the pads were, and the loop then reuses them instead of allocating deep words.
+    - Tried without success: E4's named `n` as a parameter (`atI(dl->count)`, 589 words, loses s3); primDepth's g as
+      a parameter (`putw(c->next(), ..)`, frame 400 but 91 diffs).
+  - **Prologue (6 diffs):** `putw(c->nextI(), 0x06000000, d); dum4(..); g = 0;` (g kept for the frame) gets the prologue
+    exactly right (pd=0): pointer a3, count v1, dl a2. But the prologue dl then becomes the CSE temp e861, shared with
+    block 21, and that disturbs the loop (50 diffs). The prologue dl has to stay a pool word. Next step: a putw form
+    whose dl is a pooled word.
+  - Left (32): prologue count / g; EE pointer (v1, target a1; the M-224 LR is block 14 only, and the target's
+    must also be live in block 13 with the dl temp); the yh preset / FB-E4 block (287-295); the E4 count (a1) and yh
+    clamp (v1); s-middle (a2).
+  - Tools: /tmp/claude-1000/agent-h/r776/: sbs.py, md.sh (-g3 named frame map), lmall.py (LR map incl. FP),
+    t5.py (tail forms), t7.py / t8.py (JSON variant batches), C2repo.cpp (committed body, absolute include).
+
 ### snoweffects.uso 0xC90 y0 t3 / E4 pointer t4 (agent-e run 760, research only, no commits)
 
 - **Fixed, code-free: objdiff 98.598 -> 98.758 on agent-h's run-762 head (c57226a6e).** Positional diffs go from 73
@@ -2793,6 +2820,61 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   - col.py: draw-block div / cx / cy registers;
   - nr.py: positional diffs, ignoring sp offsets and branch targets;
   - t4-t14.py: sweeps.
+
+### snoweffects.uso 0x28E0: the frame words and the snowW tail (agent-e run 775, research only, no commits)
+
+- **Draft: 97.957 -> 98.077 (793 words, frame 520, mn 2 / reg 199 -> 176, positional 260 -> 237).**
+  /tmp/claude-1000/agent-e/w775/keep/28E0_e775_o1_793w_98.077.cpp (diff against main: `28E0_e775_o1.diff`).
+  Standalone NCC + objdiff only; check it in-tree before landing. Four edits on main's source:
+  1. **tex goes through lp** (run 767's trick): `lp = (SnowV3d *)self->tex; d = gl_func_00000000(((SnowDLHolder2 *)lp)->dl);`.
+     The tex declaration goes away. Edg M drops 404 -> 396, and the frame drops to 512 on its own.
+  2. **B4 and BB go back to gDPWord** (from snowW). Each one adds an edg word, so the frame is 520 again. With
+     both, the sp-offset set equals the target's everywhere except r and the spill: the ctor at 216, the op- copy
+     at 228 (t5) and the op* copy at 188 (ra) now match. BA through gDPWord (98.048) or B4 alone (98.010) also
+     help. Three of them push the frame to 528.
+     Most of the reg gain is the v1 / v0 DList pair: the snowW sites put the dl pointer in a2 and the count in v1
+     (rows 84-89, 632-635, 657-660, 756-759, 769-772). The gDPWord sites match the target.
+  3. **Run 753's t-assign recipe** (`{ SnowV3d t; for (..) { p->pos += (t = (cam - *lp) * self->follow); .. } }`,
+     operator= renamed to `assign`, `self->lastCam.assign(cam)`) now swaps C- / C* into place: C- at 240, C* at 252
+     (98.077). On main's frame it was byte-inert, because there the slots were shifted anyway.
+  4. **`operator*` as `{ SnowV3d r; r.set(..); return r; }`** (was the comma form). Same score, but edg M is now
+     400, and the t4 spill moves 108 -> 112 (target 116).
+- **The "8 bytes of low temp space" are uopt spilltemps, not ugen temps** (kit CCXCIII). Evidence:
+  - `-S` shows no access in sp 88..115 except the t4 spill.
+  - The FE's M (ugen dump `def mtype=M`) plus six spilltemps plus the 88 save bytes gives the frame.
+    The six spilltemps come from `tm.sh` = `-zdbug:4` + a spilltemps simulation (`tw2.py`).
+  - Main has 9 coloured items in 6 temps:
+    - T0 = item 7, the SNOW_CAM2 load (`uilod &gGfxLib+0x254`), shared with 251 (the loop-top cx sum);
+    - T1 = item 129 = &self->lastCam (lp, the t4 spill);
+    - T2 / T3 = cy / cz sums with the draw-block w / cx sums;
+    - T4 / T5 = -halfH / -halfW.
+  - So **lp sits in T1 because item 7 comes first in bit order and overlaps it.** The target's spill at vfp-404
+    needs one of:
+    - M = 400 with lp in T0;
+    - M = 396 with lp in T1 and 8+ temps;
+    - M = 392 with lp in T2.
+  - The target's r at -344 (ours -348 in the draft) points to M = 400. Then lp must be T0: item 7 must not be a
+    coloured item, or it must come after lp / not overlap it.
+  - On the draft the only sp differences left are r (172 vs 176: one word between r and the op* copy) and the
+    spill (112 vs 116).
+- **The draw-block cx row sum (agent-c's e45) is also the FP ring offset:** the target computes it in a ring temp
+  (`add.s f8`), so every FP ring row after it is one off. `cy = .. * -halfH + zf1(cx, 0)` (which costs 3 words) adds
+  ring temps that realign rows 568-625 completely (98.00 at 794 words). That confirms the ring map: remove e45 and
+  the x0 / y0 / EE rows line up.
+- **Negatives:**
+  - The one-step cx / cy forms (g1 / k1 / k3: cy sinks into compare block 2, 792 words, mn 29). Neither
+    `if (zf1(cy, 0))` nor a `(-halfW < cx) + zf1(cy, 0)` nested if (795 words) fixes it.
+  - 1/w in a dead float (wz / wy / wx) with a `zf1(w, 0)` later (797 words).
+  - op- as a named r, by-value op* (791 words, wrong).
+  - The cz-first swap (agent-c run 773) on the draft: 97.82.
+  - `p->pos.z` in both cx / cy rows is 98.17 but 794 words (z's mov.s returns).
+- Tools in /tmp/claude-1000/agent-e/w775/:
+  - q.py: replacement + score, with frame, spill, mn / reg and non-sp diffs;
+  - sps.py: the sp-offset set against the target;
+  - lo.sh: FE M from the ugen dump and the frame remainder;
+  - tm.sh / tw2.py: the spilltemps map;
+  - al.py: mnemonic alignment;
+  - wv.py: the 1/w variable sweep.
 
 ### snoweffects.uso 0x28E0: the draw-block e45 temp (agent-c run 773, research only, no commits)
 
