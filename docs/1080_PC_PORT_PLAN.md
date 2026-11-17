@@ -3769,6 +3769,44 @@ re-creates both the cam_reset swap and the NameEntry swap and requires `--order`
 gfx_emitFog (same name as its #else) and game_libs_ncc_41820.cpp's `operator new[]` -> mem_new.
 Both were checked by hand.
 
+### 18.15 Run 831: every switch's case labels against the ROM's jump table (agent-e)
+
+agent-e run 831, branch agent-e on main 56552e795: 724e7ad27 (port/tools/jumptable-audit.py, tree-wide),
+7ae536d6b (labels), f7681ce59 (readability gate step 5); monorepo 189b0a8 (gate-landing-tree.sh, exit 10).
+Gate PASS (ROM byte-identical, 3579/3579, verify-blocks 6/6, `check --order` 0 wrong).
+
+**The bug class (run 822 Node_doCommand, run 829 audio).** A switch whose jump table is ROM data
+(a `<func>_rodata` pin, a discarded or NOLOAD-pinned USO .rodata, a match_imports link) is checked
+on .text only, and IDO lays the arms out in source order, so any permutation of the labels matches.
+gcc builds its table from the labels.
+
+**The audit (agent-c's game_libs donor tool, extended to every module).** C side = each build/src
+object's own compiled tables (R_MIPS_32 runs into .text, split per table load; case base from the
+`addiu` before the `sltiu`). ROM side without per-module constants: the function's masked .o bytes
+are found in the baserom (all four byte alignments; the new USOs are 2 mod 4) or a decompressed
+Yay0 block; S = function address in its module's text space, D = S - code offset and E = table
+offset - the code's own `lui`/`lw` address are bootstrapped by vote; every table is then read where
+its code loads it. 102 tables: 97 OK, Node_doCommand PORT-ONLY (the ROM never reaches its
+`case 0x6C: return` arm, so the true labels let IDO drop that arm; NDC_* under PORT stays), 3 host
+placeholder tables superseded by donors, 1 `_lay` layout function. ~10 s; reads build/src objects,
+so `rm -rf build/src build/non_matching/src` before gating a label change (make does not rebuild a
+donor when only its source changed).
+
+**Fixed (labels only; arms keep their order, ROM identical).**
+- tit_procMain (title flow): 3 empty, 4 demo flags, 5 / 6 the two attract demos, 8 -> 10 and 7 -> 9
+  the ghost replays. The old labels sent 6 / 8 to an empty state 10 / 9 (endless loop).
+- arc_procMain: 6 menu, 7 name entry, 8 view record.
+- gl___osDevMgrMain: libultra 2.0 types as the kernel copy (10 LOOPBACK, 11/12 DMA, 15/16 EDMA).
+- dbg_threadStateName (the 34548 unit-head replica): agent-c's 343F4 labels.
+- RiderAnim_applyDamage_0000EDD4 (0 empty, 1..4 dm1..dm4), RiderAnim_hitFeedback_0001189C (2 / 3
+  swapped), SnowAI_aimWeave (weave 0, +side, 0, -side).
+- snd_HandleSeqEvent_30AF4: both mode switches (match_imports and the game_libs_post NM body).
+- LevelList_createItem: as CourseList_createItem (11..13 the mode-3 arms, 0..7 the charmap arms).
+
+**Not covered.** Switches IDO compiled as compare chains (no table: the labels are in .text, so
+already checked), and NON_MATCHING bodies (their code is not in the ROM; the 30AF4 NM copy was
+relabelled by hand to match its match_imports twin).
+
 ### 18.11 Run 822: frame 1 to the title demo's game_init (agent-g)
 
 agent-g run 822, branch agent-g on main 2f16f6e23 (run 819 as landed). Gate PASS on the
@@ -3862,6 +3900,79 @@ gfx_thunk_00046B44 / gfx_listAppend_0004E214 are fixed (07d30c55a).
 **Next:** the MNode_updateChildren fault under skin_cmdSkinShape (board model node stream,
 boarder1.uso data now loaded: check the blob typing of the stream and the skin shape's child
 links), then the title demo's first race frame.
+
+### 18.16 Run 830: the title demo runs headless, 3000 frames (agent-g)
+
+(Numbered 18.16: agent-e's run 831 took 18.15 in the working copy.) agent-g run 830, branch
+agent-g on main f5c1119b4. Gate PASS on the committed tree (ROM byte-identical, 3579/3579,
+verify-blocks 6/6, check --order 8314 named calls / 0 wrong, clean build OK).
+
+| commit | what |
+|---|---|
+| 2e4e49bf1 | tools: port-sourcemap `$(foreach)`; port-gen-decls C++ prototypes + 2 BYVALUE callees; cc-select folded member addends; trace `flow=state,next,mode`, line-buffered |
+| f55d9942a | src (PORT only / ROM-neutral macros): PORT_FBITS, PORT_SRET_NOPOP, snow trail donor cfront layout, boot-code check swap, SnowBoarder_reset bzero, trace collector |
+| 882b400c5 | port/gen + source map regenerated |
+
+**How far.** `tenshoe --frames 3000 --trace state.log` exits normally (rc 0, 5777 RCP tasks).
+The run-822 MNode_updateChildren fault was already gone after the regen; what followed, in order:
+trace collector on dataMgr->owner = -1, then six game bugs. state.log (flow = procState,
+nextFlowMode, flowMode at +0x38):
+
+```
+F 0..197      flow=0,0,0   N64 logo (N64DEMO procState 0)
+F 198..220    flow=1,0,0   Process_fadeOut
+F 221         flow=0,1,0   GameFlow_restart -> title mode (titproc), game_init
+F 222..2532   flow=0,1,1   title demo running: rider moves (r0 pos / quat / speed change, sys_randf moves)
+F 2533..2566  flow=4,1,1   procState 4 (the demo's end / fade)
+F 2567..2999  flow=0,1,1   procState 0 again (next demo pass or title loop)
+```
+
+**Fixes, by class.**
+1. **Donor splices written with `$(foreach)`** were invisible to port-sourcemap.py: 40 shipped
+   bodies (snoweffects, heli, nameent, trnproc) compiled as their EMPTY host placeholders. The
+   symptom was BoardTrail_init_00005FD4 (vtable slot 10 of the board trail) doing nothing, so
+   SnowRing_emit read cam = 0xFFFFFFFF. Check after any Makefile change: `port-sourcemap.py`
+   donor count (now 284 cpp + 181 c).
+2. **C++ ABI across the C boundary.**
+   - (a) gcc emits no DW_AT_prototyped for C++, so port-gen-decls promoted an extern "C" C++
+     definition's float to double (CollShape_nearestHit: the hit pointer arrived shifted).
+   - (b) An int holding f32 bits passed to a prototyped float in a C++ caller converts the
+     value: `PORT_FBITS(x)` (5 sites).
+   - (c) A struct-by-value return: g++ on i386 pops the hidden pointer in the callee, but the
+     C side takes an out-pointer and does a plain `ret`. `PORT_SRET_NOPOP` (callee_pop_aggregate_return(0))
+     is on the 6 C++ declarations of C callees and on the one C++ definition with C callers
+     (SnowAI_aimWeave). The drift had overwritten applyMode's return address.
+   - Found with a DWARF scan: C++ declarations returning a struct vs C definitions. All are fixed.
+3. **Newly shipped C++ donors need the cfront treatment.** snoweffects_uso_ncc_b.cpp is done
+   (explicit vptr, CF_V1, ROM vtable stores through the snowb_vtbl_* binds). **nameent_uso_ncc.cpp
+   still declares `virtual`** (g++ vptr at +0: wrong layout); it is not on the title path.
+4. **Per-addend binds and folded members:** g++ folds `->y` into the addend (D+0x12C). The
+   bind now uses the nearest bound addend below, within 0x100 (MapLighter_*, 8 refs).
+5. **Bare `func_00000000(...)` in a donor** calls a real, empty function on the port.
+   SnowBoarder_reset's mid-entry bzero (gl_bzero+0xC) never ran, so edge / edgeSteer /
+   edgeSlope kept Mem_allocHigh's 0xFF fill. That is a NaN: the rider's position went NaN on
+   its first integrate. The other UNNAMED mid-entry sites are bound or are libultra.
+   **Audit candidate:** bare `game_uso_func_00000000(...)` at game_uso_mp72_B3C.cpp:252
+   (cam_updateView) also hits a defined function.
+6. **Byte order (agent-c FYI):** RiderAnim_init_0000D458 dma_reads ROM 0xF10 (the boot-code
+   check: 0x04080040, 0x02081040), and on a mismatch it puts the rider in stateStopped. The raw
+   ROM words are now swapped under PORT. No blob typing rule changed this run.
+
+**Renders** (f3dreplay, default ucode): run/png/f000120.png, the trademark screen, is still
+correct. The title-demo frames are wrong:
+- f000600.png: a white rectangle and a bar, from an 8.9 MB dump.
+- f001000.png and f001500.png: grey rectangles, from 180 KB dumps.
+- f000280 / f000440: 880-byte dumps (near-empty lists).
+
+f3dreplay reports "5 lists widened, 0 unresolved G_DL" on every frame, so the 3D course and
+rider are missing from the dumps or from the replay. That is the next lead (agent-a: the dump
+may capture only one RCP task per frame; 5777 tasks / 3000 frames).
+
+**Next:**
+- Why the race view does not render: dump contents per task, ucode per task.
+- nameent_uso_ncc.cpp cfront layout.
+- The B3C bare-token audit.
+- A ROM-side trace (emulator) to compare the procState 4 at 2533 against the real demo length.
 
 ## 19. M2: graphics transport (agent-a, run 820)
 
