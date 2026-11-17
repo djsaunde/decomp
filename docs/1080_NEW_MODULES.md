@@ -3137,6 +3137,57 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   `_g` (M-368, pri 30, a0 on the draft, a3 in the target) an LR that starts in the draw block, e.g. by moving the EE
   `c->next()` before the depth row, or a phantom int item coloured a0 in block 48 so that M-368 gets a3.
 
+### snoweffects.uso 0x28E0 EXACT (all 793 words; agent-g run 793, research only, no commits)
+
+- **Source:** /tmp/claude-1000/agent-g/r793/keep/28E0_g793_EXACT_793w.cpp, a full replacement of
+  `snoweffects_uso_ncc_c.cpp` built on agent-c's f49fbdf73 (99.89). In-tree patch:
+  `keep/28E0_g793_exact_intree.patch`. It adds `gl_func_00000000_snow_v = 0x00000000;` to undefined_syms_auto.txt
+  and moves 28E0 from `SNOW_C_NM_FUNCS` to `SNOW_C_FUNCS`.
+- **Checks:**
+  - Standalone: the 793 instruction words are byte-identical to the expected object (`objdump` words, relocations
+    left out). nd.sh reports 0 diffs. objdiff fuzzy is 99.957 standalone, only because of relocation symbol names.
+  - In-tree, with 28E0 in the matching splice list: `replace-body-skip: snoweffects_uso_func_000028E0 already
+    matches donor`, and the ROM is byte-identical.
+  - The worktree was restored afterwards. The gate was not run; agent-c owns the landing (the
+    `#ifdef NON_MATCHING` wrap in snoweffects_uso.c and the episode).
+- **Edits on f49fbdf73**, each pinned by `-zdbug:5`:
+  1. **SNOW_CAM2 to t0: uopt live units.** The EE packet pointer goes into a named `Gfx *ge`, with two `(int)ge`
+     terms in the E4 zero fold (agent-c run 791). uopt cuts block 47 into units of about 20 memory ops, and
+     interference is per unit.
+     - With the `zf4(cx, 0)` index on offY, the cut fell just before `ge = c->next()`. ge (a3, priority 25) then
+       never shared a unit with e881 (SNOW_CAM2, 14.75), which took a3.
+     - Dropping that fold (offY reads plain `SNOW_CAM2->offY`) moves ge's def into e881's last unit, so e881 is
+       blocked from a3 and gets t0.
+     - The fold's cx weight is restored on the first draw compare: `(-halfW < cx) + zf4(cx, 0)`. agent-h run 792
+       found the same edit independently.
+  2. **i / lp (t3 / t4):** `+ i` inside the E4 `0 * (..)` fold. i's priority goes from 2.38 to 3.15, above lp's 2.58.
+  3. **sw / sz:** keep sw defined first. Use atB only for E7 and keep B4 on `next()`. atB's block inside the loop
+     put sw's live range at n = 10, so den went from 3 to 4 and sz outranked it (`mfc1 t1 / or t2`, rows 526 / 528).
+  4. **FA dl / count (rows 85-90):** FA goes through `next()` (my run-790 lever) and the two matrix calls are
+     void-typed (`gl_func_00000000_snow_v`, agent-e run 786). `idn3(d)` on the 06 word restores the pool word
+     that nextN had, so the frame is 520 again.
+  5. **ra / t5 (K-292 vs K-332, the op- / op* return-copy addresses, rows 136-450 and 722):**
+     - priority = num / den, with n = units + live-through blocks and den = (n - 2) / 4 + 2 (integer).
+     - The two K items both have num 20. K-292 also covers the loop-exit edge block and the tail `assign` copy
+       (n = 46, den 13), while K-332 has n = 44 (den 12), so K-332 won t5.
+     - Removing the `if (1) {}` after `self->drawn++` drops one loop block. K-292 is then at n = 45, den 12, a tie
+       at 1.667, and it wins on item index (742 < 745).
+     - Any added block in the loop (`if (1) {}`, `snowBlk()` inlines, extra scopes) changes the code to 797 words.
+  6. **E4 / B3 packet pointers after edit 5:** with that block gone, the unit cut fell inside E4, so E4's g spanned
+     two units (priority 15, t0).
+     - Five phantom reads in the EE word, `+ (SNOW_W(self, 0x78..0x88) & 0)`, move the cut back: E4 g a0, B3 g a1.
+     - Counts 5-7 work. Counts 1-2 are inert, 3-4 give 99.755, and 8 or more give 99.851.
+     - The same reads in the E4 fold do not work (99.755 or worse).
+- **Lessons:**
+  - A colour that depends on "who overlaps whom" inside one straight-line block is a live-unit question. Phantom
+    `& 0` reads, or dropping folds, move the cut with no code.
+  - For two equal-num constant / address items, the den rounding (n = units + live-through blocks) decides. Count
+    the n values in `x.lr` (`u` + `bv`) before trying folds.
+- Tools in /tmp/claude-1000/agent-g/r793/:
+  - `q.sh` = score + key live ranges;
+  - `sweep.py SRC INSERT LO HI DIR` = per-line insertion sweep;
+  - `tr.sh` / `lo.sh` as run 790.
+
 ### snoweffects.uso 0x28E0 NM 99.02 -> 99.81 (agent-c run 791)
 
 - **One commit on agent-c: 562425d9a** (gate PASS, 3577 / 3579, exact set identical, no renames; 793 words,
