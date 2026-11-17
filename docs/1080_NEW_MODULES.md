@@ -1527,6 +1527,64 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     - v14 / v17 are the tail g / gDPWord grids;
     - v15 / v16 apply agent-e's levers.
 
+- Run 765 (agent-h, commit 1bf647294 on agent-h, NM only, no renames; 3576 / 3579, gate PASS, exact set identical,
+  592 words, frame 400, sp offsets exact).
+  - **0xC90 NM 98.78 -> 98.90** (62 -> 54 positional diffs): the xh / z swap (plan item 4) is fixed.
+    - **Diagnosis.** The target has xh `(s16)((x1) << 2)` in a2, the xh / xl clamp results (M-128) in a3, and z in a3.
+      Ours had M-128 coloured first (15.75) to a2, which left a3 for the xh CSE e802 (15.0) and the xl CSE e1014.
+      The xh compute at word 243 is placed by as1, which hoists it above z. It can do that only when xh and z
+      use different registers.
+    - Raising e802 alone (any z0 use of xh: in the arm, in y1, or `if (y0 + z0(0) * xh) {}`) gives xh a2 and
+      M-128 a3. But z, a named local on its own word, then takes a2 as well. as1 can no longer hoist xh, so it
+      lands after the EE packet and the a3 preset hoists to word 210 instead (97.70, 127 diffs; every
+      e802-raising edit gives this same state).
+      z0 terms in the EE word / z expression / FB do not change e802 (the product folds before the CSE use is counted).
+    - **Fix: the depth goes on M-128's word.**
+      - `inline void primDepth(GCtx *c, int z) { Gfx *g = c->next(); gW(g, 0xEE000000, ..z..); }`, called as
+        `primDepth(c, (int)(..depth..))`. The depth parameter reuses the pooled word -128, so z and the clamp temps
+        form one LR, as in the target (M-128 goes 15.75 -> 20.75).
+      - xh then needs **two** extra uses to outrank it:
+        `(s16)(xh) > 0 ? (s16)(xh) + z0(0) * ((int)(s16)(xh) + (int)(s16)(xh)) : 0` gives 50 / 2 = 25. One use
+        (20) is not enough.
+      - Result: xh a2, depth / clamp a3, and as1 hoists xh to 243 as in the target.
+      - Inline-parameter words do not copy-propagate the way named locals do. Moving x1 / y1, or putting xh in a
+        named `s16` / `int` local before z, changes nothing (the CSE is placed at its use). Any `if` before EE
+        costs 6-18 words.
+    - **Frame.**
+      - The old z / ge loop words are gone, so `int y0, pad0, pad1;` plus `pad0 = 0; pad1 = 0;` at the top of the
+        loop restore v / __V / r at 220 / 204 / 192.
+      - Inside primDepth only plain `next()` keeps frame 400. nextI / nextI_k / me()->nextI_3 / nextN / nextBI add
+        2 pool words below r (frame 408 with the pads). Without the pads, frame 400 but every offset +8.
+    - Alternative not committed: `me()->nextI_3(0, 0, 0)` inside primDepth with no pads (o/v16_m0_p2.cpp) scores
+      objdiff **98.912**, above the committed 98.902. Its EE pointer is a1 as in the target (committed: v1), but it
+      has 60 diffs, including 6 sp-offset ones (v / __V / r +8). Taking it needs 2 pool words below r moved to above
+      v. No member / free / arg-order form tried (v16) does that.
+  - Left (54):
+    - the prologue (dl a3 / count t3 / g a2; the target has a2 / v1 / a3). M-128's prologue part is now a3.
+    - the EE pointer (v1; the target has a1). The M-224 g lives in one block, forbidden only v0.
+    - the FB / yh preset:
+      - The yh clamp result (e1255, fb {a0}) takes v0, so its `or v0,zero,zero` stays after the FB count.
+      - In the target it is a1, the preset hoists above the count (word 287), and the E4 count is then free to
+        take v0.
+      - This is plan item 1's root cause. y1 placement is irrelevant: it is copy-propagated, and all five
+        placements give identical bytes.
+    - the xl clamp result (v1; the target has a3);
+    - the B4 pointer t4 / s-outer t3 (the target has t3 / a3);
+    - tail packets 3 / 5 / 6;
+    - f10 at word 270.
+  - Tools: /tmp/claude-1000/agent-h/r765/:
+    - v.py: score plus colours;
+    - gd.py: dummy append defs;
+    - v1 / v2 / v4 / v5: xh use probes;
+    - v6 / v7: x1 / xh-local placement;
+    - v8: `if` sites;
+    - v9 / v10: depth-inline forms;
+    - v11: xh use counts on the L form;
+    - v12 / v14 / v15 / v16: frame and pad grids;
+    - v17: y1 placement;
+    - mkc.py: builds the committed body;
+    - k/: the uopt trace of the committed state.
+
 ### snoweffects.uso 0xC90 y0 t3 / E4 pointer t4 (agent-e run 760, research only, no commits)
 
 - **Fixed, code-free: objdiff 98.598 -> 98.758 on agent-h's run-762 head (c57226a6e).** Positional diffs go from 73
@@ -2595,6 +2653,32 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   - var*.py: the toy matrices;
   - ev.sh, fz.sh, vn.sh.
 
+### snoweffects.uso 0x28E0 NM 95.44 -> 96.15, frame 520 (agent-c run 763)
+
+- **Commit a395bfa05 on agent-c** (gate PASS, 3576 / 3579, exact set identical, no renames; 793 words, frame 520).
+  Positional diffs 426 (the 794-word n1b lead) -> 278; mnemonic-aligned 21 / reg 202.
+- **The draw-block mov.s is gone: all four terms use z.** The target keeps the reloaded p->pos.z in f22 for the
+  w / cx / cy / depth terms. With `z` in all four terms, z's loop and draw pieces form one LR (u 8, bv 18), and x / y
+  / z take f18 / f20 / f22 as in the target. The depth must read a variable, not `p->pos.z`: the EE w0 store comes
+  before the depth, so a load there is not CSE'd (795 words).
+- **Why the all-z form cost +4 words before: uopt substitutes cx / cy into the compares.** With only variables in the
+  cx expression (no `p->pos.z` ILOD), the compares read an expression temp (e279 / e662) and the variable survives
+  only for x0, so there are two interfering LRs plus a mov.s each. Any ILOD in the expression blocks this, which is
+  why the old `p->pos.z` form had no copies.
+  - **Fix: assign the row sums first, then scale after both:**
+    `cx = (row0); cy = (row1); cx = cx * w * halfW; cy = cy * w * -halfH;` (793 words, no copies, the target's
+    schedule). A 5 x 5 grid of cx / cy forms (c763/forms.py): every other order keeps 2 copies or loses the schedule.
+    `cx = E * w; cy = E' * w; cx *= halfW; ...` also has no copies, but cx's `* halfW` sinks below cy (795).
+- **Zero-code zf() folds (agent-e run 756) placed only on pointer bases** (`self->axis[1 + zf2(wy, 0)]`,
+  `p[zf2(w, 0)].size`, `(&SNOW_CAM2->offX)[zf2(cy, 0)]`). wy then beats wx and x: wy f16 / wx f24 as in the target.
+  **A zf in a stack-array index (`m[zf(x, 0)][3]`) is not free:** it emits `addiu tN,sp,K` for the row address.
+- **Left (hill-climbs c763/sp11 converge here):** M is one word short around m (m at 400, target 404; the t4 spill
+  at 108, target 116); the loop-top cx / cy / cz colours (f2 / f0 / f12, target f0 / f12 / f2); 1/w in f12 (target
+  f14); the EE packet order (gDPWord form costs a word here, so EE stays snowW).
+- Tools in /tmp/claude-1000/c763/: hc3.py (hill-climb scored by mnemonic / reg diffs; WP = word / frame penalty),
+  q.py (base + replacements -> one score), forms.py, sp4-sp11 knob specs.
+  keep/28E0_c763_44i_793w_96.06.cpp is the first 793-word form.
+
 ### snoweffects.uso 0x28E0 NM 95.39 -> 95.44, frame 520 (agent-c run 759)
 
 - **Commit 2a486602e on agent-c** (gate PASS, 3576 / 3579, exact set identical, no renames; 793 words, frame 520).
@@ -3210,6 +3294,50 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
 - Tools: `an.sh NAME` (trace + pitch-region picks + pitch window against the target), `cols.py NAME..` (one line
   of the key LR colours / priorities, plus MOV when `mov.s f2,f16` is present), `pk3.py NAME LO HI` (FP picks with
   true register names; lre.py's names are shifted by one FP register). Sweeps: s4..s16.
+
+## heli.uso (agent-g run 766)
+
+- **0xB08: no commit (97.84 % stands; 3576 / 3579).** The pitch window is solved structurally, but the build is not
+  yet above 97.84 %: the int / FP temp rings are rotated (raw rows about 800), so the score is about 94.5 %.
+  Scratch: /tmp/claude-1000/agent-g/r766/ (`v.py` = score, `dr.py` = register-masked diff, `cmpw.py` = pitch
+  window, `lr.sh` / `pk2.sh` = LR picks).
+- **Best source: `r766/g4.cpp`.** It builds on agent-e's run-764 source (`b08_e764.cpp`).
+  - Structure: 943 words plus the pad nop, the frame is correct (no 4-byte shift), and -pi/8 is hoisted into f18
+    at the target row.
+  - Pitch colours: pf f0, old-h f2, the copy f2, the result f12, hi f0, -pi/8 f18, and the angle value f2 all match
+    the target. The only wrong colour is the lerp value: f14 (target f16).
+  - The changes from e764:
+    - the lerp value in `f`, not `dist`. This fixes the frame and the 320(sp) spill.
+    - a **param-copy clamp** `clampP(v, lo, hi, z) { if (v < lo) return lo; if (zf1(v, z)) v = lo;
+      if ((hi < v) + zf4(v, z)) return hi; return v; }`. It replaces the local-`w` clampV, which drops a frame word.
+      The copy is EDG's M-160.
+    - -pi/8's fold moved from the pitch store to the **yaw store address**:
+      `*(float *)(self + 0x14C + zf4(-0.3926991f, 0)) = HF(0x14C) + yaw * (0.06);`. This hoists -pi/8 into f18
+      at the target row.
+      - Keep exactly one fold site for a constant. Two zf sites with shared `lo + lo ..` prefixes get CSE'd, and
+        the sum survives as real code (len +3 to +5).
+    - the angle sequence in `g` (`dumf(g); g = HF(0x144); .. ppf(.., g)` x3). f's live range is then only
+      {A, B, one arm} (pri 2.5).
+- **What is left (register-masked rows: 18):**
+  - **(1) The lerp value is f14, not f16.** HF(0xF8)'s LR (e1358 #433) spans block 70 and the lerp block. It is
+    picked after M-168 (a shared EDG temp, f14 in block 70; it wins the 3.0 tie on a lower index), so it takes f16,
+    and f is left with f14. Either break 433's link to block 70, or get F8 picked before M-168.
+    - zf terms on HF(0xF4) / HF(0xF8) in a store address don't help. fwdOf reads them through `q`, so the folds
+      create new EDG param temps (M-164 / M-168 LRs) instead of adding uses to 433 / 444.
+    - A fwdOf variant with a folded member-store address (`fwdOfZ`) and the direct HF form of fwdAx (len 934) are
+      both much worse.
+  - **(2) The slerp rows 518..558 (three `lwc1 f16,148(sp)` sites).** In the committed source the EDG temp M-220 is
+    one LR joining the slerp blocks 56..61 with the pitch clamp (via lerpTo / clampTo), so it gets a colour. In
+    every copy-form source M-220 is slerp-only and spilled.
+    - The target therefore routes the pitch through the same inline temp as the committed lerpTo / clampTo form.
+    - Not M-220: clampf with a default `z` argument, a `clampToP(float &d, ..)` wrapper, `setf(HF(0x148), ..)`, or a
+      `float &d` local.
+    - **Next:** find which inline's temp M-220 is (the slerp's slc / heli_ff result?) and route the pitch result
+      through it.
+  - (3) The rows the committed source also has: the head add.s order 95..98, 585, 602 / 637, and 907 (the axZ
+    store order).
+- Also useful: the lerp `if (1) {}` cut must come after the HF(0x148) store (agent-e's (b)). A cut right after
+  `f = lerp` instead gives the copy form, but with -pi/8 not hoisted.
 
 ## heli.uso (agent-g run 761)
 
