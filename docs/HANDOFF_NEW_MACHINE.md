@@ -77,15 +77,19 @@ Then, in order:
    `toolchain-i386.cmake`, creates `tools/cmake-venv/` (cmake + ninja) if
    missing, and ends with a C / C++ / cmake hello-world self-test. If
    `gcc -m32` already links it says so and exits 0.
-9. **Play the PC port live** (plan §19.11) — with an X display (WSLg gives
-   `DISPLAY=:0`) and the i386 sysroot of step 8, from the game repo:
-   `port/tools/play.sh` (or `port/tools/play.sh -b <built port tree>`). It fetches
-   the 64-bit LUS / GL / Xlib headers without sudo on first use
+9. **Play the PC port live** (plan §21.9 / §21.10) — with an X display (WSLg gives
+   `DISPLAY=:0`), from the game repo: `port/tools/play.sh` (or `-b <built PORT_NATIVE tree>`).
+   The default is the native single-process 64-bit game (`-DPORT_64=ON -DPORT_NATIVE=ON`,
+   built in `tools/play/<worktree>/build-native` on first use; no i386 sysroot needed). It fetches
+   the 64-bit LUS / GL / Xlib / PulseAudio dev files without sudo on first use
    (`port/gfx/fast3d/setup-lus.sh`, `port/gfx/replay/setup-gl-dev.sh`,
-   `port/gfx/fast3d/setup-x11-dev.sh`), builds the 64-bit presenter and the 32-bit
-   `tenshoe`, opens a 960x720 window and runs the game in real time. Keys:
+   `port/gfx/fast3d/setup-x11-dev.sh`, `port/gfx/fast3d/setup-pulse-dev.sh`), opens a 960x720
+   window and runs the game in real time with sound (PulseAudio opens 2.5 s after the window: WSLg).
+   `play.sh --presenter` is the fallback (the 32-bit tenshoe + the 64-bit presenter; needs the
+   i386 sysroot of step 8). `-S` = software GL, `-m` = mute. Keys:
    arrows / WASD stick, X or Space = A, Z = B, C = Z, Enter = START, Q / E = L / R,
-   IJKL = C buttons, TFGH = D-pad, Esc quits. No sound yet.
+   IJKL = C buttons, TFGH = D-pad, F11 fullscreen, Esc quits. Audio check:
+   `port/tools/audio-check.sh --native` (`make -C port/gfx/fast3d audio-check-native`).
 
 ## 2. The gate — run this before every commit, no exceptions
 

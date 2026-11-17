@@ -6756,3 +6756,121 @@ build64 fails if they differ. The native build itself is not gated (it needs too
    step in the dlump comparison (the smoke has no HUD gadgets).
 2. Make native the play.sh default once the audio stall is fixed.
 3. FB_WRITE (CPU rectangles, debug only) is still not composited in process.
+
+### 21.10 Run 870: native audio verified, native is the play.sh default, the float-ABI list closed (agent-g)
+
+Commits on agent-g: c4fa8c492 (native audio check, play.sh default), 47d58a653 (the ABI fixes, the gate). Landing gate:
+3579/3579, ROM byte-identical, clean build OK; port gate PASS (build64 PASS: 11/11 state.logs, smoke gfx 8/8, race
+gfx 8/8, race audio identical to about step 6346 (INFO after), soak64 0 hard / 1 soft); presenter and native tenshoe
+build.
+
+**Native audio.** `port/tools/audio-check.sh --native` (`make -C port/gfx/fast3d audio-check-native`) runs the
+Match Race script (3300 steps, `tenshoe --input`, realtime) in the native game with
+`PORT_NATIVE_AUDIO_STATS=1` and applies the presenter check's verdict (played / received-while-open >= 95 %,
+>= 30 s received while open). The native host opens its window, then `live_audio_start`; live_audio's
+`openDelayMs` (2500, run 867) counts from there, so PulseAudio opens 2.5 s after the map, as WSLg needs.
+`PORT_NATIVE_AUDIO_OPEN_DELAY=MS` overrides it.
+- D3D12 (AMD) run: **PASS, 99.7 %**: received 109.42 s, 2.55 s before the open, 106.54 s played, 0.33 s
+  trimmed, 1 underrun, 0 game overruns. Render mean 18.2 ms / p95 45 ms (the GPU was shared with other
+  agents' runs; run 868 measured 5.7 ms).
+- The first try came up on **llvmpipe** (Mesa fell back from D3D12 on that one start; the next 3 starts got
+  D3D12). At 134 ms a frame the window traffic stalled WSLg's PulseAudio as a map does: 16.9 s of 99.6 s
+  played, 80 s trimmed, and the audio thread was still blocked at exit. If a run is slow and silent, check
+  the `native: ... EGL` line for llvmpipe and restart. The native close now prints the `audio-stats:` line
+  itself when the audio thread is abandoned (`live_audio_stats_line()`), so the check always has a verdict.
+
+**play.sh default = native.** `port/tools/play.sh` now runs the native game. `--presenter` is the fallback
+(the 32-bit tenshoe + presenter; `-n` / `-p` apply to it only), and `--native` is still accepted.
+audio-check.sh's presenter mode passes `--presenter`. Verified: frames and state.log (run 868), scripted
+input (run 868 and this run's audio check: the script's 3300 steps), audio (above). HANDOFF step 9 updated.
+
+**The abi-scan --x64 list (all `#ifdef PORT64` or identity outside it; ROM 3579/3579, i386 unchanged
+except one C++ fix below).** Count on the native tenshoe: 55 lines -> 11. The 11 left are 8 prism / libstdc++
+template SRET / VRET false positives, the 2 known VRETs (RaceTracker_onCheckpoint -> PointsPopup_setPosScale,
+tim_drawTime -> gui_spriteRefresh), and SnowBoarder_updateOrient's trailing K&R argument (harmless).
+- **New: `PORT64_BITS(t)` / `PORT64_BV(p)` (include/uso_call.h).** Under PORT64 (C only) the type is a GCC
+  `transparent_union { int; float; }`. A parameter of that type is passed as its first member: in an integer
+  register, with the bits, whether the argument is an int or a float.
+  - **On a token's declaration**, it lets a float-passing site reach a callee that takes the bits, without
+    touching the site.
+  - **On a definition**, the callee reads the bits from the integer register. That suits a float setter
+    whose O32 callers mostly pass `*(int *)&f` through K&R CALLs.
+  - Outside PORT64 it is the given type, so the ROM build and i386 are unchanged.
+- **`PORT_IBITS(x)`** is for C++, which ignores transparent_union. It passes a float's bits to a
+  decls_cpp.h `int` parameter.
+- **AudioThread_QueueCmdF32** (definition `(int, int)`, the bits). Every float-passing alias now takes
+  `PORT64_BITS(float)`:
+  - `gl_func_00000000_f` in game_libs_post.c (4 declarations) and game_libs_o2_2FB74.c;
+  - gl_E354_setf, gl_2F288_emit_float, gl_2F9D4_float;
+  - gl_E354_emitf's 4th argument (snd_SetPlayer0ChannelParams_2F9D4 takes the bits too).
+  The two C++ sites (game_libs_ncc_307A8 / 308AC) passed a float to decls_cpp's `(int, int, ...)`, which
+  converted the VALUE (0.73 -> 0) on i386 as well. They now pass `PORT_IBITS(f)`. This is the one change to
+  i386 behaviour: a volume / level command. The audio regress cases still pass.
+- **CourseGadget_setFloat2 / setVec3 / setVec4.**
+  - The definitions take `PORT64_BITS(float)`.
+  - The float-typed aliases take it too: gl_func_00000000_e84c2/4, gl_func_15f0, gl_proto_1c94,
+    timproc_b1's gl_proto_1c68, arcproc_import_187/188, mgrproc_uso_func_016BEC.
+  - timproc_b3's gl_proto_1c68 is shared with PointsPopup_setPosScale, which takes real floats, so its
+    setVec4 site uses `PORT64_CALLP` with the bits.
+  - Checked in the disassembly: setFloat2 stores esi / edx; hud_addCourseGadget passes ints.
+- **snd_ScheduleSeq**: the definition takes `PORT64_BITS(float)`. Both callers are K&R with the bits:
+  - snd_dispatchEvent case 50 (`0x3F333333`);
+  - **snd_ScheduleSeqAfter** (`0x3F800000`). abi-scan never listed this one, because it is a tail call
+    (`jmp`) and the scan only looks at call sites.
+
+  Its a3 is stored to D_2DDBC_d, which is the same word as D_2DE24_c / D_00000000_324: player 1's volume.
+  On x86-64 that word held garbage after the race goal (0x0157dc73 instead of 1.0f), so the music played
+  differently from 158 s in.
+  - Found by logging every AudioThread_QueueCmd (a temporary `#ifdef PORT` fprintf, not committed) on both
+    builds and diffing the two streams: the only difference was `0101ff00 3f800000` against `0101ff00 0157dc73`.
+  - Lesson: the scan's blind spots are tail calls and indirect calls. The command-stream diff finds what
+    they hide.
+- **snd_UpdateChannel10Emitter** (bootup_uso.c's snd_updateChannel10Emitter, snd_HandleSeqEvent_30AF4's 0.3f):
+  `PORT64_CALLP` with `PORT64_F`.
+- **math_arcballPoint**: BallRotator_applyArcball's PORT64 alias passes the two Vec3s as six floats (the
+  definition's parameters; a 12-byte struct by value is not that on x86-64).
+- **hostio_addFloat** (Spinner_hostioParms, `gl_proto_3787C`): the min is `PORT64_FT` / `PORT64_F(0xC0C00000)`.
+- The context headers that now use these macros (context_game_libs_post / post0b / h2hproc_uso / mgrproc_uso /
+  arcproc_uso_tail1.h) include `../../include/uso_call.h`.
+- abi-scan does not judge a definition with a 1..16-byte struct parameter, so the transparent-union
+  definitions drop out of its view. The gfx / audio comparisons below are what verify them.
+
+**Gate (scripts/port-gate.sh build64).**
+- race-check.py has new `--gfx-steps STEPS` (PORT_GFX_DUMP of the race run into race/gfx) and `--audio`
+  (race/audio.wav) options.
+- The i386 race step and build64's race64 both pass `PORT_GATE_RACE_GFX_STEPS` (default
+  1800,3000,4700,7000: racing with the HUD, the goal, the View Replay) and `--audio`.
+- build64 then requires the race gfx (dlump-cmp) and the race PCM (byte compare) to be identical.
+- soak64 runs `--audio64`, and **x64-audio is a hard class** now.
+- **x64-screen stays SOFT.** The gate64 seed 2 differs at step 842, flow 7's first frame. The cause is the
+  light colours of 4 objects (ambient = diffuse: i386 ff / f7 / 7e, x64 50 / 43 / 49). Turning on
+  PORT_GFX_DUMP flips the result in **both** builds (i386 with the dump gives the x64 hash, and the reverse),
+  so this is an uninitialised read (stack contents), not a float ABI difference. Lead: Obj::setLights'
+  ambient = `amb->col * s * 255 (* k)`, with s from gfx_selectLights' `scale * k`, on the first frame of
+  flow 7.
+- By hand (b32 / b64 of this tree):
+  - race_crystal_lake.input to 3300 steps: identical WAV (f6210761); gfx at 1800 / 2250 / 3000, 6/6
+    identical;
+  - the full race-check run: gfx 8/8 identical;
+  - the PCM is identical through the goal and into the View Replay, up to about step 6346. After that it
+    differs, but the AudioThread_QueueCmd stream is identical through step 6500, so the cause is outside the
+    command queue (seq-player / note state written directly, or a float in an indirect call).
+  - agent-c's ~step-710 audio divergence is gone (the QueueCmdF32 sites).
+  - The gate64 seeds' audio md5s are equal.
+- So build64's race audio check **requires** identity through the goal + 60 steps. A later first difference
+  is printed as INFO (`race audio: identical to about step N (goal 4708), then differ (INFO: after the
+  goal)`).
+- **The audio regress goldens (port/audio/tools/regress-golden.tsv): course0 and course1 are new.** These
+  two cases render with the snd_TickChannel8Fade / 308AC fade. Before the PORT_IBITS fix, its level reached
+  AudioThread_QueueCmdF32 value-converted (0 or 1 as float bits, i.e. silent), on i386 too.
+  `make -C port/audio regress-update`; every other case is unchanged.
+
+**Left.**
+1. x64-screen: find the uninitialised light input on flow 7's first frame. PORT_TRACE_FN on the frame, or a
+   watch on the LElem / scale fields.
+2. The race PCM after about step 6346 (View Replay). The command queue is identical, so diff the seq
+   players' / notes' float fields per step, or the soundObj calls (snd_SoundObjSetAngle(o, f32, s8),
+   snd_calcEmitterDistPan) through PORT_TRACE_FN `--args`. Then make build64's race audio check whole-run.
+3. The 2 VRETs.
+4. abi-scan: follow tail calls (`jmp` to a function symbol) as call sites.
+5. FB_WRITE in process (21.9).
