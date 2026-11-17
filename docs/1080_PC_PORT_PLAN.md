@@ -1122,7 +1122,7 @@ Notes on the flags:
   references).
 - `-fno-pie` matches a `-no-pie` link.
 - `PORT_LINK=ON` adds the `tenshoe` executable: `port/main.c` plus `--whole-archive libgame.a` and
-  `--gc-sections`. It needs gcc-multilib, which this machine does not have yet.
+  `--gc-sections`. It needs a 32-bit libc: gcc-multilib, or the no-sudo sysroot in 13.5.
 
 **Result (gcc 11.4, cmake 4.4.5 + ninja from a uv venv):**
 - **462 / 462 objects built, 0 compile failures**, giving `libgame.a`.
@@ -1204,8 +1204,34 @@ What this shows:
 3. **Shim surface:** the 69 functions above, plus `memcpy` / `memmove` / `memset` from host libc.
 4. **C++ cross-donor references (40):** map each mirror-class constructor or method to the shipped
    C symbol (`extern "C"` declarations under PORT), or alias it at link time.
-5. **Link:** once gcc-multilib is installed, build with `-DPORT_LINK=ON`. The link errors should
-   then equal `port/undefined.txt`.
+5. **Link:** build with `-DPORT_LINK=ON` (toolchain in 13.5). The link errors should then equal
+   `port/undefined.txt`.
+
+### 13.5 Linking without gcc-multilib: the i386 sysroot (runs 807 / 808)
+
+Linking (`PORT_LINK=ON`, the shim tests) needs a 32-bit libc, libgcc and libstdc++. With root that
+is `sudo apt install gcc-multilib g++-multilib`, and the plain commands above work. Without root,
+run `scripts/setup-i386-sysroot.sh` in the monorepo (idempotent, about 10 s and 9 MB). It
+`apt-get download`s `libc6-i386 libc6-dev-i386 lib32gcc-s1 lib32gcc-11-dev lib32stdc++6
+lib32stdc++-11-dev lib32quadmath0 lib32atomic1` (the gcc major follows the host gcc), unpacks
+them with `dpkg -x` into `tools/i386-sysroot/root/`, fixes them up (usrmerge `lib32 -> usr/lib32`,
+absolute symlinks made relative, the `libc.so` ld script pointed into the tree, an in-tree
+`lib/ld-linux.so.2`), writes the `gcc32` / `g++32` / `run32` wrappers and `toolchain-i386.cmake`,
+creates `tools/cmake-venv/` (cmake + ninja) if missing, and self-tests a C, a C++ (iostream,
+exceptions) and a `-static` hello world plus a cmake + ninja build. Then:
+```
+PATH=<monorepo>/tools/cmake-venv/bin:$PATH cmake -S port -B <build> -G Ninja -DPORT_LINK=ON \
+    -DCMAKE_TOOLCHAIN_FILE=<monorepo>/tools/i386-sysroot/toolchain-i386.cmake
+cmake --build <build>
+<monorepo>/tools/i386-sysroot/run32 <build>/tenshoe        # or any test binary
+```
+The binaries' interpreter `/lib/ld-linux.so.2` does not exist on a non-multilib host, so they run
+through `run32` (the toolchain sets it as `CMAKE_CROSSCOMPILING_EMULATOR`, so ctest uses it too),
+or are linked with `-static`, or with `-Wl,--dynamic-linker=<sysroot>/root/usr/lib32/ld-linux.so.2
+-Wl,-rpath,<sysroot>/root/usr/lib32 -Wl,--disable-new-dtags` to run directly. The `libc.so` script
+holds absolute paths, so after moving the sysroot rerun the script with `FORCE=1`. In run 807 the
+port configured and built with it; `test_ultra` and `test_fs` linked and passed under `run32`, and
+`tenshoe` failed only on 81 game-side undefined symbols (no libc / libm / libgcc gaps).
 
 ## 14. M2 prep: libultraship patch series
 
@@ -2184,7 +2210,7 @@ by relative path; nothing new to add to the source lists.
 5. **Audio.** `port_audio_frame` is a stub: no audio frames run. Whether `snd_Init` or the first
    sequence load waits on the audio driver (an `osRecvMesg(BLOCK)` the shim would report as a
    deadlock) is for agent-c's wiring to show.
-6. **32-bit libc** (gcc-multilib) on the analysis machine, to link at all.
+6. **32-bit libc**, to link at all: gcc-multilib, or the no-sudo sysroot (13.5).
 7. Harmless, noted: GfxLib_init measures `frameTime` across one `gfx_waitRetrace`, which no longer
    advances virtual time, so it reads 0 and prints the "zero v frame time" debug line (only
    `sys_timeInFrames` reads it, with no game caller); the pad and fault threads stay parked (counted

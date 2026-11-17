@@ -68,6 +68,15 @@ Then, in order:
    segments" — a full re-split makes `ld` segfault).
 7. **Build** — `make RUN_CC_CHECK=0 -j8` then
    `make non_matching_objects RUN_CC_CHECK=0 -j8`.
+8. **PC port prerequisites** (only for `port/` work, see `1080_PC_PORT_PLAN.md`
+   §13.5) — the port is a 32-bit x86 build (`-m32`), so linking needs a 32-bit
+   libc / libgcc / libstdc++. Either `sudo apt install gcc-multilib g++-multilib`,
+   or, without root, `bash scripts/setup-i386-sysroot.sh` (idempotent; Ubuntu /
+   Debian): it `apt-get download`s the 8 lib32 debs, unpacks them into
+   `tools/i386-sysroot/` with `gcc32` / `g++32` / `run32` wrappers and a
+   `toolchain-i386.cmake`, creates `tools/cmake-venv/` (cmake + ninja) if
+   missing, and ends with a C / C++ / cmake hello-world self-test. If
+   `gcc -m32` already links it says so and exits 0.
 
 ## 2. The gate — run this before every commit, no exceptions
 
