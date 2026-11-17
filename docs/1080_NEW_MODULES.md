@@ -1302,6 +1302,40 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     - hc4.py: climb under the 592-word / frame-400 / offsets constraint;
     - v*.py: the batches.
 
+- Run 740 (agent-h, commits 9a01c60ca, 5327270cb, a56f8f4cf on agent-h, NM only, no renames; 3571 / 3579, gate PASS
+  each, exact set identical, 592 words, frame 400).
+  - **0xC90 NM 94.41 -> 96.17 -> 96.23 -> 96.73 %**. Loop-layout diffs 87 -> 16, sp-offset mismatches 1 -> 0.
+    - **FB colour = the stock gDPSetEnvColor body.** `_SHIFTL(col[0], 24, 8) | _SHIFTL(col[1], 16, 8) |
+      _SHIFTL(col[2], 8, 8) | _SHIFTL((int)alpha, 0, 8)` gives the target's load order col[0], col[1], alpha,
+      col[2] (94.41 -> 96.17). None of the 24 plain-int term orders does; the u32 casts are what matter.
+      `(unsigned char)alpha` costs 30 words; `(s16)` / `(unsigned int)(int)` are identical to `(int)`.
+    - **Texrect E4 = the stock clamp form, as one comma statement** with the E4 assignment
+      (`g0 = pkt, g0->w0 = .. MAX((s16)xh,0) | MAX((s16)yh,0), g0->w1 = .. MAX((s16)xl,0) | MAX(0,(s16)yl);`).
+      In the comma statement the clamp temps take fresh edg words instead of next()'s pooled count word, so the count
+      LR loses the clamp blocks. Plain stock MAX in separate statements is 590 words (no ra save, y0 << 2 not
+      hoisted). The climb then picked EE nextBI(), FB nextN(), E4 nextI(), B4 / B3 nextN(), one `if (y0) {}`
+      (before FB), tail g on E7 / BB / BA1301 / B9 / BA0602 (96.73).
+  - **Count LR facts (uopt trace, `trp.py`):**
+    - The count word (M-128) was forbidden v0 / a0 / a1 because its LR included block 1 (the prologue, with the
+      calls): the prologue packet used the same pooled word. Separating the prologue (nextN) makes v0 legal.
+    - The RDPHALF_1 `s` ternary result also reuses the count word and lives across the `t` ternaries (blocks
+      42..53). gImmpV written as a comma statement gives it a fresh word: count den 8 -> 3..5, pri 21 -> 35..56.
+      With both, count takes v0 (a2 before), but the variants are 590-591 words.
+    - `ne = c->dl->count++` in a named loop word changes nothing (the ++ temp is the LR; ne is copy-propagated).
+      `ne = c->dl->count; c->dl->count = ne + 1;` makes ne the LR, but it takes v1, with dl in v0.
+  - Left (opcode alignment vs the target):
+    - the two clamp presets (`or a1 / a3, zero, zero`) come after the FB count, not before it;
+    - y0 + hgt is computed one slot early (a0 vs the target's v0 after the E4 count);
+    - the yl clamp branch is bgez (MAX(0, x)) vs the target's blez;
+    - one `or a3,a0,zero` in the RDPHALF_1 `s` arm is a nop in ours;
+    - registers: loop count v1 / dl v0 (target v0 / v1), c in t4 (target t2).
+  - Tools: /tmp/claude-1000/agent-h/r740/:
+    - g5.py: g4 plus `imc` (gImmpV comma forms), `e4c` (texrect comma statement), `fbs` (FB form);
+    - hc6.py: climb with the count register (v0) as a secondary key; hc7.py: objdiff climb over nb.neigh2 (next-form /
+      pn / imc / e4c moves combined with a tail-g toggle, so frame-changing moves stay at 400);
+    - trp.py: parallel-safe uopt trace (pri / den / colour / forbidden per LR);
+    - v*.py: the batches (v5 FB forms, v9 / v10 named count words, v11 clamp grid).
+
 ### snoweffects.uso 0x6000+ (agent-e run 639)
 
 - +2 EXACT (commit feb67fb6a on agent-e): 0x8C60 and 0x9FE8, both IDO 7.1 NCC. Own donor
@@ -2641,6 +2675,43 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     f20) is a separate constant web: `(float)0` int-cast literal.
 - NM wraps spell the raw placeholder tokens: the named-call check cannot prove CALL() sites
   whose build path is INCLUDE_ASM.
+
+## heli.uso (agent-g run 742)
+
+- **0xB08 NM 95.76 -> 96.39 % (no renames; gate below).** This uses agent-a's viewrec 3878 lever. One line before the
+  donor body, `extern "C" void *heli_updateSlot_b08 = (void *)heli_uso_func_00000B08;` (the Heli vtable's update
+  slot), makes as1 treat the function's address as a target of the switch `jr`. The case-6 default is then no
+  longer an exclusive block, and xbb fills the bound check's delay slot with the dispatch `sll`, as in the target.
+  Both-masked rows go from 68 to 63. A `static` array holding the word does nothing (95.76); an `extern "C"`
+  scalar or an extern array both work. None of the run's other probes adds anything on top of this.
+- **The case-4 `sp+252` hoist is uopt's live-range split order.**
+  - The `-116` lda is one constant live range (bp 680, `r742/lr.sh`: zdbug:5 plus the SAVE / PICK / ADJ trace).
+  - Its unit list runs dir (bb45), vel (67-69), and then the case blocks in DESCENDING table label: 7, 6, 5, 4,
+    then 2 and 1. (uopt numbers the blocks in source order: case 8 = bb24, case 4 = bb28, case 7 = bb29,
+    case 1 = bb30, case 5 = bb31, case 6 = bb42.)
+  - The split takes pieces in that order:
+    - case 7 absorbs the switch join bb44, so its num is 0 and it is not coloured;
+    - case 6 has one use, num 0;
+    - case 5 and case 4 have num 1 each and are coloured v1;
+    - the remainder (2, 1) has num 0 and stops.
+  - A piece's num is its uses minus one per entry unit. To match the target, the remainder after the case-5 piece
+    must reach num <= 0 while it still holds case 4. That needs one more entry unit, or one fewer use, among
+    case 4 / case 2 / case 1 / bb41 / bb46.
+  - `if (1) {}` splits inside case 1 or case 4 add no entry (the two halves are adjacent). A sweep of 102
+    single-cut positions from the switch to vel is all flat.
+- **Case-6 zero-code alias:** no longer needed. For the record, EDG 2.29 rejects every zero-size type (`char c[]`
+  is error 3163; `[0]`, `[1-1]` and a template `[N]` are 3187). `int : 0` copies one byte (92.35). A `0 * (int)&G`
+  fold in case 6 moves registers (95.62).
+- **vel / HF(0x154):** the target keeps HF(0x154) in f0 across the clamp join: `bc1fl` with `lwc1 f4,0(v0)` in the
+  delay slot, and a reload on the store path. A load in the join block, `float k = s;` before operator*'s cut,
+  gives that shape. But k becomes its own live range (`mov.s f14,f0`), and the products miss the target's
+  f12 / f14 / f16 because the 2.0f constant is f18 here and f2 in the target. That scores 95.20 (96.35 with the
+  slot word). `dumf(HF(0x154))` keeps a dead second load (+1 insn).
+- **g / HF(0x144) / -0.3f:** the target has f14 / f2 / f0, ours f2 / f0 / f14. Colour order: HF144 (pri 3.0)
+  takes f0 first. The target needs the -0.3f constant (pri 0.5) to get f0 ahead of HF144, so the target's
+  priorities differ a lot here. The lerpTo form, removing the cut, `dot()` for g, and `g = g * ...` are all
+  byte-identical.
+- **Next:** an entry unit in the K-116 remainder, then the 2.0f constant colour (f2), which unlocks the vel products.
 
 ## heli.uso (agent-g run 739)
 
