@@ -208,10 +208,12 @@ functions + 3 `_ref` aliases), 67ea42ff3 (tool output: 95 CALL sites in the two 
 - **NameEnterMessage** (vtable Data+0x18, 0x11C): the letter wheel. `NameEnterMessage_ctor`,
   slot 2 `display`, slot 3 `update` (42 entries: letters, 39 space, 40 back, 41 END). Typed in
   the NCC donor (struct NeEntry).
-- **For agent-h (nameentry.h owner):** `NameEntry.entry` (+0x50) is the record
-  **BackupSession** (Tim / TrkNameEntry_update pass it to Backup_sessionHasNew; nameent writes the
-  name to it), and +0x54 is the NameEnterMessage. nameent.h's NameEnterProcess has the full
-  layout; merging the two (one struct) is a hand edit in nameentry.h.
+- **Merged (agent-h run 805, 013053c6e / 13e972aff):** NameEnterProcess and NameEntry are one
+  class, now one struct: `NameEntry` in include/game/nameentry.h carries the full layout (+0x50
+  `struct BackupSession *session`, +0x54 `struct NameEnterMessage *message`, cursorX/Y, entered,
+  showBoard, frameTop/Left/Right); nameent.h includes it and `NEPROC()` casts to it. Evidence: the
+  mode ctors' 0xD4 level stores the import nameent:Data+0x80 (the NameEntry_* vtable), same 0xD4
+  size, and every onRaceOver calls `NameEntry_init(nameEntry, race.session)`.
 
 **Left raw (justified):** trnproc `TrnDataManager_onCheckpoint` gate +0x88 (`RAW: unknown-object`);
 nameent donor: the Data+0x158 image copy (`data-table`) and the inlined Node vptr store
