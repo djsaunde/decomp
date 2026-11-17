@@ -782,6 +782,39 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     difflib diff with register normalisation, ss.sh ugen `cc -S` dump, lj.py greedy line-join search, g41*.py / h41.py
     4188 searches, t64.py the 64-bit store probe).
 
+- Run 687 (agent-h, commits 9b25c3bc6 EXACT + 8b951067b NM, no renames): +1 EXACT (0x4188), 3562 / 3579 (gate PASS).
+  - **What counts toward uopt's ~20-op live unit (read from the uopt recomp, readnxtinst).** The counter 0x1001c430
+    is bumped at only two sites, both in the Ulod (op 82) case: a load of a VARIABLE whose value uopt cannot forward,
+    meaning a parameter or never-assigned var (path A), or a temp holding an expression with an ilod / a bigtree /
+    a killed tree (path B). Not counted: istr / ilod / ldc / ixa / str, loads of volatile vars, of globals, and of
+    a var whose current value is a forwardable copy or constant (`r = a; .. r`, `q = &loc; .. *q`). The unit is cut
+    once the count reaches the limit (0x1001c43c = 20) at the next statement op; a call resets it.
+    Instrumented build: /tmp/claude-1000/agent-h/r687/u/ (uopt_x.c = h414 uopt_i.c + fprintf of each op, each
+    increment and each reset; out/NCC; units.sh / cnt.py print per-source-line counts and the reset lines).
+  - Under edg the inline `&dl->buf[dl->count++]` costs 8 counted loads per packet (ctx x2, dl temp x2,
+    old-count temp x2, packet pointer x2); the named-result next() costs 6.
+  - **0x4188 EXACT: a reference-bound copy of the ctx parameter** (`DLCtx &ctx = *c; DLCtx *dc = &ctx;`, all
+    packets through dc). Loads of dc are forwarded copies, so each packet costs 2 fewer counted loads, and packet 3's
+    buffer pointer lands in unit 0 as in the target (a3). The two pointer locals also give the 144-byte frame and the
+    sp+44 spill slot (one local: sp+48). Needs the one-expression append (new DLCtx::append() / APKT in
+    snoweffects_ncc.h). This is the "one fewer counted op" run 644 asked for. All other packet spellings (asg /
+    ref / unsigned * / comma / [0]) are normalised by edg (same counts).
+  - **0xC90 NM 82.90 -> 84.92** (objdiff). The scale words go through three 0-based gGfxLib aliases typed as the
+    gGfxLib layout (`snow_gfx_scale_128.sx` ..): own lui + the +0x128 / +0x12C / +0x130 immediates as in the target.
+    One shared alias (`*(float *)(&snow_gGfxLib + 0x128)`, a struct global, or a `const &` to one) is hoisted into
+    a register (ra / s1). objdiff ignores the immediates (cq9 alone = 80.74 either way). Then scaled() reads the
+    scale inside the inline into named x / y / z (products in f0 / f2 / f14, target f0 / f2 / f12) plus agent-c's
+    cq9 frame levers with scratch[5] (frame 400). Flat: x / y / z declaration order, `= { x, y, z }`, by-value a
+    (81.9), the scratch position / size (84.89-84.92), per-site next / nextN (raw-best texrect nextN = 83.75).
+    Left: i in s2 and the return-temp address in s3 (ours ra / s1), float colouring after the projection.
+  - **0x47D4** (no donor yet; r671/t47.cpp 354 raw / 196 normalised). The target holds the w.x / w.y / w.z loads in
+    uopt colours (f2 / f0 / f0), with (float)i in f14 and f in f12; ours leaves them to ugen (f10) and gives
+    (float)i f2, f f0. Flat (code identical): named x / y / z copies in any layout, a by-value `lerpf(a, b, t)`
+    inline in both argument orders, a `float &` lerp. Not tried: a donor commit (objdiff unknown), w as a
+    non-copy (fields assigned from P), and the 4188 copy lever on t inside the loop.
+  - 15D0 (NM donor, 18 diff lines): the 4188 copy lever on `t` (`SnowTex &tr = *t; SnowTex *tc = &tr;`) at any
+    1-2 packet sites or prefix / suffix sets is flat (18). Not yet traced with units.sh.
+
 ### snoweffects.uso 0x6000+ (agent-e run 639)
 
 - +2 EXACT (commit feb67fb6a on agent-e): 0x8C60 and 0x9FE8, both IDO 7.1 NCC. Own donor
@@ -1453,6 +1486,31 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     f20) is a separate constant web: `(float)0` int-cast literal.
 - NM wraps spell the raw placeholder tokens: the named-call check cannot prove CALL() sites
   whose build path is INCLUDE_ASM.
+
+## heli.uso (agent-g run 689)
+
+- **0xB08 NM 88.9 -> 92.4 % (agent-g commits 7a9605497, 19b2c308b; gate PASS each, no renames).** Exact count
+  unchanged. Rows vs the target (`r689/m.sh`): raw 729 -> 564, both masked 139 -> 102. Draft
+  `/tmp/claude-1000/agent-g/b08_keep/mp72_r689_924.cpp` (= the donor).
+- **Reading constant colouring from the uopt dump.** In `-zdbug:5` "global coloring", a constant LR is an entry whose
+  next line is `const------>` and then the value; the header's last number is the register (-1 = not coloured;
+  FP 24..29 = f0, f2, f12, f14, f16, f18). `adj` is (uses - 1) / blocks. Script: `r689/lr.py` (all constant LRs),
+  `r689/lrb.py <uoptlist> <bb>` (every LR live in one block), `r689/bk.sh` (which block holds which constant).
+- **Why the target rematerialises 2.0f / 1.0f in the fwdAx block: register pressure, not priority.** The 2.0f
+  piece there has adj 5, but it is split off a whole-function LR late, after the variable LRs are coloured. It gets
+  no register when six FP LRs are live in that block: f (f0), two square CSEs (f12 / f14), the HF(0x148) CSE, the
+  lerp value and -pi/8 (f18). That only happens when the pitch smoothing and the clamp compare are in the SAME uopt
+  block as fwdAx. In our draft uopt started a new block (flow-graph line 0, no branch) after the 3-term dot
+  product, and again before the clamp whenever any statement sat between the smoothing and the clamp. Inline
+  helpers keep it one block: `dot(fwdAx, vel)` (by const reference), `lerpTo(HF(0x148), f, 0.2f)` (store through a
+  `float &`), then `HF(0x148) = clampf(HF(0x148), lo, hi)`. Plain statements, comma / chained assignments and
+  `clampf(HF() = f, ...)` all keep the split. `dot(vel, fwdAx)` scores 1.1 lower (mul operand order).
+- **toTgt.y zero:** `setf(toTgt.y, 0.0f)` (inline `d = v` through a reference). uopt does not copy-propagate the
+  store, so the zero has one use (adj 0, not coloured); ugen reuses the stored register for the y square, as in
+  the target. With it the length is summed x, y, z (the real order). `int z = 0; toTgt.y = z;` folds 0*0 away.
+- Still open: the HF(0x148) reload after lerpTo (the target keeps the lerp value in f16 and copies it to f2 for the
+  clamp's v), the head t-ring (t1 vs t7), the heading pointer at 48(sp), the slerp's t spill at 208(sp), and the
+  frame. No frame work this run.
 
 ## heli.uso (agent-g run 682)
 
