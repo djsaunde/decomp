@@ -5533,6 +5533,59 @@ fast3d/presenter.cpp, fast3d/setup-x11-dev.sh, port/tools/play.sh.
 
 ---
 
+### 19.12 Run 858: live audio (agent-g)
+
+> agent-g run 858, 2026-11-17, branch agent-g. `port/tools/play.sh` now plays the game's sound through WSLg's
+> PulseAudio (`unix:/mnt/wslg/PulseServer`), no sudo. `play.sh -m` mutes, `-l MS` sets the buffer (default 80).
+
+**How it works.**
+```
+ tenshoe: AudioThread_UpdateImpl -> mixer -> osAiSetNextBuffer -> host_audio_queue
+   -> port_audio.c audio_sink: --audio-out WAV (if open) + port_live_audio_write
+   -> LiveAudio ring (live_shm.h: block at LIVE_AUDIO_HDR = 2048 in the header page, 128 KB data after the slots)
+ presenter: live_audio.cpp thread: ring -> pa_simple_write (blocking, tlength = 80 ms) -> PulseAudio
+```
+- **Ring:** `LiveAudio` (magic "AUDO", rate 32000, 2 ch, power-of-two size, dataOffset, free-running byte
+  head / tail, overruns / underruns / trimmed / state). It is a separate block in the header page, not new
+  LiveShmHeader fields, so agent-a's reply area (19.11 item 2) merges independently: both only need the
+  presenter's file size to cover their region and the game to map up to the larger offset (port_live.c does).
+  A presenter without audio leaves the magic 0 and the game sends nothing. The game never waits: a full ring
+  drops the AI buffer (overruns).
+- **DAC model live:** with PORT_LIVE, osAiGetLength reports a **wall-clock** DAC (32000 frames/s drained
+  since the last query, clamped at 0): the driver sizes its 528..544-frame buffers to real time whatever the
+  step pacing does (late steps, catch-up bursts, `--authentic`). Without PORT_LIVE the retrace model of
+  `--audio-out` is unchanged (deterministic); PORT_AUDIO_DAC=0 still turns the model off. Before, a live run
+  had no model at all (560-frame buffers, 5 % too much audio).
+- **Presenter thread** (its own; the video loop never blocks it): up to 10 ms per pa_simple_write, which
+  blocks while PulseAudio holds the 80 ms; the ring stays at 0 - 40 ms. Backlog > latency + 100 ms (the boot
+  burst, or a slow sound-card clock) -> skip down to 20 ms (trimmed). Underrun = ring dry while PulseAudio is
+  under 5 ms. libpulse-simple is **dlopen'd**: no library / no server / write failure -> the ring is drained
+  and the video runs on ("audio: ... silent"). `--mute` drains too.
+- **Libraries:** `port/gfx/fast3d/setup-pulse-dev.sh` -> tools/pulse-dev (apt-get download + dpkg -x of
+  libpulse-dev, libpulse0, libsndfile1, libasyncns0, libflac8, libogg0, libopus0, libvorbis0a, libvorbisenc2;
+  checks `ldd` resolves). play.sh runs it (a failure means silent, not an abort) and gives the presenter
+  LD_LIBRARY_PATH to it.
+- **Gamepad:** `/dev/input/js0`, else the first evdev device with BTN_GAMEPAD + ABS_X/Y
+  (`live_gamepad.cpp`, axes normalised from EVIOCGABS into the js layout). This WSL has no /dev/input, so
+  it is untested on hardware and falls back silently.
+
+**Verified (this machine, headless):**
+- 600 and 900 steps with `--audio-out` in the same run and presenter `--audio-dump`: game-side FNV-1a 64 of
+  every byte sent == presenter's hash of every byte received (88e0a2e4e2239f3f for 3 819 456 bytes, 29.84 s),
+  and the dump is **byte-identical** to the WAV's data chunk (`cmp`).
+- `pa_simple_new` connects to `unix:/mnt/wslg/PulseServer` ("PulseAudio ..., 32000 Hz x 2, 80 ms buffer"),
+  29 s played, 0 game overruns; after the one boot trim (0.25 - 0.9 s of the boot burst) 0 underruns in the
+  600-step run. 19.91 s of audio for 600 steps (20.0 s): no drift.
+- fail-soft: `PULSE_SERVER=unix:/nonexistent` -> "pa_simple_new failed: Connection refused; silent", the
+  video runs and the ring is still drained (hashes equal); no libraries -> "libpulse-simple.so.0: cannot open";
+  `-m` -> muted, hashes equal.
+- Not verifiable here: that it sounds right to a listener (the user should listen); the evdev pad.
+
+**Next:** volume / mute toggle key; the presenter could report PulseAudio's real playback position back
+for the DAC model instead of the wall clock (only matters for a sound-card clock far off 32 kHz).
+
+---
+
 ## 20. M5 prep: saves (agent-c, run 844)
 
 **Rule.** The save file (`--sram`, default `1080.sram`, 0x8000 bytes) is the N64 SRAM image byte for byte:
@@ -5826,3 +5879,53 @@ boot). Not needed with main's regenerated race script (3rd place), kept for othe
 with a light rim (go_s1440.png), not the run-846 dark maroon (that predates run 851's lt0 / lt1
 record fix, a plausible cause, unverified). The 32x32 RGBA32 texture in that task (0x09126ca8) is a
 whitish chrome map modulated by shade (G_CC_MODULATERGBA); the GO! draw itself was not isolated.
+
+### 19.12 Run 859: render to texture and read-back replies in the presenter and in process (agent-a)
+
+agent-a run 859, branch agent-a on b414f29f1: **5ed411412** (presenter render to texture + the read-back
+replies; live_shm.h, port_live.[ch], port_gfx.c), **5604caff6** (in-process render to texture, test_inproc -s).
+Gate: ROM byte-identical, 3579/3579, clean build OK, port gate PASS (race / replay / ghost bit-identical).
+Frames: /tmp/claude-1000/agent-a/r859 (board.png, ab.png, inproc.png, suncrop.png).
+
+**Design (reply channel).** A second shm file, `/dev/shm/<name>-fb` (`LiveFbReply` in live_shm.h, appended as its
+own section; `LiveShmHeader` unchanged, so agent-g's audio ring does not collide). The presenter creates it before
+LIVE_MAGIC; after each rendered frame's Run it fills, under a seqlock (odd = writing): the frame's seq / step, up to
+64 depth answers {Z image pointer, pixel index, N64 Z (0xFFFC far)} for the frame's DLUMP_FB_DEPTH pixels whose
+image is Fast3D's last z_buf_address (low 24 bits), and up to 4 colour images (320x240 RGBA5551 big-endian) for the
+DLUMP_FB_READ images the frame drew into. The game (port_live.c) maps it if present; `port_live_fb_apply(rq)`, called
+by port_gfx.c after the depth-clear model at every gfx task, takes a new complete reply (a torn copy is dropped),
+keeps its depth answers and writes them (big-endian) over the cleared pixels the game is still requesting, and
+copies a colour answer into a requested colour image once. Every pixel no reply covers keeps the clear model.
+Latency: one to two steps with --realtime. Without PORT_LIVE (the gate) the code is never reached; without a
+reply file (an old presenter, or `--no-fb-reply`) the game logs it and keeps the clear model.
+
+**Render to texture.** Presenter: per task, f3dreplay's offscreen_target (all colour images < 320 wide, 16-bit,
+not the Z image; height from the scissor); with more than one task those are chained behind their own SETZIMG
+prologue and run first, with a ReadbackRequestRgba5551(0, 0, w, h) (patch 0003 does the scale-down); the pixels go
+into the arena at the onscreen tasks' TEXTURE / TLUT chunks over the image (base = chunk high byte | img24) and the
+texture cache over them is invalidated; then the frame's Run. In process (port_fast3d.cpp): the same test from a raw
+walk of the task's lists; after Run the region is written to the image's full pointer (the one registered writable
+mapping, hi byte 0..15, holding the whole image) and the cache invalidated; the overlay task of the next frame
+samples it (the N64's one-frame lag). test_inproc `-s` renders dumps as one step (one memory image).
+
+**Verified.**
+- Board: live (race script, steps 5535 / 5614) the board shows the replay with "3rd place" and NAME ENTRY;
+  in process, `test_inproc -s gfx_010858 gfx_010857` (step 5540): grey before, replay after.
+- Sun: race script live, --realtime, `--fb-log`: depth answers vary per frame (e.g. 1530-1556 4/5/6 far around
+  tree tops, 2216-2276 all nearer against a cliff, z f540..f58c). A/B against `--no-fb-reply` (the headless model):
+  at step 2250 the clear model draws the sun glow over the cliff, the replies hide it.
+- Colour: Fader / Tv1 reads are answered (2560 replies taken, 167 colour images stored over a 5800-step run).
+- Headless unchanged: smoke / race / replay / ghost bit-identical in the port gate.
+
+**Open.**
+1. At some sky positions (race steps 1642-1715, sun at x 69-73, y 16-20) Fast3D reads non-far Z (fd20..fd3c,
+   smooth across x): something drawn in the sky writes Z there, so the flare stays off where the sun is drawn.
+   Unverified whether the N64 writes Z there too (the sun's own billboard or a backdrop with Z_UPD); not settled.
+2. The in-process path's offscreen task still shows the replay in its own frame's top-left (each task is its own
+   Run / EndFrame there); harmless for the game, visible only in PORT_GFX_PNG.
+3. **GO! colour: not settled.** The countdown models (Ready, 3, 2, 1, GO!) all draw the same pinkish red in the
+   presenter (r859/go.png); GO! turns translucent as it flies to the camera (likely its fade). The 32x32 RGBA32
+   material named in run 855 (0x0914d808 at step 1460) is G_CC_MODULATERGBA (shade x tex0, alpha tex0a x shadea)
+   with G_LIGHTING cleared (geometry 0x2204), so run 851's light-record fix cannot change it; its vertices have
+   colour d3dee7 and alpha 0..0x0d, so it is probably not the GO! draw. The GO! draw was not isolated.
+4. FB_WRITE (debug paths) is still not composited in the presenter.
