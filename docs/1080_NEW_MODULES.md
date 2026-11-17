@@ -1700,6 +1700,41 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   - Tools: /tmp/claude-1000/agent-h/r776/: sbs.py, md.sh (-g3 named frame map), lmall.py (LR map incl. FP),
     t5.py (tail forms), t7.py / t8.py (JSON variant batches), C2repo.cpp (committed body, absolute include).
 
+- Run 779 (agent-h, commit b62bfaf5c on agent-h, NM only, no renames; 3576 / 3579, gate PASS, exact set identical,
+  592 words, frame 400, sp offsets exact).
+  - **0xC90 NM 99.10 -> 99.18** (32 -> 22 positional diffs). Plan items 1 (prologue) and 5 (s-middle) are fixed.
+    - **Prologue:** `l = c->dl; putw(c->atIq(l, l->count), 0x06000000, d);` with
+      `Gfx *atIq(DList *l, int n) { l->count = n + 1; return &dl->buf[n]; }` and `DList *l` declared in the old
+      function-scope g's slot (so the frame stays 400 with exact offsets; dum5 is gone). The packet pointer is putw's
+      first pooled word (M-124, a3), the old count the pooled parameter n (shares the loop dl-temp word, v1), and the dl
+      the named l (a2), as in the target. The named l stops the prologue dl from being the c->dl CSE temp (e861) that
+      nextI() shared with the E4 append (run 776's 50-diff loop break).
+    - **s-middle a1:** `d = tcall1(0, self->tex);` with
+      `inline int tcall1(int d0, SnowDLHolder *t) { d0 = d0; return gl_func_00000000(t->dl, t); }`. The texture lands
+      on the second pooled word (M-128), which the s-middle temp reuses. M-128 is then live in block 0, where a0 is
+      busy (self, then the dl argument) but a1 is not (the texture itself is the a1 argument), so M-128 is forbidden
+      a0 and takes a1. Lever: **to give a pooled word a specific register, put an inline parameter on that word in a
+      block where the unwanted registers are busy and the wanted one holds the same value.**
+      (tcall(self->tex) puts t on M-124: no change. halfW through a `half1(0, v)` inline also gives a1, but v is a
+      real LR there (lw a1 instead of t9).)
+  - Left (22): EE pointer (277-285, v1; target a1); FB block (287-295: the target presets yh in a1 and xh in a3 at
+    the top of FB; ours presets yh in v0 after the FB count); E4 count (target v0, ours a1) and yh temp / clamp
+    (target v0 / a1, ours v1 / v0).
+  - Tried, not working:
+    - E4 count as a pooled parameter (nextP / nextPp (named pad keeps frame 400) / atNcm / atN0 / nextNc_1, x yh
+      dummies 0-4): 589-590 words. With frame 400 kept, the FB and E4 counts do become one LR (M-132 21:3/1, as the
+      target's v0 / v0 suggests) and xh's CSE e762 takes v0 as in the target, but uopt adds a block after E4 and the
+      loop loses a callee-saved register (s3), so the whole loop body shifts.
+    - FB with the `if (1)` after the index (atBr2(&dl->buf[dl->count++])): same bytes as atBr. Without the d0
+      dummy and no yh dummy (B5_d0): M-128 (a1) = {tex, FB count, yh clamp, s-middle}, so the yh clamp is a1 as in
+      the target, but the FB count is then a1 too and the E4 count a0 (99.16).
+    - EE pointer: a pooled pointer (primDepthP(depth, c->next()), putw / pad forms) gives 589 / 593 words;
+      `&c->dl->buf[c->dl->count++]` written in primDepth is byte-identical. Block 13 ends between the EE count store
+      and the pointer (M-124 / M-132 13 -> 14, M-224 block 14 only); z0 terms on z (1-8) do not move that split;
+      z0 terms on c / wid / hgt / i recolour other things.
+  - Tools: /tmp/claude-1000/agent-h/r779/: pv.py (JSON variant runner: replacement lists or prologue strings),
+    both.py (side-by-side range), C3repo.cpp (committed body, absolute include), v1-v21.json (batches), o/ (outputs).
+
 ### snoweffects.uso 0xC90 y0 t3 / E4 pointer t4 (agent-e run 760, research only, no commits)
 
 - **Fixed, code-free: objdiff 98.598 -> 98.758 on agent-h's run-762 head (c57226a6e).** Positional diffs go from 73
