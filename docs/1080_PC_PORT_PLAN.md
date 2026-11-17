@@ -26,6 +26,7 @@ first; this plan does not repeat them.
 17. M1: libultra shim and main loop (17.8: SysApi, port/fs, boot-path trace)
 18. M1/M2: byte order (USO blob type map + swap, rom/*.bin readers, bitfield audit)
 19. M2: graphics transport (feasibility on WSL2, PORT_GFX_DUMP / DLMP, dlreplay; 19.6: Fast3D in f3dreplay, golden tests; 19.7: 7 more scenes, patches 0006-0008, in-process Fast3D)
+20. M5 prep: saves (the SRAM file is the N64 image: format rule, port_backup, test_backup, the gate's saves step)
 
 ---
 
@@ -476,6 +477,67 @@ so whole sessions (boot → title → race) replay. The emulator side needs the 
 emulator-level input log at 30 Hz pad-read granularity, because the pads are read every other retrace and
 the game consumes at most one new sample per update. The game's own recordings remain useful as
 ready-made, long, physics-only test vectors, and saved ghosts are portable test inputs.
+
+#### 9.4.1 Scripted headless input: `--input` (agent-a, run 843)
+
+Commit 6ea217c19 (branch agent-a). `tenshoe --input FILE` drives the headless build with a text
+script (`port/host/input_script.c`; example `port/host/time_attack.input`):
+
+- `PADS n`, `RUMBLE p` (boot-time: osContInit / pad_probePaks see them through `host_boot_pads`);
+- `F <when> [P<n>] <buttons> [STICK x,y]`, where `<when>` is `N`, `N-M`, `N:len`, or `+D...`
+  (relative to the previous F line). The buttons are A B Z START L R DU DD DL DR CU CD CL CR or `0xNNNN`.
+  The stick takes raw bytes.
+- A step is SysLib.frameCount (state.log `F`). A state held on step N reaches pad_update on N+1 (the
+  pad thread snapshots during the step's retraces). Use 3-step presses.
+- The pads take the live path: HostPad -> port_si_set_pads -> osContStartReadData -> the pad thread ->
+  pad_update. In the title and menus only 2 PadCtl objects exist (ports 1 and 2), so P3 / P4 reach the
+  SI but nothing reads them there.
+- `PORT_GFX_DUMP_STEPS=a,b-c` dumps only those steps' gfx tasks. `<dump>/steps.txt` maps each task
+  to its step. `capture.sh -i SCRIPT -F STEPS` labels the tiles by step. Each step has 2 tasks: the
+  3D scene, then the 2D overlay. capture.sh no longer deletes anything, so `-o` must be a fresh directory.
+
+**Scripted run (time_attack.input):**
+
+| step | screen |
+|---|---|
+| 480 | START on "Press START" |
+| 485 | English / Japanese |
+| 560 | A, main menu |
+| 620 | DD, Time Attack |
+| 680 | A: Select Rider (flow 0,4,1 -> 0,4,4) |
+| 950 | A |
+| 1050 | A: Select Board |
+| 1150 | A: Select Course |
+| 1300 | DR: the next course (the minimap and best time change: 1'30"00 -> 2'00"00, but the name label stays "Air Make": a stale course-name sprite, gfx side) |
+| 1360 | A: flow 4,4,4, then 5,4,4 at 1379 ("Ready"), race state 1 at 1441 ("GO!") |
+| later | the timer runs and the rider moves along the course (r0 changes, stick steers) |
+
+The 3D scene is black and camera fields are NaN (`cam=ffc00000`) through the race (agent-g, projection).
+The km/h readout shows 0.
+
+**Crash (agent-c, audio).** On the clean tree the race load segfaults at step ~1380:
+- `AudioSeq_SequenceChannelProcessScript` (`src/game_libs/game_libs_o2_2BB7C.c:541`), case 0x98:
+  `(*channel->dynTable)[value]` with `dynTable == NULL`;
+- called from AudioSeq_SequencePlayerProcessSequence (2C7A4.c:340), AudioSeq_ProcessSequences
+  (post.c:11625), AudioSynth_Update (post.c:212), AudioThread_UpdateImpl (26214.c:183),
+  port_audio_frame (port_audio.c:167), RcpMgr_portDrain (4D688.cpp:306/358), app_runOneFrame
+  (34EB4.cpp:166).
+
+On the N64 the same read would TLB-miss, so the race-start sequence's set-dyntable command
+is probably being missed or mis-decoded in the port. A local, uncommitted `if (dynTable == NULL) break;`
+gets through to the race.
+
+**Determinism.** The same script run twice gives byte-identical state.log (2000 frames, through the
+race start) and `--record` logs. `--replay` of that record log, with no script, reproduces state.log
+byte for byte (0 missing inputs, 0 replayFrame mismatches). The game's own recorder (9.4) runs from
+race start: replayFrame counts 0.. from step 1442. Its post-race playback was not reached, because it
+needs a finished race.
+
+**SRAM is not deterministic** (save side, plan 20). With no input, two runs write SRAMs that differ
+in ~35 bytes: the header words 0..7 (checksums) and 0x20C-0x22F (mirrored at 0x7FDC-0x7FFF). Those
+bytes hold i386 stack addresses (`0xfffda208`, `0xffb31c08`). With `setarch -R` (no ASLR) the files
+are identical. Some save struct is written with stack pointers or uninitialised stack bytes in it.
+state.log is unaffected.
 
 ### 9.5 FP environment
 
@@ -4353,6 +4415,53 @@ the same bug as agent-g's crash. The smoke line prints the count. The 47 C "cont
 of non-void" and 3 bare `return;` warnings in the baseline are the same class as the
 AnimData_readFrames bug when a caller uses the value: worth one audit pass.
 
+### 18.19 Run 842: missing returns (agent-e)
+
+agent-e run 842, branch agent-e on main bcf38948a: 17de0dfa3 (tool), 23ceb93ea (src, PORT only).
+
+**The class.** A ROM function that ends without `return` still returns `$v0`: in the matched C,
+usually the last callee's result. On i386, eax is whatever is left there (often the same value by
+luck, since gcc keeps the last call's eax through a pop-only epilogue, but not after any later
+arithmetic: AnimData_readFrames, 18.18). In C++, g++ treats the fall-off as unreachable and may
+emit no `ret` (mgr_initMatchRace, 18.18).
+
+**Census (fresh `-DPORT_LINK=ON` build, `-Wreturn-type`):**
+
+| class | hits | outcome |
+|---|---|---|
+| C "control reaches end of non-void" | 47 | 29 in dropped copies (the shipped body is a C++ / o0 donor); 18 shipped |
+| C bare `return;` in a non-void function | 2 | input_getStickX/Y: dead (after `return x;`) |
+| K&R implicit int ("return type defaults to int") | 8 | each paired with its fall-off line; 2 in dropped copies |
+| C++ (`-Wreturn-type`, 241 units) | 0 | after 18.18's mgr_initMatchRace |
+| void definition, int caller declaration, caller reads eax (abi-scan VRET, new) | 5 | all real; fixed |
+| function ending in a call gcc assumes never returns (objdump: last insn not ret / jmp) | 9 | all port-side (host_fatal, port_sys_fatal, sys_fatal -> port_sys_fatal); all genuinely exit |
+
+Of the 18 shipped fall-offs, $v0 from the matching objects: **2 used, fixed** (AudioHeap_AllocPermanent:
+the allocation, read by AsyncLoadInner / SyncLoad; SelectWin_callPrevStageBit_0000894C: prevStageBit's
+result, tested by 3 state handlers). The other 16 are reviewed in `port/tools/return-type-allow.tsv`:
+VOIDLEFT 8 ($v0 is a void callee's leftover, so the original was void), UNUSED 3 (AudioLoad_SyncLoadInstrument,
+SyncInitSeqPlayerInternal ($v0 = 16), AnimPlayer_reset), DEAD 5 (not linked: dbg_printThreads,
+nodelist_display/updateFlagged, func_00000000; and the 2 bare returns).
+
+**VRET fixes (callee defined void, caller uses eax):** AudioLoad_SyncLoadSeq (SyncLoad's RAM address,
+stored by InitSeqPlayerInternal as the sequence data), pad_getFlagGlobal (pad flags, pad_isConnected),
+gfx_childName_00056084 (str_dup'd name, gfx_newDLChild), gfx_newPolyShape_00046F80 and
+SnowBoarder_createBoardShape_0000B49C (the new PolyShape; shape_cmdShape, BoardList_createItem).
+New ROM-neutral macros in include/uso_call.h: `PORT_V0_RET` ("return" / nothing) and
+`PORT_V0_TYPE(t)` ("t" / "void"). name-placeholder-calls.py's header parser skips PORT_V0_TYPE.
+
+**Gate (port-gate.sh build step):** return-type hits are no longer baselined (57 keys removed from
+port-gate-warnings.tsv). A hit in a shipped body fails unless `return-type-allow.tsv` lists it (file,
+function, message prefix, verdict, evidence); hits in dropped copies (sourcemap ships the function from
+another unit) are exempt. The line reads `return-type: 55 hits (24 reviewed, 31 dropped copies,
+0 UNREVIEWED)`. A removed allow line was checked to fail. abi-scan's VRET class is gated through
+abi-baseline.tsv (0 findings now).
+
+**Not covered:** `return voidfn();` in a non-void caller (11 sites, e.g. snd_PostEvent,
+dbg_printStarLine, math_acosf's sys_fatal arm). These pass on the same leftover $v0 the ROM had, so
+they are VOIDLEFT by construction. Also not covered: an indirect caller (vtable / proc entry) that
+reads a value; the verdicts above checked the dispatch type by hand.
+
 ## 19. M2: graphics transport (agent-a, run 820)
 
 > agent-a run 820, 2026-11-17, on branch agent-a: 7c91a2e27 (dumper, hook, tests, reader), e6bda5949
@@ -4927,3 +5036,58 @@ in step with the GPU on demand:
    on a multilib machine.
 3. Re-check the Sun's depth units (0xFFFC far) once agent-g's projection fix lands. Then capture a race with a
    CrystalGuy / MetalGuy rider (ScreenThumbMat) and a tv1 course item to exercise the colour path on real frames.
+
+---
+
+## 20. M5 prep: saves (agent-c, run 844)
+
+**Rule.** The save file (`--sram`, default `1080.sram`, 0x8000 bytes) is the N64 SRAM image byte for byte:
+big-endian, the gdl/backup.h layout, the hardware checksums. An emulator `.sra` (32 KB SRAM dump of the
+US ROM) loads as is, and the port's file loads in an emulator. Records in RAM are in host order; the
+conversion is at the SRAM boundary only (`port/include/port_backup.h`, `port/fs/backup_sram.c`):
+
+- `Backup_read` (PORT) converts the chunk it just read in place (`port_backup_from_sram`);
+  `Backup_write` writes a big-endian COPY (`port_backup_to_sram`: the caller's record, often the live
+  options record, stays host order). The SRAM offset names the record: every Backup_read / write
+  addresses one whole chunk at its start (header 0, course 0x8 / 0x7DD8, arcade 0x190 / 0x7F60, options
+  0x1F8 / 0x7FC8, ghost header 0x218 / 0x7FE8, ghost data 0x230, the 8 sums). Any other offset is
+  logged once and left raw.
+- `backup_checksum` / `backup_checksumOk` (PORT) sum the record's big-endian image
+  (`port_backup_sum`): the length names the record (0x180 course, 0x60 arcade, 0x18 options; the 0x10
+  ghost header and the 0x20 header input are all words, whose sum is order-independent).
+- Field widths (from the matched loads / stores): time entries all bytes; score entry `score` s32 at +4;
+  arcade entry `flags` s32 (word access: the NEW bit 0x80 is in byte 3 of the SRAM word), count / name
+  bytes, stages[5] + score s32; options `unlocks` / `seqStep` / `flags` u16, the rest bytes; ghost header 4
+  words (`data` is 0 in SRAM); ghost data = InputFrame {s8 stickX, s8 stickY, s16 buttons}: only the
+  buttons half swaps.
+- Ghosts: `replay_saveGhost` memcpys the recorded host-order InputFrames and `Backup_writeGhost` writes
+  them through `port_backup_to_sram` (GHOST_DATA kind); `Backup_readGhost` converts them back, and every
+  ghost playback (`replay_beginRecordWithGhost` / `beginPlayback`) plays `session->ghost->data` from
+  there. No other path reads or writes SRAM (fs_gdl kind 2 is only Backup_read / write).
+- Bytes the game never initializes: options `pad15[3]`, the ghost header's `bits` above bit 13 (the
+  setters only clear their own fields) and `unkC` are stack garbage on a fresh save, on hardware too.
+
+**Before this run** the port wrote host-order records with checksums over the host words: self-consistent
+on the port, not loadable on an N64 / emulator and vice versa.
+
+**Tests.** `port/fs/test_backup.c` (fs/backup_sram.c alone):
+- unit (24 checks): every kind host -> SRAM -> host is the identity, the SRAM bytes are the big-endian
+  fields, a port checksum of a converted record verifies the hardware way, the caller's record is untouched;
+- `test_backup <save> <bootup 02_Data.bin> [<out.sra>]` (26 more): builds the ROM defaults' N64 image
+  independently of the game code (the reset functions' logic over the big-endian bootup Data tables D268 /
+  D388 / D3E8 / D430..D43A, hardware checksums, mirrors, header hash) and requires the game-written
+  blank-SRAM save to be byte-identical (garbage bytes taken from the save); writes a synthetic `.sra` with
+  non-default records (a course time and score, an arcade score / stage, options 0x3F / 4 / 9 / levels
+  3,10,0) and a 3-frame time-attack ghost, and checks what `Backup_read` would hand the game.
+
+The port gate's new **saves** step (scripts/port-gate.sh, ~1 s): unit; a 30-frame boot on a blank SRAM
+(21 SRAM writes = 4 chunk resets + header) must equal the defaults image; reloading that save and the
+synthetic `.sra` must each give exactly 1 SRAM write (the header rewrite, no chunk reset) and leave the file
+unchanged; the `.sra` with one byte of the course and of the options primaries damaged must be restored
+from the mirrors (5 writes) to the `.sra` exactly.
+
+**Open.** A real recorded ghost round trip (play a time attack, save the ghost, reload, race it) needs
+scripted input (agent-a run 843, `--input`): then check SRAM 0x230.. holds big-endian buttons and the
+ghost replays identically after a reload. A cross-check against a real emulator `.sra` from the US ROM
+would be the last word (none in the repo).
+
