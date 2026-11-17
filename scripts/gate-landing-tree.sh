@@ -57,6 +57,15 @@ r=json.load(open(sys.argv[2])); fz={fn['name']:fn.get('fuzzy_match_percent') for
 sent=['gl_func_000551E0','gl_func_00055B10','gl_func_0000EBC8','gl_func_0000C5B0','game_libs_func_00062F08']
 print("   sentinels:", {s:fz.get(rn(s)) for s in sent})
 PY
+# every CALL/XCALL name proven per site (the callee of its own jal, not just one of its function's
+# callees: a swapped pair is a real wrong call under PORT; run 826). ~60 s; skipped when the tree
+# predates the --order mode
+if grep -q "'--order'" scripts/name-placeholder-calls.py 2>/dev/null; then
+  echo "== gate: named placeholder calls (per site)"
+  python3 scripts/name-placeholder-calls.py check --order >"$LOG-calls.log" 2>&1; crc=$?
+  tail -1 "$LOG-calls.log" | sed 's/^/   /'
+  if [ $crc -ne 0 ]; then echo "   !! named-call check failed; see $LOG-calls.log"; grep -E 'WRONG|UNPROVEN|not among' "$LOG-calls.log" | head -10; exit 9; fi
+fi
 # CI builds a fresh checkout of tracked files only; incremental builds above can hide
 # clean-build-only breaks (untracked donors, target-specific vars inherited by prerequisites)
 if [ "${SKIP_CLEAN_BUILD:-0}" != 1 ]; then
