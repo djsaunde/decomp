@@ -1407,6 +1407,44 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     - me.py / me2.py / me3.py: me()-depth grids, prologue form x tail depth x scratch;
     - v5.py / v6.py: callee-type probes.
 
+- Run 754 (agent-h, commits 28fd034c1 and a925b44ca on agent-h, NM only, no renames; 3576 / 3579, gate PASS each,
+  exact set identical (lost: none), 592 words, frame 400, offsets unchanged).
+  - **0xC90 NM 97.09 -> 97.37 -> 98.01 %** with agent-a's constant-dummy lever: `Gfx *nextN_1(int d0) { d0 = d0;
+    int n = dl->count++; .. }`, called `c->nextN_1(0)`. Each dummy takes the next pooled edg word, so the count /
+    dl temps that follow move to later words. In a member inline the order is this, the dummies, the count temp,
+    then the dl temp. Frame-neutral in the loop and tail (the free words below r absorb them). In the prologue
+    every extra word shifts v / __V / r down, because nothing has been freed yet there.
+  - **Word map (fl.py):** the three temp words between p and y0 (-124 / -128 / -132) are exactly the
+    pre-loop words. `c->next()` alone uses only two (count -124, this -128; the dl is an expression, not a word).
+    `c->me()->next()` uses three (this -124, dl -132, count -128), and -128 is also the loop count's word, which
+    pulls the prologue's call block into the loop count LR (forbidden v0). **Fix: plain `c->next()` plus a code-free
+    `dum3(0, 0, 0)` (or `dum1(0)`, same bytes) after it.** The dummy fills the third word, so the frame stays the same and the loop
+    count's word is no longer live in the prologue. The loop count (M-132) then has no forbidden registers and takes v0.
+  - Loop appends: EE `c->me()->nextI_3(0, 0, 0)`, FB `nextBI_1(0)`, E4 `nextI()`, B4 `c->me()->nextBI_1(0)`,
+    B3 `nextN_1(0)`. Tail: six `c->me_1(0)->me()->me()->next()`. What matters is the number of words ahead of
+    next's temps (4), not the hop shape: `c->me()->me()->next()` gives the same score here. Tail dl / count are
+    v1 / v0 and the B4 / B3 counts are v0, all as in the target. scratch[] is gone.
+  - Left (129 positional diffs):
+    - the ugen t-ring is one register off in the prologue (t6 vs t7; target self->tex in a1);
+    - y0 t4 / gt t3 (target t3 / t4);
+    - FB clamp presets (`or a1/a3, zero, zero`) come after the count, not before it;
+    - the E4 count is a1 (target v0);
+    - the xh `(s16)((x0 + wid) << 2)` CSE is in a3 (target a2).
+  - **y0 vs gt (plan item 2), not reached.** No set of `if (v) {}` lines gives y0 t3 / gt t4. Tried: `c` / `p` /
+    `y0` / `1` at 15 sites (incl. after the inner and outer if closes), all singles and pairs (1830), and 1500
+    random triples, filtered on the colours.
+    Possible outcomes: y0 lands on t4, t0, s1 / s2 or t5, and t3 only when c is pushed off t2. Next: put gt or y0 on
+    a pooled word (inline-parameter form) so its LR merges with another word's and its priority changes.
+  - Tools: /tmp/claude-1000/agent-h/r754/:
+    - gd.py: dummy inline defs plus `mk()`;
+    - hc3.py: climb over per-site (form, dummies, me hops), tail form, prologue form and `if` sites;
+    - rnd.py: random 2-3 move scan;
+    - ts.py: tail-form sweep;
+    - ifs.py / ifc.py / ifd.py: `if`-site scans with a colour filter;
+    - apply.py: ports a variant into the tree file;
+    - rt.sh: scores the tree file;
+    - fw.sh: edg word map of the append lines.
+
 ### snoweffects.uso 0x6000+ (agent-e run 639)
 
 - +2 EXACT (commit feb67fb6a on agent-e): 0x8C60 and 0x9FE8, both IDO 7.1 NCC. Own donor
@@ -2430,6 +2468,24 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   - var*.py: the toy matrices;
   - ev.sh, fz.sh, vn.sh.
 
+### snoweffects.uso 0x28E0 NM 95.04 -> 95.39, frame 520 (agent-c run 752)
+
+- **Commit 6ff863693 on agent-c** (gate PASS, 3576 / 3579, exact set identical, no renames; 793 words, frame 520).
+  Mnemonic-aligned reg diffs 293 -> 247 (branch targets masked).
+- **The r1_2 lead now fits 793 words.** Its extra word was s4: the uopt trace showed that K-292 (the op- return-copy
+  address) was CSE'd with the post-loop `lastCam = cam` copy, hoisted above the zero-trip test (den 13), and coloured s3,
+  which pushed the gGfxLib base to s4. The target hoists K-332 (sp+188, in ra) instead, and K-292 (t5) covers the loop
+  only, so the post-loop copy recomputes `addiu t5,sp,228`. Fix found by a hill-climb (c752/hc.py: single and pair
+  knob flips, scored by objdiff with 793 words and frame 520 required):
+  r1_2 + snowW on 0x06 + E4 back to gDPWord + a code-free `if (1) {}` after `self->drawn++`. op* r is at -344 (the target's).
+- **agent-e's `+=` temp recipe** (`assign()` + block `SnowV3d t`, w753) on top of this: 797 words; the best hill-climbed
+  793-word form is 94.98 % objdiff, so it is not in yet. Next is to combine it with a word saving.
+- **Left:** i / last in t4 / t3 (target t3 / t4); the last spill at 112 (target 116: M 404 against the target's 400
+  plus a second spill word); the EE packet order (the target stores w0 before the depth, the macro order, with the
+  packet in a3); the draw-block z `mov.s`; the FA `or t8,t7,zero`.
+- Tools in /tmp/claude-1000/c752/: ev.sh (now also prints low sp spill offsets), kn.py (knob product / random
+  sampler), hc.py (hill-climb), rd.py (mnemonic-aligned reg-diff count), ad.py (difflib listing), sp*.py knob specs.
+
 ### snoweffects.uso 0x28E0 NM 94.88 -> 95.04, frame 520 (agent-c run 749)
 
 - **Commit d17635bb7 on agent-c** (gate PASS, 3574 / 3579, exact set identical, no renames; 793 words, frame 520).
@@ -2895,6 +2951,34 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     f20) is a separate constant web: `(float)0` int-cast literal.
 - NM wraps spell the raw placeholder tokens: the named-call check cannot prove CALL() sites
   whose build path is INCLUDE_ASM.
+
+## heli.uso (agent-g run 755)
+
+- **0xB08 NM 97.71 -> 97.79 % (agent-g 5405f8048; gate PASS, 3574 / 3579, exact set identical, no renames, 943 words).**
+  The axZ zero / angle order is fixed: a code-free `dumf(f);` right before `f = HF(0x144); axZ.y = ..` (after the
+  HF(0xF4..0x100) stores) makes f's LR reach that block's start, so the 0.0f piece takes f0 and f takes f2 (target).
+  `if (1) {}` or moving `f = HF(0x144)` there does nothing. Scratch /tmp/claude-1000/agent-g/r755/ (`v.py` + `ncc.sh`
+  with `UOPTX` extra uopt flags, `sw.py SPEC N1,N2` variants x `-varref N`, `lrq.sh NAME` CFG + FP LRs, `ad.py` aligned
+  diff).
+- **Why the no-reload pitch forms failed: uopt's 20-variable-load block limit** (IDO_CODEGEN kit XXXV). Every
+  named-value / direct `HF(0x148) = ..` pitch form ends block 91 before the clamp compare (an extra L0 block), so -pi/8
+  is not hoisted into f18 and the value gets one colour. Confirmed with `-varref 22` (diagnosis only). The reference
+  forms (lerpTo / clampTo, `float &h`) stay under the limit.
+  - **Code-neutral load saver:** `fwdOf(fwdAx, &HF(0xF4))` (an inline taking `const float *q`, with the three fwdAx
+    statements on q[0..3]) is byte-identical on base (97.8367) and lets the q1f form (`f = lerp; HF(0x148) = f;
+    HF(0x148) = clampf(f, ..)`) keep block 91 whole at N 20.
+- **The target's pitch value is the variable f, split.** Target f is f2 in 93..98 (v uses, then the three ppf
+  angles) and f16 in block 91, joined by `mov.s f2,f16`: a uopt LR split, not a separate expression. With fwdOf + q1f,
+  f is one LR (91, 93, 95..98, pri 3.67) picked before pf (2.0) and old HF(0x148) (3.0) with nothing forbidden, so it
+  takes f0 whole (944 words, ring rotated). For the split, f must be picked after pf (f0), old-h (f2) and -pi/8 (f18)
+  with every register forbidden somewhere in its range. Store-to-load forwarding (ILOD after ISTR) never happens, and an
+  expression written twice is merged into the param (h2 / k / w forms).
+- Other near forms: `lerpC -> stClamp(d, (t - d) * k + d, lo, hi)` (p3) keeps -pi/8 in f18 and stores / compares one
+  register, but the value lands on pool word M-160 (f2 whole), 942 words. Dummy params to move it change the frame.
+- The ugen FP temp ring start depends on the whole function (code added after the last call rotates line 13), so
+  ring-rotated scores just mean the pitch code is not yet exact.
+- **Next:** with fwdOf + q1f, lower f's priority below 2.0 or raise pf / old-h above 3.67 (folded uses), then add
+  the head fix (944 -> 943 once the mov form appears).
 
 ## heli.uso (agent-g run 751)
 
