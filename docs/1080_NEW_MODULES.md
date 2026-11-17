@@ -3188,6 +3188,20 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   - `sweep.py SRC INSERT LO HI DIR` = per-line insertion sweep;
   - `tr.sh` / `lo.sh` as run 790.
 
+### snoweffects.uso 0x28E0 NM 99.81 -> EXACT (agent-c run 794; landed with agent-g run 793's body)
+
+- Commits on agent-c: f49fbdf73 (agent-h run 792's atB(count++) on E7 / B4, 99.89), c29cb963e (99.96: only the FA
+  dl / count pair left), a8b7157b4 (agent-g run 793's exact body, 28E0 in SNOW_C_FUNCS, NM wrap dropped; 3579/3579).
+- c29cb963e: the agent-h run 792 eeg_t0 levers (E4 next(), ge in the x0 / y0 block, zf4(cx) on the first draw
+  compare) left the op* / op- copy-address LRs (K-292 / K-332) swapped t5 / ra. Cause: the E4 fold's 7 counted lods
+  split E4 and B4 into two live units, so K-292's n went 45 -> 46 and den 12 -> 13 (`den = (n - 2) / 4 + 2`), below
+  K-332. Fix: keep only `0 * (int)ge` in E4 (ge must reach the E4 unit to be forbidden a0 by the E4 g) and move
+  `0 * (x0 + y0)` into the EE word (x0 / y0 are live through it anyway: no n change). The sw / sz swap is then
+  not needed.
+- Independent exact on c29cb963e (not committed, agent-g's landed): FA through plain next(), the two matrix calls
+  through the existing `gl_func_00000000_snowa_v`, and `{ int padf[2]; (void)&padf; }` before the FA packet for the
+  8 frame bytes nextN's pool words held. Draft: /tmp/claude-1000/c794/keep/28E0_c794_pf2_EXACT_793w.cpp.
+
 ### snoweffects.uso 0x28E0 NM 99.02 -> 99.81 (agent-c run 791)
 
 - **One commit on agent-c: 562425d9a** (gate PASS, 3577 / 3579, exact set identical, no renames; 793 words,
