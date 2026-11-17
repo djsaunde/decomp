@@ -237,6 +237,41 @@ No renames.
   course*3*16 spellings, and the 0x3364 levers (do-while, `show = 1` after the call).
 - **Not started:** 0x3878 (records draw, 431 lines) and 0x3F24 (erase-select pad handling, 272 lines).
 
+### agent-b run 705: snoweffects 0x9328 NM 99.63 -> 99.73 %; viewrec 0x3878 ugen 0x100 lead closed
+
+Commit on agent-b: 96dbb1ef3 (0x9328 NM gain; gate PASS, no renames). 3878 unchanged (NM 98.7 %).
+
+- **0x9328 store order fixed (line grouping).** ugen emits the five int stores in source order; as1 reordered them
+  (568, 564, 556, ...) because all five sat in one `.loc` group. With each assignment on its own source line (or
+  `0, 0` / `1` / `3, 0` split as three lines), as1 keeps 556, 560, 564, 568, 572 as in the target. The code shape is
+  now exact (ndiff 139 standalone, all of it frame offsets + the reloc addends).
+- **0x9328 frame: the temp order is the EDG 2.19 vs 2.29 pool-order difference (MATCHING_SUMMARY section 5).**
+  - EDG 2.19 (IDO 7.1 NCC) `.B`: -4 = parms vreg, then the Parms9-ctor temps n5 -8, n4 -12, n3 -16, hi -32,
+    lo -48, val -64, n2 -68, n1 -72 (reverse creation), then the inline pool from -76.
+  - The same source through `tools/ncc721.sh` (EDG 2.29) homes n1 at frame-8, n2 -12, val -28, lo -44, hi -60, n3 -64,
+    n4 -68, n5 -72: **exactly the target's temp layout**. But 2.29 marks an out-of-line ctor's `this` volatile (ucode
+    `lod P lexlev=1`), so `this` lives in its arg home (`sw a0,184(sp); lw t6,184(sp)`) instead of s0 (toy
+    `w705/toy/m1.cpp`: every out-of-line ctor does this, with or without operator new / vptr). So the target looks
+    like the "EDG between 2.19 and 2.29" of the forensics notes: 2.29 pool order with 2.19 `this` handling.
+  - 2.19 toys (`w705/toy/`, `d.sh` lists M offsets per function): temps in ONE scope are always reverse-allocated
+    (ctor temps, implicit conversions, casts, comma / ?: wrappers, temps with dtors or copy ctors, nested `PName(PName())`).
+    Forward order appears only with sibling or nested **block** scopes (`{ g(PName(x1)); } { g(PName(x2)); }`), with
+    temps created inside an inline function body (sibling inline scopes, but then created after that ctor's
+    this == 0 check, unlike the target), and with inline-function return temps (`mk(x)` returning PName / Colour, but
+    those add a struct copy per temp). None of these fits a mem-initializer list. Reversed mem-initializer order, base-class
+    chains (each level adds a this == 0 / new check), char * names converted inside the ctors, `const &` parameters:
+    all worse or unchanged.
+  - Next: a 2.29 donor needs a non-volatile `this` for the outer ctor, i.e. the out-of-line function not being a ctor.
+    Placement new (`::new (p) T`) keeps the inline ctor's own check but adds a `beqz a0` result check in front.
+- **viewrec 0x3878: the ugen 0x100 lead is closed.** The `.livereg` masks are MSB-first (bit 31 - n = $n; e.g.
+  0x0F00000E = a0..a3 + gp/sp/fp, 0x0000FF0E = s0..s7 at the return). The flag-0x100 cup adds 0x5FFF0000 = $1, $3..$15
+  (at, v1, a0-a3, t0-t7) and 0xFFFFF000 = $f0..$f19: caller-saved only, never the needed 0x00000700 ($21-$23).
+  Probing direct, varargs, struct-return, function-pointer and cast-function calls gave plain 0x0C00000E masks; no
+  0x5FFF mask appears in any listing under /tmp/claude-1000. Also from the walk: `par` (op 0x6f) marks register
+  offset2 / 4 and `str` (op 0x7b) mtype R marks offset / 4, as run 693 found.
+- Scratch: `.../scratchpad/agentb/w705/` (`c9.sh` NCC compile + ndiff vs target, `n71.sh` same keeping .B/.O/.s,
+  `m9.sh` ncc721 variant, `sig.sh` frame / slot signature, `var.py` variant maker, `toy/` pool-order toys).
+
 ### agent-b run 697: snoweffects 0x9E10 EXACT, 0x9328 NM 95.7 -> 99.6 % (3565 / 3579, +1 exact)
 
 Commits on agent-b (gate PASS before each, no renames): 5dea1bd50 (0x9328 NM gain), 04b111c85 (0x9E10 exact + episode).
@@ -1611,6 +1646,45 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     | inline `snowWrap(cx, cy, cz, &wx, ...)` with by-value coordinates (c goes back to s2, but +9 words) | 78.7 |
 - **0xC90: not reached.**
 
+### snoweffects.uso 0x1E60 EXACT; 0x28E0 leads (agent-c run 704)
+
+- **0x1E60 EXACT** (commit ad16ab83c on agent-c; gate PASS, 3569 / 3579, no renames). Moved from agent-b's
+  `snoweffects_uso_ncc_b.cpp` (NON_MATCHING-only, `SNOW_NM_B_FUNCS` removed) into `snoweffects_uso_ncc_nm.cpp`
+  (`SNOW_NM_FUNCS`, both trees).
+  - Same hop-everywhere form as 15D0, but with 18 packets the unit cuts land elsewhere. The target's
+    a1 / a2 rotation (a3 at the 0xBA000602 packet and EndDL, E700 t1, F568 a3, t0 never emitted) comes from:
+    - `if (1) {}` after the SetTImg and after the second PipeSync;
+    - `hopI` on the render SetTile;
+    - SNOW_PH x1 on SetTileSize, x2 on 0xBA001402, x3 on the combine word.
+  - The straddling hop temps are the target's hidden t0. agent-b's dead `switch` for the jr ra delay slot
+    is not needed in this form; with plain `next()` the switch has to sit after EndDL to give the a3 there.
+  - Found with a layout score: packet-register sequence, plus the E700 / F568 / 64 registers, plus words != 300.
+    A coordinate-descent climb from the all-hop 15D0 recipe hit (0, 0) in one run. Plain-`next()` climbs
+    stalled at "F568 a3 needs a hidden t0".
+  - Tools in /tmp/claude-1000/c704/:
+    - gen.py: 18-packet body (per-packet kind, PH, `if` sites, switch sites);
+    - sc.py: layout score;
+    - cd3.py / grid.py / mini.py: climb, grid and minimiser;
+    - un.sh / tr.sh: cut and colour views for 1E60.
+- **0x28E0 (NM 88.9, not committed).** Best draft is 90.43 % but 797 words; the 793-word limit (TRUNCATE_TEXT)
+  blocks it. Draft: /tmp/claude-1000/c704/keep/28E0_r3_90.4_797w.cpp.
+  - **c's s-register cost = 3.25 + 0.25 x bv** (bv = c's block count in tr.sh). The t-cost is 15, so c needs
+    bv <= 46 for s2.
+  - **The target computes sz / 2 twice.** It has `mfc1 t2; or t1,t2,zero`: a second int that copies sz, used
+    by x0 (`sw / 2`, `x0 + sw`, the texW divide). y0 uses sz. Writing it as `sw = sz;` restores the 4-word
+    second division.
+  - **Packets through `nextN()`** (named n / g) give the target's v1 / a2 pool words: +0.15.
+  - With all three: c is s2 and the gfx base is s3, as in the target, at 90.43 %. The other two changes:
+    - `if (cz) {} if (cy) {}` replaces the three empty ifs (bv back to 46);
+    - `sw` for x0, x0 + sw and the texW divide.
+  - Left:
+    - 4 words too many;
+    - halfW spilled (the target keeps it in f30, -halfW in f24);
+    - the draw-part float colouring;
+    - the `+=` copy chain at 287..293.
+  - Not faithful: `alpha = 0; if (fadeIn) alpha = 1;` also gives s2. The target has the if / else, two stores
+    and `beqz zero`.
+
 ### snoweffects.uso 0x15D0 / 0x1A18 / 0x2310 EXACT (agent-c run 691)
 
 - Commit bc0eab37b on agent-c (gate PASS, 3566 / 3579, no renames). The donor
@@ -1768,6 +1842,34 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
     f20) is a separate constant web: `(float)0` int-cast literal.
 - NM wraps spell the raw placeholder tokens: the named-call check cannot prove CALL() sites
   whose build path is INCLUDE_ASM.
+
+## heli.uso (agent-g run 706)
+
+- **0xB08 NM 93.08 -> 93.21 % (agent-g commit 950053c32; gate PASS, no renames).** Exact count unchanged.
+  Draft `/tmp/claude-1000/agent-g/r695/q1.cpp` (= the donor). Harness `/tmp/claude-1000/agent-g/r706/`: var.py
+  (base + spec of string replacements, scores and prints the vel-block `addiu` lines), dz.sh (uopt -zdbug:5 dump,
+  the address-constant LRs with their uses), sweep.py (`if (1) {}` before each line), ph*.py (phantom sweeps).
+- **Lever: `if (1) {}` before case 2's `V3(0x12C) = V3(0x114)`.** Without it uopt colours self+0x12C (v0) for the
+  three op= stores; the target folds them to 300 / 304 / 308(s0). With the cut they fold as in the target.
+- **Reading the address LRs.** In the -zdbug:5 colouring, a local's address is a constant LR `4 -N` (N = the
+  virtual-frame offset; sp offset = frame - N). Register numbers: 1 = v0, 2 = v1, 3 = a0, 5 = a2, 14 = s0.
+  The `forbidden` list is printed after colouring, so it shows the final registers of interfering LRs.
+  In the vel block, each ctor temp (`return Vec3(..)`) has 2 uses (the copy plus the ctor's `this`), adj 1.0, so
+  it is coloured. The vel slot and the op= parameter copy have 1 use and get ring t-regs. The target's op* / op-
+  temps behave like 1-use LRs.
+  - **Without ctors the temp drops to 1 use.** A `struct V3b { float x, y, z; }` result
+    (`V3b r; r.x = ..; return *(Vec3 *)&r;`) or a ctor-less Vec3 makes the op* temp a t-reg (target shape),
+    and the return temp then takes v1 (`s1`: t8 / v1 / t2). But the scheduling and the rest of the
+    function move, so the score drops (90.4 with h1, 87.6 with both operators on q1).
+- **tg = self+0x12C in the vel block (target `addiu v0,s0,300`).** On the h1 base, adding the case-2 cut and then
+  `tg = (Vec3 *)(self + 0x12C);` just before vel reproduces the late `addiu v0,s0,300` (`n1`, regmask 247,
+  both-masked 84, the best rows yet) but scores 91.2. Without the case-2 cut, uopt's PRE hoists the expression into
+  every switch case (case 2's coloured self+0x12C makes it partially available).
+- Case 4's doubled sp+252 is not fixed yet. `if (1) {}` before any case statement changes nothing, except before
+  `HF(0x118) += f` (91.9). A phantom `f = f + (k summed (HI(0x16C) & 0) terms)` before the second op= has an effect only at k = 7
+  (93.31, a unit cut inside the op= copy, not between the copies). It is not taken.
+- Next: combine the ctor-less op* (1-use temp) with n1's late tg and the case-2 cut. Then recover the scheduling;
+  the V3b form stores each product right after its mul, while the target batches three muls before the stores.
 
 ## heli.uso (agent-g run 700)
 
