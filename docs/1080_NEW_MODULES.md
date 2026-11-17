@@ -1987,6 +1987,34 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
 - NM wraps spell the raw placeholder tokens: the named-call check cannot prove CALL() sites
   whose build path is INCLUDE_ASM.
 
+## heli.uso (agent-g run 714)
+
+- **0xB08 NM 93.27 -> 93.25 %, committed for structure (agent-g 39191f6b4; gate PASS, no renames, 3569 / 3579).**
+  On d4, the heading pointer `h = FWD; gl_func_00000000(h);` is a named local used for the three slerp stores and vel
+  (`Vec3 old = *FWD` and the dot product stay on FWD). The sp+reg-masked diff rows go from 93 to 86 for -0.02 objdiff.
+  Harness `/tmp/claude-1000/agent-g/r714/`: v.py (parallel variant scorer; prints objdiff % and raw / sp / reg / both
+  rows), bd.py (both-masked diff blocks), reg.py (diff rows per 100 lines), dz.sh (uopt -zdbug:5 dump), gen_if2.py
+  (`if (1) {}` sweep spec).
+- **Lever, structural: the slerp is an inline function** `static inline void slerp(Vec3 &hr, const Vec3 &dir, float t)`
+  (`Vec3 *h = &hr;` inside, with ang / s / old / sa as its locals), called as `slerp(*FWD, dir, HF(0x164))`. That
+  reproduces the target's t handling: t is loaded in the dot-product block and spilled, reloaded into a coloured FP
+  register in the old-copy block, then stored again in the if block (`swc1 f2,208(sp)` twice in the target). As a
+  plain local, t is never coloured (its uopt LR pieces have adjsave <= 0). The frame becomes the target's 0x170.
+  Every call-separated segment except the switch then has the target's t-reg def count. On d4 + h + late tg (below):
+  `w/d4_ref.cpp`, both-masked rows 77 (target length 943, ours 942), but objdiff 91.85 because the head ring
+  shifts. Remaining differences: t is f14 where the target has f2 (the fabs temp is f2 where the target has f14),
+  and sa is not coloured (target f16).
+- **Late tg with a cut:** `tg = (Vec3 *)(self + 0x12C); if (1) {}` just before `Vec3 vel = *h * ..` gives the target's
+  vel-block address shape: op* r, the return temp in v1, vel, `addiu v0,s0,300`, then the op- r, all in the target's order.
+- **The switch's missing 2 t-defs are case 4's sp+252.** The target recomputes it for each op= copy (`addiu t8` / `addiu
+  t4`); ours CSEs it into v1. No change from: `V3(0x114).y += f`, moving the f assignment, `Vec3(..)` copies, the
+  self+0x114 spelling of the second copy, or `if (1) {}` after the += lines. Moving the three float stores ahead of the
+  second copy loses 2.
+- Side block (not fixed): the target colours only F8 (f14), FC (f0) and 2.0f (f2). It reloads F4 / 0x100 / F8 / FC for
+  side.y / side.z and spills toTgt.x to 32(sp) (a ugen spill). Ours colours all four field loads and puts 2.0f in f18.
+- Next: put the inline slerp on the committed base and fix its FP colours (t f2, sa f16). Then fix case 4's sp+252,
+  which brings back the head ring.
+
 ## heli.uso (agent-g run 710)
 
 - **0xB08 NM 93.21 -> 93.27 % (agent-g commit e0ac9773e; gate PASS, no renames).** Exact count unchanged (3568 / 3579).
@@ -2374,6 +2402,35 @@ Commits on agent-b: cf358ba38 (4854, 5200), 5b2c6a5f0 (3F24), 1670d10ad (episode
   Bss+0x50 pointer goes in s4 before the vertex-count test. There is also a v0/v1 pair in the ambient
   compare and the second walk's mask constants (-2 / -3 / -5 hoisted into s2..s4). Scratch:
   /tmp/claude-1000/agent-a/w654/a/best_A10C.cpp. 0x7FE0 is not started.
+
+## snoweffects.uso 0x7FE0 (agent-a run 715)
+
+- **0x7FE0 NM 99.61 -> 99.93 % in-tree (objdiff report; 13 -> 10 / 800 words differ; frame and sp offsets
+  unchanged)** (agent-a 118c25027, gate PASS, no renames, exact count unchanged 3569 / 3579). Scratch
+  /tmp/claude-1000/agent-a/w715/ (pv.py variant runner now prints the frame; spd.py lists the sp-offset diffs).
+  - **Preheader order fixed: drop the `&t->v114` / `&t->vFC` pointer locals.** Read `t->v114` / `t->vFC` in place
+    in the d / e statements. LICM then hoists a0+276 / a0+252 after the i*44 IV init, as in the target's
+    `or a1; addiu t3; addiu t4`. The locals were two frame words in the if (on) block. `int g = 0, h = 0;` in
+    their place keeps 384 with every offset unchanged. Uninitialised `int g, h;` gives 376. Keeping the dead
+    pointer locals with in-place reads stays at 13 words, because the hoist still comes first.
+  - **Cam pointer, diagnosed with the h414 trace:** M-128 is the **pos store pointer**, not idv's `&cam->fwd`:
+    blocks 53 / 85 / 88 / 90, the pos and rgb stores. M-124 is one pool word that serves three uses: the vel
+    op*'s `this`, the a statement's `&cam->up`, and the `?:` index. The op*'s `if (1) {}` splits the vel
+    statement, which leaves `this` defined in block 53 next to the pos pointer, so it interferes and gets v1.
+    The target needs the vel `this` in v0, the a-stmt cam and `?:` in v1, and the stride load in v0.
+    - **Separating the vel `this` works:** add `if (1) {}` after the pos store, then add
+      `idv(const TV &v) { const TV *q = &v; return *q; }` and drop lerp3's `g`. The second change is
+      frame-neutral. The vel `this` becomes its own LR in v0. M-124 = {a-cam, `?:`} then has no v0 conflict
+      and takes v0 at priority 35, above the stride load's 20, so a-cam and `?:` flip to v0 (20 words).
+    - Forcing M-124 to v1 on that body (`FORCE=126:2`) gives 8 words. Adding the d ctor |s| (M-292,
+      `327:26`) gives 3, and those 3 were the preheader words now fixed in-tree.
+    - So the remaining work is to get M-124 to v1 without forcing. Either its priority has to drop below the
+      stride load's, or a v0 LR has to overlap blocks 58 / 67-69. Flat, all at 20: TQ op* / idw2 / statement
+      `if (1) {}`, k-index forms, `idi()` wraps, idq on up, and moving f28 / w stores.
+  - d ctor |s| (M-292, blocks 77-79, nothing else coloured there, so it takes f0): flat for idf0 / (0, a) /
+    `+a` / `0 > a` / fabs3 / `if (1) {}` in the ctor. idf0, (0, a), fabs3 and `a + 0.0f` also cost a frame word.
+  - Other flat or worse: no idv (vel ok, a-cam / `?:` swap: 20); `.mul()` without `if (1) {}` for vel (57-64);
+    named `fw` / `cam` locals (frame +1 or 801 words); `idc(t->cam)` (801).
 
 ## snoweffects.uso 0x7FE0 (agent-a run 708)
 
