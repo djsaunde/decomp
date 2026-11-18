@@ -2035,6 +2035,65 @@ at once when the music-mode word (bootup Data 0x1C0A8, D_cfg_E354) is 0, and the
 mode 0 (the title music); the race SFX need mode 4 (timproc's snd_playSeq(4, course) at a real race
 load). Checking scrape / wind / landing needs a race run (a replay through the menus), not the demo.
 
+### 15.11 Run 872: the harsh music was the reverb ring reads (struct-by-value halves); an RSP LLE reference (agent-g)
+
+agent-g, branch agent-g on main 9ac5e9b38, commit a570110b6. Landing gate 3579/3579, ROM byte-identical, clean build OK;
+port gate PASS (audio 54 cases, build64 race audio identical to i386 to step 6346 as before); unit tests 147 + 264.
+WAVs (20 s each, before / after): /tmp/claude-1000/coord/audio/ title_*, menus_*, race_crystal_lake_*, plus
+title_n64_reference.wav (the real game emulated, below).
+
+**Root cause.** Three reverb helpers take a struct of s16 **by value**: AudioSynth_LoadRingBuffer1 (0x31EDC,
+Spec12), AudioSynth_LoadRingBuffer1AtTemp / SaveRingBuffer1AtTemp (0x31648 / 0x31718, Spec8). Their callers are
+K&R calls with ints in a1..a3 (AudioSynth_LoadReverbSamples, AudioSynth_MaybeMixRingBuffer1). On the
+big-endian MIPS the struct's s16 at +2 / +6 / +10 are the **low** halves of a1 / a2 / a3 (reverbIndex,
+updateIndex). On i386 the stack struct has the low half first, and on x86-64 a 12-byte struct is not three int
+registers, so both builds read **0**: every reverb ring LOAD used reverb 0's ring at items[curFrame][0], while
+AudioSynth_SaveReverbSamples (typed, correct) saved to the right ring and position. Second bug in the same
+helpers: `Ent_1CFDC.w` (the low half of ReverbRingBufferItem.startPos, an s32 at +0xC) is +0xE big-endian but
++0xC on the host. Effect: each reverb replayed one stale 176-sample block of reverb 0's ring every update, a buzz
+at the 180 Hz update rate fed back through the decay MIXER. Every sequence with reverb was affected (title, menus,
+race; sound effects too). It is also what 15.9 called "inherent" clipping: course 1 went from RMS 10122 / 3890
+clipped samples to RMS 5430 / 0. Fix (`#ifdef PORT`, game_libs_post.c): the helpers take the ints and rebuild the
+struct the MIPS callee saw (PORT_SPEC2), and Ent_1CFDC has the host layout. Lesson: a struct-by-value
+**parameter** fed from K&R int arguments is an ABI hazard even on i386 (s16 halves swap); abi-scan does not list
+it. grep game_libs_post.c found only these three; other units with by-value receivers were not audited.
+
+**How it was found (the regress / audio-check goldens could not, they are our own output).**
+1. `port/audio/tools/rsp_lle.c`: a minimal RSP interpreter (scalar subset, the 15 vector ops and 9 LWC2/SWC2
+   forms aspMain uses, SP DMA) running 1080's own aspMain. In seqrender (`SEQRENDER_LLE=1` renders with it;
+   `=cmp` also runs mixer.c on the same inputs per task, undoing and restoring the LLE's DRAM writes, and
+   counts differing s16 per opcode). Host memory is mixed byte order, so its DMA converts: the command list
+   word-swapped, sample bytes (a LOADBUFF feeding ADPCM / S8DEC) raw, everything else s16-swapped.
+   Result: mixer.c == aspMain on every AI-buffer and state s16 (title, seq 2, 40 s); the only differences are
+   words 5..15 of the RESAMPLE state, which mixer.c carries through and the ucode overwrites (never read back).
+   So ops 1 / 7 / 11 / 23 (P in 15.3) are verified for the inputs 1080 sends (op 23 never runs: no S8 samples).
+2. A real-game reference: the 1080 USF set (usf.joshw.info, "1080 Snowboarding (1998-02-28)") played by
+   lazyusf2 (github derselbst/lazyusf2 + kode54/psflib; zlib headers via `apt-get download zlib1g-dev`) with HLE
+   off, i.e. the game's own CPU code and aspMain on mupen64plus' cxd4 RSP. rsp_lle.c is bit-exact with cxd4 on
+   the real game's tasks (`rsp_lle_run_raw`, 573 / 573 tasks, whole RDRAM compared). Track 01 "Vacant Lives" is
+   seq 2 (the title), 05 is seq 8, 09 is seq 5 (chroma match). Built in the scratchpad, not committed.
+3. Dumping both command streams (`LLE_ALIST_DUMP`, and a hook in lazyusf2's do_SP_Task) and comparing per voice
+   (book -> sample): volumes, pitches, reverb sends, envelope flags, MIXER gains all agreed within ~1 %; the
+   reverb LOADBUFF addresses did not (constant vs advancing, reverb 1 reading reverb 0's ring).
+4. Numbers: before, ours had +1.5..+5 dB more energy than the reference in every band above 500 Hz (+7..+9.5 dB
+   above 12 kHz) and a discontinuity at 11-18 % of AI-buffer boundaries (|d2| above the 99th percentile; the
+   reference: 2 %, random). After: every band within 0.3 dB of the reference for seq 2, 5 and 8 (seq 5:
+   within 0.06 dB), RMS within 2 %, boundaries at the random level.
+
+**Ruled out on the way:** the native output path (PORT_NATIVE_AUDIO_DUMP == the --audio-out WAV, byte for
+byte; S16LE 32000 x 2); WSLg's PulseAudio (16.1, RDP sink 44100 Hz, resample method `ffmpeg`, volume 100 %;
+ideal 32 -> 44.1 kHz resampling of our output does not clip); codebooks / loop states / sample bytes (BE in the
+ROM, host order in RAM, 11144 / 11144 sample chunks are ROM bytes); ADPCM clamping (from 1080's own hot drum
+samples, same on the LLE).
+
+**Goldens:** 41 of 54 regress cases changed (every case with reverb; the 13 without reverb are unchanged),
+updated with the reason above. seqrender also gained `SEQRENDER_NODAC` (fixed 560-frame buffers) and
+`SEQRENDER_AILOG=f` (AI buffer lengths).
+
+**Open:** race music reference not matched to a USF track (seq 4's chroma match is weak); the remaining
+seq 2 / seq 8 band differences of up to 0.3 dB are timing (the emulator always uses 560-frame buffers) and not
+investigated further.
+
 ## 16. M1: link plumbing
 
 Run 612 (agent-a), on main e58ff9d67, commits f46b22b3d and cc6a576df on agent-a. The goal is a
@@ -6926,3 +6985,67 @@ tim_drawTime -> gui_spriteRefresh), and SnowBoarder_updateOrient's trailing K&R 
 3. The 2 VRETs.
 4. abi-scan: follow tail calls (`jmp` to a function symbol) as call sites.
 5. FB_WRITE in process (21.9).
+
+### 21.11 Run 872: the x86-64 Select Level view (item setAlpha), the select-screen gfx gate (agent-a)
+
+Commit on agent-a: 2545d84c9. Landing gate: 3579/3579, clean build OK; port gate PASS (build64 PASS: 11/11
+state.logs, smoke gfx 8/8, race gfx 10/10, **select gfx 2/2** (new), soak64 0 / 0).
+
+**The report.** In the native game (play.sh), Match Race's Select Level showed a wrong, static view, and the
+selection did not appear to change.
+
+**What the screen is.** Select Level is not a 3D mountain. It is the lodge table, seen from above, with three
+trail "PASS" cards lying on it: Normal = Green Circle, Hard = Blue Square, Expert = black (locked). The cards are
+LevelList_createItem's models, SelCourseMap (vtbl Data 0x514), drawn by SelCourseMap_display_0000B368. The cursor
+lights the focused card and its label (LevelItem_updateHighlight), and dims the others. The camera stays where
+it is: on i386, a DR / DL changes only the highlight and the arrows (frames below). With a blank SRAM only
+Normal is open, so the selection cannot move at all. Hard opens after Normal's 4 rounds (match_race_full.input,
+Select Level at step 17411).
+
+**Native 64-bit before the fix:** the camera pointed up at a corner of the lodge ceiling, no card was drawn, and
+all three labels were dim. The i386 build (capture.sh, f3dreplay) drew the same steps correctly, so the bug is
+64-bit only.
+
+**Root cause: a float passed as bits through an unprototyped vtable call.**
+- SelectWin_update (timproc_uso_b5_o2_5FC0.c) calls each item's slot 22, `setAlpha`, as
+  `((void (*)())fn)(this, *(int *)&win->fade)`, as the ROM does (O32: a1).
+- The five overrides (Character / Board / Course / Tesuri / LevelItem_setAlpha) are `(item, float)`. On x86-64
+  the bits travel in esi, but the callee reads xmm0, which holds whatever the last float operation left there.
+- The garbage alpha lands in item `base.alpha` (0x2A0) and the model's alpha:
+  - SelectWin_lerpCamToItem computes the camera target as `item.camOffset * alpha + model.pos` (with
+    `height * (1 - alpha)`), so the camera went somewhere else;
+  - the cards and labels are drawn with that alpha.
+- On Time Attack's Select Course, xmm0 happened to hold a usable value, so that screen looked right.
+- abi-scan cannot see this class: it is an indirect call (21.8 Left). These five definitions were the only
+  setAlpha overrides, and SelectWin_update is the only caller of the slot. A sweep of `.fn)(... *(int *)&...)`
+  calls in src finds no other site.
+
+**Fix** (src/timproc_uso_b5/timproc_uso_b5.c): the five definitions take `PORT64_BITS(float)` and read
+`PORT64_BV(a)` (21.10's transparent union: the bits in an integer register). In the ROM build and on i386 this is
+plain `float`, so the matching gate holds at 3579/3579 and the i386 gfx is unchanged. The base
+SelItem_setAlpha_0000ABD4 is `(int, int)` already.
+
+**After the fix (native, PORT_NATIVE_PNG).**
+- Step 900 equals the i386 frame: the table, the Green Circle card, Normal lit.
+- With Hard open, DR moves the highlight to the Blue Square card and DL moves it back (17500 / 17516 / 17655 /
+  17830). The i386 capture of the same steps shows the same thing.
+
+PNGs are in /tmp/claude-1000/coord/levelselect/:
+- before_native64_s900.png and before_native64_sheet.png (steps 700-1390);
+- after_native64_s900.png and ref_i386_s900.png;
+- after_native64_hard_unlocked_s17500_normal.png, after_native64_s17516_DR_to_hard.png,
+  after_native64_s17655_DL_to_normal.png, after_native64_s17830_DR_to_hard.png;
+- after_native64_selection_sheet.png and ref_i386_selection_sheet.png.
+
+**Gate (scripts/port-gate.sh build64).**
+- modes-check.py has a new option, `--gfx-steps STEPS`. It applies PORT_GFX_DUMP to the match run (match/gfx).
+- The modes step and build64's modes64 pass `PORT_GATE_MODES_GFX_STEPS` (default 850: Select Level of
+  match_race.input). build64 requires the two dumps to be identical (dlump-cmp), and prints `select gfx: N/N`.
+- `PORT_GATE_RACE_GFX_STEPS` now starts with 1300 (Time Attack's Select Course).
+- Negative check: build64 rebuilt without the fix gives `0/2 tasks identical` at step 850.
+
+**Still open on these screens.**
+- The Expert card is a black card. It is locked on these saves (seqStep < 3), and i386 draws it the same way, so
+  this is probably the game's locked card. Not verified on hardware.
+- Time Attack's Select Course shows some black photo slots (locked courses?). They look the same on i386; not
+  checked further.
